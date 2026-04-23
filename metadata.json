@@ -1,6 +1,6 @@
 {
-  "name": "VuhDo Healer Sim",
-  "description": "A mobile-first healing simulator inspired by the WoW VuhDo addon. Choose your class, customize spells, and heal your party through challenging dungeons.",
+  "name": "healerSim",
+  "description": "A mobile-first healing simulator. Choose your class, customize spells, and heal your party through challenging dungeons.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

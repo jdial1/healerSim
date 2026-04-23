@@ -9,16 +9,18 @@ import * as Icons from 'lucide-react';
 import { 
   Shield, 
   Zap, 
-  User, 
+  User,
+  FlaskConical,
 } from 'lucide-react';
 
 interface HealGridProps {
   party: Unit[];
   onTargetSelect: (id: string) => void;
   selectedId: string | null;
+  manaRegenBuffTicksRemaining?: number;
 }
 
-export function HealGrid({ party, onTargetSelect, selectedId }: HealGridProps) {
+export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicksRemaining = 0 }: HealGridProps) {
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'TANK': return 'border-amber-600';
@@ -38,7 +40,7 @@ export function HealGrid({ party, onTargetSelect, selectedId }: HealGridProps) {
   };
 
   return (
-    <div className="flex flex-col gap-1.5 p-2 w-full max-w-xl mx-auto overflow-y-auto">
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-2 overflow-y-auto p-1 sm:gap-1.5 sm:p-2">
       {party.map((unit) => {
         const healthPercent = (unit.health / unit.maxHealth) * 100;
         const isDead = unit.health <= 0;
@@ -50,7 +52,7 @@ export function HealGrid({ party, onTargetSelect, selectedId }: HealGridProps) {
             id={`unit-${unit.id}`}
             onClick={() => onTargetSelect(unit.id)}
             className={`
-              relative flex h-16 sm:h-20 w-full border-l-4 bg-slate-900 overflow-hidden transition-all
+              relative flex h-20 w-full border-l-4 bg-slate-900 overflow-hidden transition-all
               ${getRoleColor(unit.role)}
               ${isSelected ? 'ring-1 ring-blue-500 scale-[1.01] z-10' : 'border-slate-800'}
               ${isDead ? 'opacity-40 grayscale shadow-inner' : ''}
@@ -66,15 +68,15 @@ export function HealGrid({ party, onTargetSelect, selectedId }: HealGridProps) {
             />
 
             {/* Content Container */}
-            <div className="relative z-10 flex w-full p-2 sm:p-3 items-center justify-between pointer-events-none">
-              <div className="flex flex-col">
-                <div className="text-sm sm:text-lg font-black uppercase tracking-tight text-white italic leading-none truncate max-w-[120px]">
+            <div className="pointer-events-none relative z-10 flex w-full items-center justify-between p-2.5 sm:p-3">
+              <div className="flex min-w-0 flex-1 flex-col pr-2">
+                <div className="truncate text-base font-black uppercase italic leading-none tracking-tight text-white sm:text-lg">
                   {unit.name}
                 </div>
-                <div className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{unit.role}</div>
+                <div className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 sm:text-[7px]">{unit.role}</div>
                 
                 {/* Buffs as small icons */}
-                <div className="flex gap-1 mt-1.5 flex-wrap">
+                <div className="mt-1.5 flex flex-wrap gap-1.5 sm:gap-1">
                   {unit.buffs.map((buff) => {
                     const BuffIcon = (Icons as any)[buff.icon] || Icons.HelpCircle;
                     const secondsLeft = Math.ceil(buff.remainingTicks / 10);
@@ -83,29 +85,41 @@ export function HealGrid({ party, onTargetSelect, selectedId }: HealGridProps) {
                     return (
                       <div 
                         key={buff.id}
-                        className="p-0.5 bg-slate-950/80 rounded border border-white/10 relative shadow-sm"
+                        className="relative rounded border border-white/10 bg-slate-950/80 p-1 shadow-sm sm:p-0.5"
                         title={buff.name}
                       >
-                         <BuffIcon size={12} className="text-white opacity-60" />
+                         <BuffIcon className="size-5 text-white opacity-60 sm:size-3.5" />
                          
-                         {/* Pulse countdown */}
                          {showCountdown && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 text-[7px] font-black text-red-500 px-0.5">
+                            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 px-0.5 text-[10px] font-black text-red-500 sm:text-[7px]">
                                 {secondsLeft}
                             </div>
                          )}
                       </div>
                     );
                   })}
+                  {unit.role === 'HEALER' && manaRegenBuffTicksRemaining > 0 && (
+                    <div
+                      className="relative rounded border border-blue-500/40 bg-blue-950/80 p-1 shadow-sm sm:p-0.5"
+                      title="Mana Potion — bonus regen"
+                    >
+                      <FlaskConical className="size-5 text-blue-400 sm:size-3.5" />
+                      {manaRegenBuffTicksRemaining < 50 && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 px-0.5 text-[10px] font-black text-blue-300 sm:text-[7px]">
+                          {Math.ceil(manaRegenBuffTicksRemaining / 10)}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {isDead && (
-                    <span className="bg-red-600/20 text-[8px] px-1 font-black uppercase tracking-widest text-red-400 border border-red-500/30">
+                    <span className="border border-red-500/30 bg-red-600/20 px-1 text-[10px] font-black uppercase tracking-widest text-red-400 sm:text-[8px]">
                       FALLEN
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className={`text-xl sm:text-3xl font-black italic tracking-tighter ${healthPercent < 30 && !isDead ? 'text-red-500 animate-pulse' : 'text-slate-100'}`}>
+              <div className={`shrink-0 text-2xl font-black italic tracking-tighter sm:text-3xl ${healthPercent < 30 && !isDead ? 'animate-pulse text-red-500' : 'text-slate-100'}`}>
                 {isDead ? '0%' : `${Math.ceil(healthPercent)}%`}
               </div>
             </div>

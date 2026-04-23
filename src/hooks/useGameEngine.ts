@@ -6,31 +6,35 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   GameState, Unit, ClassType, Spell, Buff, 
-  SpellType, Dungeon 
+  SpellType, Dungeon, DungeonRunOutcome, DungeonFailureReason 
 } from '../types.ts';
-import { 
-  TICK_RATE, MANA_REGEN_PER_TICK, SPELLS, 
-  DUNGEONS, INITIAL_TALENTS 
+import {
+  TICK_RATE,
+  MANA_REGEN_PER_TICK,
+  MANA_POTION_USES_PER_DUNGEON,
+  SPELLS,
+  cloneTalentsForClass,
+  generateRandomParty,
 } from '../constants.ts';
+import {
+  readStoredProgress,
+  writeStoredProgress,
+  computeMetaFromProgress,
+} from '../gameStorage.ts';
 
-const INITIAL_PARTY: Unit[] = [
-  { id: '1', name: 'Tanky McShield', role: 'TANK', maxHealth: 200, health: 200, buffs: [] },
-  { id: '2', name: 'Zappy Mage', role: 'DPS', maxHealth: 80, health: 80, buffs: [] },
-  { id: '3', name: 'Sneaky Rogue', role: 'DPS', maxHealth: 90, health: 90, buffs: [] },
-  { id: '4', name: 'Shadow Warlock', role: 'DPS', maxHealth: 85, health: 85, buffs: [] },
-  { id: '5', name: 'Player (You)', role: 'HEALER', maxHealth: 75, health: 75, buffs: [] },
-];
-
-export function useGameEngine() {
-  const [state, setState] = useState<GameState>({
+function createInitialGameState(): GameState {
+  const party = generateRandomParty();
+  const base: GameState = {
     playerClass: null,
-    party: INITIAL_PARTY,
+    party,
     mana: 100,
     maxMana: 100,
+    manaRegenBuffTicksRemaining: 0,
+    manaPotionsUsedThisDungeon: 0,
     xp: 0,
     level: 1,
     talentPoints: 5,
-    talents: INITIAL_TALENTS,
+    talents: [],
     unlockedSpells: [],
     activeActionBars: [],
     currentDungeon: null,
@@ -40,36 +44,65 @@ export function useGameEngine() {
     enemyHealth: 100,
     enemyMaxHealth: 100,
     isCombatActive: false,
-    logs: [],
-  });
+    completedDungeonIds: [],
+  };
+  const patch = readStoredProgress();
+  if (!patch) return base;
+  const cap = patch.maxMana ?? base.maxMana;
+  return {
+    ...base,
+    ...patch,
+    talents: patch.talents ?? base.talents,
+    party,
+    mana: Math.min(cap, patch.mana ?? cap),
+    completedDungeonIds: patch.completedDungeonIds ?? [],
+  };
+}
+
+export function useGameEngine() {
+  const [state, setState] = useState<GameState>(createInitialGameState);
 
   const cooldownsRef = useRef<Record<string, number>>({});
+  const critRollRef = useRef(0);
+  const [, setCooldownTick] = useState(0);
+  const [dungeonOutcome, setDungeonOutcome] = useState<DungeonRunOutcome | null>(null);
 
-  const addLog = useCallback((msg: string) => {
-    setState(s => ({
+  const selectClass = useCallback((cls: ClassType) => {
+    setState((s) => {
+      const talents = cloneTalentsForClass(cls);
+      const meta = computeMetaFromProgress(s.xp, cls, talents);
+      return {
+        ...s,
+        playerClass: cls,
+        talents: meta.talents,
+        unlockedSpells: meta.unlockedSpells,
+        activeActionBars: meta.activeActionBars,
+        talentPoints: meta.talentPoints,
+        maxMana: meta.maxMana,
+        level: meta.level,
+        mana: Math.min(meta.maxMana, s.mana),
+      };
+    });
+  }, []);
+
+  const dismissDungeonOutcome = useCallback(() => {
+    setDungeonOutcome(null);
+  }, []);
+
+  const abandonDungeon = useCallback(() => {
+    setDungeonOutcome(null);
+    setState((s) => ({
       ...s,
-      logs: [msg, ...s.logs.slice(0, 19)]
+      currentDungeon: null,
+      isCombatActive: false,
+      dungeonProgress: 0,
+      manaRegenBuffTicksRemaining: 0,
+      manaPotionsUsedThisDungeon: 0,
     }));
   }, []);
 
-  const selectClass = useCallback((cls: ClassType) => {
-    let initialSpells: string[] = [];
-    if (cls === ClassType.PRIEST) {
-      initialSpells = ['flash_heal', 'renew', 'mana_potion'];
-    } else if (cls === ClassType.DRUID) {
-      initialSpells = ['rejuvenation', 'regrowth', 'mana_potion'];
-    }
-
-    setState(s => ({
-      ...s,
-      playerClass: cls,
-      unlockedSpells: initialSpells,
-      activeActionBars: initialSpells,
-    }));
-    addLog(`Class selected: ${cls}`);
-  }, [addLog]);
-
   const startDungeon = useCallback((dungeon: Dungeon) => {
+    setDungeonOutcome(null);
     setState(s => ({
       ...s,
       currentDungeon: dungeon,
@@ -79,11 +112,12 @@ export function useGameEngine() {
       enemyHealth: 100,
       enemyMaxHealth: 100,
       isCombatActive: true,
-      party: s.party.map(u => ({ ...u, health: u.maxHealth, buffs: [] })),
+      party: generateRandomParty(),
       mana: s.maxMana,
+      manaRegenBuffTicksRemaining: 0,
+      manaPotionsUsedThisDungeon: 0,
     }));
-    addLog(`Entering dungeon: ${dungeon.name}`);
-  }, [addLog]);
+  }, []);
 
   const unlockTalent = useCallback((talentId: string) => {
     setState(s => {
@@ -97,7 +131,6 @@ export function useGameEngine() {
       });
 
       if (!hasPrereqs || talent.points >= talent.maxPoints || s.talentPoints < talent.cost || s.level < talent.levelReq) {
-          if (!hasPrereqs) addLog(`Prerequisite required for ${talent.name}`);
           return s;
       }
 
@@ -111,7 +144,6 @@ export function useGameEngine() {
       let newMaxMana = s.maxMana;
       if (talent.statBonus?.manaPool) newMaxMana += talent.statBonus.manaPool;
 
-      addLog(`Upgraded talent: ${talent.name} (${talent.points + 1}/${talent.maxPoints})`);
       return {
         ...s,
         talents: newTalents,
@@ -122,41 +154,40 @@ export function useGameEngine() {
         mana: Math.min(newMaxMana, s.mana)
       };
     });
-  }, [addLog]);
+  }, []);
 
   const castSpell = useCallback((spellId: string, targetId: string) => {
     const spell = SPELLS[spellId];
     if (!spell) return;
 
+    critRollRef.current = Math.random() * 100;
+
     setState(s => {
-      // Mana check
       if (s.mana < spell.manaCost) {
-        addLog(`Not enough mana for ${spell.name}!`);
         return s;
       }
 
-      // Cooldown check
+      if (
+        spellId === 'mana_potion' &&
+        s.manaPotionsUsedThisDungeon >= MANA_POTION_USES_PER_DUNGEON
+      ) {
+        return s;
+      }
+
       if (cooldownsRef.current[spellId] > 0) {
-        addLog(`${spell.name} is on cooldown!`);
         return s;
       }
 
       const newParty = s.party.map(unit => {
         if (unit.id === targetId || (spell.type === SpellType.AOE)) {
-          // Calculate talent healing boost
           const healingBoost = s.talents.reduce((acc, t) => acc + (t.statBonus?.healingBoost || 0) * t.points, 0);
-          
-          // Calculate crit
+
           const critChance = s.talents.reduce((acc, t) => acc + (t.statBonus?.critChance || 0) * t.points, 0);
-          const isCrit = Math.random() * 100 < critChance;
+          const isCrit = critRollRef.current < critChance;
           const critMod = isCrit ? 1.5 : 1.0;
 
           const totalHealing = spell.healing * (1 + healingBoost / 100) * critMod;
           const totalHotHealing = (spell.hotHealingPerTick || 0) * (1 + healingBoost / 100) * critMod;
-
-          if (isCrit && unit.id === targetId) {
-             addLog(`CRITICAL HEAL: ${spell.name} for ${Math.round(totalHealing)}!`);
-          }
 
           let newHealth = Math.min(unit.maxHealth, unit.health + totalHealing);
           let newBuffs = [...unit.buffs];
@@ -182,7 +213,12 @@ export function useGameEngine() {
       castCooldown = Math.round(castCooldown * (1 - hasteBonus / 100));
 
       if (castCooldown > 0) {
-        cooldownsRef.current[spellId] = castCooldown;
+        const cd = castCooldown;
+        const sid = spellId;
+        queueMicrotask(() => {
+          cooldownsRef.current[sid] = cd;
+          setCooldownTick((x) => x + 1);
+        });
       }
 
       // Mana return logic
@@ -192,13 +228,25 @@ export function useGameEngine() {
 
       const newMana = Math.min(s.maxMana, s.mana - spell.manaCost + (spell.manaRestore || 0) + actualManaReturn);
 
+      const nextBuffTicks =
+        spellId === 'mana_potion' && spell.manaRegenBuffDurationTicks !== undefined
+          ? spell.manaRegenBuffDurationTicks
+          : s.manaRegenBuffTicksRemaining;
+
+      const nextPotionUses =
+        spellId === 'mana_potion'
+          ? s.manaPotionsUsedThisDungeon + 1
+          : s.manaPotionsUsedThisDungeon;
+
       return {
         ...s,
         party: newParty,
         mana: newMana,
+        manaRegenBuffTicksRemaining: nextBuffTicks,
+        manaPotionsUsedThisDungeon: nextPotionUses,
       };
     });
-  }, [addLog]);
+  }, []);
 
   // Game Loop
   useEffect(() => {
@@ -208,17 +256,27 @@ export function useGameEngine() {
       setState(s => {
         if (!s.isCombatActive) return s;
 
-        // Damage calculation
-        const newParty = s.party.map(unit => {
-          // Random damage
+        const tankIndex = s.party.findIndex(u => u.role === 'TANK');
+        const newParty: Unit[] = [];
+        for (let idx = 0; idx < s.party.length; idx++) {
+          const unit = s.party[idx];
           let damage = 0;
           const chance = Math.random();
           if (unit.role === 'TANK' && chance < 0.4) damage = Math.random() * 8 + (s.currentDungeon?.difficulty || 1);
           else if (chance < 0.1) damage = Math.random() * 5 + (s.currentDungeon?.difficulty || 1);
 
+          const tankHealthNow =
+            tankIndex < 0
+              ? 1
+              : newParty[tankIndex] !== undefined
+                ? newParty[tankIndex].health
+                : s.party[tankIndex].health;
+          if (tankHealthNow <= 0 && (unit.role === 'DPS' || unit.role === 'HEALER')) {
+            damage *= 2;
+          }
+
           let currentHealth = Math.max(0, unit.health - damage);
 
-          // Buff/HoT ticking
           const activeBuffs: Buff[] = [];
           unit.buffs.forEach(buff => {
             if (buff.remainingTicks > 0) {
@@ -227,18 +285,27 @@ export function useGameEngine() {
             }
           });
 
-          return { ...unit, health: currentHealth, buffs: activeBuffs };
-        });
-
-        // Check for death/wipe
-        if (newParty.every(u => u.health <= 0) || newParty.find(u => u.role === 'HEALER')?.health === 0) {
-          addLog("Dungeon Failed: The party has wiped.");
-          return { ...s, party: newParty, isCombatActive: false, currentDungeon: null };
+          newParty.push({ ...unit, health: currentHealth, buffs: activeBuffs });
         }
 
-        // Progress and Combat Logic
+        if (newParty.every(u => u.health <= 0) || newParty.find(u => u.role === 'HEALER')?.health === 0) {
+          const d = s.currentDungeon;
+          if (d) {
+            const allDead = newParty.every(u => u.health <= 0);
+            const reason: DungeonFailureReason = allDead ? 'PARTY_WIPE' : 'HEALER_DOWN';
+            queueMicrotask(() => {
+              setDungeonOutcome({ kind: 'failure', dungeonName: d.name, reason });
+            });
+          }
+          return { ...s, party: newParty, isCombatActive: false, currentDungeon: null, manaRegenBuffTicksRemaining: 0 };
+        }
+
         const partyDps = 2 + (s.level * 2);
-        let currentEnemyHealth = s.enemyHealth - partyDps;
+        const deadDpsCount = newParty.filter(u => u.role === 'DPS' && u.health <= 0).length;
+        const bossDpsMult =
+          s.combatPhase === 'BOSS' ? Math.pow(0.7, deadDpsCount) : 1;
+        const effectivePartyDps = partyDps * bossDpsMult;
+        let currentEnemyHealth = s.enemyHealth - effectivePartyDps;
         let newTrashPulls = s.trashPullsRemaining;
         let newPhase = s.combatPhase;
         let newProgress = s.dungeonProgress;
@@ -248,32 +315,47 @@ export function useGameEngine() {
           if (s.combatPhase === 'TRASH') {
             newTrashPulls -= 1;
             if (newTrashPulls > 0) {
-              addLog(`Pack defeated! ${newTrashPulls} pulls remaining.`);
               currentEnemyHealth = 100;
               newEnemyMaxHealth = 100;
             } else {
-              addLog(`All trash cleared. Entering boss fight: ${s.currentDungeon?.bossName}!`);
               newPhase = 'BOSS';
               currentEnemyHealth = s.currentDungeon?.bossHealth || 1000;
               newEnemyMaxHealth = s.currentDungeon?.bossHealth || 1000;
             }
           } else {
-            // Boss victory
-            addLog(`Victory! ${s.currentDungeon?.name} cleared.`);
+            const d = s.currentDungeon;
             const newXp = s.xp + 100;
-            const newLevel = Math.floor(newXp / 200) + 1;
-            const isLevelUp = newLevel > s.level;
-            
-            if (isLevelUp) addLog(`Level Up! You are now level ${newLevel}. +1 Talent Point.`);
-            
-            return { 
-              ...s, 
-              xp: newXp, 
-              level: newLevel,
-              talentPoints: isLevelUp ? s.talentPoints + 1 : s.talentPoints,
-              dungeonProgress: 100, 
-              isCombatActive: false, 
-              currentDungeon: null 
+            const meta = computeMetaFromProgress(newXp, s.playerClass, s.talents);
+            const isLevelUp = meta.level > s.level;
+            if (d) {
+              queueMicrotask(() => {
+                setDungeonOutcome({
+                  kind: 'success',
+                  dungeonName: d.name,
+                  bossName: d.bossName,
+                  xpGained: 100,
+                  levelUp: isLevelUp,
+                  loot: d.lootRewards,
+                });
+              });
+            }
+            const dungeonId = d?.id ?? '';
+            const completedDungeonIds =
+              dungeonId && !s.completedDungeonIds.includes(dungeonId)
+                ? [...s.completedDungeonIds, dungeonId]
+                : s.completedDungeonIds;
+            return {
+              ...s,
+              xp: newXp,
+              level: meta.level,
+              talentPoints: meta.talentPoints,
+              dungeonProgress: 100,
+              isCombatActive: false,
+              currentDungeon: null,
+              manaRegenBuffTicksRemaining: 0,
+              completedDungeonIds,
+              maxMana: meta.maxMana,
+              mana: Math.min(meta.maxMana, s.mana),
             };
           }
         }
@@ -289,8 +371,13 @@ export function useGameEngine() {
             newProgress = 75 + bossPercent;
         }
 
-        // Mana regen
-        const newMana = Math.min(s.maxMana, s.mana + MANA_REGEN_PER_TICK);
+        const buffTicks = s.manaRegenBuffTicksRemaining;
+        const regenMult =
+          buffTicks > 0 && SPELLS.mana_potion.manaRegenBuffMultiplier !== undefined
+            ? SPELLS.mana_potion.manaRegenBuffMultiplier
+            : 1;
+        const newMana = Math.min(s.maxMana, s.mana + MANA_REGEN_PER_TICK * regenMult);
+        const nextManaRegenBuffTicks = buffTicks > 0 ? buffTicks - 1 : 0;
 
         // Update cooldowns
         Object.keys(cooldownsRef.current).forEach(key => {
@@ -302,6 +389,7 @@ export function useGameEngine() {
           party: newParty,
           dungeonProgress: newProgress,
           mana: newMana,
+          manaRegenBuffTicksRemaining: nextManaRegenBuffTicks,
           enemyHealth: currentEnemyHealth,
           enemyMaxHealth: newEnemyMaxHealth,
           trashPullsRemaining: newTrashPulls,
@@ -311,14 +399,21 @@ export function useGameEngine() {
     }, TICK_RATE);
 
     return () => clearInterval(interval);
-  }, [state.isCombatActive, addLog]);
+  }, [state.isCombatActive]);
+
+  useEffect(() => {
+    writeStoredProgress(state);
+  }, [state.xp, state.level, state.talentPoints, state.talents, state.playerClass, state.completedDungeonIds]);
 
   return {
     state,
     selectClass,
     startDungeon,
+    abandonDungeon,
     castSpell,
     unlockTalent,
     cooldowns: cooldownsRef.current,
+    dungeonOutcome,
+    dismissDungeonOutcome,
   };
 }

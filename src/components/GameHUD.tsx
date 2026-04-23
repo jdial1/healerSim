@@ -1,101 +1,295 @@
 /**
+
  * @license
+
  * SPDX-License-Identifier: Apache-2.0
+
  */
+
+
+
+import { Fragment } from 'react';
 
 import { motion } from 'motion/react';
 
+import { Skull } from 'lucide-react';
+
+
+
+export const TRASH_PACK_COUNT = 3;
+
+const TRASH_PACKS = TRASH_PACK_COUNT;
+
+
+
+const ENEMY_BAR_HEIGHT = 'h-[4.5rem] sm:h-[4.75rem]';
+
+
+
 interface GameHUDProps {
-  mana: number;
-  maxMana: number;
-  progress: number;
+
   combatPhase: 'TRASH' | 'BOSS';
+
   trashPullsRemaining: number;
+
   enemyHealth: number;
+
   enemyMaxHealth: number;
-  logs: string[];
+
   bossName?: string;
+
+  trashEnemyName: string;
+
 }
 
-export function GameHUD({ 
-  mana, maxMana, progress, combatPhase, trashPullsRemaining, 
-  enemyHealth, enemyMaxHealth, logs, bossName 
-}: GameHUDProps) {
-  const manaPercent = (mana / maxMana) * 100;
-  const enemyPercent = (enemyHealth / enemyMaxHealth) * 100;
+
+
+function TrashPackSkull({ defeated }: { defeated: boolean }) {
 
   return (
-    <div className="fixed top-0 left-0 right-0 p-3 sm:p-4 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-900 shadow-xl">
-      <div className="max-w-6xl mx-auto flex flex-col gap-3">
-        
-        {/* Top Row: Phase and Mana Bar Integrated */}
-        <div className="flex justify-between items-end gap-4 w-full">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`px-1.5 py-0.5 rounded-sm ${combatPhase === 'BOSS' ? 'bg-red-600' : 'bg-slate-800'} text-[8px] font-black uppercase tracking-wider text-white`}>
-                 {combatPhase === 'BOSS' ? 'BOSS' : 'TRASH'}
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-tighter text-white truncate max-w-[120px]">
-                {combatPhase === 'TRASH' ? `CLEARED: ${3 - trashPullsRemaining}/3` : bossName || 'FINAL BOSS'}
-              </span>
-            </div>
-            
-            {/* Enemy Health Bar */}
-            <div className="w-32 h-1.5 bg-slate-900 overflow-hidden rounded-full border border-slate-800">
-               <motion.div 
-                    className={`h-full ${combatPhase === 'BOSS' ? 'bg-red-600' : 'bg-orange-500'}`}
-                    animate={{ width: `${enemyPercent}%` }}
-                />
-            </div>
-          </div>
 
-          {/* Single Row Mana Bar */}
-          <div className="flex-1 max-w-[200px] flex flex-col items-end">
-             <div className="flex justify-between items-baseline w-full mb-1">
-                <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Mana Pool</span>
-                <span className="text-[11px] font-black text-blue-400 font-mono italic">
-                  {Math.floor(mana)}<span className="text-[9px] opacity-40 text-slate-500 font-normal ml-0.5">/ {maxMana}</span>
-                </span>
-             </div>
-             <div className="w-full h-2 bg-slate-900 overflow-hidden rounded-full border border-slate-800 p-[1px]">
-                <motion.div 
-                    className="h-full bg-blue-500 rounded-full"
-                    animate={{ width: `${manaPercent}%` }}
-                />
-             </div>
-          </div>
-        </div>
+    <div className="relative flex h-9 w-9 items-center justify-center sm:h-10 sm:w-10">
 
-        {/* Minified Dungeon Progress Line */}
-        <div className="flex gap-1 w-full h-1 opacity-50">
-           {[0, 25, 50, 75].map((stop) => (
-               <div key={stop} className={`h-full flex-1 transition-colors ${progress > stop ? 'bg-blue-500' : 'bg-slate-800'}`} />
-           ))}
-        </div>
-      </div>
+      <Skull
 
-      {/* Extreme Min Combat Log (Mobile) / Side log (Desktop) */}
-      <div className="absolute top-full left-0 right-0 px-3 py-1 bg-slate-950/40 backdrop-blur-sm pointer-events-none">
-          <p className="text-[8px] font-mono text-slate-600 uppercase tracking-tighter truncate text-center">
-             Combat Stream: {logs[0] || 'Awaiting engagement...'}
-          </p>
-      </div>
+        className={`h-7 w-7 transition-colors duration-300 sm:h-8 sm:w-8 ${
 
-      {/* Combat Log Overlay (Desktop) */}
-      <div className="hidden lg:block absolute top-[100%] right-6 mt-12 p-4 w-60 bg-slate-900/90 border border-slate-800 shadow-2xl overflow-hidden backdrop-blur-md">
-        <div className="flex items-center gap-2 mb-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Live Intel</span>
-        </div>
-        <div className="text-[10px] font-mono text-cyan-400/60 leading-tight h-20 overflow-y-auto custom-scrollbar">
-            {logs.slice(0, 5).map((log, i) => (
-                <div key={i} className="mb-0.5 truncate">
-                    {log}
-                </div>
-            ))}
-        </div>
-      </div>
+          defeated ? 'text-slate-600' : 'text-sky-500'
+
+        }`}
+
+        strokeWidth={1.75}
+
+      />
+
+      {defeated ? (
+
+        <svg
+
+          className="pointer-events-none absolute inset-0 z-10 text-red-500/90"
+
+          viewBox="0 0 40 40"
+
+          fill="none"
+
+          aria-hidden
+
+        >
+
+          <path
+
+            d="M8 8 L32 32 M32 8 L8 32"
+
+            stroke="currentColor"
+
+            strokeWidth="2.5"
+
+            strokeLinecap="round"
+
+          />
+
+        </svg>
+
+      ) : null}
+
     </div>
+
   );
+
 }
+
+
+
+function BossSkull({ bossActive }: { bossActive: boolean }) {
+
+  return (
+
+    <div className="relative flex h-9 w-9 items-center justify-center sm:h-10 sm:w-10">
+
+      <Skull
+
+        className={`h-7 w-7 transition-all duration-300 sm:h-8 sm:w-8 ${
+
+          bossActive
+
+            ? 'fill-red-600 text-red-500 drop-shadow-[0_0_10px_rgba(220,38,38,0.55)]'
+
+            : 'fill-red-950/40 text-red-800/70'
+
+        }`}
+
+        strokeWidth={bossActive ? 2 : 1.5}
+
+      />
+
+    </div>
+
+  );
+
+}
+
+
+
+export function GameHUD({
+
+  combatPhase,
+
+  trashPullsRemaining,
+
+  enemyHealth,
+
+  enemyMaxHealth,
+
+  bossName,
+
+  trashEnemyName,
+
+}: GameHUDProps) {
+
+  const enemyPercent = enemyMaxHealth > 0 ? (enemyHealth / enemyMaxHealth) * 100 : 0;
+
+  const pullsCleared = TRASH_PACKS - trashPullsRemaining;
+
+  const bossActive = combatPhase === 'BOSS';
+
+  const enemyBarFill = bossActive ? 'bg-red-600' : 'bg-orange-500';
+
+  const displayBossName = bossName || 'FINAL BOSS';
+
+
+
+  return (
+
+    <div className="fixed top-0 left-0 right-0 z-40 border-b border-slate-900 bg-slate-950/90 shadow-xl backdrop-blur-md">
+
+      <div className="flex flex-col gap-2 px-3 pb-3 pt-3 sm:gap-2.5 sm:px-4 sm:pb-3.5 sm:pt-4">
+
+        <div className="mx-auto w-full max-w-6xl">
+
+          {bossActive ? (
+
+            <div className="flex w-full flex-col items-center gap-2 sm:gap-2.5">
+
+              <span className="shrink-0 rounded-sm bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white sm:text-[9px]">
+
+                BOSS
+
+              </span>
+
+              <h1 className="w-full max-w-full text-balance text-center text-2xl font-black uppercase leading-[1.05] tracking-tight text-white sm:text-3xl md:text-4xl lg:text-5xl">
+
+                {displayBossName}
+
+              </h1>
+
+            </div>
+
+          ) : (
+
+            <div className="flex flex-wrap items-center gap-2">
+
+              <span className="shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white sm:text-[8px]">
+
+                TRASH
+
+              </span>
+
+              <span className="text-xs font-black uppercase tracking-tight text-white sm:text-[10px]">
+
+                {trashPullsRemaining} pack{trashPullsRemaining === 1 ? '' : 's'} left
+
+              </span>
+
+            </div>
+
+          )}
+
+        </div>
+
+
+
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-evenly border-t border-slate-800/80 pt-2 sm:pt-2.5">
+
+          {Array.from({ length: TRASH_PACKS }, (_, i) => (
+
+            <Fragment key={i}>
+
+              <TrashPackSkull defeated={pullsCleared > i} />
+
+            </Fragment>
+
+          ))}
+
+          <BossSkull bossActive={bossActive} />
+
+        </div>
+
+
+
+        <div className="mx-auto w-full max-w-6xl">
+
+          <div
+
+            className={`relative ${ENEMY_BAR_HEIGHT} w-full overflow-hidden border border-slate-800 bg-slate-900 shadow-inner`}
+
+          >
+
+            <motion.div
+
+              className={`absolute inset-y-0 left-0 rounded-none ${enemyBarFill}`}
+
+              initial={false}
+
+              animate={{ width: `${enemyPercent}%` }}
+
+              transition={{ type: 'tween', duration: 0.2 }}
+
+            />
+
+            <div
+
+              className={`relative z-10 flex h-full items-center px-3 sm:px-4 ${
+
+                bossActive ? 'justify-end' : 'justify-between gap-3'
+
+              }`}
+
+            >
+
+              {!bossActive ? (
+
+                <span className="min-w-0 truncate text-sm font-black uppercase tracking-wide text-slate-300 sm:text-base">
+
+                  {trashEnemyName}
+
+                </span>
+
+              ) : null}
+
+              <span className="shrink-0 font-mono text-lg font-black tabular-nums text-white sm:text-xl">
+
+                {Math.max(0, Math.floor(enemyHealth))}
+
+                <span className="ml-0.5 text-base font-normal text-slate-400 opacity-90 sm:text-lg">
+
+                  / {Math.floor(enemyMaxHealth)}
+
+                </span>
+
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  );
+
+}
+
 

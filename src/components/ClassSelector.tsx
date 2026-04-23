@@ -72,12 +72,12 @@ export function ClassSelector({ onSelect }: ClassSelectorProps) {
               <h3 className={`text-3xl font-black uppercase tracking-tighter italic ${cls.textColor}`}>
                 {cls.name}
               </h3>
-              <p className="text-sm text-slate-400 mt-2 font-medium max-w-xs leading-tight">
+              <p className="mt-2 max-w-xs text-base font-medium leading-tight text-slate-400 sm:text-sm">
                 {cls.description}
               </p>
             </div>
             {cls.locked && (
-                <div className="absolute top-2 right-4 text-[10px] font-black text-red-500 uppercase tracking-[0.3em]">
+                <div className="absolute right-4 top-2 text-xs font-black uppercase tracking-[0.3em] text-red-500 sm:text-[10px]">
                     Restricted
                 </div>
             )}

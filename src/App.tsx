@@ -3,28 +3,48 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
+import { registerSW } from 'virtual:pwa-register';
 import { useGameEngine } from './hooks/useGameEngine.ts';
 import { HealGrid } from './components/HealGrid.tsx';
 import { ActionBars } from './components/ActionBars.tsx';
 import { ClassSelector } from './components/ClassSelector.tsx';
 import { DungeonSelector } from './components/DungeonSelector.tsx';
-import { GameHUD } from './components/GameHUD.tsx';
+import { GameHUD, TRASH_PACK_COUNT } from './components/GameHUD.tsx';
 import { TalentTree } from './components/TalentTree.tsx';
+import { DungeonOutcomeModal } from './components/DungeonOutcomeModal.tsx';
+import { MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Settings, RefreshCw, Star } from 'lucide-react';
+import { Trophy, Star, LogOut } from 'lucide-react';
 
 export default function App() {
-  const { state, selectClass, startDungeon, castSpell, unlockTalent, cooldowns } = useGameEngine();
+  const {
+    state,
+    selectClass,
+    startDungeon,
+    abandonDungeon,
+    castSpell,
+    unlockTalent,
+    cooldowns,
+    dungeonOutcome,
+    dismissDungeonOutcome,
+  } = useGameEngine();
   const [targetId, setTargetId] = useState<string | null>(null);
   const [showTalents, setShowTalents] = useState(false);
+  const [pwaNeedsRefresh, setPwaNeedsRefresh] = useState(false);
+  const swUpdate = useRef<((reload?: boolean) => Promise<void>) | undefined>(undefined);
+
+  useEffect(() => {
+    swUpdate.current = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        setPwaNeedsRefresh(true);
+      },
+    });
+  }, []);
 
   const handleCast = useCallback((spellId: string) => {
+    if (!state.currentDungeon) return;
     if (!targetId && state.party.length > 0) {
       // Default to tank if no target
       const tank = state.party.find(u => u.role === 'TANK');
@@ -34,7 +54,7 @@ export default function App() {
     } else if (targetId) {
       castSpell(spellId, targetId);
     }
-  }, [targetId, state.party, castSpell]);
+  }, [state.currentDungeon, targetId, state.party, castSpell]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -51,8 +71,7 @@ export default function App() {
         if (member) {
           setTargetId(member.id);
         }
-      } else {
-        // 1-5: Cast spell
+      } else if (state.currentDungeon) {
         const spellId = state.activeActionBars[index];
         if (spellId) {
           handleCast(spellId);
@@ -62,10 +81,14 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.party, state.activeActionBars, handleCast]);
+  }, [state.party, state.currentDungeon, state.activeActionBars, handleCast]);
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans selection:bg-blue-500 selection:text-white">
+    <div
+      className={`bg-slate-950 font-sans selection:bg-blue-500 selection:text-white ${
+        state.playerClass ? 'min-h-dvh max-h-dvh overflow-hidden' : 'min-h-dvh'
+      }`}
+    >
       <AnimatePresence mode="wait">
         {showTalents && (
           <TalentTree 
@@ -92,7 +115,7 @@ export default function App() {
             initial={{ opacity: 0, x: 100 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, y: -100 }}
-            className="relative"
+            className="relative flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden"
           >
             {/* Global Actions Overlay */}
             <div className="fixed top-3 right-3 flex gap-2 items-center z-[60]">
@@ -101,24 +124,20 @@ export default function App() {
                 className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all border ${state.talentPoints > 0 ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-pulse' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-white'}`}
                >
                   <Star size={10} fill={state.talentPoints > 0 ? 'currentColor' : 'none'} className={state.talentPoints > 0 ? 'text-yellow-400' : ''} />
-                  <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">TALENTS ({state.talentPoints})</span>
+                  <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap sm:text-[9px]">TALENTS ({state.talentPoints})</span>
                </button>
                <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded px-2 py-1 flex items-center gap-1.5 shadow-sm">
                   <Trophy size={10} className="text-blue-500" />
-                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
+                  <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest sm:text-[9px]">
                     LVL <span className="text-white">{state.level}</span>
                   </span>
                </div>
             </div>
             
-            <DungeonSelector onSelect={startDungeon} level={state.level} />
-
-            <ActionBars 
-              spellIds={state.activeActionBars}
-              cooldowns={cooldowns}
-              onCast={handleCast}
-              mana={state.mana}
-              isHub={true}
+            <DungeonSelector
+              onSelect={startDungeon}
+              level={state.level}
+              completedDungeonIds={state.completedDungeonIds}
             />
           </motion.div>
         ) : (
@@ -126,59 +145,94 @@ export default function App() {
             key="game-active"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col h-screen"
+            className="relative flex h-dvh max-h-dvh min-h-0 flex-col"
           >
+            <div className="fixed top-3 right-3 z-[60]">
+              <button
+                type="button"
+                onClick={abandonDungeon}
+                className="flex items-center gap-1.5 rounded border border-red-500 bg-red-600 px-2.5 py-1.5 text-white shadow-[0_0_12px_rgba(220,38,38,0.35)] transition-colors hover:bg-red-500 sm:px-3 sm:py-2"
+                aria-label="Leave dungeon"
+              >
+                <LogOut size={16} strokeWidth={2.5} className="shrink-0" aria-hidden />
+                <span className="text-[10px] font-black uppercase tracking-widest sm:text-[9px]">Leave</span>
+              </button>
+            </div>
             <GameHUD 
-              mana={state.mana} 
-              maxMana={state.maxMana} 
-              progress={state.dungeonProgress} 
               combatPhase={state.combatPhase}
               trashPullsRemaining={state.trashPullsRemaining}
               enemyHealth={state.enemyHealth}
               enemyMaxHealth={state.enemyMaxHealth}
-              logs={state.logs}
               bossName={state.currentDungeon.bossName}
+              trashEnemyName={
+                state.currentDungeon.enemies[
+                  TRASH_PACK_COUNT - state.trashPullsRemaining
+                ] ?? ''
+              }
             />
 
-            <main className="flex-1 flex flex-col items-center justify-center pt-24 pb-32 overflow-hidden">
-               {/* Mobile Instructions */}
-               <div className="mb-4 text-center px-4">
-                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold">
-                    Tap a member to target, then cast a spell
-                  </p>
+            <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-48 pb-36 sm:pt-52 sm:pb-40">
+               <div className="mt-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-1 self-center overflow-y-auto px-2 pb-2">
+                 <HealGrid 
+                  party={state.party}
+                  selectedId={targetId}
+                  onTargetSelect={setTargetId}
+                  manaRegenBuffTicksRemaining={state.manaRegenBuffTicksRemaining}
+                 />
                </div>
-
-               <HealGrid 
-                party={state.party}
-                selectedId={targetId}
-                onTargetSelect={setTargetId}
-               />
-
-               {/* Mobile Logs Overlay (Visible/Toggleable) */}
-                <div className="md:hidden mt-4 w-full max-w-xs h-12 overflow-hidden px-4">
-                  <p className="text-[9px] font-mono text-slate-500 truncate text-center italic">
-                    {state.logs[0]}
-                  </p>
-                </div>
             </main>
-
-            <ActionBars 
-              spellIds={state.activeActionBars}
-              cooldowns={cooldowns}
-              onCast={handleCast}
-              mana={state.mana}
-            />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Debug Error Boundary Simulation / Global Logging */}
-      {process.env.NODE_ENV === 'development' && state.logs.length > 0 && (
-         <div className="fixed bottom-2 left-2 pointer-events-none opacity-20 hidden">
-            <RefreshCw size={12} className="animate-spin" />
-            <span className="text-[8px] ml-1">LOGS ACTIVE</span>
-         </div>
+      {state.playerClass && (
+        <ActionBars
+          spellIds={state.activeActionBars}
+          cooldowns={cooldowns}
+          onCast={handleCast}
+          mana={state.currentDungeon ? state.mana : state.maxMana}
+          maxMana={state.maxMana}
+          manaRegenBuffTicksRemaining={state.currentDungeon ? state.manaRegenBuffTicksRemaining : 0}
+          spellsEnabled={!!state.currentDungeon}
+          manaPotionChargesRemaining={Math.max(
+            0,
+            MANA_POTION_USES_PER_DUNGEON - state.manaPotionsUsedThisDungeon,
+          )}
+        />
       )}
+
+      <AnimatePresence>
+        {dungeonOutcome ? (
+          <Fragment key={`${dungeonOutcome.kind}-${dungeonOutcome.dungeonName}`}>
+            <DungeonOutcomeModal outcome={dungeonOutcome} onDismiss={dismissDungeonOutcome} />
+          </Fragment>
+        ) : null}
+      </AnimatePresence>
+
+      {pwaNeedsRefresh ? (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-[100] flex flex-wrap items-center justify-center gap-3 border-t border-slate-800 bg-slate-950/95 px-4 py-3 text-center backdrop-blur-md"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
+        >
+          <span className="text-xs font-bold uppercase tracking-wide text-slate-300">
+            Update ready · v{__APP_VERSION__}
+          </span>
+          <button
+            type="button"
+            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white"
+            onClick={() => void swUpdate.current?.(true)}
+          >
+            Reload
+          </button>
+          <button
+            type="button"
+            className="rounded border border-slate-700 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-400"
+            onClick={() => setPwaNeedsRefresh(false)}
+          >
+            Later
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

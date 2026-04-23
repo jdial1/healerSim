@@ -25,6 +25,8 @@ export interface Spell {
   hotDuration?: number; // in ticks
   hotHealingPerTick?: number;
   manaRestore?: number;
+  manaRegenBuffMultiplier?: number;
+  manaRegenBuffDurationTicks?: number;
   cooldown: number; // in ticks
   icon: string;
   color: string;
@@ -77,7 +79,25 @@ export interface Dungeon {
   bossHealth: number;
   bossName: string;
   enemies: string[];
+  lootRewards: string[];
 }
+
+export type DungeonFailureReason = 'PARTY_WIPE' | 'HEALER_DOWN';
+
+export type DungeonRunOutcome =
+  | {
+      kind: 'success';
+      dungeonName: string;
+      bossName: string;
+      xpGained: number;
+      levelUp: boolean;
+      loot: string[];
+    }
+  | {
+      kind: 'failure';
+      dungeonName: string;
+      reason: DungeonFailureReason;
+    };
 
 export type CombatPhase = 'TRASH' | 'BOSS';
 
@@ -86,6 +106,8 @@ export interface GameState {
   party: Unit[];
   mana: number;
   maxMana: number;
+  manaRegenBuffTicksRemaining: number;
+  manaPotionsUsedThisDungeon: number;
   xp: number;
   level: number;
   talentPoints: number;
@@ -99,5 +121,5 @@ export interface GameState {
   enemyHealth: number;
   enemyMaxHealth: number;
   isCombatActive: boolean;
-  logs: string[];
+  completedDungeonIds: string[];
 }
