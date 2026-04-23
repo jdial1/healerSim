@@ -10,6 +10,7 @@ import {
   MANA_REGEN_PER_TICK,
   MANA_POTION_USES_PER_DUNGEON,
   TICK_RATE,
+  XP_PER_LEVEL,
 } from '../constants.ts';
 import { motion } from 'motion/react';
 
@@ -17,6 +18,7 @@ interface ActionBarsProps {
   spellIds: string[];
   cooldowns: Record<string, number>;
   onCast: (id: string) => void;
+  xp: number;
   mana: number;
   maxMana: number;
   manaRegenBuffTicksRemaining: number;
@@ -28,12 +30,15 @@ export function ActionBars({
   spellIds,
   cooldowns,
   onCast,
+  xp,
   mana,
   maxMana,
   manaRegenBuffTicksRemaining,
   spellsEnabled,
   manaPotionChargesRemaining,
 }: ActionBarsProps) {
+  const xpIntoLevel = xp % XP_PER_LEVEL;
+  const xpBarPercent = (xpIntoLevel / XP_PER_LEVEL) * 100;
   const manaPercent = (mana / maxMana) * 100;
   const baseRegenPerSec = MANA_REGEN_PER_TICK * (1000 / TICK_RATE);
   const regenPerSec = getManaRegenPerSecond(manaRegenBuffTicksRemaining);
@@ -72,15 +77,37 @@ export function ActionBars({
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
       <div className="absolute inset-0 bg-slate-900" aria-hidden />
-      <motion.div
-        className="absolute inset-y-0 left-0 bg-blue-600/25 border-r border-blue-500/20"
-        initial={false}
-        animate={{ width: `${manaPercent}%` }}
-        transition={{ type: 'tween', duration: 0.2 }}
-        aria-hidden
-      />
       <div className="relative z-10 flex flex-col items-center gap-1.5 px-3 py-2 sm:gap-2 sm:px-4 sm:py-2.5">
-      <div className="flex w-full max-w-2xl items-center justify-between gap-2 px-0.5">
+      {!spellsEnabled ? (
+        <div className="w-full max-w-2xl px-0.5">
+          <div className="relative flex min-h-9 w-full items-center overflow-hidden rounded-sm border border-amber-700/40 sm:min-h-10">
+            <motion.div
+              className="absolute inset-y-0 left-0 rounded-none bg-gradient-to-r from-amber-600 to-yellow-500"
+              initial={false}
+              animate={{ width: `${xpBarPercent}%` }}
+              transition={{ type: 'tween', duration: 0.2 }}
+              aria-hidden
+            />
+            <div className="pointer-events-none relative z-10 flex w-full items-center justify-center py-0.5">
+              <span className="font-mono text-lg font-black italic tabular-nums text-amber-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] sm:text-xl">
+                {xpIntoLevel}
+                <span className="ml-0.5 text-base font-normal text-amber-100/90 opacity-90 sm:text-lg">
+                  / {XP_PER_LEVEL}
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      <div className="relative flex w-full flex-col items-center gap-1.5">
+        <motion.div
+          className="pointer-events-none absolute inset-y-0 left-0 bg-blue-600/25 border-r border-blue-500/20"
+          initial={false}
+          animate={{ width: `${manaPercent}%` }}
+          transition={{ type: 'tween', duration: 0.2 }}
+          aria-hidden
+        />
+        <div className="relative z-10 flex w-full max-w-2xl items-center justify-between gap-2 px-0.5">
         <div className="flex min-w-0 flex-col gap-0 leading-tight">
           <span className="text-sm font-black uppercase tracking-wide text-slate-400">Mana Pool</span>
           <span className="text-sm font-mono font-bold tracking-tight">
@@ -106,8 +133,8 @@ export function ActionBars({
         <span className="shrink-0 font-mono text-lg font-black italic text-blue-400 tabular-nums sm:text-xl">
           {Math.floor(mana)}<span className="ml-0.5 text-base font-normal text-slate-400 opacity-90 sm:text-lg">/ {maxMana}</span>
         </span>
-      </div>
-      <div className="flex justify-center gap-2 sm:gap-2.5">
+        </div>
+      <div className="relative z-10 flex justify-center gap-2 sm:gap-2.5">
         {spellIds.map((id, index) => {
           const spell = SPELLS[id];
           if (!spell) return null;
@@ -190,6 +217,7 @@ export function ActionBars({
             </div>
           );
         })}
+      </div>
       </div>
       </div>
     </div>

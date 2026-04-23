@@ -190,6 +190,7 @@ export default function App() {
           spellIds={state.activeActionBars}
           cooldowns={cooldowns}
           onCast={handleCast}
+          xp={state.xp}
           mana={state.currentDungeon ? state.mana : state.maxMana}
           maxMana={state.maxMana}
           manaRegenBuffTicksRemaining={state.currentDungeon ? state.manaRegenBuffTicksRemaining : 0}

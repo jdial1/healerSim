@@ -52,9 +52,13 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
             id={`unit-${unit.id}`}
             onClick={() => onTargetSelect(unit.id)}
             className={`
-              relative flex h-20 w-full border-l-4 bg-slate-900 overflow-hidden transition-all
+              relative flex h-20 w-full ${isSelected ? 'border-l-[6px]' : 'border-l-4'} bg-slate-900 overflow-hidden transition-all duration-150
               ${getRoleColor(unit.role)}
-              ${isSelected ? 'ring-1 ring-blue-500 scale-[1.01] z-10' : 'border-slate-800'}
+              ${
+                isSelected
+                  ? 'z-10 scale-[1.02] border-blue-300 ring-[3px] ring-inset ring-blue-400 brightness-110'
+                  : 'border-slate-800'
+              }
               ${isDead ? 'opacity-40 grayscale shadow-inner' : ''}
               group text-left
             `}

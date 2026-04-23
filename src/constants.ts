@@ -8,6 +8,7 @@ import { Spell, SpellType, ClassType, Dungeon, Talent, Unit } from './types.ts';
 export const TICK_RATE = 100; // ms per tick
 export const MANA_REGEN_PER_TICK = 0.5;
 export const MANA_POTION_USES_PER_DUNGEON = 2;
+export const XP_PER_LEVEL = 200;
 
 export const SPELLS: Record<string, Spell> = {
   // Priest Spells

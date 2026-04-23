@@ -4,7 +4,7 @@
  */
 
 import { ClassType, GameState, Talent } from './types.ts';
-import { PRIEST_TALENTS, DRUID_TALENTS, PALADIN_TALENTS } from './constants.ts';
+import { PRIEST_TALENTS, DRUID_TALENTS, PALADIN_TALENTS, XP_PER_LEVEL } from './constants.ts';
 
 const STORAGE_KEY = 'healerSim.save.v1';
 
@@ -68,7 +68,7 @@ export function computeMetaFromProgress(
   | 'maxMana'
   | 'mana'
 > {
-  const level = Math.floor(xp / 200) + 1;
+  const level = Math.floor(xp / XP_PER_LEVEL) + 1;
   const pool = 5 + (level - 1);
   const spent = talents.reduce((acc, t) => acc + t.points * t.cost, 0);
   const talentPoints = Math.max(0, pool - spent);

@@ -22,10 +22,6 @@ const TRASH_PACKS = TRASH_PACK_COUNT;
 
 
 
-const ENEMY_BAR_HEIGHT = 'h-[4.5rem] sm:h-[4.75rem]';
-
-
-
 interface GameHUDProps {
 
   combatPhase: 'TRASH' | 'BOSS';
@@ -152,6 +148,10 @@ export function GameHUD({
 
   const bossActive = combatPhase === 'BOSS';
 
+  const enemyBarHeightClass = bossActive
+    ? 'h-[3.6rem] sm:h-[4.75rem]'
+    : 'h-[4.5rem] sm:h-[4.75rem]';
+
   const enemyBarFill = bossActive ? 'bg-red-600' : 'bg-orange-500';
 
   const displayBossName = bossName || 'FINAL BOSS';
@@ -230,7 +230,7 @@ export function GameHUD({
 
           <div
 
-            className={`relative ${ENEMY_BAR_HEIGHT} w-full overflow-hidden border border-slate-800 bg-slate-900 shadow-inner`}
+            className={`relative ${enemyBarHeightClass} w-full overflow-hidden border border-slate-800 bg-slate-900 shadow-inner`}
 
           >
 
