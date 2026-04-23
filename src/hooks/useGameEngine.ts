@@ -318,6 +318,7 @@ export function useGameEngine() {
     selectClass,
     startDungeon,
     castSpell,
+    unlockTalent,
     cooldowns: cooldownsRef.current,
   };
 }

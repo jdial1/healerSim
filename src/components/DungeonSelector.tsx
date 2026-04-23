@@ -5,15 +5,13 @@
 
 import { DUNGEONS } from '../constants.ts';
 import { Dungeon } from '../types.ts';
-import { Swords, Skull, Trophy } from 'lucide-react';
+import { Skull, Swords, Lock, Trophy } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DungeonSelectorProps {
   onSelect: (dungeon: Dungeon) => void;
   level: number;
 }
-
-import { Skull, Swords, Lock } from 'lucide-react';
 
 export function DungeonSelector({ onSelect, level }: DungeonSelectorProps) {
   return (

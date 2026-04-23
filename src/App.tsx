@@ -69,7 +69,6 @@ export default function App() {
       <AnimatePresence mode="wait">
         {showTalents && (
           <TalentTree 
-            key="talent-tree"
             talents={state.talents}
             talentPoints={state.talentPoints}
             onUnlock={unlockTalent}
