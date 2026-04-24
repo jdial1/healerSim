@@ -52,7 +52,7 @@ export const PRIEST_TALENTS: Talent[] = [
     0,
     3,
     L(0),
-    { icon: 'lorc/heart-organ', statBonus: { healingBoost: 4 } },
+    { icon: 'lorc/prayer', statBonus: { healingBoost: 4 } },
   ),
   base(
     pr(0, 3),
@@ -102,7 +102,7 @@ export const PRIEST_TALENTS: Talent[] = [
     1,
     1,
     L(1),
-    { prerequisites: [pr(0, 2)], icon: 'delapouite/holy-water', spellId: 'greater_heal' },
+    { prerequisites: [pr(0, 2)], icon: 'delapouite/hand-of-god', spellId: 'greater_heal' },
   ),
   base(
     pr(1, 3),

@@ -61,6 +61,10 @@ export function talentCritChancePctFromTalents(talents: Talent[]): number {
   return talents.reduce((a, t) => a + (t.statBonus?.critChance ?? 0) * t.points, 0);
 }
 
+export function talentHastePctFromTalents(talents: Talent[]): number {
+  return talents.reduce((a, t) => a + (t.statBonus?.haste ?? 0) * t.points, 0);
+}
+
 export function naturePerfectionCritBonus(naturalPerfectionStacks: number): number {
   return naturalPerfectionStacks * 2;
 }
@@ -98,6 +102,7 @@ export interface PlayerStatBreakdown {
   healingEffectMultiplier: number;
   spiritManaRegenMultiplier: number;
   critChancePct: number;
+  hastePct: number;
   bonusHealing: number;
 }
 
@@ -134,6 +139,7 @@ export function buildPlayerStatBreakdown(
   const healingEffectMultiplier = Math.round((1 + totalHealingBonusPct / 100) * 1000) / 1000;
   const spiritRegenMult = Math.round(spiritManaRegenMultiplier(spirit) * 1000) / 1000;
   const critChancePct = talentCritChancePctFromTalents(talents);
+  const hastePct = talentHastePctFromTalents(talents);
   const bonusHealing = Math.round(100 * (healingEffectMultiplier - 1));
   return {
     intellect,
@@ -150,6 +156,7 @@ export function buildPlayerStatBreakdown(
     healingEffectMultiplier,
     spiritManaRegenMultiplier: spiritRegenMult,
     critChancePct,
+    hastePct,
     bonusHealing,
   };
 }

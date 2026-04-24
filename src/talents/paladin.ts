@@ -21,12 +21,12 @@ const base = (id: string, name: string, desc: string, x: number, y: number, max:
 export const PALADIN_TALENTS: Talent[] = [
   base(h(0, 0), 'Divine Intellect', 'Max mana 55 per point.', 0, 0, 3, L(0), { icon: 'lorc/brain', statBonus: { manaPool: 55 } }),
   base(h(0, 1), 'Spiritual Focus', 'Haste 2% per point.', 1, 0, 2, L(0), { icon: 'lorc/wind-hole', statBonus: { haste: 2 } }),
-  base(h(0, 2), 'Healing Light', 'Healing 3% per point.', 2, 0, 2, L(0), { icon: 'lorc/sun', statBonus: { healingBoost: 3 } }),
+  base(h(0, 2), 'Healing Light', 'Healing 3% per point.', 2, 0, 2, L(0), { icon: 'lorc/bright-explosion', statBonus: { healingBoost: 3 } }),
   base(h(0, 3), 'Sanctified Resilience', 'Crit 1.5% per point.', 3, 0, 2, L(0), { icon: 'lorc/target-dummy', statBonus: { critChance: 1.5 } }),
   base(h(0, 4), 'Infusion', 'Return 2 mana on direct heals per point.', 4, 0, 2, L(0), { icon: 'lorc/energy-shield', statBonus: { manaReturnOnDirectHeal: 2 } }),
   base(h(1, 0), 'Luminous Writ', 'Max mana 70 per point.', 0, 1, 2, L(1), { prerequisites: [h(0, 0)], icon: 'lorc/book-pile', statBonus: { manaPool: 70 } }),
   base(h(1, 1), 'Illumination', 'Critical heals restore 20% of the spell manacost, scaling with points.', 1, 1, 1, L(1), { prerequisites: [h(0, 1)], icon: 'lorc/light-bulb', mechanicId: 'illumination' }),
-  base(h(1, 2), 'Divine Favor', 'Unlocks Greater Heal.', 2, 1, 1, L(1), { prerequisites: [h(0, 2)], icon: 'delapouite/healing-shield', spellId: 'greater_heal' }),
+  base(h(1, 2), 'Divine Favor', 'Unlocks Greater Heal.', 2, 1, 1, L(1), { prerequisites: [h(0, 2)], icon: 'delapouite/hand-of-god', spellId: 'greater_heal' }),
   base(h(1, 3), "Crusader's Zeal", 'Healing 3% per point.', 3, 1, 2, L(1), { prerequisites: [h(0, 3)], icon: 'lorc/crossed-swords', statBonus: { healingBoost: 3 } }),
   base(h(1, 4), 'Path of the Dawn', 'Your wand applies Zeal. Exclusive with Path of the Dusk.', 4, 1, 1, L(1), {
     prerequisites: [h(0, 4)],

@@ -1,12 +1,51 @@
-import { ClassType, GameState, Unit, PlayerCombatBuff, Spell } from './types.ts';
+import { Buff, ClassType, GameState, Unit, PlayerCombatBuff, Spell } from './types.ts';
 import { talentRanks, hasPlayerBuff, healerInParty, hasHotOnUnit, findConsumableHotIndex } from './talentMechanics.ts';
-import { naturePerfectionCritBonus, talentCritChancePctFromTalents } from './playerStats.ts';
+import {
+  naturePerfectionCritBonus,
+  talentCritChancePctFromTalents,
+  talentHastePctFromTalents,
+} from './playerStats.ts';
 
 export const T_ARCHANGEL = 15 * 10;
 export const T_NATURES_GRACE = 20 * 10;
 export const T_AVENGING = 20 * 10;
 export const T_SPIRIT_AMP = 10 * 10;
 export const SHIELD_DEFAULT_TICKS = 10 * 10;
+
+export const HOT_PANDEMIC_MULT = 1.3;
+
+const DIRECT_HEAL_SYNERGY_SPELL_IDS = new Set(['flash_heal', 'greater_heal', 'swiftmend', 'regrowth']);
+const SYNERGY_PRIMER_SOURCE_SPELL_IDS = new Set(['renew', 'rejuvenation', 'regrowth', 'wild_growth']);
+
+export function directHealSynergyMultiplier(unit: Unit, spellId: string): number {
+  if (!DIRECT_HEAL_SYNERGY_SPELL_IDS.has(spellId)) return 1;
+  if (!unit.buffs.some((b) => SYNERGY_PRIMER_SOURCE_SPELL_IDS.has(b.sourceSpellId))) return 1;
+  return 1.15;
+}
+
+export function applyPandemicHotToUnit(unit: Unit, spell: Spell, healingPerTick: number): Unit {
+  const baseTicks = spell.hotDuration ?? 0;
+  if (baseTicks <= 0) return unit;
+  const capTicks = Math.max(baseTicks, Math.floor(baseTicks * HOT_PANDEMIC_MULT));
+  const existingIdx = unit.buffs.findIndex((b) => b.sourceSpellId === spell.id);
+  let carried = 0;
+  let kept = unit.buffs;
+  if (existingIdx >= 0) {
+    carried = unit.buffs[existingIdx].remainingTicks;
+    kept = unit.buffs.filter((_, i) => i !== existingIdx);
+  }
+  const combined = Math.min(carried + baseTicks, capTicks);
+  const buff: Buff = {
+    id: spell.id,
+    name: spell.name,
+    remainingTicks: combined,
+    healingPerTick,
+    icon: spell.icon,
+    sourceSpellId: spell.id,
+    durationTicksMax: combined,
+  };
+  return { ...unit, buffs: [...kept, buff] };
+}
 
 function zealHasteFromBuffs(buffs: PlayerCombatBuff[], stacks: number): number {
   const b = buffs.find((x) => x.id === 'zeal' && x.remainingTicks > 0);
@@ -38,7 +77,7 @@ export function totalHastePercent(
   healer: Unit,
   zealStackCount: number,
 ): number {
-  const t = s.talents.reduce((a, x) => a + (x.statBonus?.haste || 0) * x.points, 0);
+  const t = talentHastePctFromTalents(s.talents);
   return (
     t +
     zealHasteFromBuffs(s.playerCombatBuffs, zealStackCount) +

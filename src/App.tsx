@@ -207,6 +207,7 @@ export default function App() {
 
       {state.playerClass && (
         <ActionBars
+          playerClass={state.playerClass}
           spellIds={state.activeActionBars}
           cooldowns={cooldowns}
           onCast={handleCast}

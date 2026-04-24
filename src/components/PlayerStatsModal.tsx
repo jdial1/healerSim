@@ -189,6 +189,7 @@ export function PlayerStatsModal({
             <SpellStatRow label="Bonus Healing" value={b.bonusHealing} />
             <SpellStatRow label="Crit Chance" value={formatCritChance(b.critChancePct)} />
             <SpellStatRow label="Mana Regen" value={`${formatManaRegen(regenSec)}/s`} />
+            <SpellStatRow label="Haste" value={formatCritChance(b.hastePct)} />
           </StatPanel>
         </div>
       </div>

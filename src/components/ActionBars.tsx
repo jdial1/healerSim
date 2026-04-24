@@ -9,7 +9,7 @@ import {
   getManaRegenPerSecond,
   MANA_POTION_USES_PER_DUNGEON,
 } from '../constants.ts';
-import { SpellType } from '../types.ts';
+import { ClassType, SpellType } from '../types.ts';
 import { xpProgressWithinLevel } from '../gameStorage.ts';
 import { motion } from 'motion/react';
 import { glowForSpellId } from '../gameIcons.ts';
@@ -31,6 +31,7 @@ interface ActionBarsProps {
   manaPotionChargesRemaining: number;
   spellHealingMultiplier: number;
   actionBarHighlights: Record<string, boolean>;
+  playerClass: ClassType;
 }
 
 export function ActionBars({
@@ -49,6 +50,7 @@ export function ActionBars({
   manaPotionChargesRemaining,
   spellHealingMultiplier,
   actionBarHighlights,
+  playerClass,
 }: ActionBarsProps) {
   const barRootRef = useRef<HTMLDivElement>(null);
   const spellTipRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -99,6 +101,7 @@ export function ActionBars({
     spellHealingMultiplier,
     manaPotionChargesRemaining,
     spirit,
+    playerClass,
   ]);
 
   useEffect(() => {
@@ -165,7 +168,9 @@ export function ActionBars({
     const sentences: string[] = [];
 
     if (id === 'wand') {
-      return 'Fires a magic bolt at the enemy and builds Caster Zeal for haste';
+      return playerClass === ClassType.PALADIN
+        ? 'Fires a magic bolt at the enemy and builds Caster Zeal for haste'
+        : 'Fires a magic bolt at the enemy';
     }
     if (id === 'swiftmend') {
       return 'Consumes a HoT on the target to burst-heal. Requires Rejuvenation or Regrowth';

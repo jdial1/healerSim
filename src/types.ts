@@ -40,6 +40,7 @@ export interface Buff {
   healingPerTick: number;
   icon: string;
   sourceSpellId: string;
+  durationTicksMax?: number;
 }
 
 export interface PartyDebuff {

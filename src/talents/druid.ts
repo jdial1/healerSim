@@ -26,7 +26,7 @@ export const DRUID_TALENTS: Talent[] = [
   base(d(0, 4), 'Living Vine', 'Direct heals return 2 mana per point.', 4, 0, 2, L(0), { icon: 'lorc/roots', statBonus: { manaReturnOnDirectHeal: 2 } }),
   base(d(1, 0), 'Grove Harmony', 'Healing 3% per point.', 0, 1, 2, L(1), { prerequisites: [d(0, 0)], icon: 'delapouite/forest', statBonus: { healingBoost: 3 } }),
   base(d(1, 1), 'Tranquil Well', 'Max mana 60 per point.', 1, 1, 2, L(1), { prerequisites: [d(0, 1)], icon: 'lorc/heart-bottle', statBonus: { manaPool: 60 } }),
-  base(d(1, 2), 'Naturalist', 'Unlocks Greater Heal.', 2, 1, 1, L(1), { prerequisites: [d(0, 2)], icon: 'lorc/leaf-swirl', spellId: 'greater_heal' }),
+  base(d(1, 2), 'Naturalist', 'Unlocks Greater Heal.', 2, 1, 1, L(1), { prerequisites: [d(0, 2)], icon: 'delapouite/hand-of-god', spellId: 'greater_heal' }),
   base(d(1, 3), "Moonkin's Favor", 'Crit 2% per point.', 3, 1, 2, L(1), { prerequisites: [d(0, 3)], icon: 'lorc/owl', statBonus: { critChance: 2 } }),
   base(d(1, 4), 'Path of the Sprout', 'HoT tick healing +4% per point. Exclusive with Path of the Root.', 4, 1, 1, L(1), {
     prerequisites: [d(0, 4)],
@@ -42,7 +42,7 @@ export const DRUID_TALENTS: Talent[] = [
     mechanicId: 'living_seed',
     synergyWith: [d(3, 1)],
   }),
-  base(d(2, 2), 'Swiftmend', 'Unlocks Swiftmend. Consumes Rejuvenation or Regrowth on the target for a burst of healing.', 2, 2, 1, L(2), { prerequisites: [d(1, 2)], icon: 'delapouite/ginkgo-leaf', spellId: 'swiftmend' }),
+  base(d(2, 2), 'Swiftmend', 'Unlocks Swiftmend. Consumes Rejuvenation or Regrowth on the target for a burst of healing.', 2, 2, 1, L(2), { prerequisites: [d(1, 2)], icon: 'lorc/fruiting', spellId: 'swiftmend' }),
   base(d(2, 3), 'Photosynthesis', 'While you have a HoT on yourself, haste 3% per point. Allies with your HoT have 2% more chance per point for HoT double ticks.', 3, 2, 1, L(2), { prerequisites: [d(1, 3)], icon: 'lorc/flowers', mechanicId: 'photosynthesis' }),
   base(
     d(2, 4),

@@ -7,8 +7,44 @@ import { motion } from 'motion/react';
 import { Unit } from '../types.ts';
 import { Shield, Zap, User } from 'lucide-react';
 import { SPELLS } from '../constants.ts';
+import { Buff } from '../types.ts';
 import { glowForSpellId, glowForBossAbilityId } from '../gameIcons.ts';
 import { GameIcon } from './GameIcon.tsx';
+
+function hotMaxTicks(buff: Buff): number {
+  const fromSpell = SPELLS[buff.sourceSpellId as keyof typeof SPELLS]?.hotDuration;
+  if (typeof fromSpell === 'number' && fromSpell > 0) return fromSpell;
+  return buff.durationTicksMax ?? Math.max(1, buff.remainingTicks);
+}
+
+function HoTBuffIcon({ buff }: { buff: Buff }) {
+  const maxT = Math.max(1, buff.durationTicksMax ?? hotMaxTicks(buff));
+  const sweep = Math.max(0, Math.min(1, buff.remainingTicks / maxT));
+  const deg = sweep * 360;
+  const secondsLeft = Math.ceil(buff.remainingTicks / 10);
+  const urgent = buff.remainingTicks <= 30;
+
+  return (
+    <div className="relative h-8 w-8 shrink-0" title={buff.name}>
+      <div
+        className="absolute inset-0 rounded-full shadow-[0_0_0_1px_rgba(16,185,129,0.35)]"
+        style={{
+          background: `conic-gradient(from -90deg, rgba(52,211,153,0.92) ${deg}deg, rgba(15,23,42,0.96) 0deg)`,
+        }}
+      />
+      <div className="absolute inset-[3px] flex items-center justify-center overflow-hidden rounded-full bg-slate-950/95 ring-1 ring-emerald-500/25">
+        <GameIcon iconPath={buff.icon} glow={glowForSpellId(buff.sourceSpellId)} size="xs" className="scale-90" />
+      </div>
+      <div
+        className={`absolute -bottom-0.5 -right-0.5 min-w-[1.1rem] rounded px-0.5 text-center font-mono font-black leading-none ring-1 ring-slate-800/90 ${
+          urgent ? 'bg-red-950/95 text-red-300' : 'bg-slate-950/95 text-emerald-200'
+        } text-[8px] sm:text-[7px]`}
+      >
+        {secondsLeft}
+      </div>
+    </div>
+  );
+}
 
 interface HealGridProps {
   party: Unit[];
@@ -92,27 +128,23 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
                 </div>
                 
                 {/* Buffs as small icons */}
-                <div className="mt-1.5 flex flex-wrap gap-1.5 sm:gap-1">
+                <div className="mt-1.5 flex flex-wrap items-end gap-2 sm:gap-1.5">
                   {unit.buffs.map((buff) => {
-                    const secondsLeft = Math.ceil(buff.remainingTicks / 10);
-                    const showCountdown = buff.remainingTicks < 50;
-
+                    const isHoT = Boolean(SPELLS[buff.sourceSpellId as keyof typeof SPELLS]?.hotDuration);
+                    if (isHoT) {
+                      return (
+                        <div key={buff.id}>
+                          <HoTBuffIcon buff={buff} />
+                        </div>
+                      );
+                    }
                     return (
-                      <div 
-                        key={buff.id}
-                        className="relative sm:p-0.5"
-                        title={buff.name}
-                      >
-                         <GameIcon
-                           iconPath={buff.icon}
-                           glow={glowForSpellId(buff.sourceSpellId)}
-                           size="xs"
-                         />
-                         {showCountdown && (
-                            <div className="absolute inset-0 flex items-center justify-center rounded-md bg-slate-950/90 px-0.5 text-[10px] font-black text-red-500 sm:text-[7px]">
-                                {secondsLeft}
-                            </div>
-                         )}
+                      <div key={buff.id} className="relative sm:p-0.5" title={buff.name}>
+                        <GameIcon
+                          iconPath={buff.icon}
+                          glow={glowForSpellId(buff.sourceSpellId)}
+                          size="xs"
+                        />
                       </div>
                     );
                   })}

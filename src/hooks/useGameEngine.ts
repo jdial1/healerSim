@@ -73,6 +73,8 @@ import {
   T_SPIRIT_AMP,
   SHIELD_DEFAULT_TICKS,
   oneHotTickDoubleRoll,
+  applyPandemicHotToUnit,
+  directHealSynergyMultiplier,
 } from '../combatHelper.ts';
 
 function randomIntInclusive(min: number, max: number): number {
@@ -412,27 +414,15 @@ export function useGameEngine() {
       let newParty2 = s.party.map((u) => ({ ...u, buffs: u.buffs.map((b) => ({ ...b })) }));
       const healOne = (u: Unit) => {
         if (u.health <= 0) return u;
-        const directAmt = spell.healing * healMultB * critH * tMod;
+        const syn = directHealSynergyMultiplier(u, spellId);
+        const directAmt = spell.healing * healMultB * critH * tMod * syn;
         const th = Math.min(u.maxHealth, u.health + directAmt);
         return { ...u, health: th };
       };
       const addHot = (u: Unit) => {
         if (spell.type !== SpellType.HOT && !spell.hotDuration) return u;
         const tHot = (spell.hotHealingPerTick || 0) * healMultB * critH;
-        return {
-          ...u,
-          buffs: [
-            ...u.buffs,
-            {
-              id: `${spell.id}-${Date.now()}`,
-              name: spell.name,
-              remainingTicks: spell.hotDuration || 0,
-              healingPerTick: tHot,
-              icon: spell.icon,
-              sourceSpellId: spell.id,
-            },
-          ],
-        };
+        return applyPandemicHotToUnit(u, spell, tHot);
       };
 
       if (spell.type === SpellType.AOE) {

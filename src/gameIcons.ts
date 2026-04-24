@@ -8,9 +8,9 @@ import { ClassType } from './types.ts';
 export type IconGlow = 'spell' | 'nature' | 'debuff';
 
 export const CLASS_PORTRAIT_ICON: Record<ClassType, string> = {
-  [ClassType.PRIEST]: 'delapouite/holy-water',
-  [ClassType.DRUID]: 'delapouite/monstera-leaf',
-  [ClassType.PALADIN]: 'delapouite/knight-banner',
+  [ClassType.PRIEST]: 'lorc/angel-outfit',
+  [ClassType.DRUID]: 'lorc/oak-leaf',
+  [ClassType.PALADIN]: 'lorc/winged-shield',
 };
 
 export const CLASS_PORTRAIT_GLOW: Record<ClassType, IconGlow> = {
@@ -29,10 +29,10 @@ export function gameIconUrl(iconPath: string): string {
 export const SPELL_GLOW: Record<string, IconGlow> = {
   flash_heal: 'spell',
   greater_heal: 'spell',
-  renew: 'nature',
+  renew: 'spell',
   rejuvenation: 'nature',
   regrowth: 'nature',
-  wild_growth: 'spell',
+  wild_growth: 'nature',
   swiftmend: 'nature',
   wand: 'spell',
   mana_potion: 'spell',
