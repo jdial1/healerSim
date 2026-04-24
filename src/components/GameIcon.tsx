@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { gameIconUrl, GLOW_BOX, ICON_TINT, type IconGlow } from '../gameIcons.ts';
+import { useEffect, useMemo, useState } from 'react';
+
+import { gameIconUrlCandidates, GLOW_BOX, ICON_TINT, type IconGlow } from '../gameIcons.ts';
 
 type GameIconSize =
   | 'xs'
@@ -50,6 +52,14 @@ export function GameIcon({
 }) {
   const tint = accentTint ?? ICON_TINT[glow];
   const tall = size === 'heroTall';
+  const candidates = useMemo(() => gameIconUrlCandidates(iconPath), [iconPath]);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+
+  useEffect(() => {
+    setCandidateIndex(0);
+  }, [iconPath]);
+
+  const src = candidates[candidateIndex] ?? candidates[0];
   return (
     <div
       title={title}
@@ -58,9 +68,12 @@ export function GameIcon({
     >
       <div className="relative flex h-full w-full min-h-0 items-center justify-center overflow-hidden rounded-sm">
         <img
-          src={gameIconUrl(iconPath)}
+          src={src}
           alt=""
           draggable={false}
+          onError={() => {
+            setCandidateIndex((i) => (i + 1 < candidates.length ? i + 1 : i));
+          }}
           className="pointer-events-none max-h-full max-w-full select-none object-contain object-center mix-blend-screen opacity-95 [filter:drop-shadow(0_2px_3px_rgba(0,0,0,0.88))_drop-shadow(0_1px_1px_rgba(0,0,0,0.55))]"
         />
         <div

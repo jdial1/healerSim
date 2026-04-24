@@ -19,11 +19,19 @@ export const CLASS_PORTRAIT_GLOW: Record<ClassType, IconGlow> = {
   [ClassType.PALADIN]: 'spell',
 };
 
-const GAME_ICONS_REPO =
-  'https://cdn.jsdelivr.net/gh/game-icons/icons@master';
+const GAME_ICON_BASES = [
+  'https://cdn.jsdelivr.net/gh/game-icons/icons@master',
+  'https://cdn.statically.io/gh/game-icons/icons/master',
+  'https://raw.githubusercontent.com/game-icons/icons/master',
+] as const;
 
 export function gameIconUrl(iconPath: string): string {
-  return `${GAME_ICONS_REPO}/${iconPath}.svg`;
+  return `${GAME_ICON_BASES[0]}/${iconPath}.svg`;
+}
+
+export function gameIconUrlCandidates(iconPath: string): readonly string[] {
+  const suffix = `/${iconPath}.svg`;
+  return GAME_ICON_BASES.map((base) => `${base}${suffix}`);
 }
 
 export const SPELL_GLOW: Record<string, IconGlow> = {
