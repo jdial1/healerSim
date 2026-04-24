@@ -60,6 +60,13 @@ export function ActionBars({
 
   const { into: xpIntoLevel, needed: xpForNextLevel } = xpProgressWithinLevel(xp);
   const xpBarPercent = xpForNextLevel > 0 ? (xpIntoLevel / xpForNextLevel) * 100 : 0;
+  const xpSegmentFillPercents = Array.from({ length: 10 }, (_, i) => {
+    const start = i * 10;
+    const end = start + 10;
+    if (xpBarPercent >= end) return 100;
+    if (xpBarPercent <= start) return 0;
+    return ((xpBarPercent - start) / 10) * 100;
+  });
   const manaPercent = (mana / maxMana) * 100;
   const baseRegenPerSec = MANA_REGEN_PER_TICK * (1000 / TICK_RATE);
   const regenPerSec = getManaRegenPerSecond(manaRegenBuffTicksRemaining);
@@ -112,19 +119,40 @@ export function ActionBars({
       <div className="absolute inset-0 bg-slate-900" aria-hidden />
       <div className="relative z-10 flex flex-col items-center gap-1.5 px-3 py-2 sm:gap-2 sm:px-4 sm:py-2.5">
       {!spellsEnabled ? (
-        <div className="w-full max-w-2xl px-0.5">
-          <div className="relative flex min-h-9 w-full items-center overflow-hidden rounded-sm border border-amber-700/40 sm:min-h-10">
-            <motion.div
-              className="absolute inset-y-0 left-0 rounded-none bg-gradient-to-r from-amber-600 to-yellow-500"
-              initial={false}
-              animate={{ width: `${xpBarPercent}%` }}
-              transition={{ type: 'tween', duration: 0.2 }}
-              aria-hidden
-            />
-            <div className="pointer-events-none relative z-10 flex w-full items-center justify-center py-0.5">
-              <span className="font-mono text-lg font-black italic tabular-nums text-amber-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] sm:text-xl">
+        <div className="relative w-full max-w-2xl px-0.5">
+          <div
+            className="relative h-[14.4px] w-full sm:h-4"
+            role="progressbar"
+            aria-valuenow={xpIntoLevel}
+            aria-valuemin={0}
+            aria-valuemax={xpForNextLevel}
+          >
+            <div className="absolute inset-0 flex items-stretch gap-1">
+              {xpSegmentFillPercents.map((fillPct, i) => (
+                <div
+                  key={i}
+                  className="relative min-w-0 flex-1 overflow-hidden rounded-full border border-amber-700/40 bg-slate-950/80"
+                >
+                  <motion.div
+                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-600 to-yellow-500"
+                    initial={false}
+                    animate={{ width: `${fillPct}%` }}
+                    transition={{ type: 'tween', duration: 0.2 }}
+                    aria-hidden
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <span
+                className="font-mono text-base font-black italic tabular-nums text-white sm:text-lg"
+                style={{
+                  textShadow:
+                    '0 1px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000,1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,0 2px 0 #000,0 -2px 0 #000,2px 0 0 #000,-2px 0 0 #000,2px 1px 0 #000,-2px -1px 0 #000,-1px 2px 0 #000,1px -2px 0 #000',
+                }}
+              >
                 {xpIntoLevel}
-                <span className="ml-0.5 text-base font-normal text-amber-100/90 opacity-90 sm:text-lg">
+                <span className="ml-0.5 text-sm font-normal not-italic opacity-95 sm:text-base">
                   / {xpForNextLevel}
                 </span>
               </span>
