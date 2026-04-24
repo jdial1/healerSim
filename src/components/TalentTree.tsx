@@ -5,34 +5,10 @@
 
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Battery,
-  BatteryCharging,
-  Brain,
-  Clock,
-  CloudRain,
-  Compass,
-  Crown,
-  Flame,
-  Heart,
-  HeartPulse,
-  Leaf,
-  Lightbulb,
-  Lock,
-  MoveUp,
-  ShieldPlus,
-  Sparkles,
-  Sprout,
-  Sun,
-  Target,
-  Tornado,
-  Trees,
-  Wind,
-  X,
-  Zap,
-} from 'lucide-react';
-import { Talent } from '../types.ts';
+import { Lock, X } from 'lucide-react';
+import { ClassType, Talent } from '../types.ts';
+import { GameIcon } from './GameIcon.tsx';
+import type { IconGlow } from '../gameIcons.ts';
 
 interface TalentTreeProps {
   talents: Talent[];
@@ -40,6 +16,7 @@ interface TalentTreeProps {
   onUnlock: (talentId: string) => void;
   onClose: () => void;
   playerLevel: number;
+  playerClass: ClassType;
 }
 
 function learnBlockedReason(talent: Talent, allTalents: Talent[], talentPoints: number, playerLevel: number): string | null {
@@ -59,33 +36,20 @@ function learnBlockedReason(talent: Talent, allTalents: Talent[], talentPoints: 
   return null;
 }
 
-const TALENT_ICONS: Record<string, LucideIcon> = {
-  Battery,
-  BatteryCharging,
-  Brain,
-  Clock,
-  CloudRain,
-  Compass,
-  Crown,
-  Flame,
-  Heart,
-  HeartPulse,
-  Leaf,
-  Lightbulb,
-  MoveUp,
-  ShieldPlus,
-  Sparkles,
-  Sprout,
-  Sun,
-  Target,
-  Tornado,
-  Trees,
-  Wind,
-  Zap,
-};
+function talentGlowForClass(cls: ClassType): IconGlow {
+  return cls === ClassType.DRUID ? 'nature' : 'spell';
+}
 
-export function TalentTree({ talents, talentPoints, onUnlock, onClose, playerLevel }: TalentTreeProps) {
+export function TalentTree({
+  talents,
+  talentPoints,
+  onUnlock,
+  onClose,
+  playerLevel,
+  playerClass,
+}: TalentTreeProps) {
   const [selectedTalentId, setSelectedTalentId] = useState<string | null>(null);
+  const talentGlow = talentGlowForClass(playerClass);
 
   const selectedTalent = useMemo(
     () => talents.find((t) => t.id === selectedTalentId),
@@ -153,8 +117,6 @@ export function TalentTree({ talents, talentPoints, onUnlock, onClose, playerLev
             const accessible = isTalentAccessible(talent);
             const hasPoints = talent.points > 0;
             const isSelected = selectedTalentId === talent.id;
-            const Icon = TALENT_ICONS[talent.icon];
-            if (!Icon) throw new Error(`Unknown talent icon: ${talent.icon}`);
 
             return (
               <div
@@ -177,7 +139,14 @@ export function TalentTree({ talents, talentPoints, onUnlock, onClose, playerLev
                     ${isSelected ? 'scale-110 ring-4 ring-blue-500 ring-offset-2 ring-offset-slate-950' : ''}
                   `}
                 >
-                  <Icon size={24} className={hasPoints ? 'text-white' : 'text-slate-500'} />
+                  <GameIcon
+                    iconPath={talent.icon}
+                    glow={talentGlow}
+                    size="sm"
+                    title={talent.name}
+                    dimmed={!hasPoints}
+                    className={!accessible ? 'opacity-50' : ''}
+                  />
                   <div className="absolute -bottom-2 -right-2 rounded border border-slate-700 bg-slate-900 px-1 text-[10px] font-bold text-white">
                     {talent.points}/{talent.maxPoints}
                   </div>

@@ -22,7 +22,6 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md"
-      onClick={onDismiss}
     >
         <motion.div
           role="dialog"
@@ -32,7 +31,6 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 420, damping: 32 }}
           className="relative w-full max-w-md overflow-hidden rounded-lg border border-slate-800 bg-[#070d1a] shadow-[0_0_60px_rgba(0,0,0,0.65)]"
-          onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"

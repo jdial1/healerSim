@@ -3,8 +3,62 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ClassType, GameState, Talent } from './types.ts';
-import { PRIEST_TALENTS, DRUID_TALENTS, PALADIN_TALENTS, XP_PER_LEVEL } from './constants.ts';
+import { ClassType, Dungeon, GameState, Talent } from './types.ts';
+import {
+  PRIEST_TALENTS,
+  DRUID_TALENTS,
+  PALADIN_TALENTS,
+  dungeonBaseXp,
+  dungeonXpTierMultiplier,
+} from './constants.ts';
+import { computedMaxMana } from './playerStats.ts';
+
+const XP_BASE = 180;
+const XP_GAMMA = 1.15;
+
+function needXpToReachNextLevel(currentLevel: number): number {
+  return Math.max(1, Math.round(XP_BASE * Math.pow(currentLevel, XP_GAMMA)));
+}
+
+export function totalXpToReachLevel(targetLevel: number): number {
+  if (targetLevel <= 1) return 0;
+  let t = 0;
+  for (let L = 1; L < targetLevel; L += 1) {
+    t += needXpToReachNextLevel(L);
+  }
+  return t;
+}
+
+export function levelFromTotalXp(xp: number): number {
+  if (xp <= 0) return 1;
+  let level = 1;
+  let total = 0;
+  for (;;) {
+    const need = needXpToReachNextLevel(level);
+    if (total + need > xp) break;
+    total += need;
+    level += 1;
+  }
+  return level;
+}
+
+export function xpProgressWithinLevel(xp: number): { into: number; needed: number } {
+  const level = levelFromTotalXp(xp);
+  const start = totalXpToReachLevel(level);
+  const needed = needXpToReachNextLevel(level);
+  return { into: Math.max(0, xp - start), needed };
+}
+
+export function computeDungeonXpGain(dungeon: Dungeon, playerLevel: number): number {
+  const base = dungeonBaseXp(dungeon.difficulty);
+  const tier = dungeonXpTierMultiplier(dungeon.difficulty);
+  const levelsOver = Math.max(0, playerLevel - dungeon.levelMax);
+  return Math.max(0, Math.round(base * tier * Math.pow(0.5, levelsOver)));
+}
+
+export function levelsOverDungeonMax(dungeon: Dungeon, playerLevel: number): number {
+  return Math.max(0, playerLevel - dungeon.levelMax);
+}
 
 const STORAGE_KEY = 'healerSim.save.v1';
 
@@ -68,11 +122,11 @@ export function computeMetaFromProgress(
   | 'maxMana'
   | 'mana'
 > {
-  const level = Math.floor(xp / XP_PER_LEVEL) + 1;
+  const level = levelFromTotalXp(xp);
   const pool = 5 + (level - 1);
   const spent = talents.reduce((acc, t) => acc + t.points * t.cost, 0);
   const talentPoints = Math.max(0, pool - spent);
-  const maxMana = 100 + talents.reduce((acc, t) => acc + (t.statBonus?.manaPool ?? 0) * t.points, 0);
+  const maxMana = computedMaxMana(cls, level, talents);
   const { unlockedSpells, activeActionBars } = buildSpellLoadout(cls, talents);
   return {
     xp,

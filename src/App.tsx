@@ -14,6 +14,8 @@ import { GameHUD, TRASH_PACK_COUNT } from './components/GameHUD.tsx';
 import { TalentTree } from './components/TalentTree.tsx';
 import { DungeonOutcomeModal } from './components/DungeonOutcomeModal.tsx';
 import { MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
+import { spellHealingMultiplierFromProgress } from './playerStats.ts';
+import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Star, LogOut } from 'lucide-react';
 
@@ -31,6 +33,7 @@ export default function App() {
   } = useGameEngine();
   const [targetId, setTargetId] = useState<string | null>(null);
   const [showTalents, setShowTalents] = useState(false);
+  const [showPlayerStats, setShowPlayerStats] = useState(false);
   const [pwaNeedsRefresh, setPwaNeedsRefresh] = useState(false);
   const swUpdate = useRef<((reload?: boolean) => Promise<void>) | undefined>(undefined);
 
@@ -90,15 +93,16 @@ export default function App() {
       }`}
     >
       <AnimatePresence mode="wait">
-        {showTalents && (
+        {showTalents && state.playerClass ? (
           <TalentTree 
             talents={state.talents}
             talentPoints={state.talentPoints}
             onUnlock={unlockTalent}
             onClose={() => setShowTalents(false)}
             playerLevel={state.level}
+            playerClass={state.playerClass}
           />
-        )}
+        ) : null}
 
         {!state.playerClass ? (
           <motion.div
@@ -126,12 +130,16 @@ export default function App() {
                   <Star size={10} fill={state.talentPoints > 0 ? 'currentColor' : 'none'} className={state.talentPoints > 0 ? 'text-yellow-400' : ''} />
                   <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap sm:text-[9px]">TALENTS ({state.talentPoints})</span>
                </button>
-               <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded px-2 py-1 flex items-center gap-1.5 shadow-sm">
+               <button
+                  type="button"
+                  onClick={() => setShowPlayerStats(true)}
+                  className="flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900/80 px-2 py-1 shadow-sm backdrop-blur-md transition-colors hover:border-slate-600 hover:bg-slate-800"
+                >
                   <Trophy size={10} className="text-blue-500" />
-                  <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest sm:text-[9px]">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-300 sm:text-[9px]">
                     LVL <span className="text-white">{state.level}</span>
                   </span>
-               </div>
+                </button>
             </div>
             
             <DungeonSelector
@@ -165,10 +173,9 @@ export default function App() {
               enemyMaxHealth={state.enemyMaxHealth}
               bossName={state.currentDungeon.bossName}
               trashEnemyName={
-                state.currentDungeon.enemies[
-                  TRASH_PACK_COUNT - state.trashPullsRemaining
-                ] ?? ''
+                state.currentDungeon.enemies[TRASH_PACK_COUNT - state.trashPullsRemaining]?.name ?? ''
               }
+              bossSelfBuffs={state.combatPhase === 'BOSS' ? state.bossSelfBuffs : []}
             />
 
             <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-48 pb-36 sm:pt-52 sm:pb-40">
@@ -185,6 +192,17 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {showPlayerStats && state.playerClass ? (
+          <PlayerStatsModal
+            playerClass={state.playerClass}
+            level={state.level}
+            talents={state.talents}
+            onClose={() => setShowPlayerStats(false)}
+          />
+        ) : null}
+      </AnimatePresence>
+
       {state.playerClass && (
         <ActionBars
           spellIds={state.activeActionBars}
@@ -198,6 +216,11 @@ export default function App() {
           manaPotionChargesRemaining={Math.max(
             0,
             MANA_POTION_USES_PER_DUNGEON - state.manaPotionsUsedThisDungeon,
+          )}
+          spellHealingMultiplier={spellHealingMultiplierFromProgress(
+            state.playerClass,
+            state.level,
+            state.talents,
           )}
         />
       )}
@@ -233,6 +256,16 @@ export default function App() {
             Later
           </button>
         </div>
+      ) : null}
+
+      {!state.currentDungeon ? (
+        <p
+          className={`fixed left-0 right-0 z-[25] text-center font-mono text-[10px] tracking-wide text-slate-600 ${
+            state.playerClass ? 'bottom-40 sm:bottom-44' : 'bottom-[max(1rem,env(safe-area-inset-bottom,0px))]'
+          }`}
+        >
+          v{__APP_VERSION__}
+        </p>
       ) : null}
     </div>
   );

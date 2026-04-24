@@ -5,13 +5,10 @@
 
 import { motion } from 'motion/react';
 import { Unit } from '../types.ts';
-import * as Icons from 'lucide-react';
-import { 
-  Shield, 
-  Zap, 
-  User,
-  FlaskConical,
-} from 'lucide-react';
+import { Shield, Zap, User } from 'lucide-react';
+import { SPELLS } from '../constants.ts';
+import { glowForSpellId, glowForBossAbilityId } from '../gameIcons.ts';
+import { GameIcon } from './GameIcon.tsx';
 
 interface HealGridProps {
   party: Unit[];
@@ -20,31 +17,39 @@ interface HealGridProps {
   manaRegenBuffTicksRemaining?: number;
 }
 
+function healthTierClasses(percent: number) {
+  if (percent < 25) {
+    return {
+      fill: 'bg-gradient-to-r from-red-950 via-red-900 to-red-800',
+      edge: 'border-l-red-900',
+    };
+  }
+  if (percent < 50) {
+    return {
+      fill: 'bg-gradient-to-r from-amber-950 via-amber-900 to-amber-800',
+      edge: 'border-l-amber-900',
+    };
+  }
+  if (percent < 75) {
+    return {
+      fill: 'bg-gradient-to-r from-lime-950 via-emerald-900 to-emerald-800',
+      edge: 'border-l-emerald-900',
+    };
+  }
+  return {
+    fill: 'bg-gradient-to-r from-emerald-950 via-emerald-800 to-emerald-700',
+    edge: 'border-l-emerald-800',
+  };
+}
+
 export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicksRemaining = 0 }: HealGridProps) {
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'TANK': return 'border-amber-600';
-      case 'DPS': return 'border-sky-400';
-      case 'HEALER': return 'border-yellow-400';
-      default: return 'border-slate-700';
-    }
-  };
-
-  const getRoleBg = (role: string) => {
-    switch (role) {
-      case 'TANK': return 'bg-amber-600/20';
-      case 'DPS': return 'bg-sky-400/20';
-      case 'HEALER': return 'bg-yellow-400/20';
-      default: return 'bg-slate-800';
-    }
-  };
-
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-2 overflow-y-auto p-1 sm:gap-1.5 sm:p-2">
       {party.map((unit) => {
         const healthPercent = (unit.health / unit.maxHealth) * 100;
         const isDead = unit.health <= 0;
         const isSelected = selectedId === unit.id;
+        const tier = healthTierClasses(isDead ? 0 : healthPercent);
 
         return (
           <button
@@ -53,21 +58,20 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
             onClick={() => onTargetSelect(unit.id)}
             className={`
               relative flex h-20 w-full ${isSelected ? 'border-l-[6px]' : 'border-l-4'} bg-slate-900 overflow-hidden transition-all duration-150
-              ${getRoleColor(unit.role)}
               ${
                 isSelected
                   ? 'z-10 scale-[1.02] border-blue-300 ring-[3px] ring-inset ring-blue-400 brightness-110'
-                  : 'border-slate-800'
+                  : `border-y border-r border-slate-800 ${tier.edge}`
               }
               ${isDead ? 'opacity-40 grayscale shadow-inner' : ''}
               group text-left
             `}
           >
-            {/* Background progress bar */}
             <motion.div
-              className={`absolute inset-0 ${getRoleBg(unit.role)} opacity-30`}
-              initial={{ width: '100%' }}
+              className={`pointer-events-none absolute inset-y-0 left-0 z-[1] ${tier.fill} opacity-90 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),inset_0_-1px_0_rgba(0,0,0,0.35),inset_-3px_0_10px_rgba(0,0,0,0.25)]`}
+              initial={false}
               animate={{ width: `${healthPercent}%` }}
+              transition={{ type: 'tween', duration: 0.2 }}
               style={{ originX: 0 }}
             />
 
@@ -77,37 +81,66 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
                 <div className="truncate text-base font-black uppercase italic leading-none tracking-tight text-white sm:text-lg">
                   {unit.name}
                 </div>
-                <div className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 sm:text-[7px]">{unit.role}</div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 sm:text-[7px]">
+                  <span>{unit.role}</span>
+                  <span className="rounded border border-slate-700/80 bg-slate-950/60 px-1 font-mono text-slate-300">
+                    Lv {unit.level}
+                  </span>
+                </div>
                 
                 {/* Buffs as small icons */}
                 <div className="mt-1.5 flex flex-wrap gap-1.5 sm:gap-1">
                   {unit.buffs.map((buff) => {
-                    const BuffIcon = (Icons as any)[buff.icon] || Icons.HelpCircle;
                     const secondsLeft = Math.ceil(buff.remainingTicks / 10);
                     const showCountdown = buff.remainingTicks < 50;
 
                     return (
                       <div 
                         key={buff.id}
-                        className="relative rounded border border-white/10 bg-slate-950/80 p-1 shadow-sm sm:p-0.5"
+                        className="relative sm:p-0.5"
                         title={buff.name}
                       >
-                         <BuffIcon className="size-5 text-white opacity-60 sm:size-3.5" />
-                         
+                         <GameIcon
+                           iconPath={buff.icon}
+                           glow={glowForSpellId(buff.sourceSpellId)}
+                           size="xs"
+                         />
                          {showCountdown && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 px-0.5 text-[10px] font-black text-red-500 sm:text-[7px]">
+                            <div className="absolute inset-0 flex items-center justify-center rounded-md bg-slate-950/90 px-0.5 text-[10px] font-black text-red-500 sm:text-[7px]">
                                 {secondsLeft}
                             </div>
                          )}
                       </div>
                     );
                   })}
+                  {unit.debuffs.map((debuff) => {
+                    const secondsLeft = Math.ceil(debuff.remainingTicks / 10);
+                    const showCountdown = debuff.remainingTicks < 50;
+                    return (
+                      <div
+                        key={debuff.id}
+                        className="relative rounded-md ring-1 ring-red-500/55 sm:p-0.5"
+                        title={debuff.name}
+                      >
+                        <GameIcon
+                          iconPath={debuff.icon}
+                          glow={glowForBossAbilityId(debuff.sourceAbilityId)}
+                          size="xs"
+                        />
+                        {showCountdown && (
+                          <div className="absolute inset-0 flex items-center justify-center rounded-md bg-slate-950/90 px-0.5 text-[10px] font-black text-orange-400 sm:text-[7px]">
+                            {secondsLeft}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   {unit.role === 'HEALER' && manaRegenBuffTicksRemaining > 0 && (
                     <div
-                      className="relative rounded border border-blue-500/40 bg-blue-950/80 p-1 shadow-sm sm:p-0.5"
+                      className="relative sm:p-0.5"
                       title="Mana Potion — bonus regen"
                     >
-                      <FlaskConical className="size-5 text-blue-400 sm:size-3.5" />
+                      <GameIcon iconPath={SPELLS.mana_potion.icon} glow="spell" size="xs" />
                       {manaRegenBuffTicksRemaining < 50 && (
                         <div className="absolute inset-0 flex items-center justify-center bg-slate-950/90 px-0.5 text-[10px] font-black text-blue-300 sm:text-[7px]">
                           {Math.ceil(manaRegenBuffTicksRemaining / 10)}
@@ -123,7 +156,7 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
                 </div>
               </div>
 
-              <div className={`shrink-0 text-2xl font-black italic tracking-tighter sm:text-3xl ${healthPercent < 30 && !isDead ? 'animate-pulse text-red-500' : 'text-slate-100'}`}>
+              <div className={`shrink-0 text-2xl font-black italic tracking-tighter sm:text-3xl ${healthPercent < 25 && !isDead ? 'animate-pulse text-red-400' : 'text-slate-100'}`}>
                 {isDead ? '0%' : `${Math.ceil(healthPercent)}%`}
               </div>
             </div>

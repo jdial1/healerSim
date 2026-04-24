@@ -1,13 +1,12 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(path.join(__dirname, 'package.json'), 'utf-8')) as { version: string };
 
 function resolveBase(): string {
   const raw = process.env.VITE_BASE_PATH?.trim();
@@ -20,14 +19,27 @@ function resolveBase(): string {
   return '/';
 }
 
-const base = resolveBase();
-
-function pwaStartUrl(): string {
+function pwaStartUrl(base: string): string {
   if (base === '/') return '/?source=pwa';
   return `${base.replace(/\/$/, '')}/?source=pwa`;
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => {
+  const pkgPath = path.join(__dirname, 'package.json');
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as Record<string, unknown> & { version: string };
+
+  if (command === 'build') {
+    const segs = pkg.version.split('.');
+    const major = parseInt(String(segs[0]), 10) || 0;
+    const minor = parseInt(String(segs[1]), 10) || 0;
+    const patch = (parseInt(String(segs[2]), 10) || 0) + 1;
+    pkg.version = `${major}.${minor}.${patch}`;
+    writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+  }
+
+  const base = resolveBase();
+
+  return {
   base,
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
@@ -48,7 +60,7 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         scope: base,
-        start_url: pwaStartUrl(),
+        start_url: pwaStartUrl(base),
         icons: [
           {
             src: `${base}icon.svg`,
@@ -73,4 +85,5 @@ export default defineConfig({
   server: {
     hmr: process.env.DISABLE_HMR !== 'true',
   },
+};
 });

@@ -14,6 +14,12 @@ import { motion } from 'motion/react';
 
 import { Skull } from 'lucide-react';
 
+import type { BossSelfBuff } from '../types.ts';
+
+import { GameIcon } from './GameIcon.tsx';
+
+import { glowForBossSelfBuff } from '../gameIcons.ts';
+
 
 
 export const TRASH_PACK_COUNT = 3;
@@ -35,6 +41,8 @@ interface GameHUDProps {
   bossName?: string;
 
   trashEnemyName: string;
+
+  bossSelfBuffs?: BossSelfBuff[];
 
 }
 
@@ -140,6 +148,8 @@ export function GameHUD({
 
   trashEnemyName,
 
+  bossSelfBuffs = [],
+
 }: GameHUDProps) {
 
   const enemyPercent = enemyMaxHealth > 0 ? (enemyHealth / enemyMaxHealth) * 100 : 0;
@@ -155,6 +165,13 @@ export function GameHUD({
   const enemyBarFill = bossActive ? 'bg-red-600' : 'bg-orange-500';
 
   const displayBossName = bossName || 'FINAL BOSS';
+
+  const bossBarRowClass =
+    bossActive && bossSelfBuffs.length > 0
+      ? 'justify-between gap-2'
+      : bossActive
+        ? 'justify-end'
+        : 'justify-between gap-3';
 
 
 
@@ -248,13 +265,53 @@ export function GameHUD({
 
             <div
 
-              className={`relative z-10 flex h-full items-center px-3 sm:px-4 ${
-
-                bossActive ? 'justify-end' : 'justify-between gap-3'
-
-              }`}
+              className={`relative z-10 flex h-full items-center px-3 sm:px-4 ${bossBarRowClass}`}
 
             >
+
+              {bossActive && bossSelfBuffs.length > 0 ? (
+
+                <div className="flex min-w-0 shrink items-center gap-1 sm:gap-1.5">
+
+                  {bossSelfBuffs.map((b) => {
+
+                    const secondsLeft = Math.ceil(b.remainingTicks / 10);
+
+                    const showCountdown = b.remainingTicks < 50;
+
+                    return (
+
+                      <div key={b.id} className="relative rounded-md ring-1 ring-amber-400/45 sm:p-0.5" title={b.name}>
+
+                        <GameIcon
+
+                          iconPath={b.icon}
+
+                          glow={glowForBossSelfBuff(b.sourceAbilityId)}
+
+                          size="xs"
+
+                        />
+
+                        {showCountdown ? (
+
+                          <div className="absolute inset-0 flex items-center justify-center rounded-md bg-slate-950/90 px-0.5 text-[10px] font-black text-amber-300 sm:text-[7px]">
+
+                            {secondsLeft}
+
+                          </div>
+
+                        ) : null}
+
+                      </div>
+
+                    );
+
+                  })}
+
+                </div>
+
+              ) : null}
 
               {!bossActive ? (
 

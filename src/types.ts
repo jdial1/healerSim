@@ -38,15 +38,75 @@ export interface Buff {
   remainingTicks: number;
   healingPerTick: number;
   icon: string;
+  sourceSpellId: string;
 }
+
+export interface PartyDebuff {
+  id: string;
+  name: string;
+  remainingTicks: number;
+  damagePerTick: number;
+  icon: string;
+  sourceAbilityId: string;
+}
+
+export interface BossSelfBuff {
+  id: string;
+  name: string;
+  remainingTicks: number;
+  partyDamageMultiplier: number;
+  icon: string;
+  sourceAbilityId: string;
+}
+
+export type BossDebuffTargeting = 'single_random' | 'all_living' | 'two_random';
+
+export interface BossDebuffTemplate {
+  abilityId: string;
+  name: string;
+  icon: string;
+  durationTicks: number;
+  damagePerTick: number;
+  targeting: BossDebuffTargeting;
+}
+
+export interface BossSelfBuffTemplate {
+  abilityId: string;
+  name: string;
+  icon: string;
+  durationTicks: number;
+  partyDamageMultiplier: number;
+}
+
+export interface BossCombatProfile {
+  debuffTemplates: BossDebuffTemplate[];
+  selfBuffTemplates: BossSelfBuffTemplate[];
+  debuffIntervalTicksMin: number;
+  debuffIntervalTicksMax: number;
+  selfBuffIntervalTicksMin: number;
+  selfBuffIntervalTicksMax: number;
+}
+
+export type BossCombatOverrides = Pick<BossCombatProfile, 'debuffTemplates' | 'selfBuffTemplates'> &
+  Partial<
+    Pick<
+      BossCombatProfile,
+      | 'debuffIntervalTicksMin'
+      | 'debuffIntervalTicksMax'
+      | 'selfBuffIntervalTicksMin'
+      | 'selfBuffIntervalTicksMax'
+    >
+  >;
 
 export interface Unit {
   id: string;
   name: string;
   role: 'TANK' | 'HEALER' | 'DPS';
+  level: number;
   maxHealth: number;
   health: number;
   buffs: Buff[];
+  debuffs: PartyDebuff[];
   isTarget?: boolean;
 }
 
@@ -72,14 +132,24 @@ export interface Talent {
   };
 }
 
+export interface DungeonEnemy {
+  name: string;
+  icon: string;
+}
+
 export interface Dungeon {
   id: string;
   name: string;
   difficulty: number;
+  levelMin: number;
+  levelMax: number;
   bossHealth: number;
   bossName: string;
-  enemies: string[];
+  bossIcon: string;
+  cardIcon: string;
+  enemies: DungeonEnemy[];
   lootRewards: string[];
+  bossCombat?: BossCombatOverrides;
 }
 
 export type DungeonFailureReason = 'PARTY_WIPE' | 'HEALER_DOWN';
@@ -120,6 +190,7 @@ export interface GameState {
   trashPullsRemaining: number;
   enemyHealth: number;
   enemyMaxHealth: number;
+  bossSelfBuffs: BossSelfBuff[];
   isCombatActive: boolean;
   completedDungeonIds: string[];
 }
