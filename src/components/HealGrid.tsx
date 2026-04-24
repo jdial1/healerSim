@@ -83,6 +83,8 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
     <div className="mx-auto flex w-full max-w-xl flex-col gap-2 overflow-y-auto p-1 sm:gap-1.5 sm:p-2">
       {party.map((unit) => {
         const healthPercent = (unit.health / unit.maxHealth) * 100;
+        const hpCur = Math.round(Math.max(0, unit.health));
+        const hpMax = Math.round(unit.maxHealth);
         const isDead = unit.health <= 0;
         const isSelected = selectedId === unit.id;
         const tier = healthTierClasses(isDead ? 0 : healthPercent);
@@ -191,8 +193,8 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
                 </div>
               </div>
 
-              <div className={`shrink-0 text-2xl font-black italic tracking-tighter sm:text-3xl ${healthPercent < 25 && !isDead ? 'animate-pulse text-red-400' : 'text-slate-100'}`}>
-                {isDead ? '0%' : `${Math.ceil(healthPercent)}%`}
+              <div className={`shrink-0 text-right font-mono text-xl font-black tabular-nums tracking-tight sm:text-2xl ${healthPercent < 25 && !isDead ? 'animate-pulse text-red-400' : 'text-slate-100'}`}>
+                {hpCur}/{hpMax}
               </div>
             </div>
 
