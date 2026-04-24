@@ -271,7 +271,9 @@ export default function App() {
       {!state.currentDungeon ? (
         <p
           className={`fixed left-0 right-0 z-[25] text-center font-mono text-[10px] tracking-wide text-slate-600 ${
-            state.playerClass ? 'bottom-40 sm:bottom-44' : 'bottom-[max(1rem,env(safe-area-inset-bottom,0px))]'
+            state.playerClass
+              ? 'hidden bottom-40 sm:bottom-44 sm:block'
+              : 'bottom-[max(1rem,env(safe-area-inset-bottom,0px))]'
           }`}
         >
           v{__APP_VERSION__}

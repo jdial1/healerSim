@@ -30,7 +30,6 @@ export interface Spell {
   cooldown: number;
   icon: string;
   color: string;
-  dealDamageToEnemy?: number;
 }
 
 export interface Buff {

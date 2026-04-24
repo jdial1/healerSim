@@ -154,17 +154,6 @@ export const SPELLS: Record<string, Spell> = {
     icon: 'lorc/fruiting',
     color: 'bg-emerald-300',
   },
-  wand: {
-    id: 'wand',
-    name: 'Wand',
-    type: SpellType.DIRECT,
-    manaCost: 0,
-    healing: 0,
-    cooldown: 30,
-    icon: 'delapouite/bolt-spell-cast',
-    color: 'bg-violet-400',
-    dealDamageToEnemy: 10,
-  },
   mana_potion: {
     id: 'mana_potion',
     name: 'Mana Potion',

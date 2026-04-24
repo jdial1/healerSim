@@ -34,7 +34,6 @@ export const SPELL_GLOW: Record<string, IconGlow> = {
   regrowth: 'nature',
   wild_growth: 'nature',
   swiftmend: 'nature',
-  wand: 'spell',
   mana_potion: 'spell',
 };
 

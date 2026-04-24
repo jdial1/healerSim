@@ -1,5 +1,5 @@
-import { Buff, ClassType, GameState, Unit, PlayerCombatBuff, Spell } from './types.ts';
-import { talentRanks, hasPlayerBuff, healerInParty, hasHotOnUnit, findConsumableHotIndex } from './talentMechanics.ts';
+import { Buff, ClassType, GameState, Unit, Spell } from './types.ts';
+import { talentRanks, hasHotOnUnit, findConsumableHotIndex } from './talentMechanics.ts';
 import {
   naturePerfectionCritBonus,
   talentCritChancePctFromTalents,
@@ -47,16 +47,6 @@ export function applyPandemicHotToUnit(unit: Unit, spell: Spell, healingPerTick:
   return { ...unit, buffs: [...kept, buff] };
 }
 
-function zealHasteFromBuffs(buffs: PlayerCombatBuff[], stacks: number): number {
-  const b = buffs.find((x) => x.id === 'zeal' && x.remainingTicks > 0);
-  const s = b ? b.stacks : stacks;
-  return s * 5;
-}
-
-function judgmentHaste(buffs: PlayerCombatBuff[]): number {
-  return hasPlayerBuff(buffs, 'judgment_of_the_pure') ? 8 : 0;
-}
-
 export function photosynthesisHasteBonus(
   s: GameState,
   classType: ClassType,
@@ -71,19 +61,9 @@ export function photosynthesisHasteBonus(
   return 0;
 }
 
-export function totalHastePercent(
-  s: GameState,
-  classType: ClassType,
-  healer: Unit,
-  zealStackCount: number,
-): number {
+export function totalHastePercent(s: GameState, classType: ClassType, healer: Unit): number {
   const t = talentHastePctFromTalents(s.talents);
-  return (
-    t +
-    zealHasteFromBuffs(s.playerCombatBuffs, zealStackCount) +
-    judgmentHaste(s.playerCombatBuffs) +
-    photosynthesisHasteBonus(s, classType, healer)
-  );
+  return t + photosynthesisHasteBonus(s, classType, healer);
 }
 
 export function effectiveSpellCritChance(s: GameState, naturalStacks: number): number {

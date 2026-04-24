@@ -4,10 +4,6 @@ export const TICKS_1S = 10;
 export const TICKS_SPIRIT_REDEMPTION = 10 * TICKS_1S;
 export const ICD_SPIRIT_REDEMPTION = 120 * TICKS_1S;
 export const SURGE_OF_LIGHT_TICKS = 6 * TICKS_1S;
-export const JUDGMENT_PURE_TICKS = 10 * TICKS_1S;
-export const ZEAL_MAX_STACKS = 5;
-export const ZEAL_TICKS = 10 * TICKS_1S;
-export const ZEAL_HASTE_PER_STACK = 5;
 export const HEALER_UNIT_ID = '5';
 
 export const DRUID_HOTS = new Set(['rejuvenation', 'regrowth']);
@@ -142,12 +138,12 @@ export function findConsumableHotIndex(unit: Unit, cls: ClassType | null): numbe
 }
 
 export function isHealSpell(spell: Spell, spellId: string): boolean {
-  if (spellId === 'wand' || spellId === 'mana_potion') return false;
+  if (spellId === 'mana_potion') return false;
   return spell.type === SpellType.DIRECT || spell.type === SpellType.HOT || spell.type === SpellType.AOE;
 }
 
 export function isDirectHealSpell(spell: Spell, spellId: string): boolean {
-  if (spellId === 'mana_potion' || spellId === 'wand') return false;
+  if (spellId === 'mana_potion') return false;
   if (spell.type === SpellType.AOE) return true;
   if (spell.type === SpellType.DIRECT) return true;
   if (spell.type === SpellType.HOT && spell.healing > 0) return true;

@@ -144,7 +144,6 @@ export function ActionBars({
         case 'regrowth': return 'border-lime-500';
         case 'wild_growth': return 'border-purple-500';
         case 'swiftmend': return 'border-emerald-400';
-        case 'wand': return 'border-violet-400';
         case 'mana_potion': return 'border-blue-500';
         default: return 'border-slate-700';
     }
@@ -167,11 +166,6 @@ export function ActionBars({
 
     const sentences: string[] = [];
 
-    if (id === 'wand') {
-      return playerClass === ClassType.PALADIN
-        ? 'Fires a magic bolt at the enemy and builds Caster Zeal for haste'
-        : 'Fires a magic bolt at the enemy';
-    }
     if (id === 'swiftmend') {
       return 'Consumes a HoT on the target to burst-heal. Requires Rejuvenation or Regrowth';
     }
@@ -273,6 +267,7 @@ export function ActionBars({
         </div>
       ) : null}
       <div className="relative flex w-full flex-col items-center gap-1.5">
+        <div className="relative w-full max-w-2xl overflow-hidden rounded-md border border-slate-800/80 bg-slate-950/35 py-1.5 sm:py-2">
         <motion.div
           className="pointer-events-none absolute inset-y-0 left-0 bg-blue-600/25 border-r border-blue-500/20"
           initial={false}
@@ -280,7 +275,7 @@ export function ActionBars({
           transition={{ type: 'tween', duration: 0.2 }}
           aria-hidden
         />
-        <div className="relative z-10 flex w-full max-w-2xl items-center justify-between gap-2 px-0.5">
+        <div className="relative z-10 flex w-full items-center justify-between gap-2 px-2 sm:px-2.5">
         <div className="flex min-w-0 flex-col gap-0 leading-tight">
           <span className="text-sm font-black uppercase tracking-wide text-slate-400">Mana Pool</span>
           <span className="text-sm font-mono font-bold tracking-tight">
@@ -311,6 +306,7 @@ export function ActionBars({
         <span className="shrink-0 font-mono text-lg font-black italic text-blue-400 tabular-nums sm:text-xl">
           {Math.floor(mana)}<span className="ml-0.5 text-base font-normal text-slate-400 opacity-90 sm:text-lg">/ {maxMana}</span>
         </span>
+        </div>
         </div>
       <div className="relative z-10 flex justify-center gap-2 sm:gap-2.5">
         {spellIds.map((id, index) => {

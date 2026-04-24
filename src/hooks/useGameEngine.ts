@@ -49,16 +49,12 @@ import {
   hasPlayerBuff,
   isIcDRdy,
   upsertPlayerBuff,
-  getPlayerBuffStacks,
   tickPlayerBuffs,
   isDirectHealSpell,
   isHealSpell,
   HEALER_UNIT_ID,
   healerInParty,
   SURGE_OF_LIGHT_TICKS,
-  JUDGMENT_PURE_TICKS,
-  ZEAL_MAX_STACKS,
-  ZEAL_TICKS,
   ICD_SPIRIT_REDEMPTION,
   withBuffRemoved,
 } from '../talentMechanics.ts';
@@ -247,6 +243,8 @@ export function useGameEngine() {
       naturalPerfectionStacks: 0,
     }));
     bossMechanicCountdownRef.current = 0;
+    cooldownsRef.current = {};
+    setCooldownTick((x) => x + 1);
   }, []);
 
   const startDungeon = useCallback((dungeon: Dungeon) => {
@@ -276,6 +274,8 @@ export function useGameEngine() {
       naturalPerfectionStacks: 0,
     }));
     bossMechanicCountdownRef.current = 0;
+    cooldownsRef.current = {};
+    setCooldownTick((x) => x + 1);
   }, []);
 
   const unlockTalent = useCallback((talentId: string) => {
@@ -330,8 +330,7 @@ export function useGameEngine() {
       }
       const healerU = healerInParty(s.party);
       if (!healerU) return s;
-      const zStacks = getPlayerBuffStacks(s.playerCombatBuffs, 'zeal');
-      const hastePct = totalHastePercent(s, s.playerClass, healerU, zStacks);
+      const hastePct = totalHastePercent(s, s.playerClass, healerU);
       const surgeFree = hasPlayerBuff(s.playerCombatBuffs, 'surge_of_light') && spellId === 'greater_heal';
       const needMana = nextManaForSpell(s, s.playerClass, spell, spellId, !!surgeFree);
       if (s.mana < needMana) return s;
@@ -349,27 +348,6 @@ export function useGameEngine() {
         return nextPi;
       };
 
-      if (spellId === 'wand') {
-        const d = (spell.dealDamageToEnemy ?? 10) + talentRanks(s.talents, 'pala_path_dusk');
-        const pz = getPlayerBuffStacks(s.playerCombatBuffs, 'zeal');
-        let comb = upsertPlayerBuff(
-          s.playerCombatBuffs,
-          'zeal',
-          ZEAL_TICKS,
-          Math.min(ZEAL_MAX_STACKS, (pz || 0) + 1),
-        );
-        if (talentRanks(s.talents, 'judgment_of_the_pure') > 0) {
-          comb = upsertPlayerBuff(comb, 'judgment_of_the_pure', JUDGMENT_PURE_TICKS, 1);
-        }
-        const npi = runCooldown(spell.cooldown, s.powerInfusionCastsRemaining);
-        return {
-          ...s,
-          enemyHealth: Math.max(0, s.enemyHealth - d),
-          playerCombatBuffs: comb,
-          powerInfusionCastsRemaining: npi,
-        };
-      }
-
       if (spellId === 'swiftmend' && s.playerClass === ClassType.DRUID) {
         const healMult0 = spellHealingMultiplierFromProgress(s.playerClass, s.level, s.talents);
         const isCrit0 = rollCrit(critRollRef.current, s, s.naturalPerfectionStacks);
@@ -382,7 +360,8 @@ export function useGameEngine() {
           piSm = Math.max(piSm, 3);
         }
         const nPiSm = runCooldown(spell.cooldown, piSm);
-        return { ...s, party: pr, mana: m0, powerInfusionCastsRemaining: nPiSm };
+        const spiritLockSm = needMana > 0 ? MANA_SPIRIT_REGEN_LOCKOUT_TICKS : s.spiritRegenLockoutTicksRemaining;
+        return { ...s, party: pr, mana: m0, powerInfusionCastsRemaining: nPiSm, spiritRegenLockoutTicksRemaining: spiritLockSm };
       }
 
       if (spellId === 'mana_potion') {
@@ -392,7 +371,6 @@ export function useGameEngine() {
           ...s,
           mana: newManaP,
           manaRegenBuffTicksRemaining: spell.manaRegenBuffDurationTicks ?? 0,
-          spiritRegenLockoutTicksRemaining: MANA_SPIRIT_REGEN_LOCKOUT_TICKS,
           manaPotionsUsedThisDungeon: s.manaPotionsUsedThisDungeon + 1,
           powerInfusionCastsRemaining: nPiP,
         };
@@ -511,13 +489,6 @@ export function useGameEngine() {
       const manaR = s.talents.reduce((a, t) => a + (t.statBonus?.manaReturnOnDirectHeal || 0) * t.points, 0);
       const isDir = isDirectHealSpell(spell, spellId);
       mOut = Math.min(s.maxMana, mOut + (isDir ? manaR : 0));
-      let enH = s.enemyHealth;
-      if (s.capstoneForm === 'paladin_avenging_wrath' && s.capstoneFormTicksRemaining > 0) {
-        const aoeC = newParty2.filter((q) => q.health > 0).length;
-        const singleHeal = spell.healing * healMultB * critH * tMod;
-        const hEcho = spell.type === SpellType.AOE ? singleHeal * aoeC : singleHeal;
-        enH = Math.max(0, s.enemyHealth - hEcho * 0.5);
-      }
       const nPi = runCooldown(spell.cooldown, piForCd);
       let hp2 = s.holyPower;
       if (targetId && spell.type !== SpellType.AOE) {
@@ -529,6 +500,11 @@ export function useGameEngine() {
       if (tower2) {
         hp2 = 0;
       }
+      const spentManaForSpiritRegen =
+        needMana > 0 && !(surgeFree && spellId === 'greater_heal');
+      const spiritLockCast = spentManaForSpiritRegen
+        ? MANA_SPIRIT_REGEN_LOCKOUT_TICKS
+        : s.spiritRegenLockoutTicksRemaining;
       return {
         ...s,
         party: newParty2,
@@ -536,7 +512,8 @@ export function useGameEngine() {
         playerCombatBuffs: pbuffs,
         holyPower: hp2,
         powerInfusionCastsRemaining: nPi,
-        enemyHealth: enH,
+        enemyHealth: s.enemyHealth,
+        spiritRegenLockoutTicksRemaining: spiritLockCast,
       };
     });
   }, []);
@@ -737,6 +714,8 @@ export function useGameEngine() {
             });
           }
           bossMechanicCountdownRef.current = 0;
+          cooldownsRef.current = {};
+          queueMicrotask(() => setCooldownTick((x) => x + 1));
           return {
             ...s,
             party: newParty,
@@ -805,6 +784,8 @@ export function useGameEngine() {
                 ? [...s.completedDungeonIds, dungeonId]
                 : s.completedDungeonIds;
             bossMechanicCountdownRef.current = 0;
+            cooldownsRef.current = {};
+            queueMicrotask(() => setCooldownTick((x) => x + 1));
             return {
               ...s,
               xp: newXp,
@@ -893,7 +874,6 @@ export function useGameEngine() {
   const actionBarHighlights = useMemo(
     () => ({
       greater_heal: hasPlayerBuff(state.playerCombatBuffs, 'surge_of_light'),
-      wand: getPlayerBuffStacks(state.playerCombatBuffs, 'zeal') < ZEAL_MAX_STACKS,
     }),
     [state.playerCombatBuffs],
   );
