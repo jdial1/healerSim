@@ -4,7 +4,8 @@
  */
 
 import { useRef, useCallback, type PointerEvent as ReactPointerEvent } from 'react';
-import { DUNGEONS, bossCombatProfileForDungeon, TICKS_PER_SECOND } from '../constants.ts';
+import { bossCombatProfileForDungeon, TICKS_PER_SECOND } from '../constants.ts';
+import { DUNGEONS } from '../dungeons/index.ts';
 import { type BossDebuffTargeting, type Dungeon } from '../types.ts';
 import { computeDungeonXpGain, levelsOverDungeonMax } from '../gameStorage.ts';
 import { Lock } from 'lucide-react';
@@ -107,14 +108,14 @@ const DUNGEON_CARD_THEME = {
 } satisfies Record<DungeonCardId, DungeonCardTheme>;
 
 const CARD_SHELL =
-  'relative flex h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 py-8 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:py-10 max-sm:px-6 max-sm:py-9';
+  'relative flex h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 pt-4 pb-4 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:pt-5 sm:pb-5 md:px-7 md:pt-6 md:pb-6 max-sm:px-6 max-sm:pt-3.5 max-sm:pb-3.5';
 
 const LOCKED_ROSTER_ICON = 'badges/question';
 
-function debuffTargetShort(t: BossDebuffTargeting): string {
-  if (t === 'single_random') return '1 tgt';
-  if (t === 'all_living') return 'All';
-  return '2 tgt';
+function debuffTargetingDescription(t: BossDebuffTargeting): string {
+  if (t === 'single_random') return 'Hits 1 ally';
+  if (t === 'all_living') return 'Hits all allies';
+  return 'Hits 2 allies';
 }
 
 function durationSecLabel(durationTicks: number): string {
@@ -134,18 +135,18 @@ function BossMechanicsStrip({
   const cardTheme = DUNGEON_CARD_THEME[dungeon.id as DungeonCardId];
 
   const cardShell =
-    'flex h-full min-h-0 min-w-0 flex-1 basis-0 flex-col gap-1.5 rounded-md border bg-slate-900/75 px-2 py-2 sm:gap-1.5 sm:px-2 sm:py-2';
+    'flex h-full min-h-0 min-w-0 flex-1 basis-0 flex-col gap-1.5 rounded-md border bg-slate-900/75 px-2 py-2 sm:gap-1.5 sm:px-2 sm:py-2 md:gap-2 md:px-2.5 md:py-2.5';
 
   if (isLocked) {
     return (
       <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
-        <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-stretch gap-1.5 sm:gap-2">
+        <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-stretch gap-1.5 sm:gap-2 md:gap-2.5">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
               className={`${cardShell} border-slate-800/90 opacity-[0.55]`}
             >
-              <span className="text-[10px] font-black uppercase tracking-tight text-slate-500 sm:text-[9px]">?</span>
+              <span className="text-[10px] font-black uppercase tracking-tight text-slate-500 sm:text-[9px] md:text-xs">?</span>
               <GameIcon
                 iconPath={LOCKED_ROSTER_ICON}
                 glow="spell"
@@ -155,7 +156,7 @@ function BossMechanicsStrip({
                 className="mx-auto shrink-0"
               />
               <div className="flex min-h-0 flex-1 flex-col justify-center py-0.5">
-                <p className="text-center text-xs font-bold uppercase leading-snug text-slate-400 sm:text-[11px]">
+                <p className="text-center text-xs font-bold uppercase leading-snug text-slate-400 sm:text-[11px] md:text-sm">
                   Hidden
                 </p>
               </div>
@@ -168,15 +169,15 @@ function BossMechanicsStrip({
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-stretch gap-1.5 sm:gap-2">
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-stretch gap-1.5 sm:gap-2 md:gap-2.5">
         {profile.debuffTemplates.map((d) => (
           <div
             key={d.abilityId}
             className={`${cardShell} border-rose-900/45`}
           >
-            <span className="shrink-0 text-[10px] font-black uppercase tracking-tight text-rose-400 sm:text-[9px]">
-              Debuff
-            </span>
+            <p className="line-clamp-3 shrink-0 break-words text-center text-xs font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-[11px] md:text-sm">
+              {d.name}
+            </p>
             <GameIcon
               iconPath={d.icon}
               glow="debuff"
@@ -185,17 +186,56 @@ function BossMechanicsStrip({
               dimmed={dimmed}
               className="mx-auto shrink-0"
             />
-            <div className="flex min-h-0 flex-1 flex-col justify-center py-0.5">
-              <p className="line-clamp-3 break-words text-center text-xs font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-[11px]">
-                {d.name}
+            <div className="mt-auto min-h-0 shrink-0 space-y-1.5 text-center md:space-y-2">
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-[8px] md:text-[11px]">
+                  Dmg per tick
+                </p>
+                <p className="text-[11px] font-bold tabular-nums leading-snug text-slate-200 sm:text-[10px] md:text-sm">
+                  {d.damagePerTick}
+                </p>
+              </div>
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-[8px] md:text-[11px]">
+                  Duration
+                </p>
+                <p className="text-[11px] font-bold tabular-nums leading-snug text-slate-200 sm:text-[10px] md:text-sm">
+                  {durationSecLabel(d.durationTicks)}
+                </p>
+              </div>
+              <p className="text-[10px] font-semibold leading-snug text-slate-400 sm:text-[9px] md:text-xs">
+                {debuffTargetingDescription(d.targeting)}
               </p>
             </div>
-            <div className="mt-auto min-h-0 shrink-0 space-y-1 text-center">
-              <p className="break-words text-[11px] font-bold tabular-nums leading-snug text-slate-300 sm:text-[10px]">
-                {d.damagePerTick}/t · {durationSecLabel(d.durationTicks)}
-              </p>
-              <p className="text-[10px] font-black uppercase tracking-tight text-slate-400 sm:text-[9px]">
-                {debuffTargetShort(d.targeting)}
+          </div>
+        ))}
+        {profile.attackTemplates.map((a) => (
+          <div
+            key={a.abilityId}
+            className={`${cardShell} border-orange-900/50`}
+          >
+            <p className="line-clamp-3 shrink-0 break-words text-center text-xs font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-[11px] md:text-sm">
+              {a.name}
+            </p>
+            <GameIcon
+              iconPath={a.icon}
+              glow="debuff"
+              size="md"
+              title={a.name}
+              dimmed={dimmed}
+              className="mx-auto shrink-0"
+            />
+            <div className="mt-auto min-h-0 shrink-0 space-y-1.5 text-center md:space-y-2">
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-[8px] md:text-[11px]">
+                  Special
+                </p>
+                <p className="text-[11px] font-bold tabular-nums leading-snug text-orange-200 sm:text-[10px] md:text-sm">
+                  {a.damage}
+                </p>
+              </div>
+              <p className="text-[10px] font-semibold leading-snug text-slate-400 sm:text-[9px] md:text-xs">
+                {debuffTargetingDescription(a.targeting)}
               </p>
             </div>
           </div>
@@ -207,9 +247,9 @@ function BossMechanicsStrip({
               key={b.abilityId}
               className={`${cardShell} border-amber-800/40`}
             >
-              <span className="shrink-0 text-[10px] font-black uppercase tracking-tight text-amber-300 sm:text-[9px]">
-                Buff
-              </span>
+              <p className="line-clamp-3 shrink-0 break-words text-center text-xs font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-[11px] md:text-sm">
+                {b.name}
+              </p>
               <GameIcon
                 iconPath={b.icon}
                 glow="spell"
@@ -219,18 +259,23 @@ function BossMechanicsStrip({
                 accentTint={BOSS_BUFF_ICON_TINT}
                 className="mx-auto shrink-0"
               />
-              <div className="flex min-h-0 flex-1 flex-col justify-center py-0.5">
-                <p className="line-clamp-3 break-words text-center text-xs font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-[11px]">
-                  {b.name}
-                </p>
-              </div>
-              <div className="mt-auto min-h-0 shrink-0 space-y-1 text-center">
-                <p className="text-[11px] font-bold tabular-nums leading-snug text-amber-200 sm:text-[10px]">
-                  +{pct}% dmg
-                </p>
-                <p className="text-[10px] font-black uppercase tracking-tight text-slate-400 sm:text-[9px]">
-                  {durationSecLabel(b.durationTicks)}
-                </p>
+              <div className="mt-auto min-h-0 shrink-0 space-y-1.5 text-center md:space-y-2">
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-[8px] md:text-[11px]">
+                    Damage done
+                  </p>
+                  <p className="text-[11px] font-bold tabular-nums leading-snug text-amber-200 sm:text-[10px] md:text-sm">
+                    +{pct}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-[8px] md:text-[11px]">
+                    Duration
+                  </p>
+                  <p className="text-[11px] font-bold tabular-nums leading-snug text-slate-200 sm:text-[10px] md:text-sm">
+                    {durationSecLabel(b.durationTicks)}
+                  </p>
+                </div>
               </div>
             </div>
           );
@@ -352,7 +397,10 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
             const bossCombat = bossCombatProfileForDungeon(dungeon);
             const showBossMechanicsRow =
               isLocked ||
-              bossCombat.debuffTemplates.length + bossCombat.selfBuffTemplates.length > 0;
+              bossCombat.debuffTemplates.length +
+                bossCombat.selfBuffTemplates.length +
+                bossCombat.attackTemplates.length >
+                0;
 
             return (
               <button
@@ -368,13 +416,13 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                   ${isLocked ? 'cursor-default opacity-[0.45]' : `${theme.borderHover} cursor-pointer`}
                 `}
               >
-                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden md:gap-4">
                   <div className="flex shrink-0 items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <h3 className="line-clamp-2 text-2xl font-black uppercase italic leading-[1.05] tracking-tighter text-white sm:text-2xl">
+                      <h3 className="line-clamp-2 text-2xl font-black uppercase italic leading-[1.05] tracking-tighter text-white sm:text-2xl md:text-3xl">
                         {dungeon.name.replace(/^The /i, '')}
                       </h3>
-                      <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0 text-xs font-black uppercase leading-snug sm:mt-0.5 sm:text-[11px]">
+                      <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0 text-xs font-black uppercase leading-snug sm:mt-0.5 sm:text-[11px] md:text-sm">
                         <span className="text-slate-500">Lv {dungeon.levelMin}–{dungeon.levelMax}</span>
                         {!isLocked ? (
                           <>
@@ -452,7 +500,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                               accentTint={theme.iconTint}
                             />
                             <span
-                              className={`min-w-0 flex-1 truncate text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-300'}`}
+                              className={`min-w-0 flex-1 truncate text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm md:text-base ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-300'}`}
                             >
                               {enemy.name}
                             </span>
@@ -468,7 +516,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                             accentTint={theme.iconTint}
                           />
                           <span
-                            className={`min-w-0 flex-1 truncate text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-200'}`}
+                            className={`min-w-0 flex-1 truncate text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm md:text-base ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-200'}`}
                           >
                             {dungeon.bossName}
                           </span>
@@ -488,7 +536,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                 </div>
 
                 <div
-                  className={`mt-auto w-full shrink-0 rounded-lg py-4 text-center text-lg font-black uppercase tracking-wider sm:py-4 sm:text-base ${
+                  className={`mt-auto w-full shrink-0 rounded-lg py-4 text-center text-lg font-black uppercase tracking-wider sm:py-4 sm:text-base md:text-xl ${
                     isLocked
                       ? 'border border-slate-800 bg-slate-950/50 text-slate-600'
                       : theme.deploy

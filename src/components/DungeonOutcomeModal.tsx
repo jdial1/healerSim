@@ -83,29 +83,16 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
 
           <div className="px-4 py-4 sm:px-5 sm:py-5">
             {isSuccess ? (
-              <>
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="rounded border border-slate-800 bg-slate-900/80 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-blue-400">
-                    +{outcome.xpGained} XP
+              <div className="flex flex-col items-center gap-3">
+                <span className="rounded-lg border border-blue-800/60 bg-slate-950/90 px-6 py-4 text-2xl font-black uppercase tracking-widest text-blue-300 shadow-[0_0_24px_rgba(59,130,246,0.15)] sm:px-8 sm:py-5 sm:text-3xl">
+                  +{outcome.xpGained} XP
+                </span>
+                {outcome.levelUp ? (
+                  <span className="rounded border border-amber-800/60 bg-amber-950/40 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-amber-300 sm:text-sm">
+                    Level up
                   </span>
-                  {outcome.levelUp ? (
-                    <span className="rounded border border-amber-800/60 bg-amber-950/40 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300">
-                      Level up
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Loot</p>
-                <ul className="max-h-[40vh] space-y-1.5 overflow-y-auto pr-1">
-                  {outcome.loot.map((item) => (
-                    <li
-                      key={item}
-                      className="rounded border border-slate-800/90 bg-slate-900/50 px-3 py-2 text-[12px] font-bold text-slate-200 sm:text-sm"
-                    >
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </>
+                ) : null}
+              </div>
             ) : null}
             <button
               type="button"

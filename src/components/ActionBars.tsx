@@ -310,6 +310,46 @@ export function ActionBars({
         </div>
       <div className="relative z-10 flex justify-center gap-2 sm:gap-2.5">
         {spellIds.map((id, index) => {
+          const reordering = allowReorder && onReorderSlots;
+          if (id === '') {
+            return (
+              <div key={`bar-${index}`} className="relative group">
+                <div
+                  role="presentation"
+                  draggable={false}
+                  onDragOver={
+                    reordering
+                      ? (e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }
+                      : undefined
+                  }
+                  onDrop={
+                    reordering
+                      ? (e) => {
+                          e.preventDefault();
+                          const raw = e.dataTransfer.getData('text/plain');
+                          const from = parseInt(raw, 10);
+                          if (Number.isNaN(from)) return;
+                          suppressPreviewClickUntilRef.current = performance.now() + 450;
+                          onReorderSlots(from, index);
+                          setDraggingBarIndex(null);
+                        }
+                      : undefined
+                  }
+                  className={`relative flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 border-b-4 border-slate-700 bg-slate-900/40 sm:h-[4.75rem] sm:w-[4.75rem] ${
+                    reordering ? 'ring-1 ring-dashed ring-slate-600' : ''
+                  } ${draggingBarIndex === index ? 'opacity-30' : ''}`}
+                >
+                  <div className="absolute left-1 top-0.5 rounded bg-slate-900/50 px-1 font-mono text-xs font-black text-slate-600">
+                    {index + 1}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
           const spell = SPELLS[id];
           if (!spell) return null;
 
@@ -318,11 +358,10 @@ export function ActionBars({
           const noPotionCharges = id === 'mana_potion' && manaPotionChargesRemaining <= 0;
           const castBlocked = cooldown > 0 || isLowMana || noPotionCharges;
           const disabled = spellsEnabled && castBlocked;
-          const reordering = allowReorder && onReorderSlots;
 
           return (
             <div
-              key={`${id}-${index}`}
+              key={`bar-${index}`}
               className="relative group"
               onPointerEnter={() => setTooltipHoverSpellId(id)}
               onPointerLeave={() => {

@@ -27,6 +27,7 @@ export default function App() {
     abandonDungeon,
     castSpell,
     unlockTalent,
+    respecTalents,
     reorderActionBar,
     cooldowns,
     dungeonOutcome,
@@ -62,6 +63,12 @@ export default function App() {
   }, [state.currentDungeon, targetId, state.party, castSpell]);
 
   useEffect(() => {
+    if (!targetId) return;
+    const alive = state.party.some((m) => m.id === targetId && m.health > 0);
+    if (!alive) setTargetId(null);
+  }, [state.party, targetId]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key;
       // Handle numbers 1-5
@@ -71,9 +78,8 @@ export default function App() {
       const index = num - 1;
 
       if (e.shiftKey) {
-        // Shift+1-5: Target party member
         const member = state.party[index];
-        if (member) {
+        if (member && member.health > 0) {
           setTargetId(member.id);
         }
       } else if (state.currentDungeon) {
@@ -100,6 +106,7 @@ export default function App() {
             talents={state.talents}
             talentPoints={state.talentPoints}
             onUnlock={unlockTalent}
+            onRespec={respecTalents}
             onClose={() => setShowTalents(false)}
             playerLevel={state.level}
             playerClass={state.playerClass}

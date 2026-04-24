@@ -12,6 +12,9 @@ import {
   PartyDebuff,
   BossSelfBuff,
   BossDebuffTemplate,
+  BossAttackTemplate,
+  BossCombatProfile,
+  Talent,
   SpellType,
   Dungeon,
   DungeonRunOutcome,
@@ -113,6 +116,78 @@ function applyBossDebuffTemplate(party: Unit[], template: BossDebuffTemplate): U
   return next;
 }
 
+function selectBossAbilityTargetIds(
+  party: Unit[],
+  targeting: BossAttackTemplate['targeting'],
+): Set<string> {
+  const livingIds = party.filter((u) => u.health > 0).map((u) => u.id);
+  const out = new Set<string>();
+  if (livingIds.length === 0) return out;
+  if (targeting === 'all_living') {
+    livingIds.forEach((id) => out.add(id));
+    return out;
+  }
+  if (targeting === 'single_random') {
+    out.add(livingIds[Math.floor(Math.random() * livingIds.length)]);
+    return out;
+  }
+  const shuffled = [...livingIds].sort(() => Math.random() - 0.5);
+  const count = Math.min(2, shuffled.length);
+  for (let i = 0; i < count; i++) out.add(shuffled[i]);
+  return out;
+}
+
+function bossMechanicKinds(profile: BossCombatProfile): ('debuff' | 'buff' | 'attack')[] {
+  const kinds: ('debuff' | 'buff' | 'attack')[] = [];
+  if (profile.debuffTemplates.length > 0) kinds.push('debuff');
+  if (profile.selfBuffTemplates.length > 0) kinds.push('buff');
+  if (profile.attackTemplates.length > 0) kinds.push('attack');
+  return kinds;
+}
+
+function applyBossAttackTemplate(
+  party: Unit[],
+  template: BossAttackTemplate,
+  dungeon: Dungeon,
+  partyDamageMult: number,
+  talents: Talent[],
+): { party: Unit[]; naturalPerfectionAdd: number } {
+  const targetIds = selectBossAbilityTargetIds(party, template.targeting);
+  if (targetIds.size === 0) return { party, naturalPerfectionAdd: 0 };
+
+  const tank = party.find((u) => u.role === 'TANK');
+  const tankDead = !tank || tank.health <= 0;
+  const baseMult =
+    bossDamageMultiplierForDifficulty(dungeon.difficulty) * partyDamageMult;
+  const natRank = talentRanks(talents, 'natural_perfection');
+  let naturalPerfectionAdd = 0;
+
+  const next = party.map((u) => {
+    if (u.health <= 0 || !targetIds.has(u.id)) return u;
+    let dmg =
+      template.damage *
+      baseMult *
+      damageTakenMultiplierFromDungeonLevelGap(u.level, dungeon.levelMax);
+    if (tankDead && (u.role === 'DPS' || u.role === 'HEALER')) dmg *= 2;
+    const hit = applyDamageThroughShield(u.health, u.shield, dmg);
+    let hp = hit.health;
+    let sh = hit.shield;
+    let seed = u.livingSeedPool;
+    let ticks = u.shieldTicksRemaining;
+    if (sh <= 0) ticks = 0;
+    if (hit.tookHealthDamage > 0 && seed > 0 && hp > 0) {
+      hp = Math.min(u.maxHealth, hp + seed);
+      seed = 0;
+    }
+    if (u.role === 'HEALER' && hit.tookHealthDamage > 0 && natRank > 0) {
+      naturalPerfectionAdd = 1;
+    }
+    return { ...u, health: hp, shield: sh, shieldTicksRemaining: ticks, livingSeedPool: seed };
+  });
+
+  return { party: next, naturalPerfectionAdd };
+}
+
 function createInitialGameState(): GameState {
   let party = generateRandomParty(1, null);
   const base: GameState = {
@@ -125,7 +200,7 @@ function createInitialGameState(): GameState {
     manaPotionsUsedThisDungeon: 0,
     xp: 0,
     level: 1,
-    talentPoints: 5,
+    talentPoints: 1,
     talents: [],
     unlockedSpells: [],
     activeActionBars: [],
@@ -176,6 +251,10 @@ export function useGameEngine() {
 
   const cooldownsRef = useRef<Record<string, number>>({});
   const bossMechanicCountdownRef = useRef(0);
+  const bossMechanicStepRef = useRef(0);
+  const bossDebuffTemplateIndexRef = useRef(0);
+  const bossBuffTemplateIndexRef = useRef(0);
+  const bossAttackTemplateIndexRef = useRef(0);
   const critRollRef = useRef(0);
   const [, setCooldownTick] = useState(0);
   const [dungeonOutcome, setDungeonOutcome] = useState<DungeonRunOutcome | null>(null);
@@ -243,6 +322,10 @@ export function useGameEngine() {
       naturalPerfectionStacks: 0,
     }));
     bossMechanicCountdownRef.current = 0;
+    bossMechanicStepRef.current = 0;
+    bossDebuffTemplateIndexRef.current = 0;
+    bossBuffTemplateIndexRef.current = 0;
+    bossAttackTemplateIndexRef.current = 0;
     cooldownsRef.current = {};
     setCooldownTick((x) => x + 1);
   }, []);
@@ -274,6 +357,10 @@ export function useGameEngine() {
       naturalPerfectionStacks: 0,
     }));
     bossMechanicCountdownRef.current = 0;
+    bossMechanicStepRef.current = 0;
+    bossDebuffTemplateIndexRef.current = 0;
+    bossBuffTemplateIndexRef.current = 0;
+    bossAttackTemplateIndexRef.current = 0;
     cooldownsRef.current = {};
     setCooldownTick((x) => x + 1);
   }, []);
@@ -318,6 +405,28 @@ export function useGameEngine() {
     });
   }, []);
 
+  const respecTalents = useCallback(() => {
+    setState((s) => {
+      if (!s.playerClass || s.talents.length === 0) return s;
+      const cleared = s.talents.map((t) => ({ ...t, points: 0 }));
+      const meta = computeMetaFromProgress(s.xp, s.playerClass, cleared);
+      const activeActionBars = reconcileActionBarOrder(s.activeActionBars, meta.activeActionBars);
+      let pbuffs = s.playerCombatBuffs;
+      pbuffs = withBuffRemoved(pbuffs, 'archangel');
+      pbuffs = withBuffRemoved(pbuffs, 'natures_grace_aura');
+      pbuffs = withBuffRemoved(pbuffs, 'avenging_wrath_aura');
+      return {
+        ...s,
+        ...meta,
+        activeActionBars,
+        mana: Math.min(meta.maxMana, s.mana),
+        capstoneForm: null,
+        capstoneFormTicksRemaining: 0,
+        playerCombatBuffs: pbuffs,
+      };
+    });
+  }, []);
+
   const castSpell = useCallback((spellId: string, targetId: string) => {
     const spell = SPELLS[spellId];
     if (!spell) return;
@@ -334,6 +443,15 @@ export function useGameEngine() {
       const surgeFree = hasPlayerBuff(s.playerCombatBuffs, 'surge_of_light') && spellId === 'greater_heal';
       const needMana = nextManaForSpell(s, s.playerClass, spell, spellId, !!surgeFree);
       if (s.mana < needMana) return s;
+      const healTgt0 = s.party.find((x) => x.id === targetId);
+      if (
+        spell.type !== SpellType.AOE &&
+        isHealSpell(spell, spellId) &&
+        healTgt0 &&
+        healTgt0.health <= 0
+      ) {
+        return s;
+      }
 
       const runCooldown = (rawCd: number, piLeft: number) => {
         const nextPi = piLeft > 0 ? piLeft - 1 : 0;
@@ -398,6 +516,7 @@ export function useGameEngine() {
         return { ...u, health: th };
       };
       const addHot = (u: Unit) => {
+        if (u.health <= 0) return u;
         if (spell.type !== SpellType.HOT && !spell.hotDuration) return u;
         const tHot = (spell.hotHealingPerTick || 0) * healMultB * critH;
         return applyPandemicHotToUnit(u, spell, tHot);
@@ -440,7 +559,9 @@ export function useGameEngine() {
         if (targetId !== tankId && spell.type !== SpellType.AOE) {
           const amount = (spell.healing * healMultB * critH * tMod) * 0.5;
           newParty2 = newParty2.map((u) =>
-            u.id === tankId ? { ...u, health: Math.min(u.maxHealth, u.health + amount) } : u,
+            u.id === tankId && u.health > 0
+              ? { ...u, health: Math.min(u.maxHealth, u.health + amount) }
+              : u,
           );
         }
       }
@@ -527,28 +648,36 @@ export function useGameEngine() {
         if (!s.isCombatActive) return s;
 
         let partyAfterBossAI = s.party;
+        let naturalFromBossAttack = 0;
         let bossBuffsWorking: BossSelfBuff[] =
           s.combatPhase === 'BOSS' ? [...s.bossSelfBuffs] : [];
 
         if (s.combatPhase === 'BOSS' && s.currentDungeon) {
           const profile = bossCombatProfileForDungeon(s.currentDungeon);
-          const hasBossMechanics =
-            profile.debuffTemplates.length > 0 || profile.selfBuffTemplates.length > 0;
-          if (hasBossMechanics) {
+          const kinds = bossMechanicKinds(profile);
+          if (kinds.length > 0) {
             bossMechanicCountdownRef.current -= 1;
             if (bossMechanicCountdownRef.current <= 0) {
-              if (profile.debuffTemplates.length > 0) {
-                const tpl =
-                  profile.debuffTemplates[
-                    Math.floor(Math.random() * profile.debuffTemplates.length)
-                  ];
-                partyAfterBossAI = applyBossDebuffTemplate(partyAfterBossAI, tpl);
-              }
-              if (profile.selfBuffTemplates.length > 0) {
-                const tpl =
-                  profile.selfBuffTemplates[
-                    Math.floor(Math.random() * profile.selfBuffTemplates.length)
-                  ];
+              const partyDmgMultPre =
+                bossBuffsWorking.length > 0
+                  ? Math.max(...bossBuffsWorking.map((b) => b.partyDamageMultiplier))
+                  : 1;
+              const step = bossMechanicStepRef.current % kinds.length;
+              const kind = kinds[step];
+              bossMechanicStepRef.current += 1;
+
+              if (kind === 'debuff') {
+                const nDebuff = profile.debuffTemplates.length;
+                const di = bossDebuffTemplateIndexRef.current % nDebuff;
+                partyAfterBossAI = applyBossDebuffTemplate(
+                  partyAfterBossAI,
+                  profile.debuffTemplates[di],
+                );
+                bossDebuffTemplateIndexRef.current += 1;
+              } else if (kind === 'buff') {
+                const nBuff = profile.selfBuffTemplates.length;
+                const bi = bossBuffTemplateIndexRef.current % nBuff;
+                const tpl = profile.selfBuffTemplates[bi];
                 const withoutSame = bossBuffsWorking.filter((b) => b.sourceAbilityId !== tpl.abilityId);
                 bossBuffsWorking = [
                   ...withoutSame,
@@ -561,6 +690,20 @@ export function useGameEngine() {
                     sourceAbilityId: tpl.abilityId,
                   },
                 ];
+                bossBuffTemplateIndexRef.current += 1;
+              } else {
+                const nAtk = profile.attackTemplates.length;
+                const ai = bossAttackTemplateIndexRef.current % nAtk;
+                const atk = applyBossAttackTemplate(
+                  partyAfterBossAI,
+                  profile.attackTemplates[ai],
+                  s.currentDungeon,
+                  partyDmgMultPre,
+                  s.talents,
+                );
+                partyAfterBossAI = atk.party;
+                naturalFromBossAttack += atk.naturalPerfectionAdd;
+                bossAttackTemplateIndexRef.current += 1;
               }
               bossMechanicCountdownRef.current = randomIntInclusive(
                 profile.mechanicIntervalTicksMin,
@@ -577,7 +720,7 @@ export function useGameEngine() {
 
         const tankIndex = partyAfterBossAI.findIndex((u) => u.role === 'TANK');
         let newParty: Unit[] = [];
-        let nextNat = s.naturalPerfectionStacks;
+        let nextNat = Math.min(5, s.naturalPerfectionStacks + naturalFromBossAttack);
         for (let idx = 0; idx < partyAfterBossAI.length; idx++) {
           const unit = partyAfterBossAI[idx];
           let damage = 0;
@@ -612,7 +755,7 @@ export function useGameEngine() {
             const hit = applyDamageThroughShield(currentHealth, curShield, damage);
             currentHealth = hit.health;
             curShield = hit.shield;
-            if (hit.tookHealthDamage > 0 && liveSeed > 0) {
+            if (hit.tookHealthDamage > 0 && liveSeed > 0 && currentHealth > 0) {
               currentHealth = Math.min(unit.maxHealth, currentHealth + liveSeed);
               liveSeed = 0;
             }
@@ -643,7 +786,9 @@ export function useGameEngine() {
               if (photo > 0 && s.playerClass === ClassType.DRUID && oneHotTickDoubleRoll(photo)) {
                 tickAmt *= 2;
               }
-              currentHealth = Math.min(unit.maxHealth, currentHealth + tickAmt);
+              if (currentHealth > 0) {
+                currentHealth = Math.min(unit.maxHealth, currentHealth + tickAmt);
+              }
               activeBuffs.push({ ...buff, remainingTicks: buff.remainingTicks - 1 });
             }
           });
@@ -714,6 +859,10 @@ export function useGameEngine() {
             });
           }
           bossMechanicCountdownRef.current = 0;
+          bossMechanicStepRef.current = 0;
+          bossDebuffTemplateIndexRef.current = 0;
+          bossBuffTemplateIndexRef.current = 0;
+          bossAttackTemplateIndexRef.current = 0;
           cooldownsRef.current = {};
           queueMicrotask(() => setCooldownTick((x) => x + 1));
           return {
@@ -758,6 +907,10 @@ export function useGameEngine() {
                   prof.mechanicIntervalTicksMin,
                   prof.mechanicIntervalTicksMax,
                 );
+                bossMechanicStepRef.current = 0;
+                bossDebuffTemplateIndexRef.current = 0;
+                bossBuffTemplateIndexRef.current = 0;
+                bossAttackTemplateIndexRef.current = 0;
               }
             }
           } else {
@@ -774,7 +927,6 @@ export function useGameEngine() {
                   bossName: d.bossName,
                   xpGained,
                   levelUp: isLevelUp,
-                  loot: d.lootRewards,
                 });
               });
             }
@@ -784,6 +936,10 @@ export function useGameEngine() {
                 ? [...s.completedDungeonIds, dungeonId]
                 : s.completedDungeonIds;
             bossMechanicCountdownRef.current = 0;
+            bossMechanicStepRef.current = 0;
+            bossDebuffTemplateIndexRef.current = 0;
+            bossBuffTemplateIndexRef.current = 0;
+            bossAttackTemplateIndexRef.current = 0;
             cooldownsRef.current = {};
             queueMicrotask(() => setCooldownTick((x) => x + 1));
             return {
@@ -885,6 +1041,7 @@ export function useGameEngine() {
     abandonDungeon,
     castSpell,
     unlockTalent,
+    respecTalents,
     reorderActionBar,
     cooldowns: cooldownsRef.current,
     dungeonOutcome,

@@ -5,7 +5,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Lock, X } from 'lucide-react';
+import { Lock, RotateCcw, X } from 'lucide-react';
 import { ClassType, Talent } from '../types.ts';
 import { unmetChainedPrerequisiteTalents } from '../playerStats.ts';
 import { GameIcon } from './GameIcon.tsx';
@@ -21,6 +21,7 @@ interface TalentTreeProps {
   talents: Talent[];
   talentPoints: number;
   onUnlock: (talentId: string) => void;
+  onRespec: () => void;
   onClose: () => void;
   playerLevel: number;
   playerClass: ClassType;
@@ -106,6 +107,7 @@ export function TalentTree({
   talents,
   talentPoints,
   onUnlock,
+  onRespec,
   onClose,
   playerLevel,
   playerClass,
@@ -114,6 +116,7 @@ export function TalentTree({
   const talentGlow = talentGlowForClass(playerClass);
 
   const exclusiveSplitPairs = useMemo(() => collectExclusiveSplitPairs(talents), [talents]);
+  const hasSpentTalents = talents.some((t) => t.points > 0);
 
   const selectedTalent = useMemo(
     () => talents.find((t) => t.id === selectedTalentId),
@@ -144,13 +147,24 @@ export function TalentTree({
           <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">Specialization</h2>
           <div className="text-[10px] font-bold tracking-[0.2em] text-blue-500">POINTS AVAILABLE: {talentPoints}</div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full bg-slate-800 p-2 text-white transition-colors hover:bg-red-600"
-        >
-          <X size={20} />
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={onRespec}
+            disabled={!hasSpentTalents}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800 px-2.5 py-2 text-[10px] font-black uppercase tracking-widest text-slate-200 transition-colors hover:border-amber-500/60 hover:bg-slate-700 hover:text-amber-100 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600 disabled:hover:border-slate-800"
+          >
+            <RotateCcw size={16} className="shrink-0" />
+            Respec
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-slate-800 p-2 text-white transition-colors hover:bg-red-600"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed p-4">

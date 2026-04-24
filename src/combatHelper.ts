@@ -105,6 +105,7 @@ export function resolveSwiftmend(
   const idx = p.findIndex((u) => u.id === targetId);
   if (idx < 0) return { party: s.party, applied: false };
   const u = p[idx];
+  if (u.health <= 0) return { party: s.party, applied: false };
   const hotIdx = findConsumableHotIndex(u, ClassType.DRUID);
   if (hotIdx < 0) {
     return { party: s.party, applied: false };

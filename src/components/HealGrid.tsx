@@ -91,9 +91,13 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
 
         return (
           <button
+            type="button"
             key={unit.id}
             id={`unit-${unit.id}`}
-            onClick={() => onTargetSelect(unit.id)}
+            disabled={isDead}
+            onClick={() => {
+              if (!isDead) onTargetSelect(unit.id);
+            }}
             className={`
               relative flex h-20 w-full ${isSelected ? 'border-l-[6px]' : 'border-l-4'} bg-slate-900 overflow-hidden transition-all duration-150
               ${
@@ -101,7 +105,7 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
                   ? 'z-10 scale-[1.02] border-blue-300 ring-[3px] ring-inset ring-blue-400 brightness-110'
                   : `border-y border-r border-slate-800 ${tier.edge}`
               }
-              ${isDead ? 'opacity-45 shadow-inner' : ''}
+              ${isDead ? 'cursor-not-allowed opacity-45 shadow-inner' : ''}
               group text-left
             `}
           >

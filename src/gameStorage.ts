@@ -126,11 +126,14 @@ export function buildSpellLoadout(
   const order = classSpellOrder(cls);
   const healRow: string[] = [];
   for (const id of order) {
-    if (merged.includes(id) && healRow.length < 3) healRow.push(id);
+    if (merged.includes(id) && healRow.length < 3 && !healRow.includes(id)) healRow.push(id);
   }
-  const primary = merged.find((i) => order.includes(i)) ?? 'flash_heal';
+  for (const id of merged) {
+    if (healRow.length >= 3) break;
+    if (!healRow.includes(id)) healRow.push(id);
+  }
   while (healRow.length < 3) {
-    healRow.push(primary);
+    healRow.push('');
   }
   const activeActionBars: string[] = [healRow[0]!, healRow[1]!, healRow[2]!, 'mana_potion'];
   const unlockedSpells = ['mana_potion', ...merged].filter((x, i, a) => a.indexOf(x) === i);
@@ -161,7 +164,7 @@ export function computeMetaFromProgress(
   | 'mana'
 > {
   const level = levelFromTotalXp(xp);
-  const pool = 5 + (level - 1) * 2;
+  const pool = level;
   const spent = talents.reduce((acc, t) => acc + t.points * t.cost, 0);
   const talentPoints = Math.max(0, pool - spent);
   const maxMana = computedMaxMana(cls, level, talents);

@@ -67,7 +67,7 @@ export const PRIEST_TALENTS: Talent[] = [
   base(
     pr(0, 4),
     'Benediction',
-    'Return 3 flat mana on direct heals per point.',
+    'Return 3 mana on direct heals per point.',
     4,
     0,
     2,

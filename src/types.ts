@@ -71,6 +71,14 @@ export interface BossDebuffTemplate {
   targeting: BossDebuffTargeting;
 }
 
+export interface BossAttackTemplate {
+  abilityId: string;
+  name: string;
+  icon: string;
+  damage: number;
+  targeting: BossDebuffTargeting;
+}
+
 export interface BossSelfBuffTemplate {
   abilityId: string;
   name: string;
@@ -82,11 +90,15 @@ export interface BossSelfBuffTemplate {
 export interface BossCombatProfile {
   debuffTemplates: BossDebuffTemplate[];
   selfBuffTemplates: BossSelfBuffTemplate[];
+  attackTemplates: BossAttackTemplate[];
   mechanicIntervalTicksMin: number;
   mechanicIntervalTicksMax: number;
 }
 
-export type BossCombatOverrides = Pick<BossCombatProfile, 'debuffTemplates' | 'selfBuffTemplates'> &
+export type BossCombatOverrides = Pick<
+  BossCombatProfile,
+  'debuffTemplates' | 'selfBuffTemplates' | 'attackTemplates'
+> &
   Partial<Pick<BossCombatProfile, 'mechanicIntervalTicksMin' | 'mechanicIntervalTicksMax'>>;
 
 export interface Unit {
@@ -159,7 +171,6 @@ export interface Dungeon {
   bossIcon: string;
   cardIcon: string;
   enemies: DungeonEnemy[];
-  lootRewards: string[];
   bossCombat?: BossCombatOverrides;
 }
 
@@ -172,7 +183,6 @@ export type DungeonRunOutcome =
       bossName: string;
       xpGained: number;
       levelUp: boolean;
-      loot: string[];
     }
   | {
       kind: 'failure';
