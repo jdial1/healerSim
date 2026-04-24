@@ -540,6 +540,22 @@ export function useGameEngine() {
         });
       }
 
+      if (isCritH && s.playerClass === ClassType.PRIEST && talentRanks(s.talents, 'divine_aegis') > 0) {
+        const daRanks = talentRanks(s.talents, 'divine_aegis');
+        const aegisPct = 0.2 * daRanks;
+        newParty2 = newParty2.map((uNow) => {
+          const uOld = s.party.find((x) => x.id === uNow.id);
+          if (!uOld || uOld.health <= 0) return uNow;
+          const gained = uNow.health - uOld.health;
+          if (gained <= 0) return uNow;
+          return {
+            ...uNow,
+            shield: uNow.shield + gained * aegisPct,
+            shieldTicksRemaining: SHIELD_DEFAULT_TICKS,
+          };
+        });
+      }
+
       const healerW = newParty2.find((x) => x.id === HEALER_UNIT_ID);
       const tgt = newParty2.find((x) => x.id === targetId);
       if (tgt && s.playerClass && talentRanks(s.talents, 'binding_heal') > 0) {
@@ -568,14 +584,6 @@ export function useGameEngine() {
 
       {
         const u = newParty2.find((x) => x.id === targetId);
-        if (u && isCritH && talentRanks(s.talents, 'divine_aegis') > 0) {
-          const pool = (spell.healing * healMultB * critH * tMod) * 0.2 * talentRanks(s.talents, 'divine_aegis');
-          newParty2 = newParty2.map((x) =>
-            x.id === u.id
-              ? { ...x, shield: x.shield + pool, shieldTicksRemaining: SHIELD_DEFAULT_TICKS }
-              : x,
-          );
-        }
         if (u && isCritH && s.playerClass === ClassType.DRUID && talentRanks(s.talents, 'living_seed') > 0) {
           const am = spell.healing * healMultB * critH * tMod * 0.15;
           newParty2 = newParty2.map((x) => (x.id === u.id ? { ...x, livingSeedPool: am } : x));

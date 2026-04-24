@@ -88,6 +88,8 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
         const isDead = unit.health <= 0;
         const isSelected = selectedId === unit.id;
         const tier = healthTierClasses(isDead ? 0 : healthPercent);
+        const shieldWedge = unit.shield > 0 ? Math.min(100, (unit.shield / Math.max(1, unit.maxHealth)) * 100) : 0;
+        const hpBarTop = unit.shield > 0 ? 'top-1.5' : 'top-0';
 
         return (
           <button
@@ -109,8 +111,19 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
               group text-left
             `}
           >
+            {unit.shield > 0 ? (
+              <div className="pointer-events-none absolute left-0 right-0 top-0 z-[2] h-1.5 bg-slate-950/90">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-sky-600 via-sky-400 to-cyan-300 opacity-95 shadow-[0_0_10px_rgba(56,189,248,0.25)]"
+                  initial={false}
+                  animate={{ width: `${shieldWedge}%` }}
+                  transition={{ type: 'tween', duration: 0.2 }}
+                  style={{ originX: 0 }}
+                />
+              </div>
+            ) : null}
             <motion.div
-              className={`pointer-events-none absolute inset-y-0 left-0 z-[1] ${tier.fill} opacity-90 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),inset_0_-1px_0_rgba(0,0,0,0.35),inset_-3px_0_10px_rgba(0,0,0,0.25)]`}
+              className={`pointer-events-none absolute bottom-0 left-0 right-0 ${hpBarTop} z-[1] ${tier.fill} opacity-90 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),inset_0_-1px_0_rgba(0,0,0,0.35),inset_-3px_0_10px_rgba(0,0,0,0.25)]`}
               initial={false}
               animate={{ width: `${healthPercent}%` }}
               transition={{ type: 'tween', duration: 0.2 }}
