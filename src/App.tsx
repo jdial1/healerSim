@@ -14,7 +14,7 @@ import { GameHUD, TRASH_PACK_COUNT } from './components/GameHUD.tsx';
 import { TalentTree } from './components/TalentTree.tsx';
 import { DungeonOutcomeModal } from './components/DungeonOutcomeModal.tsx';
 import { MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
-import { spellHealingMultiplierFromProgress } from './playerStats.ts';
+import { spellHealingMultiplierFromProgress, effectivePrimaryStats } from './playerStats.ts';
 import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Star, LogOut } from 'lucide-react';
@@ -27,9 +27,11 @@ export default function App() {
     abandonDungeon,
     castSpell,
     unlockTalent,
+    reorderActionBar,
     cooldowns,
     dungeonOutcome,
     dismissDungeonOutcome,
+    actionBarHighlights,
   } = useGameEngine();
   const [targetId, setTargetId] = useState<string | null>(null);
   const [showTalents, setShowTalents] = useState(false);
@@ -212,7 +214,13 @@ export default function App() {
           mana={state.currentDungeon ? state.mana : state.maxMana}
           maxMana={state.maxMana}
           manaRegenBuffTicksRemaining={state.currentDungeon ? state.manaRegenBuffTicksRemaining : 0}
+          spiritRegenLockoutTicksRemaining={
+            state.currentDungeon ? state.spiritRegenLockoutTicksRemaining : 0
+          }
+          spirit={effectivePrimaryStats(state.playerClass, state.level).spirit}
           spellsEnabled={!!state.currentDungeon}
+          allowReorder={!!state.playerClass && !state.currentDungeon}
+          onReorderSlots={reorderActionBar}
           manaPotionChargesRemaining={Math.max(
             0,
             MANA_POTION_USES_PER_DUNGEON - state.manaPotionsUsedThisDungeon,
@@ -222,6 +230,7 @@ export default function App() {
             state.level,
             state.talents,
           )}
+          actionBarHighlights={actionBarHighlights}
         />
       )}
 

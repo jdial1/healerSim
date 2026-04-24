@@ -3,14 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import {
   SPELLS,
   getManaRegenPerSecond,
-  MANA_REGEN_PER_TICK,
   MANA_POTION_USES_PER_DUNGEON,
-  TICK_RATE,
 } from '../constants.ts';
+import { SpellType } from '../types.ts';
 import { xpProgressWithinLevel } from '../gameStorage.ts';
 import { motion } from 'motion/react';
 import { glowForSpellId } from '../gameIcons.ts';
@@ -24,9 +23,14 @@ interface ActionBarsProps {
   mana: number;
   maxMana: number;
   manaRegenBuffTicksRemaining: number;
+  spiritRegenLockoutTicksRemaining: number;
+  spirit: number;
   spellsEnabled: boolean;
+  allowReorder?: boolean;
+  onReorderSlots?: (fromIndex: number, toIndex: number) => void;
   manaPotionChargesRemaining: number;
   spellHealingMultiplier: number;
+  actionBarHighlights: Record<string, boolean>;
 }
 
 export function ActionBars({
@@ -37,12 +41,21 @@ export function ActionBars({
   mana,
   maxMana,
   manaRegenBuffTicksRemaining,
+  spiritRegenLockoutTicksRemaining,
+  spirit,
   spellsEnabled,
+  allowReorder = false,
+  onReorderSlots,
   manaPotionChargesRemaining,
   spellHealingMultiplier,
+  actionBarHighlights,
 }: ActionBarsProps) {
   const barRootRef = useRef<HTMLDivElement>(null);
+  const spellTipRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const suppressPreviewClickUntilRef = useRef(0);
   const [previewTooltipSpellId, setPreviewTooltipSpellId] = useState<string | null>(null);
+  const [tooltipHoverSpellId, setTooltipHoverSpellId] = useState<string | null>(null);
+  const [draggingBarIndex, setDraggingBarIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (spellsEnabled) setPreviewTooltipSpellId(null);
@@ -58,6 +71,48 @@ export function ActionBars({
     return () => document.removeEventListener('pointerdown', close, true);
   }, [spellsEnabled, previewTooltipSpellId]);
 
+  const repositionSpellTooltips = useCallback(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    const vw = vv?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 0);
+    if (!vw) return;
+    const margin = 12;
+    for (const key of Object.keys(spellTipRefs.current)) {
+      const el = spellTipRefs.current[key];
+      if (el) el.style.transform = 'translateX(-50%)';
+    }
+    const activeId = tooltipHoverSpellId ?? previewTooltipSpellId;
+    if (!activeId) return;
+    const tip = spellTipRefs.current[activeId];
+    if (!tip) return;
+    const rect = tip.getBoundingClientRect();
+    let dx = 0;
+    if (rect.right > vw - margin) dx += vw - margin - rect.right;
+    if (rect.left + dx < margin) dx += margin - (rect.left + dx);
+    if (dx !== 0) tip.style.transform = `translateX(calc(-50% + ${dx}px))`;
+  }, [tooltipHoverSpellId, previewTooltipSpellId]);
+
+  useLayoutEffect(() => {
+    repositionSpellTooltips();
+  }, [
+    repositionSpellTooltips,
+    spellIds,
+    spellHealingMultiplier,
+    manaPotionChargesRemaining,
+    spirit,
+  ]);
+
+  useEffect(() => {
+    const ro = () => repositionSpellTooltips();
+    window.addEventListener('resize', ro);
+    window.visualViewport?.addEventListener('resize', ro);
+    window.visualViewport?.addEventListener('scroll', ro);
+    return () => {
+      window.removeEventListener('resize', ro);
+      window.visualViewport?.removeEventListener('resize', ro);
+      window.visualViewport?.removeEventListener('scroll', ro);
+    };
+  }, [repositionSpellTooltips]);
+
   const { into: xpIntoLevel, needed: xpForNextLevel } = xpProgressWithinLevel(xp);
   const xpBarPercent = xpForNextLevel > 0 ? (xpIntoLevel / xpForNextLevel) * 100 : 0;
   const xpSegmentFillPercents = Array.from({ length: 10 }, (_, i) => {
@@ -68,9 +123,15 @@ export function ActionBars({
     return ((xpBarPercent - start) / 10) * 100;
   });
   const manaPercent = (mana / maxMana) * 100;
-  const baseRegenPerSec = MANA_REGEN_PER_TICK * (1000 / TICK_RATE);
-  const regenPerSec = getManaRegenPerSecond(manaRegenBuffTicksRemaining);
+  const baseRegenPerSec = getManaRegenPerSecond(0, 0, spirit);
+  const regenPerSec = getManaRegenPerSecond(
+    spiritRegenLockoutTicksRemaining,
+    manaRegenBuffTicksRemaining,
+    spirit,
+  );
   const regenBuffActive = manaRegenBuffTicksRemaining > 0;
+  const spiritRegenPaused =
+    spiritRegenLockoutTicksRemaining > 0 && manaRegenBuffTicksRemaining <= 0;
   const getSpellColor = (id: string) => {
     switch (id) {
         case 'flash_heal': return 'border-sky-400';
@@ -79,36 +140,82 @@ export function ActionBars({
         case 'rejuvenation': return 'border-emerald-500';
         case 'regrowth': return 'border-lime-500';
         case 'wild_growth': return 'border-purple-500';
+        case 'swiftmend': return 'border-emerald-400';
+        case 'wand': return 'border-violet-400';
         case 'mana_potion': return 'border-blue-500';
         default: return 'border-slate-700';
     }
   }
 
-  const getSpellDesc = (id: string) => {
+  const getSpellEffectDescription = (id: string) => {
     const spell = SPELLS[id];
     if (!spell) return '';
-    const multLabel = Math.round(spellHealingMultiplier * 1000) / 1000;
+
     const effDirect =
       spell.healing > 0 ? Math.round(spell.healing * spellHealingMultiplier) : 0;
-    const effHotTick =
-      spell.hotHealingPerTick !== undefined
-        ? Math.round(spell.hotHealingPerTick * spellHealingMultiplier * 10) / 10
-        : 0;
-    const healing = spell.healing > 0 ? `Heals for ${effDirect} (×${multLabel}). ` : '';
-    const hot = spell.hotDuration
-      ? `Heals for ${effHotTick} per tick (×${multLabel}) for ${spell.hotDuration / 10}s. `
-      : '';
-    const restore = spell.manaRestore ? `Restores ${spell.manaRestore} Mana. ` : '';
-    const regenBuff =
-      spell.manaRegenBuffDurationTicks !== undefined && spell.manaRegenBuffMultiplier !== undefined
-        ? `${spell.manaRegenBuffMultiplier}x regen (${MANA_REGEN_PER_TICK * spell.manaRegenBuffMultiplier * (1000 / TICK_RATE)}/s) for ${spell.manaRegenBuffDurationTicks / 10}s. `
-        : '';
-    const aoe = spell.type === 'AOE' ? 'Heals the entire party. ' : '';
-    const potionUses =
-      id === 'mana_potion'
-        ? `${manaPotionChargesRemaining}/${MANA_POTION_USES_PER_DUNGEON} this dungeon. `
-        : '';
-    return `${healing}${hot}${restore}${regenBuff}${potionUses}${aoe}Cost: ${spell.manaCost} Mana.`;
+    const hotTicks = spell.hotDuration ?? 0;
+    const hotPerTick = spell.hotHealingPerTick ?? 0;
+    const hasHot = hotTicks > 0 && hotPerTick > 0;
+    const effHotTotal = hasHot
+      ? Math.round(hotPerTick * hotTicks * spellHealingMultiplier * 10) / 10
+      : 0;
+    const durSec = hotTicks / 10;
+    const fmtHeal = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+    const sentences: string[] = [];
+
+    if (id === 'wand') {
+      return 'Fires a magic bolt at the enemy and builds Caster Zeal for haste';
+    }
+    if (id === 'swiftmend') {
+      return 'Consumes a HoT on the target to burst-heal. Requires Rejuvenation or Regrowth';
+    }
+    if (id === 'mana_potion') {
+      if (spell.manaRestore) sentences.push(`Restores ${spell.manaRestore} Mana.`);
+      if (
+        spell.manaRegenBuffDurationTicks !== undefined &&
+        spell.manaRegenBuffMultiplier !== undefined
+      ) {
+        const r = getManaRegenPerSecond(0, 50, spirit);
+        const label = Number.isInteger(r) ? String(r) : r.toFixed(1);
+        const regenDur = spell.manaRegenBuffDurationTicks / 10;
+        sentences.push(
+          `Restores another ${label} Mana per second over ${regenDur} sec.`,
+        );
+      }
+      return sentences.join('\n');
+    }
+
+    if (spell.type === SpellType.AOE) {
+      if (hasHot && effDirect > 0) {
+        sentences.push(
+          `Heals the entire party for ${effDirect} and another ${fmtHeal(effHotTotal)} over ${durSec} sec.`,
+        );
+      } else if (effDirect > 0) {
+        sentences.push(`Heals the entire party for ${effDirect}.`);
+      } else if (hasHot) {
+        sentences.push(
+          `Heals the entire party for another ${fmtHeal(effHotTotal)} over ${durSec} sec.`,
+        );
+      } else {
+        sentences.push('Heals the entire party.');
+      }
+      return sentences.join('\n');
+    }
+
+    if (hasHot && effDirect > 0) {
+      sentences.push(
+        `Heals a friendly target for ${effDirect} and another ${fmtHeal(effHotTotal)} over ${durSec} sec.`,
+      );
+    } else if (hasHot) {
+      sentences.push(
+        `Heals a friendly target for another ${fmtHeal(effHotTotal)} over ${durSec} sec.`,
+      );
+    } else if (effDirect > 0) {
+      sentences.push(`Heals a friendly target for ${effDirect}.`);
+    }
+
+    return sentences.join('\n');
   };
 
   return (
@@ -184,6 +291,11 @@ export function ActionBars({
                   +{baseRegenPerSec}/s
                 </span>
               </>
+            ) : spiritRegenPaused ? (
+              <span className="text-amber-500/90">
+                +0/s
+                <span className="ml-1.5 text-xs font-black uppercase tracking-wide">5SR</span>
+              </span>
             ) : (
               <span className="text-slate-500">
                 +{Number.isInteger(baseRegenPerSec) ? baseRegenPerSec : baseRegenPerSec.toFixed(1)}/s
@@ -205,13 +317,54 @@ export function ActionBars({
           const noPotionCharges = id === 'mana_potion' && manaPotionChargesRemaining <= 0;
           const castBlocked = cooldown > 0 || isLowMana || noPotionCharges;
           const disabled = spellsEnabled && castBlocked;
+          const reordering = allowReorder && onReorderSlots;
 
           return (
-            <div key={`${id}-${index}`} className="relative group">
+            <div
+              key={`${id}-${index}`}
+              className="relative group"
+              onPointerEnter={() => setTooltipHoverSpellId(id)}
+              onPointerLeave={() => {
+                setTooltipHoverSpellId((cur) => (cur === id ? null : cur));
+              }}
+            >
               <button
                 id={`spell-${id}`}
                 type="button"
+                draggable={!!reordering}
+                onDragStart={
+                  reordering
+                    ? (e) => {
+                        e.dataTransfer.setData('text/plain', String(index));
+                        e.dataTransfer.effectAllowed = 'move';
+                        setDraggingBarIndex(index);
+                      }
+                    : undefined
+                }
+                onDragEnd={reordering ? () => setDraggingBarIndex(null) : undefined}
+                onDragOver={
+                  reordering
+                    ? (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                      }
+                    : undefined
+                }
+                onDrop={
+                  reordering
+                    ? (e) => {
+                        e.preventDefault();
+                        const raw = e.dataTransfer.getData('text/plain');
+                        const from = parseInt(raw, 10);
+                        if (Number.isNaN(from)) return;
+                        suppressPreviewClickUntilRef.current = performance.now() + 450;
+                        onReorderSlots(from, index);
+                        setDraggingBarIndex(null);
+                      }
+                    : undefined
+                }
                 onClick={() => {
+                  if (performance.now() < suppressPreviewClickUntilRef.current) return;
                   if (!spellsEnabled) {
                     setPreviewTooltipSpellId((prev) => (prev === id ? null : id));
                     return;
@@ -220,11 +373,13 @@ export function ActionBars({
                 }}
                 disabled={disabled}
                 className={`
-                  relative flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center border-b-4 bg-slate-800 transition-all active:scale-95 sm:h-[4.75rem] sm:w-[4.75rem]
+                  relative flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 border-b-4 bg-slate-800 transition-all active:scale-95 sm:h-[4.75rem] sm:w-[4.75rem]
                   ${getSpellColor(id)}
-                  ${!spellsEnabled ? 'cursor-not-allowed opacity-50 grayscale' : ''}
+                  ${!spellsEnabled && !reordering ? 'cursor-not-allowed opacity-50' : ''}
+                  ${!spellsEnabled && reordering ? 'cursor-grab touch-none opacity-50 active:cursor-grabbing' : ''}
+                  ${draggingBarIndex === index ? 'opacity-30' : ''}
                   ${spellsEnabled && cooldown > 0 ? 'opacity-60' : ''}
-                  ${spellsEnabled && cooldown <= 0 && (isLowMana || noPotionCharges) ? 'opacity-40 grayscale' : ''}
+                  ${spellsEnabled && cooldown <= 0 && (isLowMana || noPotionCharges) ? 'opacity-45' : ''}
                   ${spellsEnabled && cooldown <= 0 && !isLowMana && !noPotionCharges ? 'hover:bg-slate-700 hover:-translate-y-1 shadow-lg' : ''}
                 `}
               >
@@ -237,10 +392,18 @@ export function ActionBars({
                     spellsEnabled &&
                     (cooldown > 0 || isLowMana || noPotionCharges)
                   }
-                  className={`mt-0.5 shrink-0 ${spellsEnabled && cooldown <= 0 && !isLowMana && !noPotionCharges ? 'transition-transform group-hover:scale-105' : ''}`}
+                  className={`shrink-0 ${
+                    actionBarHighlights[id]
+                      ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900'
+                      : ''
+                  } ${
+                    spellsEnabled && cooldown <= 0 && !isLowMana && !noPotionCharges
+                      ? 'transition-transform group-hover:scale-105'
+                      : ''
+                  }`}
                 />
                 
-                <span className="mt-0.5 max-w-[4.25rem] truncate text-center text-sm font-black uppercase leading-none tracking-tight text-slate-100 group-hover:text-white">
+                <span className="max-w-[4.25rem] truncate text-center text-sm font-black uppercase leading-none tracking-tight text-slate-100 group-hover:text-white">
                     {spell.name.split(' ')[0]}
                 </span>
 
@@ -277,19 +440,35 @@ export function ActionBars({
               </button>
 
               <div
-                className={`pointer-events-none absolute bottom-full left-1/2 z-[200] mb-3 w-52 -translate-x-1/2 border border-slate-800 bg-slate-950 p-3 shadow-2xl transition-opacity ${
+                ref={(el) => {
+                  if (el) spellTipRefs.current[id] = el;
+                  else delete spellTipRefs.current[id];
+                }}
+                className={`pointer-events-none absolute bottom-full left-1/2 z-[200] mb-3 flex w-[min(20rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] items-start gap-1.5 shadow-2xl transition-opacity sm:gap-2 ${
                   previewTooltipSpellId === id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                 }`}
+                style={{ transform: 'translateX(-50%)' }}
               >
+                <GameIcon
+                  iconPath={spell.icon}
+                  glow={glowForSpellId(id)}
+                  size="md"
+                  className="shrink-0 ring-1 ring-white/10"
+                />
+                <div className="min-w-0 flex-1 break-words border border-slate-600/90 bg-slate-950 px-2.5 py-2">
                   <div className="mb-1 border-b border-slate-800 pb-1 text-sm font-black uppercase italic text-white">
-                      {spell.name}
+                    {spell.name}
                   </div>
-                  <div className="text-sm font-medium leading-snug text-slate-400">
-                     {getSpellDesc(id)}
+                  {spell.manaCost > 0 ? (
+                    <div className="text-sm font-bold tabular-nums text-white">{spell.manaCost} Mana</div>
+                  ) : null}
+                  <div
+                    className={`whitespace-pre-line text-sm font-medium leading-snug text-amber-100 ${spell.manaCost > 0 ? 'mt-1.5' : ''}`}
+                  >
+                    {getSpellEffectDescription(id)}
                   </div>
-                  
-                  {/* Arrow */}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950" />
+                </div>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950" aria-hidden />
               </div>
             </div>
           );

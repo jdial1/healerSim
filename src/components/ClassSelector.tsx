@@ -60,7 +60,7 @@ export function ClassSelector({ onSelect }: ClassSelectorProps) {
             disabled={cls.locked}
             className={`
               relative p-8 border-l-8 flex items-center gap-8 text-left transition-all
-              ${cls.locked ? 'border-slate-800 bg-slate-900/50 opacity-40 grayscale' : 'border-slate-700 bg-slate-900 shadow-2xl'}
+              ${cls.locked ? 'border-slate-800 bg-slate-900/50 opacity-45' : 'border-slate-700 bg-slate-900 shadow-2xl'}
               ${!cls.locked && cls.id === ClassType.PRIEST ? 'hover:border-yellow-400' : ''}
               ${!cls.locked && cls.id === ClassType.DRUID ? 'hover:border-green-500' : ''}
             `}

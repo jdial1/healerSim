@@ -8,8 +8,8 @@ import { DUNGEONS, bossCombatProfileForDungeon, TICKS_PER_SECOND } from '../cons
 import { type BossDebuffTargeting, type Dungeon } from '../types.ts';
 import { computeDungeonXpGain, levelsOverDungeonMax } from '../gameStorage.ts';
 import { Lock } from 'lucide-react';
-import { motion } from 'motion/react';
 import { GameIcon } from './GameIcon.tsx';
+import { BOSS_BUFF_ICON_TINT } from '../gameIcons.ts';
 
 interface DungeonSelectorProps {
   onSelect: (dungeon: Dungeon) => void;
@@ -26,9 +26,9 @@ type DungeonCardTheme = {
   viaTint: string;
   ring: string;
   cardShadow: string;
-  titleHover: string;
+  borderHover: string;
   deploy: string;
-  deployHover: string;
+  iconTint: string;
 };
 
 const DUNGEON_CARD_THEME = {
@@ -37,77 +37,77 @@ const DUNGEON_CARD_THEME = {
     viaTint: 'via-amber-950/40',
     ring: 'ring-amber-900/30',
     cardShadow: 'shadow-[0_20px_50px_-12px_rgba(180,83,9,0.32)]',
-    titleHover: 'group-hover:text-amber-300',
+    borderHover: 'hover:border-amber-500',
     deploy: 'bg-amber-700 text-amber-50',
-    deployHover: 'group-hover:bg-amber-100 group-hover:text-amber-950',
+    iconTint: 'rgba(251,191,36,0.5)',
   },
   wailing_caverns: {
     borderLeft: 'border-l-teal-600',
     viaTint: 'via-teal-950/45',
     ring: 'ring-teal-800/25',
     cardShadow: 'shadow-[0_20px_50px_-12px_rgba(13,148,136,0.32)]',
-    titleHover: 'group-hover:text-teal-300',
+    borderHover: 'hover:border-teal-500',
     deploy: 'bg-teal-600 text-white',
-    deployHover: 'group-hover:bg-teal-100 group-hover:text-teal-900',
+    iconTint: 'rgba(45,212,191,0.48)',
   },
   scarlet_monastery: {
     borderLeft: 'border-l-rose-600',
     viaTint: 'via-rose-950/40',
     ring: 'ring-rose-900/30',
     cardShadow: 'shadow-[0_20px_50px_-12px_rgba(225,29,72,0.28)]',
-    titleHover: 'group-hover:text-rose-200',
+    borderHover: 'hover:border-rose-500',
     deploy: 'bg-rose-700 text-rose-50',
-    deployHover: 'group-hover:bg-rose-50 group-hover:text-rose-950',
+    iconTint: 'rgba(251,113,133,0.5)',
   },
   zul_farrak: {
     borderLeft: 'border-l-yellow-500',
     viaTint: 'via-yellow-950/35',
     ring: 'ring-yellow-900/25',
     cardShadow: 'shadow-[0_20px_50px_-12px_rgba(202,138,4,0.32)]',
-    titleHover: 'group-hover:text-yellow-200',
+    borderHover: 'hover:border-yellow-400',
     deploy: 'bg-amber-600 text-amber-50',
-    deployHover: 'group-hover:bg-yellow-100 group-hover:text-amber-950',
+    iconTint: 'rgba(250,204,21,0.48)',
   },
   sunken_temple: {
     borderLeft: 'border-l-emerald-600',
     viaTint: 'via-emerald-950/40',
     ring: 'ring-emerald-900/25',
     cardShadow: 'shadow-[0_20px_50px_-12px_rgba(5,150,105,0.32)]',
-    titleHover: 'group-hover:text-emerald-300',
+    borderHover: 'hover:border-emerald-500',
     deploy: 'bg-emerald-700 text-emerald-50',
-    deployHover: 'group-hover:bg-emerald-100 group-hover:text-emerald-950',
+    iconTint: 'rgba(52,211,153,0.5)',
   },
   blackrock_depths: {
     borderLeft: 'border-l-orange-600',
     viaTint: 'via-orange-950/45',
     ring: 'ring-orange-950/30',
     cardShadow: 'shadow-[0_20px_50px_-12px_rgba(234,88,12,0.35)]',
-    titleHover: 'group-hover:text-orange-300',
+    borderHover: 'enabled:hover:border-orange-500',
     deploy: 'bg-orange-700 text-orange-50',
-    deployHover: 'group-hover:bg-orange-100 group-hover:text-orange-950',
+    iconTint: 'rgba(251,146,60,0.52)',
   },
   stratholme: {
     borderLeft: 'border-l-violet-600',
     viaTint: 'via-violet-950/38',
     ring: 'ring-violet-900/25',
     cardShadow: 'shadow-[0_20px_50px_-12px_rgba(124,58,237,0.28)]',
-    titleHover: 'group-hover:text-violet-300',
+    borderHover: 'hover:border-violet-500',
     deploy: 'bg-violet-800 text-violet-50',
-    deployHover: 'group-hover:bg-violet-100 group-hover:text-violet-950',
+    iconTint: 'rgba(167,139,250,0.48)',
   },
   scholomance: {
     borderLeft: 'border-l-indigo-500',
     viaTint: 'via-indigo-950/45',
     ring: 'ring-indigo-900/30',
     cardShadow: 'shadow-[0_20px_50px_-12px_rgba(99,102,241,0.32)]',
-    titleHover: 'group-hover:text-indigo-300',
+    borderHover: 'hover:border-indigo-500',
     deploy: 'bg-indigo-700 text-indigo-50',
-    deployHover: 'group-hover:bg-indigo-100 group-hover:text-indigo-950',
+    iconTint: 'rgba(129,140,248,0.5)',
   },
 } satisfies Record<DungeonCardId, DungeonCardTheme>;
 
 const CARD_SHELL =
-  'group relative flex h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 py-8 text-left ring-1 ring-inset transition-all sm:w-[min(24rem,40vw)] sm:px-6 sm:py-10 max-sm:px-6 max-sm:py-9';
+  'relative flex h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 py-8 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:py-10 max-sm:px-6 max-sm:py-9';
 
 const LOCKED_ROSTER_ICON = 'badges/question';
 
@@ -131,6 +131,7 @@ function BossMechanicsStrip({
   dimmed: boolean;
 }) {
   const profile = bossCombatProfileForDungeon(dungeon);
+  const cardTheme = DUNGEON_CARD_THEME[dungeon.id as DungeonCardId];
 
   const cardShell =
     'flex h-full min-h-0 min-w-0 flex-1 basis-0 flex-col gap-1.5 rounded-md border bg-slate-900/75 px-2 py-2 sm:gap-1.5 sm:px-2 sm:py-2';
@@ -150,6 +151,7 @@ function BossMechanicsStrip({
                 glow="spell"
                 size="md"
                 dimmed
+                accentTint={cardTheme.iconTint}
                 className="mx-auto shrink-0"
               />
               <div className="flex min-h-0 flex-1 flex-col justify-center py-0.5">
@@ -214,6 +216,7 @@ function BossMechanicsStrip({
                 size="md"
                 title={b.name}
                 dimmed={dimmed}
+                accentTint={BOSS_BUFF_ICON_TINT}
                 className="mx-auto shrink-0"
               />
               <div className="flex min-h-0 flex-1 flex-col justify-center py-0.5">
@@ -352,26 +355,23 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
               bossCombat.debuffTemplates.length + bossCombat.selfBuffTemplates.length > 0;
 
             return (
-              <motion.button
+              <button
                 key={dungeon.id}
                 type="button"
                 onClick={() => trySelect(dungeon, isLocked)}
-                whileHover={!isLocked ? { y: -2 } : {}}
                 className={`
                   ${CARD_SHELL}
                   ${theme.borderLeft}
                   ${theme.viaTint}
                   ${theme.ring}
                   ${theme.cardShadow}
-                  ${isLocked ? 'opacity-[0.42] grayscale' : ''}
+                  ${isLocked ? 'cursor-default opacity-[0.45]' : `${theme.borderHover} cursor-pointer`}
                 `}
               >
                 <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
                   <div className="flex shrink-0 items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <h3
-                        className={`line-clamp-2 text-2xl font-black uppercase italic leading-[1.05] tracking-tighter text-white sm:text-2xl ${theme.titleHover}`}
-                      >
+                      <h3 className="line-clamp-2 text-2xl font-black uppercase italic leading-[1.05] tracking-tighter text-white sm:text-2xl">
                         {dungeon.name.replace(/^The /i, '')}
                       </h3>
                       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0 text-xs font-black uppercase leading-snug sm:mt-0.5 sm:text-[11px]">
@@ -398,6 +398,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                         size="dungeonCard"
                         title={dungeon.name}
                         dimmed={isLocked}
+                        accentTint={theme.iconTint}
                         className={isLocked ? 'ring-1 ring-slate-700' : ''}
                       />
                       {isLocked ? (
@@ -421,6 +422,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                               glow="spell"
                               size="dungeonRoster"
                               title="Unknown"
+                              accentTint={theme.iconTint}
                             />
                           </div>
                         ))}
@@ -430,6 +432,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                             glow="spell"
                             size="dungeonRoster"
                             title="Unknown"
+                            accentTint={theme.iconTint}
                           />
                         </div>
                       </>
@@ -442,10 +445,11 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                           >
                             <GameIcon
                               iconPath={enemy.icon}
-                              glow="debuff"
+                              glow="spell"
                               size="dungeonRoster"
                               title={enemy.name}
                               dimmed={isCompleted}
+                              accentTint={theme.iconTint}
                             />
                             <span
                               className={`min-w-0 flex-1 truncate text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-300'}`}
@@ -457,10 +461,11 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                         <div className="flex min-h-[2.5rem] shrink-0 items-center gap-3 sm:min-h-0 sm:gap-2.5">
                           <GameIcon
                             iconPath={dungeon.bossIcon}
-                            glow="debuff"
+                            glow="spell"
                             size="dungeonRoster"
                             title={dungeon.bossName}
                             dimmed={isCompleted}
+                            accentTint={theme.iconTint}
                           />
                           <span
                             className={`min-w-0 flex-1 truncate text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-200'}`}
@@ -486,14 +491,14 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                   className={`mt-auto w-full shrink-0 rounded-lg py-4 text-center text-lg font-black uppercase tracking-wider sm:py-4 sm:text-base ${
                     isLocked
                       ? 'border border-slate-800 bg-slate-950/50 text-slate-600'
-                      : `${theme.deploy} ${theme.deployHover}`
+                      : theme.deploy
                   }`}
                 >
                   {isLocked ? 'LOCKED' : 'DEPLOY'}
                 </div>
 
                 {isLocked ? <div className="pointer-events-none absolute inset-0 rounded-xl bg-slate-950/15" /> : null}
-              </motion.button>
+              </button>
             );
           })}
         </div>

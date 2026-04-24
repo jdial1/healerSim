@@ -18,7 +18,7 @@ import type { BossSelfBuff } from '../types.ts';
 
 import { GameIcon } from './GameIcon.tsx';
 
-import { glowForBossSelfBuff } from '../gameIcons.ts';
+import { BOSS_BUFF_ICON_TINT, glowForBossSelfBuff } from '../gameIcons.ts';
 
 
 
@@ -290,6 +290,8 @@ export function GameHUD({
                           glow={glowForBossSelfBuff(b.sourceAbilityId)}
 
                           size="xs"
+
+                          accentTint={BOSS_BUFF_ICON_TINT}
 
                         />
 

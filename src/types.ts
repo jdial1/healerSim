@@ -22,14 +22,15 @@ export interface Spell {
   type: SpellType;
   manaCost: number;
   healing: number;
-  hotDuration?: number; // in ticks
+  hotDuration?: number;
   hotHealingPerTick?: number;
   manaRestore?: number;
   manaRegenBuffMultiplier?: number;
   manaRegenBuffDurationTicks?: number;
-  cooldown: number; // in ticks
+  cooldown: number;
   icon: string;
   color: string;
+  dealDamageToEnemy?: number;
 }
 
 export interface Buff {
@@ -81,22 +82,12 @@ export interface BossSelfBuffTemplate {
 export interface BossCombatProfile {
   debuffTemplates: BossDebuffTemplate[];
   selfBuffTemplates: BossSelfBuffTemplate[];
-  debuffIntervalTicksMin: number;
-  debuffIntervalTicksMax: number;
-  selfBuffIntervalTicksMin: number;
-  selfBuffIntervalTicksMax: number;
+  mechanicIntervalTicksMin: number;
+  mechanicIntervalTicksMax: number;
 }
 
 export type BossCombatOverrides = Pick<BossCombatProfile, 'debuffTemplates' | 'selfBuffTemplates'> &
-  Partial<
-    Pick<
-      BossCombatProfile,
-      | 'debuffIntervalTicksMin'
-      | 'debuffIntervalTicksMax'
-      | 'selfBuffIntervalTicksMin'
-      | 'selfBuffIntervalTicksMax'
-    >
-  >;
+  Partial<Pick<BossCombatProfile, 'mechanicIntervalTicksMin' | 'mechanicIntervalTicksMax'>>;
 
 export interface Unit {
   id: string;
@@ -108,6 +99,17 @@ export interface Unit {
   buffs: Buff[];
   debuffs: PartyDebuff[];
   isTarget?: boolean;
+  shield: number;
+  shieldTicksRemaining: number;
+  livingSeedPool: number;
+}
+
+export type CapstoneFormId = 'priest_archangel' | 'druid_natures_grace' | 'paladin_avenging_wrath';
+
+export interface PlayerCombatBuff {
+  id: string;
+  remainingTicks: number;
+  stacks: number;
 }
 
 export interface Talent {
@@ -119,17 +121,26 @@ export interface Talent {
   levelReq: number;
   cost: number;
   icon: string;
-  gridX: number; // 0-10 horizontal position
-  gridY: number; // 0-10 vertical position
-  prerequisites?: string[]; // IDs of talents that must be at least 1 point
-  spellId?: string; // If it unlocks a spell on first point
+  gridX: number;
+  gridY: number;
+  prerequisites?: string[];
+  spellId?: string;
   statBonus?: {
-    healingBoost?: number; // percent per point
-    manaPool?: number; // flat per point
-    haste?: number; // percent per point
-    critChance?: number; // percent per point
-    manaReturnOnDirectHeal?: number; // flat mana back 
+    healingBoost?: number;
+    manaPool?: number;
+    haste?: number;
+    critChance?: number;
+    manaReturnOnDirectHeal?: number;
   };
+  exclusiveWith?: string[];
+  mechanicId?: string;
+  maxRankBonusDescription?: string;
+  synergyWith?: string[];
+  descriptionTones?: Array<{
+    start: number;
+    end: number;
+    tone: 'healing' | 'mana' | 'haste' | 'crit';
+  }>;
 }
 
 export interface DungeonEnemy {
@@ -177,15 +188,16 @@ export interface GameState {
   mana: number;
   maxMana: number;
   manaRegenBuffTicksRemaining: number;
+  spiritRegenLockoutTicksRemaining: number;
   manaPotionsUsedThisDungeon: number;
   xp: number;
   level: number;
   talentPoints: number;
   talents: Talent[];
   unlockedSpells: string[];
-  activeActionBars: string[]; // spell ids
+  activeActionBars: string[];
   currentDungeon: Dungeon | null;
-  dungeonProgress: number; // 0 to 100
+  dungeonProgress: number;
   combatPhase: CombatPhase;
   trashPullsRemaining: number;
   enemyHealth: number;
@@ -193,4 +205,12 @@ export interface GameState {
   bossSelfBuffs: BossSelfBuff[];
   isCombatActive: boolean;
   completedDungeonIds: string[];
+  playerCombatBuffs: PlayerCombatBuff[];
+  internalCooldowns: Record<string, number>;
+  capstoneForm: CapstoneFormId | null;
+  capstoneFormTicksRemaining: number;
+  holyPower: number;
+  beaconTargetId: string;
+  powerInfusionCastsRemaining: number;
+  naturalPerfectionStacks: number;
 }

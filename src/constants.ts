@@ -8,7 +8,6 @@ import {
   SpellType,
   ClassType,
   Dungeon,
-  Talent,
   Unit,
   BossCombatProfile,
   BossCombatOverrides,
@@ -17,14 +16,25 @@ import {
   allyMaxHealthForRoleAndLevel,
   healerMaxHealthFromStats,
   randomAllyLevel,
+  spiritManaRegenMultiplier,
 } from './playerStats.ts';
 
 export const TICK_RATE = 100; // ms per tick
 export const MANA_REGEN_PER_TICK = 0.5;
+export const MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE;
 export const MANA_POTION_USES_PER_DUNGEON = 2;
 
 export function bossDamageMultiplierForDifficulty(difficulty: number): number {
   return Math.pow(1.12, Math.max(0, difficulty - 1));
+}
+
+export function damageTakenMultiplierFromDungeonLevelGap(
+  partyMemberLevel: number,
+  dungeonLevelMax: number,
+): number {
+  const gap = partyMemberLevel - dungeonLevelMax;
+  if (gap <= 0) return 1;
+  return Math.pow(0.62, gap);
 }
 
 const TRASH_HEALTH_PER_PULL_BOSS_FRACTION = 0.1;
@@ -45,15 +55,10 @@ export const TICKS_PER_SECOND = Math.round(1000 / TICK_RATE);
 
 const DEFAULT_BOSS_COMBAT_INTERVALS: Pick<
   BossCombatProfile,
-  | 'debuffIntervalTicksMin'
-  | 'debuffIntervalTicksMax'
-  | 'selfBuffIntervalTicksMin'
-  | 'selfBuffIntervalTicksMax'
+  'mechanicIntervalTicksMin' | 'mechanicIntervalTicksMax'
 > = {
-  debuffIntervalTicksMin: 10 * TICKS_PER_SECOND,
-  debuffIntervalTicksMax: 30 * TICKS_PER_SECOND,
-  selfBuffIntervalTicksMin: 15 * TICKS_PER_SECOND,
-  selfBuffIntervalTicksMax: 30 * TICKS_PER_SECOND,
+  mechanicIntervalTicksMin: 2 * TICKS_PER_SECOND,
+  mechanicIntervalTicksMax: 5 * TICKS_PER_SECOND,
 };
 
 export function bossCombatProfileForDungeon(dungeon: Dungeon): BossCombatProfile {
@@ -62,10 +67,8 @@ export function bossCombatProfileForDungeon(dungeon: Dungeon): BossCombatProfile
     ...DEFAULT_BOSS_COMBAT_INTERVALS,
     debuffTemplates: c?.debuffTemplates ?? [],
     selfBuffTemplates: c?.selfBuffTemplates ?? [],
-    debuffIntervalTicksMin: c?.debuffIntervalTicksMin ?? DEFAULT_BOSS_COMBAT_INTERVALS.debuffIntervalTicksMin,
-    debuffIntervalTicksMax: c?.debuffIntervalTicksMax ?? DEFAULT_BOSS_COMBAT_INTERVALS.debuffIntervalTicksMax,
-    selfBuffIntervalTicksMin: c?.selfBuffIntervalTicksMin ?? DEFAULT_BOSS_COMBAT_INTERVALS.selfBuffIntervalTicksMin,
-    selfBuffIntervalTicksMax: c?.selfBuffIntervalTicksMax ?? DEFAULT_BOSS_COMBAT_INTERVALS.selfBuffIntervalTicksMax,
+    mechanicIntervalTicksMin: c?.mechanicIntervalTicksMin ?? DEFAULT_BOSS_COMBAT_INTERVALS.mechanicIntervalTicksMin,
+    mechanicIntervalTicksMax: c?.mechanicIntervalTicksMax ?? DEFAULT_BOSS_COMBAT_INTERVALS.mechanicIntervalTicksMax,
   };
 }
 
@@ -137,9 +140,30 @@ export const SPELLS: Record<string, Spell> = {
     healing: 10,
     hotDuration: 70,
     hotHealingPerTick: 0.6,
-    cooldown: 100, // 10 seconds
+    cooldown: 100,
     icon: 'delapouite/circle-forest',
     color: 'bg-lime-400',
+  },
+  swiftmend: {
+    id: 'swiftmend',
+    name: 'Swiftmend',
+    type: SpellType.DIRECT,
+    manaCost: 18,
+    healing: 85,
+    cooldown: 150,
+    icon: 'delapouite/seedling',
+    color: 'bg-emerald-300',
+  },
+  wand: {
+    id: 'wand',
+    name: 'Wand',
+    type: SpellType.DIRECT,
+    manaCost: 0,
+    healing: 0,
+    cooldown: 30,
+    icon: 'delapouite/bolt-spell-cast',
+    color: 'bg-violet-400',
+    dealDamageToEnemy: 10,
   },
   mana_potion: {
     id: 'mana_potion',
@@ -156,12 +180,50 @@ export const SPELLS: Record<string, Spell> = {
   }
 };
 
-export function getManaRegenPerSecond(manaRegenBuffTicksRemaining: number): number {
-  const mult =
-    manaRegenBuffTicksRemaining > 0 && SPELLS.mana_potion.manaRegenBuffMultiplier !== undefined
-      ? SPELLS.mana_potion.manaRegenBuffMultiplier
-      : 1;
-  return MANA_REGEN_PER_TICK * mult * (1000 / TICK_RATE);
+function manaPotionRegenMultiplier(manaRegenBuffTicksRemaining: number): number {
+  return manaRegenBuffTicksRemaining > 0 && SPELLS.mana_potion.manaRegenBuffMultiplier !== undefined
+    ? SPELLS.mana_potion.manaRegenBuffMultiplier
+    : 1;
+}
+
+function roundedManaRegenPerTickAndPerSec(
+  spiritRegenLockoutTicksRemaining: number,
+  manaRegenBuffTicksRemaining: number,
+  spirit: number,
+): { perTick: number; perSec: number } {
+  const mult = manaPotionRegenMultiplier(manaRegenBuffTicksRemaining);
+  const rawPerTick = MANA_REGEN_PER_TICK * spiritManaRegenMultiplier(spirit) * mult;
+  if (spiritRegenLockoutTicksRemaining > 0 && manaRegenBuffTicksRemaining <= 0) {
+    return { perTick: 0, perSec: 0 };
+  }
+  const rawPerSec = rawPerTick * TICKS_PER_SECOND;
+  const perSec = Math.round(rawPerSec * 10) / 10;
+  const perTick = Math.round((perSec / TICKS_PER_SECOND) * 1000) / 1000;
+  return { perTick, perSec };
+}
+
+export function manaRegenAmountPerTick(
+  spiritRegenLockoutTicksRemaining: number,
+  manaRegenBuffTicksRemaining: number,
+  spirit: number,
+): number {
+  return roundedManaRegenPerTickAndPerSec(
+    spiritRegenLockoutTicksRemaining,
+    manaRegenBuffTicksRemaining,
+    spirit,
+  ).perTick;
+}
+
+export function getManaRegenPerSecond(
+  spiritRegenLockoutTicksRemaining: number,
+  manaRegenBuffTicksRemaining: number,
+  spirit: number,
+): number {
+  return roundedManaRegenPerTickAndPerSec(
+    spiritRegenLockoutTicksRemaining,
+    manaRegenBuffTicksRemaining,
+    spirit,
+  ).perSec;
 }
 
 export const DUNGEONS: Dungeon[] = [
@@ -535,61 +597,6 @@ export const DUNGEONS: Dungeon[] = [
   },
 ];
 
-export const PRIEST_TALENTS: Talent[] = [
-  { id: 'p_1_1', name: 'Divine Intellect', description: 'Increases total mana by 40 per point.', points: 0, maxPoints: 5, levelReq: 1, cost: 1, icon: 'lorc/brain', gridX: 0, gridY: 0, statBonus: { manaPool: 40 } },
-  { id: 'p_1_2', name: 'Improved Renew', description: 'Increases healing of Renew by 5% per point.', points: 0, maxPoints: 5, levelReq: 1, cost: 1, icon: 'lorc/heart-organ', gridX: 2, gridY: 0, statBonus: { healingBoost: 5 } },
-  { id: 'p_2_1', name: 'Holy Specialization', description: 'Increases crit chance by 2% per point.', points: 0, maxPoints: 5, levelReq: 5, cost: 1, icon: 'lorc/target-dummy', gridX: 0, gridY: 1, prerequisites: ['p_1_1'], statBonus: { critChance: 2 } },
-  { id: 'p_2_2', name: 'Divine Fury', description: 'Reduces mana cost of direct heals by 3%.', points: 0, maxPoints: 3, levelReq: 5, cost: 1, icon: 'lorc/candle-flame', gridX: 1, gridY: 1, statBonus: { healingBoost: 2 } },
-  { id: 'p_2_3', name: 'Divine Light', description: 'Unlocks Greater Heal.', points: 0, maxPoints: 1, levelReq: 10, cost: 1, icon: 'lorc/sun', gridX: 2, gridY: 1, prerequisites: ['p_1_2'], spellId: 'greater_heal' },
-  { id: 'p_3_1', name: 'Inspiration', description: 'Direct heals restore 4 mana per point.', points: 0, maxPoints: 3, levelReq: 15, cost: 1, icon: 'lorc/arcing-bolt', gridX: 0, gridY: 2, prerequisites: ['p_2_1'], statBonus: { manaReturnOnDirectHeal: 4 } },
-  { id: 'p_3_2', name: 'Holy Reach', description: 'Increases haste by 3% per point.', points: 0, maxPoints: 2, levelReq: 15, cost: 1, icon: 'delapouite/ascending-block', gridX: 3, gridY: 2, statBonus: { haste: 3 } },
-  { id: 'p_4_1', name: 'Circle of Healing', description: 'Unlocks Wild Growth (AOE).', points: 0, maxPoints: 1, levelReq: 20, cost: 1, icon: 'lorc/tornado', gridX: 1, gridY: 3, prerequisites: ['p_2_2'], spellId: 'wild_growth' },
-  { id: 'p_4_2', name: 'Spiritual Guidance', description: 'Healing power increased by 8%.', points: 0, maxPoints: 5, levelReq: 20, cost: 1, icon: 'lorc/compass', gridX: 2, gridY: 3, prerequisites: ['p_2_3'], statBonus: { healingBoost: 8 } },
-  { id: 'p_5_1', name: 'Serendipity', description: 'Haste increased by 5% per point.', points: 0, maxPoints: 3, levelReq: 25, cost: 1, icon: 'delapouite/alarm-clock', gridX: 0, gridY: 4, prerequisites: ['p_3_1'], statBonus: { haste: 5 } },
-  { id: 'p_5_2', name: 'Surge of Light', description: 'Crits grant 10% extra healing.', points: 0, maxPoints: 2, levelReq: 25, cost: 1, icon: 'lorc/arcing-bolt', gridX: 3, gridY: 4, prerequisites: ['p_3_2'], statBonus: { healingBoost: 10 } },
-  { id: 'p_6_1', name: 'Test of Faith', description: 'Mana pool increased by 150.', points: 0, maxPoints: 1, levelReq: 30, cost: 1, icon: 'delapouite/heart-battery', gridX: 1, gridY: 5, prerequisites: ['p_4_1'], statBonus: { manaPool: 150 } },
-  { id: 'p_6_2', name: 'Pure of Heart', description: 'All healing increased by 15%.', points: 0, maxPoints: 1, levelReq: 30, cost: 1, icon: 'lorc/ball-heart', gridX: 2, gridY: 5, prerequisites: ['p_4_2'], statBonus: { healingBoost: 15 } },
-  { id: 'p_cap', name: 'Guardian Spirit', description: 'Ultimate power: 25% heal boost and 10% haste.', points: 0, maxPoints: 1, levelReq: 40, cost: 1, icon: 'lorc/crown', gridX: 1, gridY: 6, prerequisites: ['p_6_1', 'p_6_2'], statBonus: { healingBoost: 25, haste: 10 } },
-];
-
-export const DRUID_TALENTS: Talent[] = [
-  { id: 'd_1_1', name: "Nature's Focus", description: 'Reduces mana cost of all spells by 2% per point.', points: 0, maxPoints: 5, levelReq: 1, cost: 1, icon: 'delapouite/ginkgo-leaf', gridX: 1, gridY: 0, statBonus: { healingBoost: 2 } },
-  { id: 'd_1_2', name: 'Furor', description: 'Increases total mana by 50 per point.', points: 0, maxPoints: 5, levelReq: 1, cost: 1, icon: 'lorc/arcing-bolt', gridX: 3, gridY: 0, statBonus: { manaPool: 50 } },
-  { id: 'd_2_1', name: 'Naturalist', description: 'Increases all healing by 4% per point.', points: 0, maxPoints: 5, levelReq: 5, cost: 1, icon: 'delapouite/bonsai-tree', gridX: 1, gridY: 1, prerequisites: ['d_1_1'], statBonus: { healingBoost: 4 } },
-  { id: 'd_2_2', name: 'Intensity', description: 'Increases haste by 3% per point.', points: 0, maxPoints: 3, levelReq: 5, cost: 1, icon: 'lorc/wind-hole', gridX: 2, gridY: 1, statBonus: { haste: 3 } },
-  { id: 'd_3_1', name: 'Gift of Nature', description: 'Increases crit chance by 4% per point.', points: 0, maxPoints: 5, levelReq: 10, cost: 1, icon: 'delapouite/sparkles', gridX: 0, gridY: 2, statBonus: { critChance: 4 } },
-  { id: 'd_3_2', name: 'Tranquil Spirit', description: 'Unlocks Greater Heal.', points: 0, maxPoints: 1, levelReq: 12, cost: 1, icon: 'lorc/heavy-rain', gridX: 1, gridY: 2, prerequisites: ['d_2_1'], spellId: 'greater_heal' },
-  { id: 'd_4_1', name: 'Living Seed', description: 'Direct heals restore 5 mana per point.', points: 0, maxPoints: 3, levelReq: 18, cost: 1, icon: 'delapouite/seedling', gridX: 2, gridY: 3, prerequisites: ['d_2_2'], statBonus: { manaReturnOnDirectHeal: 5 } },
-  { id: 'd_4_2', name: "Nature's Bounty", description: 'Unlocks Wild Growth.', points: 0, maxPoints: 1, levelReq: 20, cost: 1, icon: 'lorc/tornado', gridX: 3, gridY: 3, prerequisites: ['d_1_2'], spellId: 'wild_growth' },
-  { id: 'd_5_1', name: 'Empowered Rejuv', description: 'HoT healing increased by 10% per point.', points: 0, maxPoints: 3, levelReq: 25, cost: 1, icon: 'lorc/arcing-bolt', gridX: 0, gridY: 4, prerequisites: ['d_3_1'], statBonus: { healingBoost: 10 } },
-  { id: 'd_5_2', name: 'Gift of Earthmother', description: 'Haste increased by 5% per point.', points: 0, maxPoints: 3, levelReq: 25, cost: 1, icon: 'lorc/wind-hole', gridX: 1, gridY: 4, prerequisites: ['d_3_2'], statBonus: { haste: 5 } },
-  { id: 'd_6_1', name: 'Wild Growth Opt', description: 'Mana pool increased by 200.', points: 0, maxPoints: 1, levelReq: 30, cost: 1, icon: 'delapouite/car-battery', gridX: 2, gridY: 5, prerequisites: ['d_4_1'], statBonus: { manaPool: 200 } },
-  { id: 'd_6_2', name: 'Tree of Life', description: 'Healing increased by 20%.', points: 0, maxPoints: 1, levelReq: 30, cost: 1, icon: 'delapouite/bonsai-tree', gridX: 3, gridY: 5, prerequisites: ['d_4_2'], statBonus: { healingBoost: 20 } },
-  { id: 'd_cap', name: 'Genesis', description: 'Nature Mastery: 15% Crit, 15% Haste, 15% Healing.', points: 0, maxPoints: 1, levelReq: 40, cost: 1, icon: 'lorc/crown', gridX: 2, gridY: 6, prerequisites: ['d_6_1', 'd_6_2'], statBonus: { healingBoost: 15, critChance: 15, haste: 15 } },
-];
-
-export const PALADIN_TALENTS: Talent[] = [
-  { id: 'h_1_1', name: 'Divine Intellect', description: 'Increases mana by 60 per point.', points: 0, maxPoints: 5, levelReq: 1, cost: 1, icon: 'lorc/brain', gridX: 0, gridY: 0, statBonus: { manaPool: 60 } },
-  { id: 'h_1_2', name: 'Spiritual Focus', description: 'Increases haste by 2% per point.', points: 0, maxPoints: 5, levelReq: 1, cost: 1, icon: 'lorc/wind-hole', gridX: 2, gridY: 0, statBonus: { haste: 2 } },
-  { id: 'h_2_1', name: 'Healing Light', description: 'Increases healing by 5% per point.', points: 0, maxPoints: 5, levelReq: 5, cost: 1, icon: 'lorc/sun', gridX: 0, gridY: 1, prerequisites: ['h_1_1'], statBonus: { healingBoost: 5 } },
-  { id: 'h_2_2', name: 'Illumination', description: 'Crits restore 10 mana per point.', points: 0, maxPoints: 5, levelReq: 5, cost: 1, icon: 'lorc/light-bulb', gridX: 1, gridY: 1, statBonus: { manaReturnOnDirectHeal: 10 } },
-  { id: 'h_3_1', name: 'Divine Favor', description: 'Unlocks Greater Heal.', points: 0, maxPoints: 1, levelReq: 10, cost: 1, icon: 'delapouite/healing-shield', gridX: 2, gridY: 2, prerequisites: ['h_1_2'], spellId: 'greater_heal' },
-  { id: 'h_3_2', name: 'Sanctified Light', description: 'Increases crit by 3% per point.', points: 0, maxPoints: 3, levelReq: 12, cost: 1, icon: 'lorc/target-dummy', gridX: 3, gridY: 2, statBonus: { critChance: 3 } },
-  { id: 'h_4_1', name: 'Holy Power', description: 'Unlocks Wild Growth.', points: 0, maxPoints: 1, levelReq: 20, cost: 1, icon: 'lorc/tornado', gridX: 1, gridY: 3, prerequisites: ['h_2_2'], spellId: 'wild_growth' },
-  { id: 'h_4_2', name: 'Pure of Heart', description: 'Haste increased by 4% per point.', points: 0, maxPoints: 5, levelReq: 20, cost: 1, icon: 'lorc/wind-hole', gridX: 0, gridY: 3, prerequisites: ['h_2_1'], statBonus: { haste: 4 } },
-  { id: 'h_5_1', name: "Light's Grace", description: 'Healing increased by 10% per point.', points: 0, maxPoints: 2, levelReq: 25, cost: 1, icon: 'delapouite/sparkles', gridX: 2, gridY: 4, prerequisites: ['h_3_1'], statBonus: { healingBoost: 10 } },
-  { id: 'h_5_2', name: 'Blessed Hands', description: 'Mana pool increased by 100 per point.', points: 0, maxPoints: 3, levelReq: 25, cost: 1, icon: 'delapouite/car-battery', gridX: 3, gridY: 4, prerequisites: ['h_3_2'], statBonus: { manaPool: 100 } },
-  { id: 'h_6_1', name: 'Aura Mastery', description: 'Crit chance increased by 10%.', points: 0, maxPoints: 1, levelReq: 30, cost: 1, icon: 'lorc/target-dummy', gridX: 1, gridY: 5, prerequisites: ['h_4_1'], statBonus: { critChance: 10 } },
-  { id: 'h_6_2', name: 'Infusion of Light', description: 'Mana pool increased by 300.', points: 0, maxPoints: 1, levelReq: 30, cost: 1, icon: 'lorc/arcing-bolt', gridX: 0, gridY: 5, prerequisites: ['h_4_2'], statBonus: { manaPool: 300 } },
-  { id: 'h_cap', name: 'Beacon of Light', description: 'Holy Perfection: 30% Healing, 10% Haste, 500 Mana.', points: 0, maxPoints: 1, levelReq: 40, cost: 1, icon: 'lorc/crown', gridX: 1, gridY: 6, prerequisites: ['h_6_1', 'h_6_2'], statBonus: { healingBoost: 30, haste: 10, manaPool: 500 } },
-];
-
-export function cloneTalentsForClass(cls: ClassType): Talent[] {
-  const src =
-    cls === ClassType.PRIEST ? PRIEST_TALENTS : cls === ClassType.DRUID ? DRUID_TALENTS : PALADIN_TALENTS;
-  return src.map((t) => ({ ...t }));
-}
-
 export const TANK_POOL: { name: string; role: 'TANK' }[] = [
   { name: 'Tanky McShield', role: 'TANK' },
   { name: 'Ironheart Bear', role: 'TANK' },
@@ -635,6 +642,9 @@ export function generateRandomParty(playerLevel: number, playerClass: ClassType 
       health: tankHp,
       buffs: [],
       debuffs: [],
+      shield: 0,
+      shieldTicksRemaining: 0,
+      livingSeedPool: 0,
     },
     ...selectedDps.map((tpl, i) => {
       const lv = randomAllyLevel(playerLevel);
@@ -647,6 +657,9 @@ export function generateRandomParty(playerLevel: number, playerClass: ClassType 
         health: hp,
         buffs: [],
         debuffs: [],
+        shield: 0,
+        shieldTicksRemaining: 0,
+        livingSeedPool: 0,
       };
     }),
     {
@@ -658,6 +671,9 @@ export function generateRandomParty(playerLevel: number, playerClass: ClassType 
       health: healerHp,
       buffs: [],
       debuffs: [],
+      shield: 0,
+      shieldTicksRemaining: 0,
+      livingSeedPool: 0,
     },
   ];
 }

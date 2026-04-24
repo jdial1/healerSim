@@ -2,6 +2,11 @@ import { ClassType, Talent } from './types.ts';
 
 export const MANA_PER_INTELLECT = 5;
 export const HEALING_PCT_PER_SPIRIT = 0.4;
+export const MANA_REGEN_MULT_PER_SPIRIT = 0.015;
+
+export function spiritManaRegenMultiplier(spirit: number): number {
+  return 1 + spirit * MANA_REGEN_MULT_PER_SPIRIT;
+}
 
 export interface ClassStatCurve {
   baseIntellect: number;
@@ -52,6 +57,14 @@ export function talentHealingBonusPctFromTalents(talents: Talent[]): number {
   return talents.reduce((a, t) => a + (t.statBonus?.healingBoost ?? 0) * t.points, 0);
 }
 
+export function talentCritChancePctFromTalents(talents: Talent[]): number {
+  return talents.reduce((a, t) => a + (t.statBonus?.critChance ?? 0) * t.points, 0);
+}
+
+export function naturePerfectionCritBonus(naturalPerfectionStacks: number): number {
+  return naturalPerfectionStacks * 2;
+}
+
 export function computedMaxMana(cls: ClassType | null, level: number, talents: Talent[]): number {
   if (!cls) return 100;
   const { intellect } = effectivePrimaryStats(cls, level);
@@ -73,6 +86,7 @@ export function spellHealingMultiplierFromProgress(
 export interface PlayerStatBreakdown {
   intellect: number;
   spirit: number;
+  maxHealth: number;
   manaPerIntellect: number;
   healingPctPerSpirit: number;
   manaFromIntellect: number;
@@ -82,6 +96,9 @@ export interface PlayerStatBreakdown {
   healingBonusPctFromTalents: number;
   totalHealingBonusPct: number;
   healingEffectMultiplier: number;
+  spiritManaRegenMultiplier: number;
+  critChancePct: number;
+  bonusHealing: number;
 }
 
 export function randomAllyLevel(playerLevel: number): number {
@@ -96,13 +113,8 @@ export function allyMaxHealthForRoleAndLevel(role: 'TANK' | 'DPS', level: number
   return Math.round(52 + (lv - 1) * 5.5);
 }
 
-export function healerMaxHealthFromStats(cls: ClassType | null, level: number): number {
-  const lv = Math.max(1, level);
-  if (!cls) {
-    return Math.round(48 + (lv - 1) * 6);
-  }
-  const { intellect, spirit } = effectivePrimaryStats(cls, lv);
-  return Math.round(18 + lv * 3 + intellect * 1.5 + spirit * 1.1);
+export function healerMaxHealthFromStats(_cls: ClassType | null, level: number): number {
+  return allyMaxHealthForRoleAndLevel('DPS', level);
 }
 
 export function buildPlayerStatBreakdown(
@@ -120,9 +132,13 @@ export function buildPlayerStatBreakdown(
   const healingBonusPctFromTalents = Math.round(talentRawPct * 10) / 10;
   const totalHealingBonusPct = spiritRawPct + talentRawPct;
   const healingEffectMultiplier = Math.round((1 + totalHealingBonusPct / 100) * 1000) / 1000;
+  const spiritRegenMult = Math.round(spiritManaRegenMultiplier(spirit) * 1000) / 1000;
+  const critChancePct = talentCritChancePctFromTalents(talents);
+  const bonusHealing = Math.round(100 * (healingEffectMultiplier - 1));
   return {
     intellect,
     spirit,
+    maxHealth: healerMaxHealthFromStats(cls, level),
     manaPerIntellect: MANA_PER_INTELLECT,
     healingPctPerSpirit: HEALING_PCT_PER_SPIRIT,
     manaFromIntellect,
@@ -132,5 +148,35 @@ export function buildPlayerStatBreakdown(
     healingBonusPctFromTalents,
     totalHealingBonusPct: Math.round(totalHealingBonusPct * 10) / 10,
     healingEffectMultiplier,
+    spiritManaRegenMultiplier: spiritRegenMult,
+    critChancePct,
+    bonusHealing,
   };
+}
+
+export function transitivePrerequisiteTalentIds(allTalents: Talent[], talent: Talent): string[] {
+  const byId = new Map(allTalents.map((t) => [t.id, t] as const));
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const stack = [...(talent.prerequisites ?? [])];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    const p = byId.get(id);
+    if (p?.prerequisites) for (const x of p.prerequisites) stack.push(x);
+  }
+  return out;
+}
+
+export function unmetChainedPrerequisiteTalents(allTalents: Talent[], talent: Talent): Talent[] {
+  const byId = new Map(allTalents.map((t) => [t.id, t] as const));
+  return transitivePrerequisiteTalentIds(allTalents, talent)
+    .map((id) => byId.get(id))
+    .filter((t): t is Talent => !!t && t.points === 0);
+}
+
+export function talentChainedPrereqsSatisfied(allTalents: Talent[], talent: Talent): boolean {
+  return unmetChainedPrerequisiteTalents(allTalents, talent).length === 0;
 }

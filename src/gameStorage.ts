@@ -4,20 +4,20 @@
  */
 
 import { ClassType, Dungeon, GameState, Talent } from './types.ts';
-import {
-  PRIEST_TALENTS,
-  DRUID_TALENTS,
-  PALADIN_TALENTS,
-  dungeonBaseXp,
-  dungeonXpTierMultiplier,
-} from './constants.ts';
+import { PRIEST_TALENTS, DRUID_TALENTS, PALADIN_TALENTS } from './talents/index.ts';
+import { dungeonBaseXp, dungeonXpTierMultiplier } from './constants.ts';
 import { computedMaxMana } from './playerStats.ts';
+import { classSpellOrder } from './talentMechanics.ts';
 
-const XP_BASE = 180;
-const XP_GAMMA = 1.15;
+function nominalClearXpForDifficulty(difficulty: number): number {
+  return Math.round(dungeonBaseXp(difficulty) * dungeonXpTierMultiplier(difficulty));
+}
 
 function needXpToReachNextLevel(currentLevel: number): number {
-  return Math.max(1, Math.round(XP_BASE * Math.pow(currentLevel, XP_GAMMA)));
+  const tier = Math.floor((currentLevel - 1) / 3);
+  const runsInTier = ((currentLevel - 1) % 3) + 1;
+  const perClear = nominalClearXpForDifficulty(tier + 1);
+  return Math.max(1, perClear * runsInTier);
 }
 
 export function totalXpToReachLevel(targetLevel: number): number {
@@ -68,7 +68,34 @@ type SavedShape = {
   talentRanks: Record<string, number>;
   completedDungeonIds: string[];
   playerClass: ClassType | null;
+  actionBarSpellIds?: string[];
 };
+
+function spellIdMultisetEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const tally = new Map<string, number>();
+  for (const id of a) tally.set(id, (tally.get(id) ?? 0) + 1);
+  for (const id of b) {
+    const n = (tally.get(id) ?? 0) - 1;
+    if (n < 0) return false;
+    tally.set(id, n);
+  }
+  return [...tally.values()].every((c) => c === 0);
+}
+
+function applySavedActionBarOrder(
+  defaultBar: string[],
+  saved: string[] | undefined,
+): string[] {
+  if (!saved || saved.length !== defaultBar.length) return defaultBar;
+  if (!spellIdMultisetEqual(saved, defaultBar)) return defaultBar;
+  return saved;
+}
+
+export function reconcileActionBarOrder(prev: string[], defaultBar: string[]): string[] {
+  if (prev.length === defaultBar.length && spellIdMultisetEqual(prev, defaultBar)) return prev;
+  return defaultBar;
+}
 
 function talentTreeTemplate(cls: ClassType): Talent[] {
   if (cls === ClassType.PRIEST) return PRIEST_TALENTS;
@@ -77,9 +104,9 @@ function talentTreeTemplate(cls: ClassType): Talent[] {
 }
 
 function starterSpells(cls: ClassType): string[] {
-  if (cls === ClassType.PRIEST) return ['flash_heal', 'renew', 'mana_potion'];
-  if (cls === ClassType.DRUID) return ['rejuvenation', 'regrowth', 'mana_potion'];
-  return ['flash_heal', 'mana_potion'];
+  if (cls === ClassType.PRIEST) return ['flash_heal', 'renew'];
+  if (cls === ClassType.DRUID) return ['rejuvenation', 'regrowth'];
+  return ['flash_heal'];
 }
 
 export function buildSpellLoadout(
@@ -92,11 +119,22 @@ export function buildSpellLoadout(
   for (const t of talents) {
     if (t.spellId && t.points > 0 && !extra.includes(t.spellId)) extra.push(t.spellId);
   }
-  const merged = [...starter];
+  const merged: string[] = [...starter];
   for (const id of extra) {
     if (!merged.includes(id)) merged.push(id);
   }
-  return { unlockedSpells: merged, activeActionBars: merged };
+  const order = classSpellOrder(cls);
+  const healRow: string[] = [];
+  for (const id of order) {
+    if (merged.includes(id) && healRow.length < 3) healRow.push(id);
+  }
+  const primary = merged.find((i) => order.includes(i)) ?? 'flash_heal';
+  while (healRow.length < 3) {
+    healRow.push(primary);
+  }
+  const activeActionBars: string[] = [healRow[0]!, healRow[1]!, healRow[2]!, 'wand', 'mana_potion'];
+  const unlockedSpells = ['wand', 'mana_potion', ...merged].filter((x, i, a) => a.indexOf(x) === i);
+  return { unlockedSpells, activeActionBars };
 }
 
 export function mergeSavedTalentRanks(ranks: Record<string, number> | undefined, cls: ClassType | null): Talent[] {
@@ -123,7 +161,7 @@ export function computeMetaFromProgress(
   | 'mana'
 > {
   const level = levelFromTotalXp(xp);
-  const pool = 5 + (level - 1);
+  const pool = 5 + (level - 1) * 2;
   const spent = talents.reduce((acc, t) => acc + t.points * t.cost, 0);
   const talentPoints = Math.max(0, pool - spent);
   const maxMana = computedMaxMana(cls, level, talents);
@@ -149,8 +187,13 @@ export function readStoredProgress(): Partial<GameState> | null {
     if (p.v !== 1) return null;
     const talents = mergeSavedTalentRanks(p.talentRanks, p.playerClass ?? null);
     const meta = computeMetaFromProgress(p.xp, p.playerClass ?? null, talents);
+    const activeActionBars = applySavedActionBarOrder(
+      meta.activeActionBars,
+      Array.isArray(p.actionBarSpellIds) ? p.actionBarSpellIds : undefined,
+    );
     return {
       ...meta,
+      activeActionBars,
       playerClass: p.playerClass ?? null,
       completedDungeonIds: Array.isArray(p.completedDungeonIds) ? p.completedDungeonIds : [],
     };
@@ -171,6 +214,7 @@ export function writeStoredProgress(state: GameState): void {
     talentRanks,
     completedDungeonIds: state.completedDungeonIds,
     playerClass: state.playerClass,
+    actionBarSpellIds: state.activeActionBars,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }

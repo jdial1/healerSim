@@ -7,6 +7,7 @@ import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, X } from 'lucide-react';
 import { ClassType, Talent } from '../types.ts';
+import { unmetChainedPrerequisiteTalents } from '../playerStats.ts';
 import { GameIcon } from './GameIcon.tsx';
 import type { IconGlow } from '../gameIcons.ts';
 
@@ -19,14 +20,16 @@ interface TalentTreeProps {
   playerClass: ClassType;
 }
 
+const GRID_COLS = 5;
+const GRID_ROWS = 7;
+const PCT_W = 100 / GRID_COLS;
+const PCT_H = 100 / GRID_ROWS;
+
 function learnBlockedReason(talent: Talent, allTalents: Talent[], talentPoints: number, playerLevel: number): string | null {
   if (talent.levelReq > playerLevel) {
     return `Requires level ${talent.levelReq} (you are level ${playerLevel})`;
   }
-  const prereqs = talent.prerequisites ?? [];
-  const unmet = prereqs
-    .map((id) => allTalents.find((t) => t.id === id))
-    .filter((p): p is Talent => !!p && p.points === 0);
+  const unmet = unmetChainedPrerequisiteTalents(allTalents, talent);
   if (unmet.length > 0) {
     return `Spend at least 1 point in ${unmet.map((p) => p.name).join(' · ')}`;
   }
@@ -63,11 +66,7 @@ export function TalentTree({
 
   const isTalentAccessible = (talent: Talent) => {
     if (talent.levelReq > playerLevel) return false;
-    if (!talent.prerequisites) return true;
-    return talent.prerequisites.every((pid) => {
-      const p = talents.find((t) => t.id === pid);
-      return p && p.points > 0;
-    });
+    return unmetChainedPrerequisiteTalents(talents, talent).length === 0;
   };
 
   return (
@@ -87,16 +86,22 @@ export function TalentTree({
       </div>
 
       <div className="flex-1 overflow-y-auto bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed p-4">
-        <div className="relative mx-auto grid aspect-[3/5] w-full max-w-lg grid-cols-4 grid-rows-7 gap-4">
+        <div
+          className="relative mx-auto grid aspect-[5/7] w-full max-w-2xl gap-2 sm:gap-3"
+          style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`, gridTemplateRows: `repeat(${GRID_ROWS}, 1fr)` }}
+        >
           <svg className="pointer-events-none absolute inset-0 h-full w-full">
             {talents.flatMap((t) =>
               (t.prerequisites || []).flatMap((pid) => {
                 const p = talents.find((parent) => parent.id === pid);
                 if (!p) return [];
-                const x1 = `${p.gridX * 25 + 12.5}%`;
-                const y1 = `${p.gridY * (100 / 7) + 100 / 14}%`;
-                const x2 = `${t.gridX * 25 + 12.5}%`;
-                const y2 = `${t.gridY * (100 / 7) + 100 / 14}%`;
+                const x1 = `${p.gridX * PCT_W + PCT_W / 2}%`;
+                const y1 = `${p.gridY * PCT_H + PCT_H / 2}%`;
+                const x2 = `${t.gridX * PCT_W + PCT_W / 2}%`;
+                const y2 = `${t.gridY * PCT_H + PCT_H / 2}%`;
+                const lit = p.points > 0 && t.points > 0;
+                const syn =
+                  t.synergyWith?.includes(p.id) || p.synergyWith?.includes(t.id) || false;
                 return [
                   <line
                     key={`${p.id}-${t.id}`}
@@ -104,9 +109,10 @@ export function TalentTree({
                     y1={y1}
                     x2={x2}
                     y2={y2}
-                    stroke={p.points > 0 ? '#3b82f6' : '#1e293b'}
-                    strokeWidth="2"
+                    stroke={lit ? (syn ? '#a855f7' : '#3b82f6') : '#1e293b'}
+                    strokeWidth={syn && lit ? '3' : '2'}
                     strokeDasharray={p.points > 0 ? '0' : '4'}
+                    className={syn && lit ? 'drop-shadow-[0_0_6px_rgba(168,85,247,0.7)]' : undefined}
                   />,
                 ];
               }),
@@ -134,7 +140,7 @@ export function TalentTree({
                         ? 'border-yellow-400 bg-blue-600 shadow-[0_0_15px_rgba(251,191,36,0.4)]'
                         : accessible
                           ? 'border-slate-600 bg-slate-800 hover:border-white'
-                          : 'border-slate-800 bg-slate-900 opacity-40 grayscale'
+                          : 'border-slate-800 bg-slate-900 opacity-50'
                     }
                     ${isSelected ? 'scale-110 ring-4 ring-blue-500 ring-offset-2 ring-offset-slate-950' : ''}
                   `}
@@ -162,8 +168,26 @@ export function TalentTree({
         <AnimatePresence mode="wait">
           {selectedTalent ? (
             <motion.div key={selectedTalent.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <h3 className="text-lg font-bold uppercase italic text-white">{selectedTalent.name}</h3>
-              <p className="mt-1 text-sm italic text-slate-400">{selectedTalent.description}</p>
+              <div className="flex items-center gap-3">
+                <GameIcon
+                  iconPath={selectedTalent.icon}
+                  glow={talentGlow}
+                  size="md"
+                  title={selectedTalent.name}
+                  dimmed={selectedTalent.points === 0}
+                />
+                <h3 className="min-w-0 flex-1 text-lg font-bold uppercase italic text-white">
+                  {selectedTalent.name}
+                </h3>
+              </div>
+              <p className="mt-1 text-sm italic text-slate-400">
+                {selectedTalent.description}
+                {selectedTalent.maxRankBonusDescription && selectedTalent.points === selectedTalent.maxPoints ? (
+                  <span className="mt-2 block text-xs not-italic text-amber-200/90">
+                    {selectedTalent.maxRankBonusDescription}
+                  </span>
+                ) : null}
+              </p>
               <button
                 type="button"
                 onClick={() => onUnlock(selectedTalent.id)}

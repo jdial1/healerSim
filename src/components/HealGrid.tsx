@@ -63,7 +63,7 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
                   ? 'z-10 scale-[1.02] border-blue-300 ring-[3px] ring-inset ring-blue-400 brightness-110'
                   : `border-y border-r border-slate-800 ${tier.edge}`
               }
-              ${isDead ? 'opacity-40 grayscale shadow-inner' : ''}
+              ${isDead ? 'opacity-45 shadow-inner' : ''}
               group text-left
             `}
           >
@@ -86,6 +86,9 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
                   <span className="rounded border border-slate-700/80 bg-slate-950/60 px-1 font-mono text-slate-300">
                     Lv {unit.level}
                   </span>
+                  {unit.shield > 0 ? (
+                    <span className="font-mono text-sky-400">+{Math.round(unit.shield)} absorb</span>
+                  ) : null}
                 </div>
                 
                 {/* Buffs as small icons */}
@@ -162,10 +165,10 @@ export function HealGrid({ party, onTargetSelect, selectedId, manaRegenBuffTicks
             </div>
 
             {/* Subtle Role Overlay */}
-            <div className="absolute top-1 right-1 opacity-[0.03] text-white">
-               {unit.role === 'TANK' && <Shield size={32} />}
-               {unit.role === 'DPS' && <Zap size={32} />}
-               {unit.role === 'HEALER' && <User size={32} />}
+            <div className="pointer-events-none absolute top-1 right-1 opacity-[0.14]">
+               {unit.role === 'TANK' && <Shield className="text-sky-400" size={32} strokeWidth={1.5} />}
+               {unit.role === 'DPS' && <Zap className="text-amber-400" size={32} strokeWidth={1.5} />}
+               {unit.role === 'HEALER' && <User className="text-emerald-400" size={32} strokeWidth={1.5} />}
             </div>
           </button>
         );
