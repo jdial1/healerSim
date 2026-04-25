@@ -19,10 +19,7 @@ import type { BossSelfBuff } from '../types.ts';
 import { GameIcon } from './GameIcon.tsx';
 
 import { BOSS_BUFF_ICON_TINT, glowForBossSelfBuff } from '../gameIcons.ts';
-
-
-
-export const TRASH_PACK_COUNT = 3;
+import { TRASH_PACK_COUNT } from '../constants.ts';
 
 const TRASH_PACKS = TRASH_PACK_COUNT;
 

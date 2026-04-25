@@ -1,0 +1,542 @@
+[
+  {
+    "id": "p_r0c0",
+    "name": "Mental Fortitude",
+    "description": "Increases max mana by 40 per point. Max rank: +300 mana total from this talent.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/brain",
+    "gridX": 0,
+    "gridY": 0,
+    "statBonus": {
+      "manaPool": 40
+    },
+    "maxRankBonusDescription": "If maxed, regenerate 1% of total mana every 5 seconds in combat."
+  },
+  {
+    "id": "p_r0c1",
+    "name": "Mending Prose",
+    "description": "Increases all healing by 3% per point.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/ball-heart",
+    "gridX": 1,
+    "gridY": 0,
+    "statBonus": {
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "p_r0c2",
+    "name": "Improved Renew",
+    "description": "Renew ticks heal for 4% more per point.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/prayer",
+    "gridX": 2,
+    "gridY": 0,
+    "statBonus": {
+      "healingBoost": 4
+    }
+  },
+  {
+    "id": "p_r0c3",
+    "name": "Solemn Absolution",
+    "description": "Increases crit chance by 1.5% per point.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/target-dummy",
+    "gridX": 3,
+    "gridY": 0,
+    "statBonus": {
+      "critChance": 1.5
+    }
+  },
+  {
+    "id": "p_r0c4",
+    "name": "Benediction",
+    "description": "Return 3 mana on direct heals per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/light-bulb",
+    "gridX": 4,
+    "gridY": 0,
+    "statBonus": {
+      "manaReturnOnDirectHeal": 3
+    }
+  },
+  {
+    "id": "p_r1c0",
+    "name": "Harrowed Focus",
+    "description": "Increases haste by 2% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/wind-hole",
+    "gridX": 0,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c0"
+    ],
+    "statBonus": {
+      "haste": 2
+    }
+  },
+  {
+    "id": "p_r1c1",
+    "name": "Gentle Absolution",
+    "description": "Increases all healing by 3% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/sun",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c1"
+    ],
+    "statBonus": {
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "p_r1c2",
+    "name": "Tome of Clarity",
+    "description": "Unlocks Greater Heal for your spellbook.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "delapouite/hand-of-god",
+    "gridX": 2,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c2"
+    ],
+    "spellId": "greater_heal"
+  },
+  {
+    "id": "p_r1c3",
+    "name": "Chorus of Atonement",
+    "description": "Increases crit chance by 2% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/extra-lucid",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c3"
+    ],
+    "statBonus": {
+      "critChance": 2
+    }
+  },
+  {
+    "id": "p_r1c4",
+    "name": "Path of the Sun",
+    "description": "Path of the Sun: your heals are 3% more effective. Exclusive with Path of the Moon.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/bright-explosion",
+    "gridX": 4,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c4"
+    ],
+    "statBonus": {
+      "healingBoost": 3
+    },
+    "exclusiveWith": [
+      "p_r2c4"
+    ],
+    "mechanicId": "path_sun"
+  },
+  {
+    "id": "p_r2c0",
+    "name": "Resonant Words",
+    "description": "Increases haste by 2.5% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/echo-ripples",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r1c0"
+    ],
+    "statBonus": {
+      "haste": 2.5
+    }
+  },
+  {
+    "id": "p_r2c1",
+    "name": "Aegis of Faith",
+    "description": "Critical heals create a shield for 20% of the amount healed, lasting 10s.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/energy-shield",
+    "gridX": 1,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r1c1"
+    ],
+    "mechanicId": "divine_aegis"
+  },
+  {
+    "id": "p_r2c2",
+    "name": "Rapture",
+    "description": "Increases all healing by 4% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "delapouite/holy-hand-grenade",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r1c2"
+    ],
+    "statBonus": {
+      "healingBoost": 4
+    }
+  },
+  {
+    "id": "p_r2c3",
+    "name": "Harsh Confession",
+    "description": "Flash Heal has 10% chance to make your next Greater Heal free and unimpeded by cooldown feel.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/arcing-bolt",
+    "gridX": 3,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r1c3"
+    ],
+    "mechanicId": "surge_of_light"
+  },
+  {
+    "id": "p_r2c4",
+    "name": "Path of the Moon",
+    "description": "Path of the Moon: direct heals return 1% max mana. Exclusive with Path of the Sun.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/moon",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r0c4"
+    ],
+    "exclusiveWith": [
+      "p_r1c4"
+    ],
+    "mechanicId": "path_moon"
+  },
+  {
+    "id": "p_r3c0",
+    "name": "Seraphic Boon",
+    "description": "Max mana +80 per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "delapouite/jester-hat",
+    "gridX": 0,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c0"
+    ],
+    "statBonus": {
+      "manaPool": 80
+    }
+  },
+  {
+    "id": "p_r3c1",
+    "name": "Binding Tether",
+    "description": "Your direct heals on allies also restore you for 6% of the value per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/chained-heart",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c1"
+    ],
+    "mechanicId": "binding_heal"
+  },
+  {
+    "id": "p_r3c2",
+    "name": "Hymn of the Choir",
+    "description": "Unlocks Circle of Healing.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/holy-symbol",
+    "gridX": 2,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c2"
+    ],
+    "spellId": "circle_of_healing"
+  },
+  {
+    "id": "p_r3c3",
+    "name": "Luminous Aegis",
+    "description": "Shield strength from crits is 10% more effective per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/surrounded-shield",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c3"
+    ],
+    "mechanicId": "luminous_aegis",
+    "statBonus": {
+      "healingBoost": 5
+    }
+  },
+  {
+    "id": "p_r3c4",
+    "name": "Gleaming Proclamation",
+    "description": "Your Flash Heal has 5% more crit chance. Resonates with Harsh Confession.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/lightning-tear",
+    "gridX": 4,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c3"
+    ],
+    "statBonus": {
+      "critChance": 5
+    },
+    "mechanicId": "gleaming_proclamation",
+    "synergyWith": [
+      "p_r2c3"
+    ]
+  },
+  {
+    "id": "p_r4c0",
+    "name": "Fervor of the Martyr",
+    "description": "When a party member is below 30% health, your healing to them is 8% more per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/candle-flame",
+    "gridX": 0,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c0"
+    ],
+    "statBonus": {
+      "healingBoost": 8
+    }
+  },
+  {
+    "id": "p_r4c1",
+    "name": "Power Infusion",
+    "description": "Your next 3 heals after a critical heal are cast with 50% faster effective recovery.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/extra-lucid",
+    "gridX": 1,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c1"
+    ],
+    "mechanicId": "power_infusion"
+  },
+  {
+    "id": "p_r4c2",
+    "name": "Spirit of Redemption",
+    "description": "When you drop below 30% health, your healing is increased 50% for 10s. 2 min internal cooldown.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/angel-outfit",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c2"
+    ],
+    "mechanicId": "spirit_of_redemption"
+  },
+  {
+    "id": "p_r4c3",
+    "name": "Celestial Reach",
+    "description": "Haste 4% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "delapouite/ascending-block",
+    "gridX": 3,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c3"
+    ],
+    "statBonus": {
+      "haste": 4
+    }
+  },
+  {
+    "id": "p_r4c4",
+    "name": "Grace",
+    "description": "Direct heals stack Grace on the target: each stack increases healing received from you by 4% (max 3 stacks, 8s).",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/angel-wings",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c4"
+    ],
+    "mechanicId": "priest_grace"
+  },
+  {
+    "id": "p_r5c0",
+    "name": "Crest of the Archon",
+    "description": "Max mana +120.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/crown",
+    "gridX": 0,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c0"
+    ],
+    "statBonus": {
+      "manaPool": 120
+    }
+  },
+  {
+    "id": "p_r5c1",
+    "name": "Hallowed Ground",
+    "description": "Healing 10% per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/globe",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c1"
+    ],
+    "statBonus": {
+      "healingBoost": 10
+    }
+  },
+  {
+    "id": "p_r5c2",
+    "name": "Benedictory Echo",
+    "description": "Crit 6% per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "delapouite/sparkles",
+    "gridX": 2,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c2"
+    ],
+    "statBonus": {
+      "critChance": 6
+    }
+  },
+  {
+    "id": "p_r5c3",
+    "name": "Astral Harmony",
+    "description": "Haste 6% per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/clockwork",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c3"
+    ],
+    "statBonus": {
+      "haste": 6
+    }
+  },
+  {
+    "id": "p_r5c4",
+    "name": "Resonant Barrier",
+    "description": "When a critical absorb shield is fully consumed, its value splashes as healing to the lowest-health ally (15% per point). Synergy: Luminous Aegis.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "delapouite/perspective-dice-six-faces-random",
+    "gridX": 4,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c4"
+    ],
+    "mechanicId": "aegis_burst",
+    "synergyWith": [
+      "p_r3c3"
+    ]
+  },
+  {
+    "id": "p_cap",
+    "name": "Archangel",
+    "description": "Archangel: for 15s, your direct heals echo to the whole party. Wings manifest on your bar.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 40,
+    "cost": 1,
+    "icon": "lorc/crown",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "p_r5c1",
+      "p_r5c2",
+      "p_r5c3"
+    ],
+    "mechanicId": "capstone_archangel",
+    "maxRankBonusDescription": "Transforms combat visuals while active."
+  }
+]

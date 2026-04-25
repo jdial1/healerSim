@@ -1,0 +1,541 @@
+[
+  {
+    "id": "d_r0c0",
+    "name": "Nature's Focus",
+    "description": "Healing 2% per point.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "delapouite/ginkgo-leaf",
+    "gridX": 0,
+    "gridY": 0,
+    "statBonus": {
+      "healingBoost": 2
+    }
+  },
+  {
+    "id": "d_r0c1",
+    "name": "Furor",
+    "description": "Max mana 45 per point.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/arcing-bolt",
+    "gridX": 1,
+    "gridY": 0,
+    "statBonus": {
+      "manaPool": 45
+    }
+  },
+  {
+    "id": "d_r0c2",
+    "name": "Verdant Heart",
+    "description": "Haste 2% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/wind-hole",
+    "gridX": 2,
+    "gridY": 0,
+    "statBonus": {
+      "haste": 2
+    }
+  },
+  {
+    "id": "d_r0c3",
+    "name": "Wildseed Attunement",
+    "description": "Crit 2% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "delapouite/seedling",
+    "gridX": 3,
+    "gridY": 0,
+    "statBonus": {
+      "critChance": 2
+    }
+  },
+  {
+    "id": "d_r0c4",
+    "name": "Living Vine",
+    "description": "Direct heals return 2 mana per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/roots",
+    "gridX": 4,
+    "gridY": 0,
+    "statBonus": {
+      "manaReturnOnDirectHeal": 2
+    }
+  },
+  {
+    "id": "d_r1c0",
+    "name": "Grove Harmony",
+    "description": "Healing 3% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "delapouite/forest",
+    "gridX": 0,
+    "gridY": 1,
+    "prerequisites": [
+      "d_r0c0"
+    ],
+    "statBonus": {
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "d_r1c1",
+    "name": "Tranquil Well",
+    "description": "Max mana 60 per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/heart-bottle",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "d_r0c1"
+    ],
+    "statBonus": {
+      "manaPool": 60
+    }
+  },
+  {
+    "id": "d_r1c2",
+    "name": "Naturalist",
+    "description": "Unlocks Healing Touch.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/health-normal",
+    "gridX": 2,
+    "gridY": 1,
+    "prerequisites": [
+      "d_r0c2"
+    ],
+    "spellId": "healing_touch"
+  },
+  {
+    "id": "d_r1c3",
+    "name": "Moonkin's Favor",
+    "description": "Crit 2% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/owl",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "d_r0c3"
+    ],
+    "statBonus": {
+      "critChance": 2
+    }
+  },
+  {
+    "id": "d_r1c4",
+    "name": "Cultivation",
+    "description": "Rejuvenation and Wild Growth HoTs heal for 8% more per point. Exclusive with Deep Roots.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/leaf-orchid",
+    "gridX": 4,
+    "gridY": 1,
+    "prerequisites": [
+      "d_r0c4"
+    ],
+    "exclusiveWith": [
+      "d_r2c4"
+    ],
+    "mechanicId": "druid_path_cultivation"
+  },
+  {
+    "id": "d_r2c0",
+    "name": "Barkskin Rite",
+    "description": "Haste 2.5% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/tree-bark",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [
+      "d_r1c0"
+    ],
+    "statBonus": {
+      "haste": 2.5
+    }
+  },
+  {
+    "id": "d_r2c1",
+    "name": "Living Seed",
+    "description": "Crit heals plant a seed; next damage to that ally heals from the seed. Synergy: Natural Perfection adds potency.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "delapouite/seedling",
+    "gridX": 1,
+    "gridY": 2,
+    "prerequisites": [
+      "d_r1c1"
+    ],
+    "mechanicId": "living_seed",
+    "synergyWith": [
+      "d_r3c1"
+    ]
+  },
+  {
+    "id": "d_r2c2",
+    "name": "Swiftmend",
+    "description": "Unlocks Swiftmend. Consumes Rejuvenation or Regrowth on the target for a burst of healing.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/fruiting",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "d_r1c2"
+    ],
+    "spellId": "swiftmend"
+  },
+  {
+    "id": "d_r2c3",
+    "name": "Photosynthesis",
+    "description": "While you have a HoT on yourself, haste 3% per point. Allies with your HoT have 2% more chance per point for HoT double ticks.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/flowers",
+    "gridX": 3,
+    "gridY": 2,
+    "prerequisites": [
+      "d_r1c3"
+    ],
+    "mechanicId": "photosynthesis"
+  },
+  {
+    "id": "d_r2c4",
+    "name": "Deep Roots",
+    "description": "Rejuvenation and Regrowth on the tank heal for 12% more per point. Exclusive with Cultivation.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/tap",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [
+      "d_r0c4"
+    ],
+    "exclusiveWith": [
+      "d_r1c4"
+    ],
+    "mechanicId": "druid_path_deep_roots"
+  },
+  {
+    "id": "d_r3c0",
+    "name": "Cenarion Bloom",
+    "description": "Healing 4% per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/cherry",
+    "gridX": 0,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c0"
+    ],
+    "statBonus": {
+      "healingBoost": 4
+    }
+  },
+  {
+    "id": "d_r3c1",
+    "name": "Natural Perfection",
+    "description": "Each time you are hit, crit chance 2% for 10s, stacks 5. Synergy: Living Seed.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/surrounded-shield",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c1"
+    ],
+    "mechanicId": "natural_perfection",
+    "synergyWith": [
+      "d_r2c1"
+    ]
+  },
+  {
+    "id": "d_r3c2",
+    "name": "Nature's Bounty",
+    "description": "Unlocks Wild Growth.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "delapouite/circle-forest",
+    "gridX": 2,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c2"
+    ],
+    "spellId": "wild_growth"
+  },
+  {
+    "id": "d_r3c3",
+    "name": "Mastery: Harmony",
+    "description": "After a direct heal, your HoT ticks are stronger for 6s. While any ally has your HoT, your direct heals are stronger.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/flower-tulip",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c3"
+    ],
+    "mechanicId": "druid_harmony"
+  },
+  {
+    "id": "d_r3c4",
+    "name": "Lifebloom",
+    "description": "Unlocks Lifebloom: HoT that blooms for extra healing when it expires.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/lotus-flower",
+    "gridX": 4,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c4"
+    ],
+    "spellId": "lifebloom"
+  },
+  {
+    "id": "d_r4c0",
+    "name": "Eternal Spring",
+    "description": "Max mana 100.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/water-bolt",
+    "gridX": 0,
+    "gridY": 4,
+    "prerequisites": [
+      "d_r3c0"
+    ],
+    "statBonus": {
+      "manaPool": 100
+    }
+  },
+  {
+    "id": "d_r4c1",
+    "name": "Grovekeeper",
+    "description": "Healing 6% per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "delapouite/bonsai-tree",
+    "gridX": 1,
+    "gridY": 4,
+    "prerequisites": [
+      "d_r3c1"
+    ],
+    "statBonus": {
+      "healingBoost": 6
+    }
+  },
+  {
+    "id": "d_r4c2",
+    "name": "Tree of Life",
+    "description": "Tree of Life: your HoTs cost 30% less, direct heals cost 20% more while active. Toggle in combat (capstone).",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "delapouite/bonsai-tree",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "d_r3c2"
+    ],
+    "mechanicId": "tree_of_life"
+  },
+  {
+    "id": "d_r4c3",
+    "name": "Verdant Infusion",
+    "description": "Haste 4% per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/compass",
+    "gridX": 3,
+    "gridY": 4,
+    "prerequisites": [
+      "d_r3c3"
+    ],
+    "statBonus": {
+      "haste": 4
+    }
+  },
+  {
+    "id": "d_r4c4",
+    "name": "Wildcrown's Boon",
+    "description": "Crit 4% and mana +80.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/pine-tree",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "d_r3c4"
+    ],
+    "statBonus": {
+      "critChance": 4,
+      "manaPool": 80
+    }
+  },
+  {
+    "id": "d_r5c0",
+    "name": "Heartwood Pact",
+    "description": "Healing 5% and haste 3%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/broken-heart",
+    "gridX": 0,
+    "gridY": 5,
+    "prerequisites": [
+      "d_r4c0"
+    ],
+    "statBonus": {
+      "healingBoost": 5,
+      "haste": 3
+    }
+  },
+  {
+    "id": "d_r5c1",
+    "name": "Dreamwalker's Mending",
+    "description": "Healing 5% per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/drop",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "d_r4c1"
+    ],
+    "statBonus": {
+      "healingBoost": 5
+    }
+  },
+  {
+    "id": "d_r5c2",
+    "name": "Barkskin Mastery",
+    "description": "Crit 4% and healing 3%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/wood-axe",
+    "gridX": 2,
+    "gridY": 5,
+    "prerequisites": [
+      "d_r4c2"
+    ],
+    "statBonus": {
+      "critChance": 4,
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "d_r5c3",
+    "name": "Groveheart",
+    "description": "Haste 5% and max mana 100.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/giant",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "d_r4c3"
+    ],
+    "statBonus": {
+      "haste": 5,
+      "manaPool": 100
+    }
+  },
+  {
+    "id": "d_r5c4",
+    "name": "Skylord's Bounty",
+    "description": "Healing 4% and crit 3%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/visored-helm",
+    "gridX": 4,
+    "gridY": 5,
+    "prerequisites": [
+      "d_r4c4"
+    ],
+    "statBonus": {
+      "healingBoost": 4,
+      "critChance": 3
+    }
+  },
+  {
+    "id": "d_cap",
+    "name": "Nature's Grace",
+    "description": "The ground around you flowers: passively heal all living allies a small amount each second for 20s. Visual bloom on your character.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 40,
+    "cost": 1,
+    "icon": "lorc/flowers",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "d_r5c1",
+      "d_r5c2",
+      "d_r5c3"
+    ],
+    "mechanicId": "capstone_natures_grace",
+    "maxRankBonusDescription": "Ground VFX and passive group healing."
+  }
+]

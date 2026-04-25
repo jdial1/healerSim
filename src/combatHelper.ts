@@ -1,32 +1,31 @@
 import { Buff, ClassType, GameState, Unit, Spell } from './types.ts';
-import { talentRanks, hasHotOnUnit, findConsumableHotIndex } from './talentMechanics.ts';
-import {
-  naturePerfectionCritBonus,
-  talentCritChancePctFromTalents,
-  talentHastePctFromTalents,
-} from './playerStats.ts';
+import { findConsumableHotIndex } from './talentMechanics.ts';
+import { directHealSynergyMultiplierFromIds, nextManaForSpellWithHooks } from './combatHooks.ts';
+import { BALANCE } from './balance.ts';
 
-export const T_ARCHANGEL = 15 * 10;
-export const T_NATURES_GRACE = 20 * 10;
-export const T_AVENGING = 20 * 10;
 export const T_SPIRIT_AMP = 10 * 10;
-export const SHIELD_DEFAULT_TICKS = 10 * 10;
 
-export const HOT_PANDEMIC_MULT = 1.3;
+export const SHIELD_DEFAULT_TICKS = BALANCE.combat.shieldDefaultTicks;
 
-const DIRECT_HEAL_SYNERGY_SPELL_IDS = new Set(['flash_heal', 'greater_heal', 'swiftmend', 'regrowth']);
-const SYNERGY_PRIMER_SOURCE_SPELL_IDS = new Set(['renew', 'rejuvenation', 'regrowth', 'wild_growth']);
+const BC = BALANCE.combat;
 
-export function directHealSynergyMultiplier(unit: Unit, spellId: string): number {
-  if (!DIRECT_HEAL_SYNERGY_SPELL_IDS.has(spellId)) return 1;
-  if (!unit.buffs.some((b) => SYNERGY_PRIMER_SOURCE_SPELL_IDS.has(b.sourceSpellId))) return 1;
-  return 1.15;
+function hotPandemicCapMult(spell: Spell): number {
+  return spell.balance?.hotPandemicDurationCapMult ?? BC.hotPandemicDurationCapMultDefault;
 }
 
-export function applyPandemicHotToUnit(unit: Unit, spell: Spell, healingPerTick: number): Unit {
+export function directHealSynergyMultiplier(unit: Unit, spellId: string): number {
+  return directHealSynergyMultiplierFromIds(unit, spellId);
+}
+
+export function applyPandemicHotToUnit(
+  unit: Unit,
+  spell: Spell,
+  healingPerTick: number,
+  opts?: { hasteTickScale?: number; bloomBurstHeal?: number },
+): Unit {
   const baseTicks = spell.hotDuration ?? 0;
   if (baseTicks <= 0) return unit;
-  const capTicks = Math.max(baseTicks, Math.floor(baseTicks * HOT_PANDEMIC_MULT));
+  const capTicks = Math.max(baseTicks, Math.floor(baseTicks * hotPandemicCapMult(spell)));
   const existingIdx = unit.buffs.findIndex((b) => b.sourceSpellId === spell.id);
   let carried = 0;
   let kept = unit.buffs;
@@ -35,6 +34,9 @@ export function applyPandemicHotToUnit(unit: Unit, spell: Spell, healingPerTick:
     kept = unit.buffs.filter((_, i) => i !== existingIdx);
   }
   const combined = Math.min(carried + baseTicks, capTicks);
+  const scale = opts?.hasteTickScale ?? 1;
+  const bloom =
+    opts?.bloomBurstHeal ?? (spell.id === 'lifebloom' ? Math.max(0, spell.healing) : undefined);
   const buff: Buff = {
     id: spell.id,
     name: spell.name,
@@ -43,35 +45,12 @@ export function applyPandemicHotToUnit(unit: Unit, spell: Spell, healingPerTick:
     icon: spell.icon,
     sourceSpellId: spell.id,
     durationTicksMax: combined,
+    tickIntervalScale: scale,
+    tickAccumulator: 0,
+    bloomBurstHeal: bloom && bloom > 0 ? bloom : undefined,
+    rendersAsHoTRing: true,
   };
   return { ...unit, buffs: [...kept, buff] };
-}
-
-export function photosynthesisHasteBonus(
-  s: GameState,
-  classType: ClassType,
-  healer: Unit,
-): number {
-  if (classType !== ClassType.DRUID) return 0;
-  const p = talentRanks(s.talents, 'photosynthesis');
-  if (p === 0) return 0;
-  if (hasHotOnUnit(healer, ClassType.DRUID)) {
-    return p * 3;
-  }
-  return 0;
-}
-
-export function totalHastePercent(s: GameState, classType: ClassType, healer: Unit): number {
-  const t = talentHastePctFromTalents(s.talents);
-  return t + photosynthesisHasteBonus(s, classType, healer);
-}
-
-export function effectiveSpellCritChance(s: GameState, naturalStacks: number): number {
-  return talentCritChancePctFromTalents(s.talents) + naturePerfectionCritBonus(naturalStacks);
-}
-
-export function rollCrit(critRoll: number, s: GameState, naturalStacks: number): boolean {
-  return critRoll < effectiveSpellCritChance(s, naturalStacks);
 }
 
 export function nextManaForSpell(
@@ -81,15 +60,14 @@ export function nextManaForSpell(
   spellId: string,
   surgeFree: boolean,
 ): number {
-  if (surgeFree && spellId === 'greater_heal') return 0;
-  if (classType && talentRanks(s.talents, 'tree_of_life') > 0) {
-    const hot = spell.type === 'HOT' || (spell.hotDuration && spell.healing > 0);
-    if (hot) return Math.round(spell.manaCost * 0.7);
-    if (spellId === 'greater_heal' || (spellId === 'flash_heal' && spell.healing > 20)) {
-      return Math.round(spell.manaCost * 1.2);
-    }
-  }
-  return spell.manaCost;
+  return nextManaForSpellWithHooks(s, classType, spell, spellId, surgeFree);
+}
+
+export function swiftmendCanApply(s: GameState, targetId: string): boolean {
+  if (s.playerClass !== 'DRUID') return false;
+  const u = s.party.find((x) => x.id === targetId);
+  if (!u || u.health <= 0) return false;
+  return findConsumableHotIndex(u, 'DRUID') >= 0;
 }
 
 export function resolveSwiftmend(
@@ -100,13 +78,13 @@ export function resolveSwiftmend(
   critMod: number,
   spell: Spell,
 ): { party: Unit[]; applied: boolean } {
-  if (classType !== ClassType.DRUID) return { party: s.party, applied: false };
+  if (classType !== 'DRUID') return { party: s.party, applied: false };
   const p = s.party.map((u) => ({ ...u, buffs: [...u.buffs] }));
   const idx = p.findIndex((u) => u.id === targetId);
   if (idx < 0) return { party: s.party, applied: false };
   const u = p[idx];
   if (u.health <= 0) return { party: s.party, applied: false };
-  const hotIdx = findConsumableHotIndex(u, ClassType.DRUID);
+  const hotIdx = findConsumableHotIndex(u, 'DRUID');
   if (hotIdx < 0) {
     return { party: s.party, applied: false };
   }
@@ -118,5 +96,5 @@ export function resolveSwiftmend(
 
 export function oneHotTickDoubleRoll(photosynthPoints: number): boolean {
   if (photosynthPoints <= 0) return false;
-  return Math.random() < photosynthPoints * 0.02;
+  return Math.random() < photosynthPoints * BC.photosynthesisDoubleTickChancePerRank;
 }

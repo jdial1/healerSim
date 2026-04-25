@@ -3,18 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export enum ClassType {
-  DRUID = 'DRUID',
-  PRIEST = 'PRIEST',
-  PALADIN = 'PALADIN',
-}
+import type { MechanicId } from './mechanicsRegistry.ts';
 
-export enum SpellType {
-  DIRECT = 'DIRECT',
-  HOT = 'HOT',
-  SHIELD = 'SHIELD',
-  AOE = 'AOE',
-}
+export type ClassType = 'DRUID' | 'PRIEST' | 'PALADIN';
+
+export type IconGlow = 'spell' | 'nature' | 'debuff';
+
+export type SpellType = 'DIRECT' | 'HOT' | 'SHIELD' | 'AOE';
 
 export interface Spell {
   id: string;
@@ -30,6 +25,15 @@ export interface Spell {
   cooldown: number;
   icon: string;
   color: string;
+  actionBarBorderClass: string;
+  glowType?: IconGlow;
+  limitedDungeonConsumable?: boolean;
+  staticEffectDescription?: string;
+  tags?: string[];
+  balance?: {
+    directHealSynergyMultiplier?: number;
+    hotPandemicDurationCapMult?: number;
+  };
 }
 
 export interface Buff {
@@ -40,6 +44,12 @@ export interface Buff {
   icon: string;
   sourceSpellId: string;
   durationTicksMax?: number;
+  stacks?: number;
+  tickIntervalScale?: number;
+  tickAccumulator?: number;
+  bloomBurstHeal?: number;
+  rendersAsHoTRing?: boolean;
+  isManaRegenBuff?: boolean;
 }
 
 export interface PartyDebuff {
@@ -145,7 +155,7 @@ export interface Talent {
     manaReturnOnDirectHeal?: number;
   };
   exclusiveWith?: string[];
-  mechanicId?: string;
+  mechanicId?: MechanicId;
   maxRankBonusDescription?: string;
   synergyWith?: string[];
   descriptionTones?: Array<{
@@ -160,6 +170,16 @@ export interface DungeonEnemy {
   icon: string;
 }
 
+export interface DungeonCardTheme {
+  borderLeft: string;
+  viaTint: string;
+  ring: string;
+  cardShadow: string;
+  borderHover: string;
+  deploy: string;
+  iconTint: string;
+}
+
 export interface Dungeon {
   id: string;
   name: string;
@@ -170,6 +190,7 @@ export interface Dungeon {
   bossName: string;
   bossIcon: string;
   cardIcon: string;
+  cardTheme: DungeonCardTheme;
   enemies: DungeonEnemy[];
   bossCombat?: BossCombatOverrides;
 }
@@ -188,17 +209,31 @@ export type DungeonRunOutcome =
       kind: 'failure';
       dungeonName: string;
       reason: DungeonFailureReason;
+      xpGained: number;
+      levelUp: boolean;
     };
 
 export type CombatPhase = 'TRASH' | 'BOSS';
+
+export interface PlayerCombatStats {
+  playerClass: ClassType;
+  xp: number;
+  mana: number;
+  maxMana: number;
+  manaRegenBuffTicksRemaining: number;
+  spiritRegenLockoutTicksRemaining: number;
+  spirit: number;
+  spellsEnabled: boolean;
+  manaPotionChargesRemaining: number;
+  spellHealingMultiplier: number;
+  actionBarHighlights: Record<string, boolean>;
+}
 
 export interface GameState {
   playerClass: ClassType | null;
   party: Unit[];
   mana: number;
   maxMana: number;
-  manaRegenBuffTicksRemaining: number;
-  spiritRegenLockoutTicksRemaining: number;
   manaPotionsUsedThisDungeon: number;
   xp: number;
   level: number;
@@ -218,9 +253,10 @@ export interface GameState {
   playerCombatBuffs: PlayerCombatBuff[];
   internalCooldowns: Record<string, number>;
   capstoneForm: CapstoneFormId | null;
-  capstoneFormTicksRemaining: number;
   holyPower: number;
   beaconTargetId: string;
-  powerInfusionCastsRemaining: number;
-  naturalPerfectionStacks: number;
+  bossMechanicCountdownTicks: number;
+  bossMechanicOrdinal: number;
+  dungeonOutcome: DungeonRunOutcome | null;
+  spellCooldowns: Record<string, number>;
 }

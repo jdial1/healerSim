@@ -1,0 +1,519 @@
+[
+  {
+    "id": "h_r0c0",
+    "name": "Seal of Wisdom",
+    "description": "Crit 1.2% per point. Mana sustain favors critical heals.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/brain",
+    "gridX": 0,
+    "gridY": 0,
+    "statBonus": {
+      "critChance": 1.2,
+      "manaPool": 25
+    }
+  },
+  {
+    "id": "h_r0c1",
+    "name": "Spiritual Focus",
+    "description": "Haste 2% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/wind-hole",
+    "gridX": 1,
+    "gridY": 0,
+    "statBonus": {
+      "haste": 2
+    }
+  },
+  {
+    "id": "h_r0c2",
+    "name": "Healing Light",
+    "description": "Healing 3% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/bright-explosion",
+    "gridX": 2,
+    "gridY": 0,
+    "statBonus": {
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "h_r0c3",
+    "name": "Sanctified Resilience",
+    "description": "Crit 1.5% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/target-dummy",
+    "gridX": 3,
+    "gridY": 0,
+    "statBonus": {
+      "critChance": 1.5
+    }
+  },
+  {
+    "id": "h_r0c4",
+    "name": "Infusion",
+    "description": "Return 2 mana on direct heals per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "lorc/energy-shield",
+    "gridX": 4,
+    "gridY": 0,
+    "statBonus": {
+      "manaReturnOnDirectHeal": 2
+    }
+  },
+  {
+    "id": "h_r1c0",
+    "name": "Libram of Clarity",
+    "description": "Crit 2% and max mana 40 per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/book-pile",
+    "gridX": 0,
+    "gridY": 1,
+    "prerequisites": [
+      "h_r0c0"
+    ],
+    "statBonus": {
+      "critChance": 2,
+      "manaPool": 40
+    }
+  },
+  {
+    "id": "h_r1c1",
+    "name": "Illumination",
+    "description": "Critical heals restore the spell manacost.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/light-bulb",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "h_r0c1"
+    ],
+    "mechanicId": "illumination"
+  },
+  {
+    "id": "h_r1c2",
+    "name": "Divine Favor",
+    "description": "Unlocks Holy Light.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/sun-rays",
+    "gridX": 2,
+    "gridY": 1,
+    "prerequisites": [
+      "h_r0c2"
+    ],
+    "spellId": "holy_light"
+  },
+  {
+    "id": "h_r1c3",
+    "name": "Crusader's Zeal",
+    "description": "Healing 3% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "lorc/crossed-swords",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "h_r0c3"
+    ],
+    "statBonus": {
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "h_r2c0",
+    "name": "Aegis of Devotion",
+    "description": "Haste 2.5% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "delapouite/templar-shield",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [
+      "h_r1c0"
+    ],
+    "statBonus": {
+      "haste": 2.5
+    }
+  },
+  {
+    "id": "h_r2c1",
+    "name": "Tower of Radiance",
+    "description": "Healing an ally under 50% health grants 1 Holy Power, max 3. Next direct heal is 100% stronger at 3.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/tower-bridge",
+    "gridX": 1,
+    "gridY": 2,
+    "prerequisites": [
+      "h_r1c1"
+    ],
+    "mechanicId": "tower_of_radiance"
+  },
+  {
+    "id": "h_r2c2",
+    "name": "Dawnforged Conviction",
+    "description": "Unlocks Light of Dawn.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/sunrise",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "h_r1c2"
+    ],
+    "spellId": "light_of_dawn"
+  },
+  {
+    "id": "h_r2c3",
+    "name": "Devotion Aura",
+    "description": "Party takes 4% less damage from attacks per point while you are alive.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "lorc/vibrating-shield",
+    "gridX": 3,
+    "gridY": 2,
+    "prerequisites": [
+      "h_r1c3"
+    ],
+    "mechanicId": "devotion_aura"
+  },
+  {
+    "id": "h_r3c0",
+    "name": "Laying on Hands Rite",
+    "description": "Healing 4% per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/cross-flare",
+    "gridX": 0,
+    "gridY": 3,
+    "prerequisites": [
+      "h_r2c0"
+    ],
+    "statBonus": {
+      "healingBoost": 4
+    }
+  },
+  {
+    "id": "h_r3c1",
+    "name": "Beacon of Light",
+    "description": "50% of your single-target healing on others is copied to the tank.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/anchor",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "h_r2c1"
+    ],
+    "mechanicId": "beacon_of_light"
+  },
+  {
+    "id": "h_r3c2",
+    "name": "Light's Vigor",
+    "description": "Crit 2% and healing 2% per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/heart",
+    "gridX": 2,
+    "gridY": 3,
+    "prerequisites": [
+      "h_r2c2"
+    ],
+    "statBonus": {
+      "critChance": 2,
+      "healingBoost": 2
+    }
+  },
+  {
+    "id": "h_r3c3",
+    "name": "Cleanse the Wicked",
+    "description": "Heals have increased chance to remove a random debuff. Synergy: Tower of Radiance improves proc chance.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/holy-oak",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "h_r2c3"
+    ],
+    "mechanicId": "cleanse",
+    "synergyWith": [
+      "h_r2c1"
+    ]
+  },
+  {
+    "id": "h_r3c4",
+    "name": "Vow of the Protector",
+    "description": "Beacon healing copy is stronger. Critical heals on your Beacon target refund 15% of that spell manacost per point. Exclusive with Vow of the Crusader.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "lorc/wing-cloak",
+    "gridX": 4,
+    "gridY": 3,
+    "prerequisites": [
+      "h_r2c3"
+    ],
+    "mechanicId": "paladin_vow_protector",
+    "exclusiveWith": [
+      "h_r4c4"
+    ],
+    "synergyWith": [
+      "h_r3c1"
+    ]
+  },
+  {
+    "id": "h_r4c0",
+    "name": "Radiant Conviction",
+    "description": "Crit 3% and max mana 80.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/jeweled-chalice",
+    "gridX": 0,
+    "gridY": 4,
+    "prerequisites": [
+      "h_r3c0"
+    ],
+    "statBonus": {
+      "critChance": 3,
+      "manaPool": 80
+    }
+  },
+  {
+    "id": "h_r4c1",
+    "name": "Glimmering Promise",
+    "description": "Healing 5% per point.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/heart-inside",
+    "gridX": 1,
+    "gridY": 4,
+    "prerequisites": [
+      "h_r3c1"
+    ],
+    "statBonus": {
+      "healingBoost": 5
+    }
+  },
+  {
+    "id": "h_r4c2",
+    "name": "Light's Grace",
+    "description": "Haste 4% and healing 3%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/lightsaber",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "h_r3c2"
+    ],
+    "statBonus": {
+      "haste": 4,
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "h_r4c3",
+    "name": "Hallowed Aegis",
+    "description": "Healing 4% and crit 2%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/surrounded-shield",
+    "gridX": 3,
+    "gridY": 4,
+    "prerequisites": [
+      "h_r3c3"
+    ],
+    "statBonus": {
+      "healingBoost": 4,
+      "critChance": 2
+    }
+  },
+  {
+    "id": "h_r4c4",
+    "name": "Vow of the Crusader",
+    "description": "Light of Dawn heals for 20% more per point. Exclusive with Vow of the Protector. Synergy: Devotion Aura.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "lorc/crossed-swords",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "h_r2c3"
+    ],
+    "mechanicId": "paladin_vow_crusader",
+    "exclusiveWith": [
+      "h_r3c4"
+    ],
+    "synergyWith": [
+      "h_r2c3"
+    ]
+  },
+  {
+    "id": "h_r5c0",
+    "name": "Silver Hand's Mending",
+    "description": "Haste 5% and crit 3%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/hand",
+    "gridX": 0,
+    "gridY": 5,
+    "prerequisites": [
+      "h_r4c0"
+    ],
+    "statBonus": {
+      "haste": 5,
+      "critChance": 3
+    }
+  },
+  {
+    "id": "h_r5c1",
+    "name": "Argent Aegis",
+    "description": "Healing 5% and crit 2%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/vortex",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "h_r4c1"
+    ],
+    "statBonus": {
+      "healingBoost": 5,
+      "critChance": 2
+    }
+  },
+  {
+    "id": "h_r5c2",
+    "name": "Argent Vindicator",
+    "description": "Healing 3% and haste 4%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/whip",
+    "gridX": 2,
+    "gridY": 5,
+    "prerequisites": [
+      "h_r4c2"
+    ],
+    "statBonus": {
+      "healingBoost": 3,
+      "haste": 4
+    }
+  },
+  {
+    "id": "h_r5c3",
+    "name": "Highlord's Gift",
+    "description": "Crit 3% and healing 3%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/gold-bar",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "h_r4c3"
+    ],
+    "statBonus": {
+      "critChance": 3,
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "h_r5c4",
+    "name": "Champion's Litany",
+    "description": "Haste 3% and healing 3%.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "lorc/violin",
+    "gridX": 4,
+    "gridY": 5,
+    "prerequisites": [
+      "h_r4c2",
+      "h_r4c3"
+    ],
+    "statBonus": {
+      "haste": 3,
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "h_cap",
+    "name": "Avenging Wrath",
+    "description": "Avenging Wrath: for 20s, gold aura on your character.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 40,
+    "cost": 1,
+    "icon": "lorc/angel-wings",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "h_r5c1",
+      "h_r5c2",
+      "h_r5c3"
+    ],
+    "mechanicId": "capstone_avenging_wrath",
+    "maxRankBonusDescription": "Gold glow while active."
+  }
+]

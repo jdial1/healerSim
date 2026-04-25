@@ -1,0 +1,15 @@
+{
+  "iconGlow": {
+    "boxShadow": {
+      "spell": "inset 0 0 0 1px rgba(255,255,255,0.12), 0 0 14px rgba(59,130,246,0.5)",
+      "nature": "inset 0 0 0 1px rgba(255,255,255,0.12), 0 0 14px rgba(34,197,94,0.48)",
+      "debuff": "inset 0 0 0 1px rgba(255,255,255,0.12), 0 0 14px rgba(239,68,68,0.52)"
+    },
+    "tint": {
+      "spell": "rgba(96,165,250,0.52)",
+      "nature": "rgba(74,222,128,0.5)",
+      "debuff": "rgba(248,113,113,0.52)"
+    },
+    "bossBuffTint": "rgba(252,211,77,0.48)"
+  }
+}

@@ -5,7 +5,6 @@
 
 import {
   Spell,
-  SpellType,
   ClassType,
   Dungeon,
   Unit,
@@ -13,11 +12,14 @@ import {
   BossCombatOverrides,
 } from './types.ts';
 import {
-  allyMaxHealthForRoleAndLevel,
+  allyMaxHealthForPoolEntry,
   healerMaxHealthFromStats,
   randomAllyLevel,
   spiritManaRegenMultiplier,
 } from './playerStats.ts';
+import spellsData from './data/spells.json';
+import npcPoolsData from './data/npc_pools.json';
+import balanceData from './data/balance.json';
 
 export const TICK_RATE = 100; // ms per tick
 export const MANA_REGEN_PER_TICK = 0.5;
@@ -25,7 +27,10 @@ export const MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE;
 export const MANA_POTION_USES_PER_DUNGEON = 2;
 
 export function bossDamageMultiplierForDifficulty(difficulty: number): number {
-  return Math.pow(1.12, Math.max(0, difficulty - 1));
+  return Math.pow(
+    balanceData.boss.damageMultiplierPerDifficultyStep,
+    Math.max(0, difficulty - 1),
+  );
 }
 
 export function damageTakenMultiplierFromDungeonLevelGap(
@@ -34,21 +39,26 @@ export function damageTakenMultiplierFromDungeonLevelGap(
 ): number {
   const gap = partyMemberLevel - dungeonLevelMax;
   if (gap <= 0) return 1;
-  return Math.pow(0.62, gap);
+  return Math.pow(balanceData.partyDamageFromDungeonLevelGap.multiplierPerPartyLevelOverDungeonMax, gap);
 }
 
-const TRASH_HEALTH_PER_PULL_BOSS_FRACTION = 0.1;
+export const TRASH_PACK_COUNT = 3;
 
 export function trashMaxHealthForDungeon(dungeon: Dungeon): number {
-  return Math.max(1, Math.round(dungeon.bossHealth * TRASH_HEALTH_PER_PULL_BOSS_FRACTION));
+  return Math.max(
+    1,
+    Math.round(dungeon.bossHealth * balanceData.trash.maxHealthFractionOfBoss),
+  );
 }
 
 export function dungeonXpTierMultiplier(difficulty: number): number {
-  return 1 + 0.2 * Math.max(0, difficulty - 1);
+  return 1 + balanceData.xp.dungeonTierAdditivePerDifficultyOver1 * Math.max(0, difficulty - 1);
 }
 
 export function dungeonBaseXp(difficulty: number): number {
-  return Math.round(80 * Math.pow(1.35, difficulty - 1));
+  return Math.round(
+    balanceData.xp.dungeonBaseAmount * Math.pow(balanceData.xp.dungeonBaseDifficultyPowBase, difficulty - 1),
+  );
 }
 
 export const TICKS_PER_SECOND = Math.round(1000 / TICK_RATE);
@@ -73,102 +83,19 @@ export function bossCombatProfileForDungeon(dungeon: Dungeon): BossCombatProfile
   };
 }
 
-export const SPELLS: Record<string, Spell> = {
-  // Priest Spells
-  flash_heal: {
-    id: 'flash_heal',
-    name: 'Flash Heal',
-    type: SpellType.DIRECT,
-    manaCost: 18,
-    healing: 20,
-    cooldown: 0,
-    icon: 'lorc/glowing-hands',
-    color: 'bg-yellow-400',
-  },
-  greater_heal: {
-    id: 'greater_heal',
-    name: 'Greater Heal',
-    type: SpellType.DIRECT,
-    manaCost: 36,
-    healing: 66,
-    cooldown: 50, // 5 seconds if 100ms tick and logic is ticks
-    icon: 'delapouite/hand-of-god',
-    color: 'bg-yellow-100',
-  },
-  renew: {
-    id: 'renew',
-    name: 'Renew',
-    type: SpellType.HOT,
-    manaCost: 9,
-    healing: 5,
-    hotDuration: 150, // 15 seconds
-    hotHealingPerTick: 1.1,
-    cooldown: 0,
-    icon: 'lorc/prayer',
-    color: 'bg-green-300',
-  },
-  
-  // Druid Spells
-  rejuvenation: {
-    id: 'rejuvenation',
-    name: 'Rejuvenation',
-    type: SpellType.HOT,
-    manaCost: 11,
-    healing: 2,
-    hotDuration: 120, // 12 seconds
-    hotHealingPerTick: 1.8,
-    cooldown: 0,
-    icon: 'lorc/leaf-swirl',
-    color: 'bg-green-500',
-  },
-  regrowth: {
-    id: 'regrowth',
-    name: 'Regrowth',
-    type: SpellType.DIRECT,
-    manaCost: 22,
-    healing: 16,
-    hotDuration: 60, // 6 seconds
-    hotHealingPerTick: 0.9,
-    cooldown: 0,
-    icon: 'lorc/fruiting',
-    color: 'bg-emerald-400',
-  },
-  wild_growth: {
-    id: 'wild_growth',
-    name: 'Wild Growth',
-    type: SpellType.AOE,
-    manaCost: 40,
-    healing: 10,
-    hotDuration: 70,
-    hotHealingPerTick: 1.36,
-    cooldown: 100,
-    icon: 'delapouite/circle-forest',
-    color: 'bg-lime-400',
-  },
-  swiftmend: {
-    id: 'swiftmend',
-    name: 'Swiftmend',
-    type: SpellType.DIRECT,
-    manaCost: 18,
-    healing: 85,
-    cooldown: 150,
-    icon: 'lorc/fruiting',
-    color: 'bg-emerald-300',
-  },
-  mana_potion: {
-    id: 'mana_potion',
-    name: 'Mana Potion',
-    type: SpellType.DIRECT,
-    manaCost: 0,
-    healing: 0,
-    manaRestore: 40,
-    manaRegenBuffMultiplier: 2,
-    manaRegenBuffDurationTicks: 100,
-    cooldown: 300, // 30 seconds
-    icon: 'delapouite/magic-potion',
-    color: 'bg-blue-500',
-  }
-};
+export const SPELLS = spellsData as Record<string, Spell>;
+
+export const SPELL_TAG_DRUID_HOT = 'druid-hot';
+export const SPELL_TAG_DRUID_CULTIVATION_HOT = 'druid-cultivation-hot';
+export const SPELL_TAG_SWIFTMEND_CONSUMABLE = 'swiftmend-consumable';
+export const SPELL_TAG_SWIFTMEND_PREFER = 'swiftmend-prefer';
+
+export function spellHasTag(spellId: string | undefined, tag: string): boolean {
+  if (!spellId) return false;
+  return SPELLS[spellId]?.tags?.includes(tag) ?? false;
+}
+
+export const MANA_REGEN_BUFF_UI_MULTIPLIER = SPELLS.mana_potion.manaRegenBuffMultiplier!;
 
 function manaPotionRegenMultiplier(manaRegenBuffTicksRemaining: number): number {
   return manaRegenBuffTicksRemaining > 0 && SPELLS.mana_potion.manaRegenBuffMultiplier !== undefined
@@ -216,27 +143,17 @@ export function getManaRegenPerSecond(
   ).perSec;
 }
 
-export const TANK_POOL: { name: string; role: 'TANK' }[] = [
-  { name: 'Tanky McShield', role: 'TANK' },
-  { name: 'Ironheart Bear', role: 'TANK' },
-  { name: 'Sunbreaker', role: 'TANK' },
-  { name: 'Stonekin', role: 'TANK' },
-];
+export type AllyHealthScaling = { base: number; perLevel: number };
 
-export const DPS_POOL: { name: string; role: 'DPS' }[] = [
-  { name: 'Zappy Mage', role: 'DPS' },
-  { name: 'Sneaky Rogue', role: 'DPS' },
-  { name: 'Shadow Warlock', role: 'DPS' },
-  { name: 'Wildfire Mage', role: 'DPS' },
-  { name: 'Frostweaver', role: 'DPS' },
-  { name: 'Blade Dancer', role: 'DPS' },
-  { name: 'Hunter Mark', role: 'DPS' },
-  { name: 'Demon Hunter', role: 'DPS' },
-  { name: 'Retri Pally', role: 'DPS' },
-  { name: 'Shadow Priest', role: 'DPS' },
-  { name: 'Windwalker', role: 'DPS' },
-  { name: 'Feral Kitty', role: 'DPS' },
-];
+export type AllyNpcTemplate<R extends 'TANK' | 'DPS'> = {
+  name: string;
+  role: R;
+  healthScaling?: AllyHealthScaling;
+};
+
+export const TANK_POOL = npcPoolsData.tankPool as AllyNpcTemplate<'TANK'>[];
+
+export const DPS_POOL = npcPoolsData.dpsPool as AllyNpcTemplate<'DPS'>[];
 
 export function generateRandomParty(playerLevel: number, playerClass: ClassType | null): Unit[] {
   const tankTpl = TANK_POOL[Math.floor(Math.random() * TANK_POOL.length)];
@@ -249,7 +166,7 @@ export function generateRandomParty(playerLevel: number, playerClass: ClassType 
   }
   const selectedDps = dpsCopy.slice(0, 3);
   const tankLevel = randomAllyLevel(playerLevel);
-  const tankHp = allyMaxHealthForRoleAndLevel('TANK', tankLevel);
+  const tankHp = allyMaxHealthForPoolEntry('TANK', tankLevel, tankTpl.healthScaling);
   const healerLevel = Math.max(1, playerLevel);
   const healerHp = healerMaxHealthFromStats(playerClass, healerLevel);
   return [
@@ -267,7 +184,7 @@ export function generateRandomParty(playerLevel: number, playerClass: ClassType 
     },
     ...selectedDps.map((tpl, i) => {
       const lv = randomAllyLevel(playerLevel);
-      const hp = allyMaxHealthForRoleAndLevel('DPS', lv);
+      const hp = allyMaxHealthForPoolEntry('DPS', lv, tpl.healthScaling);
       return {
         ...tpl,
         id: String(i + 2),

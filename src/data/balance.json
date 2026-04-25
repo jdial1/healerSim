@@ -1,0 +1,56 @@
+{
+  "boss": {
+    "damageMultiplierPerDifficultyStep": 1.12
+  },
+  "partyDamageFromDungeonLevelGap": {
+    "multiplierPerPartyLevelOverDungeonMax": 0.62
+  },
+  "trash": {
+    "maxHealthFractionOfBoss": 0.1
+  },
+  "xp": {
+    "dungeonTierAdditivePerDifficultyOver1": 0.2,
+    "dungeonBaseAmount": 80,
+    "dungeonBaseDifficultyPowBase": 1.35,
+    "overlevelDiminishingBase": 0.5,
+    "failureFractionWhenAllTrashCleared": 0.5,
+    "failureFractionWhenTwoPullsCleared": 0.35,
+    "failureFractionWhenOnePullCleared": 0.2
+  },
+  "playerStats": {
+    "manaPerIntellect": 5,
+    "healingPctPerSpirit": 0.4,
+    "manaRegenMultPerSpirit": 0.015
+  },
+  "combat": {
+    "shieldDefaultTicks": 100,
+    "directHealSynergyMultiplierDefault": 1.15,
+    "hotPandemicDurationCapMultDefault": 1.3,
+    "devotionDamageReductionPerRank": 0.04,
+    "devotionDamageTakenFloor": 0.72,
+    "treeOfLifeHotManaCostFactor": 0.7,
+    "treeOfLifeBigDirectManaCostFactor": 1.2,
+    "treeOfLifeFlashHealHealingThreshold": 20,
+    "pathMoonMaxManaReturnPerRank": 0.01,
+    "paladinVowProtectorCritManaRefundFraction": 0.15,
+    "divineAegisShieldFractionPerRank": 0.2,
+    "luminousAegisMultiplierPerRank": 0.1,
+    "bindingHealSelfFraction": 0.06,
+    "bindingHealMaxRanksForCap": 2,
+    "beaconEchoBaseMultiplier": 0.5,
+    "beaconEchoVowBonusPerRank": 0.06,
+    "livingSeedPoolFraction": 0.15,
+    "livingSeedNaturalPerfectionBonusFraction": 0.03,
+    "surgeOfLightProcChancePerRank": 0.1,
+    "gleamingProclamationFlashHealCritBonusPct": 2,
+    "cleanseProcPerRank": 0.08,
+    "cleanseTowerOfRadianceMultiplier": 1.35,
+    "druidHarmonyBonusPerRank": 0.06,
+    "druidCultivationBonusPerRank": 0.08,
+    "druidDeepRootsBonusPerRank": 0.12,
+    "paladinVowCrusaderAoEBonusPerRank": 0.2,
+    "aegisBurstHealPerAbsorbPerRank": 0.15,
+    "photosynthesisDoubleTickChancePerRank": 0.02,
+    "photosynthesisHastePerRankWhenSelfHoT": 3
+  }
+}

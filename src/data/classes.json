@@ -1,0 +1,98 @@
+{
+  "selector": [
+    {
+      "id": "PRIEST",
+      "name": "Holy Priest",
+      "description": "Master of direct healing and divine protection. High burst, high cost.",
+      "iconKey": "sun",
+      "color": "bg-yellow-500",
+      "textColor": "text-yellow-400",
+      "hoverBorderClass": "hover:border-yellow-400",
+      "locked": false,
+      "portraitUrl": "",
+      "portraitIcon": "lorc/angel-outfit",
+      "portraitGlow": "spell"
+    },
+    {
+      "id": "DRUID",
+      "name": "Resto Druid",
+      "description": "Nature-based healing over time (HoTs). Keep the party blooming.",
+      "iconKey": "leaf",
+      "color": "bg-green-600",
+      "textColor": "text-green-400",
+      "hoverBorderClass": "hover:border-green-500",
+      "locked": false,
+      "portraitUrl": "",
+      "portraitIcon": "delapouite/ginkgo-leaf",
+      "portraitGlow": "nature"
+    },
+    {
+      "id": "PALADIN",
+      "name": "Holy Paladin",
+      "description": "Frontline healer using light to infuse allies. (Unlock at Level 5)",
+      "iconKey": "shield",
+      "color": "bg-pink-600",
+      "textColor": "text-pink-400",
+      "hoverBorderClass": "hover:border-pink-500",
+      "locked": true,
+      "portraitUrl": "",
+      "portraitIcon": "lorc/winged-shield",
+      "portraitGlow": "spell"
+    }
+  ],
+  "statCurves": {
+    "PRIEST": {
+      "baseIntellect": 20,
+      "baseSpirit": 18,
+      "intellectPerLevel": 2,
+      "spiritPerLevel": 1
+    },
+    "DRUID": {
+      "baseIntellect": 16,
+      "baseSpirit": 22,
+      "intellectPerLevel": 1,
+      "spiritPerLevel": 2
+    },
+    "PALADIN": {
+      "baseIntellect": 22,
+      "baseSpirit": 16,
+      "intellectPerLevel": 2,
+      "spiritPerLevel": 1
+    }
+  },
+  "progression": {
+    "PRIEST": {
+      "starterSpells": ["flash_heal", "renew"],
+      "spellOrder": [
+        "flash_heal",
+        "renew",
+        "greater_heal",
+        "circle_of_healing"
+      ],
+      "capstoneForm": "priest_archangel",
+      "capstoneMechanicId": "capstone_archangel",
+      "capstonePlayerBuffId": "archangel"
+    },
+    "DRUID": {
+      "starterSpells": ["rejuvenation", "regrowth"],
+      "spellOrder": [
+        "rejuvenation",
+        "regrowth",
+        "healing_touch",
+        "lifebloom",
+        "swiftmend",
+        "wild_growth"
+      ],
+      "capstoneForm": "druid_natures_grace",
+      "capstoneMechanicId": "capstone_natures_grace",
+      "capstonePlayerBuffId": "natures_grace_aura"
+    },
+    "PALADIN": {
+      "starterSpells": ["flash_heal"],
+      "spellOrder": ["flash_heal", "holy_light", "light_of_dawn"],
+      "capstoneForm": "paladin_avenging_wrath",
+      "capstoneMechanicId": "capstone_avenging_wrath",
+      "capstonePlayerBuffId": "avenging_wrath_aura"
+    }
+  }
+}

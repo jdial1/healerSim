@@ -1,21 +1,37 @@
-import { CapstoneFormId, ClassType, Talent, Unit, PlayerCombatBuff, Spell, SpellType } from './types.ts';
+import { CapstoneFormId, ClassType, Talent, Unit, PlayerCombatBuff, Spell } from './types.ts';
+import {
+  MANA_SPIRIT_REGEN_LOCKOUT_TICKS,
+  SPELL_TAG_DRUID_HOT,
+  SPELL_TAG_SWIFTMEND_CONSUMABLE,
+  SPELL_TAG_SWIFTMEND_PREFER,
+  spellHasTag,
+} from './constants.ts';
+import type { MechanicId } from './mechanicsRegistry.ts';
 
 export const TICKS_1S = 10;
+export const PLAYER_BUFF_MANA_REGEN_POTION = 'mana_regen_potion';
+export const PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT = 'spirit_regen_lockout';
+export const PLAYER_BUFF_POWER_INFUSION = 'power_infusion';
+export const PLAYER_BUFF_NATURAL_PERFECTION = 'natural_perfection';
+
+const PLAYER_COMBAT_BUFF_NO_TIME_DECAY = new Set([
+  PLAYER_BUFF_POWER_INFUSION,
+  PLAYER_BUFF_NATURAL_PERFECTION,
+]);
 export const TICKS_SPIRIT_REDEMPTION = 10 * TICKS_1S;
 export const ICD_SPIRIT_REDEMPTION = 120 * TICKS_1S;
 export const SURGE_OF_LIGHT_TICKS = 6 * TICKS_1S;
 export const HEALER_UNIT_ID = '5';
 
-export const DRUID_HOTS = new Set(['rejuvenation', 'regrowth']);
 export const PRIEST_RENEW = 'renew';
 
-export function talentRanks(talents: Talent[], mechanicId: string): number {
+export function talentRanks(talents: Talent[], mechanicId: MechanicId): number {
   return talents
     .filter((t) => t.mechanicId === mechanicId)
     .reduce((a, t) => a + t.points, 0);
 }
 
-export function hasTalent(talents: Talent[], mechanicId: string): boolean {
+export function hasTalent(talents: Talent[], mechanicId: MechanicId): boolean {
   return talentRanks(talents, mechanicId) > 0;
 }
 
@@ -38,13 +54,47 @@ function buffIndex(buffs: PlayerCombatBuff[], id: string): number {
   return buffs.findIndex((b) => b.id === id);
 }
 
+function buffIsActive(b: PlayerCombatBuff): boolean {
+  if (PLAYER_COMBAT_BUFF_NO_TIME_DECAY.has(b.id)) return b.stacks > 0;
+  return b.remainingTicks > 0;
+}
+
 export function hasPlayerBuff(buffs: PlayerCombatBuff[], id: string): boolean {
-  return buffs.some((b) => b.id === id && b.remainingTicks > 0);
+  return buffs.some((b) => b.id === id && buffIsActive(b));
+}
+
+export function getPlayerBuffRemainingTicks(buffs: PlayerCombatBuff[], id: string): number {
+  const b = buffs.find((x) => x.id === id);
+  if (!b || PLAYER_COMBAT_BUFF_NO_TIME_DECAY.has(id)) return 0;
+  return b.remainingTicks > 0 ? b.remainingTicks : 0;
 }
 
 export function getPlayerBuffStacks(buffs: PlayerCombatBuff[], id: string): number {
-  const b = buffs.find((x) => x.id === id && x.remainingTicks > 0);
-  return b?.stacks ?? 0;
+  const b = buffs.find((x) => x.id === id);
+  if (!b || !buffIsActive(b)) return 0;
+  return b.stacks;
+}
+
+export function naturalPerfectionStacksFrom(buffs: PlayerCombatBuff[]): number {
+  return getPlayerBuffStacks(buffs, PLAYER_BUFF_NATURAL_PERFECTION);
+}
+
+export function capstoneFormAfterBuffTick(
+  form: CapstoneFormId | null,
+  buffs: PlayerCombatBuff[],
+): CapstoneFormId | null {
+  if (form === 'priest_archangel') return hasPlayerBuff(buffs, 'archangel') ? form : null;
+  if (form === 'druid_natures_grace') return hasPlayerBuff(buffs, 'natures_grace_aura') ? form : null;
+  if (form === 'paladin_avenging_wrath') return hasPlayerBuff(buffs, 'avenging_wrath_aura') ? form : null;
+  return null;
+}
+
+export function upsertSpiritRegenLockoutIfSpentMana(
+  buffs: PlayerCombatBuff[],
+  spentMana: boolean,
+): PlayerCombatBuff[] {
+  if (!spentMana) return buffs;
+  return upsertPlayerBuff(buffs, PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT, MANA_SPIRIT_REGEN_LOCKOUT_TICKS, 1);
 }
 
 export function upsertPlayerBuff(
@@ -77,8 +127,10 @@ export function addOrRefreshBuffTicks(
 
 export function tickPlayerBuffs(buffs: PlayerCombatBuff[]): PlayerCombatBuff[] {
   return buffs
-    .map((b) => ({ ...b, remainingTicks: b.remainingTicks - 1 }))
-    .filter((b) => b.remainingTicks > 0);
+    .map((b) =>
+      PLAYER_COMBAT_BUFF_NO_TIME_DECAY.has(b.id) ? b : { ...b, remainingTicks: b.remainingTicks - 1 },
+    )
+    .filter(buffIsActive);
 }
 
 export function decBuffStack(buffs: PlayerCombatBuff[], id: string): PlayerCombatBuff[] {
@@ -93,6 +145,24 @@ export function decBuffStack(buffs: PlayerCombatBuff[], id: string): PlayerComba
 
 export function withBuffRemoved(buffs: PlayerCombatBuff[], id: string): PlayerCombatBuff[] {
   return buffs.filter((b) => b.id !== id);
+}
+
+export function applyPowerInfusionCastsAfterCooldown(
+  buffs: PlayerCombatBuff[],
+  castsRemaining: number,
+): PlayerCombatBuff[] {
+  if (castsRemaining <= 0) return withBuffRemoved(buffs, PLAYER_BUFF_POWER_INFUSION);
+  return upsertPlayerBuff(buffs, PLAYER_BUFF_POWER_INFUSION, 1, castsRemaining);
+}
+
+export function grantPowerInfusionCharges(buffs: PlayerCombatBuff[], minCharges: number): PlayerCombatBuff[] {
+  const cur = getPlayerBuffStacks(buffs, PLAYER_BUFF_POWER_INFUSION);
+  return upsertPlayerBuff(buffs, PLAYER_BUFF_POWER_INFUSION, 1, Math.max(cur, minCharges));
+}
+
+export function upsertNaturalPerfectionStacks(buffs: PlayerCombatBuff[], stacks: number): PlayerCombatBuff[] {
+  if (stacks <= 0) return withBuffRemoved(buffs, PLAYER_BUFF_NATURAL_PERFECTION);
+  return upsertPlayerBuff(buffs, PLAYER_BUFF_NATURAL_PERFECTION, 1, stacks);
 }
 
 export function isIcDRdy(icds: Record<string, number>, key: string): boolean {
@@ -119,49 +189,34 @@ export function healerInParty(party: Unit[]): Unit | undefined {
 }
 
 export function hasHotOnUnit(unit: Unit, cls: ClassType | null): boolean {
-  if (cls === ClassType.DRUID) {
-    return unit.buffs.some((b) => DRUID_HOTS.has(b.sourceSpellId));
+  if (cls === 'DRUID') {
+    return unit.buffs.some((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_DRUID_HOT));
   }
-  if (cls === ClassType.PRIEST) {
+  if (cls === 'PRIEST') {
     return unit.buffs.some((b) => b.sourceSpellId === PRIEST_RENEW);
   }
-  return unit.buffs.some((b) => b.sourceSpellId === 'rejuvenation' || b.sourceSpellId === 'regrowth');
+  return unit.buffs.some((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_DRUID_HOT));
 }
 
 export function findConsumableHotIndex(unit: Unit, cls: ClassType | null): number {
-  if (cls === ClassType.DRUID) {
-    const reg = unit.buffs.findIndex((b) => b.sourceSpellId === 'regrowth');
-    if (reg >= 0) return reg;
-    return unit.buffs.findIndex((b) => b.sourceSpellId === 'rejuvenation');
+  if (cls === 'DRUID') {
+    const prefer = unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_PREFER));
+    if (prefer >= 0) return prefer;
+    return unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_CONSUMABLE));
   }
   return unit.buffs.findIndex((b) => b.sourceSpellId === PRIEST_RENEW);
 }
 
 export function isHealSpell(spell: Spell, spellId: string): boolean {
   if (spellId === 'mana_potion') return false;
-  return spell.type === SpellType.DIRECT || spell.type === SpellType.HOT || spell.type === SpellType.AOE;
+  return spell.type === 'DIRECT' || spell.type === 'HOT' || spell.type === 'AOE';
 }
 
 export function isDirectHealSpell(spell: Spell, spellId: string): boolean {
   if (spellId === 'mana_potion') return false;
-  if (spell.type === SpellType.AOE) return true;
-  if (spell.type === SpellType.DIRECT) return true;
-  if (spell.type === SpellType.HOT && spell.healing > 0) return true;
+  if (spell.type === 'AOE') return true;
+  if (spell.type === 'DIRECT') return true;
+  if (spell.type === 'HOT' && spell.healing > 0) return true;
   return false;
 }
 
-export function capstoneForClass(cls: ClassType): CapstoneFormId {
-  if (cls === ClassType.PRIEST) return 'priest_archangel';
-  if (cls === ClassType.DRUID) return 'druid_natures_grace';
-  return 'paladin_avenging_wrath';
-}
-
-export function classSpellOrder(cls: ClassType): string[] {
-  if (cls === ClassType.PRIEST) {
-    return ['flash_heal', 'renew', 'greater_heal', 'wild_growth'];
-  }
-  if (cls === ClassType.DRUID) {
-    return ['rejuvenation', 'regrowth', 'swiftmend', 'greater_heal', 'wild_growth'];
-  }
-  return ['flash_heal', 'greater_heal', 'wild_growth'];
-}

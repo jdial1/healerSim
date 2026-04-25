@@ -1,0 +1,514 @@
+[
+  {
+    "id": "deadmines",
+    "name": "The Deadmines",
+    "difficulty": 1,
+    "levelMin": 1,
+    "levelMax": 3,
+    "bossName": "Edwin VanCleef",
+    "bossHealth": 1000,
+    "bossIcon": "delapouite/pirate-captain",
+    "cardIcon": "delapouite/gold-mine",
+    "cardTheme": {
+      "borderLeft": "border-l-amber-700",
+      "viaTint": "via-amber-950/40",
+      "ring": "ring-amber-900/30",
+      "cardShadow": "shadow-[0_20px_50px_-12px_rgba(180,83,9,0.32)]",
+      "borderHover": "hover:border-amber-500",
+      "deploy": "bg-amber-700 text-amber-50",
+      "iconTint": "rgba(251,191,36,0.5)"
+    },
+    "enemies": [
+      {
+        "name": "Defias Pirate",
+        "icon": "lorc/pirate-skull"
+      },
+      {
+        "name": "Defias Miner",
+        "icon": "delapouite/miner"
+      },
+      {
+        "name": "Smite",
+        "icon": "lorc/spiked-mace"
+      }
+    ],
+    "bossCombat": {
+      "debuffTemplates": [
+        {
+          "abilityId": "vc_gut_slash",
+          "name": "Gut Slash",
+          "icon": "lorc/bleeding-wound",
+          "durationTicks": 120,
+          "damagePerTick": 0.7,
+          "targeting": "single_random"
+        }
+      ],
+      "selfBuffTemplates": [
+        {
+          "abilityId": "vc_blade_flurry",
+          "name": "Blade Flurry",
+          "icon": "lorc/sword-clash",
+          "durationTicks": 100,
+          "partyDamageMultiplier": 1.3
+        }
+      ],
+      "attackTemplates": [
+        {
+          "abilityId": "vc_ambush",
+          "name": "Ambush",
+          "icon": "lorc/crossed-swords",
+          "damage": 26,
+          "targeting": "single_random"
+        }
+      ]
+    }
+  },
+  {
+    "id": "wailing_caverns",
+    "name": "Wailing Caverns",
+    "difficulty": 2,
+    "levelMin": 4,
+    "levelMax": 6,
+    "bossName": "Verdan the Everliving",
+    "bossHealth": 2500,
+    "bossIcon": "cathelineau/tree-face",
+    "cardIcon": "delapouite/cave-entrance",
+    "cardTheme": {
+      "borderLeft": "border-l-teal-600",
+      "viaTint": "via-teal-950/45",
+      "ring": "ring-teal-800/25",
+      "cardShadow": "shadow-[0_20px_50px_-12px_rgba(13,148,136,0.32)]",
+      "borderHover": "hover:border-teal-500",
+      "deploy": "bg-teal-600 text-white",
+      "iconTint": "rgba(45,212,191,0.48)"
+    },
+    "enemies": [
+      {
+        "name": "Raptor",
+        "icon": "delapouite/velociraptor"
+      },
+      {
+        "name": "Ooze",
+        "icon": "delapouite/slime"
+      },
+      {
+        "name": "Druid of the Fang",
+        "icon": "lorc/snake-totem"
+      }
+    ],
+    "bossCombat": {
+      "debuffTemplates": [
+        {
+          "abilityId": "verdan_strangle",
+          "name": "Strangling Roots",
+          "icon": "delapouite/vines",
+          "durationTicks": 180,
+          "damagePerTick": 0.6,
+          "targeting": "single_random"
+        }
+      ],
+      "selfBuffTemplates": [
+        {
+          "abilityId": "verdan_thrive",
+          "name": "Thrive",
+          "icon": "lorc/lotus",
+          "durationTicks": 150,
+          "partyDamageMultiplier": 1.4
+        }
+      ],
+      "attackTemplates": [
+        {
+          "abilityId": "verdan_spore_burst",
+          "name": "Spore Burst",
+          "icon": "lorc/poison-gas",
+          "damage": 30,
+          "targeting": "all_living"
+        }
+      ]
+    }
+  },
+  {
+    "id": "scarlet_monastery",
+    "name": "Scarlet Monastery",
+    "difficulty": 3,
+    "levelMin": 7,
+    "levelMax": 9,
+    "bossName": "High Inspector Whitemane",
+    "bossHealth": 5000,
+    "bossIcon": "lorc/crowned-heart",
+    "cardIcon": "delapouite/church",
+    "cardTheme": {
+      "borderLeft": "border-l-rose-600",
+      "viaTint": "via-rose-950/40",
+      "ring": "ring-rose-900/30",
+      "cardShadow": "shadow-[0_20px_50px_-12px_rgba(225,29,72,0.28)]",
+      "borderHover": "hover:border-rose-500",
+      "deploy": "bg-rose-700 text-rose-50",
+      "iconTint": "rgba(251,113,133,0.5)"
+    },
+    "enemies": [
+      {
+        "name": "Scarlet Knight",
+        "icon": "delapouite/knight-banner"
+      },
+      {
+        "name": "Scarlet Monk",
+        "icon": "delapouite/monk-face"
+      },
+      {
+        "name": "Mograine",
+        "icon": "lorc/crowned-skull"
+      }
+    ],
+    "bossCombat": {
+      "debuffTemplates": [
+        {
+          "abilityId": "smite_sear",
+          "name": "Holy Fire",
+          "icon": "lorc/sunbeams",
+          "durationTicks": 40,
+          "damagePerTick": 2.4,
+          "targeting": "two_random"
+        }
+      ],
+      "selfBuffTemplates": [
+        {
+          "abilityId": "smite_fury",
+          "name": "Resurrection Fury",
+          "icon": "lorc/crowned-skull",
+          "durationTicks": 80,
+          "partyDamageMultiplier": 1.8
+        }
+      ],
+      "attackTemplates": [
+        {
+          "abilityId": "smite_penance",
+          "name": "Penitent Flare",
+          "icon": "lorc/glowing-hands",
+          "damage": 40,
+          "targeting": "single_random"
+        }
+      ]
+    }
+  },
+  {
+    "id": "zul_farrak",
+    "name": "Zul'Farrak",
+    "difficulty": 4,
+    "levelMin": 10,
+    "levelMax": 12,
+    "bossName": "Chief Ukorz Sandscalp",
+    "bossHealth": 12000,
+    "bossIcon": "lorc/tribal-mask",
+    "cardIcon": "delapouite/egyptian-pyramids",
+    "cardTheme": {
+      "borderLeft": "border-l-yellow-500",
+      "viaTint": "via-yellow-950/35",
+      "ring": "ring-yellow-900/25",
+      "cardShadow": "shadow-[0_20px_50px_-12px_rgba(202,138,4,0.32)]",
+      "borderHover": "hover:border-yellow-400",
+      "deploy": "bg-amber-600 text-amber-50",
+      "iconTint": "rgba(250,204,21,0.48)"
+    },
+    "enemies": [
+      {
+        "name": "Sandfury Troll",
+        "icon": "skoll/troll"
+      },
+      {
+        "name": "Shadowcaster",
+        "icon": "lorc/crystal-ball"
+      },
+      {
+        "name": "Basilisk",
+        "icon": "lorc/lizardman"
+      }
+    ],
+    "bossCombat": {
+      "debuffTemplates": [
+        {
+          "abilityId": "ukorz_sand",
+          "name": "Sandstorm",
+          "icon": "delapouite/sandstorm",
+          "durationTicks": 110,
+          "damagePerTick": 1,
+          "targeting": "all_living"
+        }
+      ],
+      "selfBuffTemplates": [
+        {
+          "abilityId": "ukorz_bloodlust",
+          "name": "Berserker Rage",
+          "icon": "skoll/troll",
+          "durationTicks": 140,
+          "partyDamageMultiplier": 1.5
+        }
+      ],
+      "attackTemplates": [
+        {
+          "abilityId": "ukorz_impale",
+          "name": "Impale",
+          "icon": "lorc/barbute",
+          "damage": 54,
+          "targeting": "single_random"
+        }
+      ]
+    }
+  },
+  {
+    "id": "sunken_temple",
+    "name": "The Sunken Temple",
+    "difficulty": 5,
+    "levelMin": 13,
+    "levelMax": 15,
+    "bossName": "Shade of Eranikus",
+    "bossHealth": 25000,
+    "bossIcon": "lorc/dragon-breath",
+    "cardIcon": "delapouite/temple-gate",
+    "cardTheme": {
+      "borderLeft": "border-l-emerald-600",
+      "viaTint": "via-emerald-950/40",
+      "ring": "ring-emerald-900/25",
+      "cardShadow": "shadow-[0_20px_50px_-12px_rgba(5,150,105,0.32)]",
+      "borderHover": "hover:border-emerald-500",
+      "deploy": "bg-emerald-700 text-emerald-50",
+      "iconTint": "rgba(52,211,153,0.5)"
+    },
+    "enemies": [
+      {
+        "name": "Atal'ai Exile",
+        "icon": "lorc/alien-stare"
+      },
+      {
+        "name": "Nightmare Wyrm",
+        "icon": "lorc/dragon-head"
+      },
+      {
+        "name": "Dragonkin",
+        "icon": "lorc/double-dragon"
+      }
+    ],
+    "bossCombat": {
+      "debuffTemplates": [
+        {
+          "abilityId": "eranikus_corruption",
+          "name": "Deep Slumber",
+          "icon": "lorc/evil-bud",
+          "durationTicks": 250,
+          "damagePerTick": 0.5,
+          "targeting": "two_random"
+        }
+      ],
+      "selfBuffTemplates": [
+        {
+          "abilityId": "eranikus_frenzy",
+          "name": "Nightmare Haze",
+          "icon": "lorc/dragon-breath",
+          "durationTicks": 200,
+          "partyDamageMultiplier": 1.36
+        }
+      ],
+      "attackTemplates": [
+        {
+          "abilityId": "eranikus_acid",
+          "name": "Acid Breath",
+          "icon": "lorc/dragon-breath",
+          "damage": 42,
+          "targeting": "all_living"
+        }
+      ]
+    }
+  },
+  {
+    "id": "blackrock_depths",
+    "name": "Blackrock Depths",
+    "difficulty": 6,
+    "levelMin": 16,
+    "levelMax": 18,
+    "bossName": "Emperor Thaurissan",
+    "bossHealth": 55000,
+    "bossIcon": "delapouite/imperial-crown",
+    "cardIcon": "lorc/anvil",
+    "cardTheme": {
+      "borderLeft": "border-l-orange-600",
+      "viaTint": "via-orange-950/45",
+      "ring": "ring-orange-950/30",
+      "cardShadow": "shadow-[0_20px_50px_-12px_rgba(234,88,12,0.35)]",
+      "borderHover": "enabled:hover:border-orange-500",
+      "deploy": "bg-orange-700 text-orange-50",
+      "iconTint": "rgba(251,146,60,0.52)"
+    },
+    "enemies": [
+      {
+        "name": "Dark Iron Dwarf",
+        "icon": "delapouite/dwarf-face"
+      },
+      {
+        "name": "Fire Elemental",
+        "icon": "lorc/campfire"
+      },
+      {
+        "name": "Houndmaster",
+        "icon": "lorc/hound"
+      }
+    ],
+    "bossCombat": {
+      "debuffTemplates": [
+        {
+          "abilityId": "thaurissan_inferno",
+          "name": "Magma Splash",
+          "icon": "lorc/fire-ray",
+          "durationTicks": 60,
+          "damagePerTick": 1.8,
+          "targeting": "all_living"
+        }
+      ],
+      "selfBuffTemplates": [
+        {
+          "abilityId": "thaurissan_avatar",
+          "name": "Avatar of Flame",
+          "icon": "lorc/campfire",
+          "durationTicks": 135,
+          "partyDamageMultiplier": 1.7
+        }
+      ],
+      "attackTemplates": [
+        {
+          "abilityId": "thaurissan_dominate",
+          "name": "Hand of Thaurissan",
+          "icon": "lorc/crown-of-thorns",
+          "damage": 72,
+          "targeting": "single_random"
+        }
+      ]
+    }
+  },
+  {
+    "id": "stratholme",
+    "name": "Stratholme",
+    "difficulty": 7,
+    "levelMin": 19,
+    "levelMax": 21,
+    "bossName": "Baron Rivendare",
+    "bossHealth": 110000,
+    "bossIcon": "lorc/horse-head",
+    "cardIcon": "delapouite/plague-doctor-profile",
+    "cardTheme": {
+      "borderLeft": "border-l-violet-600",
+      "viaTint": "via-violet-950/38",
+      "ring": "ring-violet-900/25",
+      "cardShadow": "shadow-[0_20px_50px_-12px_rgba(124,58,237,0.28)]",
+      "borderHover": "hover:border-violet-500",
+      "deploy": "bg-violet-800 text-violet-50",
+      "iconTint": "rgba(167,139,250,0.48)"
+    },
+    "enemies": [
+      {
+        "name": "Plague Ghoul",
+        "icon": "lorc/fanged-skull"
+      },
+      {
+        "name": "Patchwork Horror",
+        "icon": "lorc/frankenstein-creature"
+      },
+      {
+        "name": "Banshee",
+        "icon": "lorc/ghost"
+      }
+    ],
+    "bossCombat": {
+      "debuffTemplates": [
+        {
+          "abilityId": "rivendare_plague",
+          "name": "Necrotic Plague",
+          "icon": "delapouite/plague-doctor-profile",
+          "durationTicks": 150,
+          "damagePerTick": 1.3,
+          "targeting": "two_random"
+        }
+      ],
+      "selfBuffTemplates": [
+        {
+          "abilityId": "rivendare_deathwish",
+          "name": "Death's Advance",
+          "icon": "lorc/horse-head",
+          "durationTicks": 160,
+          "partyDamageMultiplier": 1.56
+        }
+      ],
+      "attackTemplates": [
+        {
+          "abilityId": "rivendare_death_coil",
+          "name": "Death Coil",
+          "icon": "lorc/death-zone",
+          "damage": 82,
+          "targeting": "single_random"
+        }
+      ]
+    }
+  },
+  {
+    "id": "scholomance",
+    "name": "Scholomance",
+    "difficulty": 8,
+    "levelMin": 22,
+    "levelMax": 24,
+    "bossName": "Darkmaster Gandling",
+    "bossHealth": 250000,
+    "bossIcon": "delapouite/graduate-cap",
+    "cardIcon": "delapouite/spooky-house",
+    "cardTheme": {
+      "borderLeft": "border-l-indigo-500",
+      "viaTint": "via-indigo-950/45",
+      "ring": "ring-indigo-900/30",
+      "cardShadow": "shadow-[0_20px_50px_-12px_rgba(99,102,241,0.32)]",
+      "borderHover": "hover:border-indigo-500",
+      "deploy": "bg-indigo-700 text-indigo-50",
+      "iconTint": "rgba(129,140,248,0.5)"
+    },
+    "enemies": [
+      {
+        "name": "Risen Guard",
+        "icon": "delapouite/shambling-zombie"
+      },
+      {
+        "name": "Necromancer",
+        "icon": "lorc/death-note"
+      },
+      {
+        "name": "Voidwalker",
+        "icon": "lorc/shadow-follower"
+      }
+    ],
+    "bossCombat": {
+      "debuffTemplates": [
+        {
+          "abilityId": "gandling_curse",
+          "name": "Incinerate Soul",
+          "icon": "lorc/cursed-star",
+          "durationTicks": 50,
+          "damagePerTick": 4.4,
+          "targeting": "single_random"
+        }
+      ],
+      "selfBuffTemplates": [
+        {
+          "abilityId": "gandling_darkmastery",
+          "name": "Dark Mastery",
+          "icon": "delapouite/graduate-cap",
+          "durationTicks": 180,
+          "partyDamageMultiplier": 1.7
+        }
+      ],
+      "attackTemplates": [
+        {
+          "abilityId": "gandling_shadow_bolt",
+          "name": "Shadow Volley",
+          "icon": "lorc/death-note",
+          "damage": 58,
+          "targeting": "all_living"
+        }
+      ]
+    }
+  }
+]

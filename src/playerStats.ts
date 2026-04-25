@@ -1,11 +1,17 @@
-import { ClassType, Talent } from './types.ts';
+import { CapstoneFormId, ClassType, IconGlow, Talent } from './types.ts';
+import classesData from './data/classes.json';
+import npcPoolsData from './data/npc_pools.json';
+import type { MechanicId } from './mechanicsRegistry.ts';
+import { BALANCE } from './balance.ts';
 
-export const MANA_PER_INTELLECT = 5;
-export const HEALING_PCT_PER_SPIRIT = 0.4;
-export const MANA_REGEN_MULT_PER_SPIRIT = 0.015;
+const PS = BALANCE.playerStats;
+
+export const MANA_PER_INTELLECT = PS.manaPerIntellect;
+export const HEALING_PCT_PER_SPIRIT = PS.healingPctPerSpirit;
+export const MANA_REGEN_MULT_PER_SPIRIT = PS.manaRegenMultPerSpirit;
 
 export function spiritManaRegenMultiplier(spirit: number): number {
-  return 1 + spirit * MANA_REGEN_MULT_PER_SPIRIT;
+  return 1 + spirit * PS.manaRegenMultPerSpirit;
 }
 
 export interface ClassStatCurve {
@@ -15,26 +21,45 @@ export interface ClassStatCurve {
   spiritPerLevel: number;
 }
 
-export const CLASS_STAT_CURVE: Record<ClassType, ClassStatCurve> = {
-  [ClassType.PRIEST]: {
-    baseIntellect: 20,
-    baseSpirit: 18,
-    intellectPerLevel: 2,
-    spiritPerLevel: 1,
-  },
-  [ClassType.DRUID]: {
-    baseIntellect: 16,
-    baseSpirit: 22,
-    intellectPerLevel: 1,
-    spiritPerLevel: 2,
-  },
-  [ClassType.PALADIN]: {
-    baseIntellect: 22,
-    baseSpirit: 16,
-    intellectPerLevel: 2,
-    spiritPerLevel: 1,
-  },
-};
+export const CLASS_STAT_CURVE = classesData.statCurves as Record<ClassType, ClassStatCurve>;
+
+export interface ClassProgressionRow {
+  starterSpells: string[];
+  spellOrder: string[];
+  capstoneForm: CapstoneFormId;
+  capstoneMechanicId: MechanicId;
+  capstonePlayerBuffId: string;
+}
+
+export const CLASS_PROGRESSION = classesData.progression as Record<ClassType, ClassProgressionRow>;
+
+export const CAPSTONE_PLAYER_BUFF_IDS = Array.from(
+  new Set(Object.values(CLASS_PROGRESSION).map((p) => p.capstonePlayerBuffId)),
+);
+
+export function classSpellOrder(cls: ClassType): string[] {
+  return CLASS_PROGRESSION[cls].spellOrder;
+}
+
+export function starterSpellsForClass(cls: ClassType): string[] {
+  return CLASS_PROGRESSION[cls].starterSpells;
+}
+
+export function capstoneForClass(cls: ClassType): CapstoneFormId {
+  return CLASS_PROGRESSION[cls].capstoneForm;
+}
+
+export function classPortraitForPlayer(cls: ClassType): { portraitIcon: string; portraitGlow: IconGlow } {
+  const row = classesData.selector.find((r) => r.id === cls);
+  if (!row) throw new Error(`Unknown class ${cls}`);
+  const g = row.portraitGlow;
+  if (g !== 'spell' && g !== 'nature' && g !== 'debuff') throw new Error(`Invalid portraitGlow for ${cls}`);
+  return { portraitIcon: row.portraitIcon as string, portraitGlow: g };
+}
+
+export function talentTreeGlowForClass(cls: ClassType): IconGlow {
+  return classPortraitForPlayer(cls).portraitGlow;
+}
 
 export function effectivePrimaryStats(
   cls: ClassType | null,
@@ -49,20 +74,44 @@ export function effectivePrimaryStats(
   };
 }
 
+export interface TalentStatModifiers {
+  flatMana: number;
+  healingBoostPct: number;
+  critChancePct: number;
+  hastePct: number;
+}
+
+export function computeTalentStats(talents: Talent[]): TalentStatModifiers {
+  return talents.reduce(
+    (acc, t) => {
+      const p = t.points;
+      const sb = t.statBonus;
+      if (!sb) return acc;
+      return {
+        flatMana: acc.flatMana + (sb.manaPool ?? 0) * p,
+        healingBoostPct: acc.healingBoostPct + (sb.healingBoost ?? 0) * p,
+        critChancePct: acc.critChancePct + (sb.critChance ?? 0) * p,
+        hastePct: acc.hastePct + (sb.haste ?? 0) * p,
+      };
+    },
+    { flatMana: 0, healingBoostPct: 0, critChancePct: 0, hastePct: 0 },
+  );
+}
+
 export function talentFlatManaFromTalents(talents: Talent[]): number {
-  return talents.reduce((a, t) => a + (t.statBonus?.manaPool ?? 0) * t.points, 0);
+  return computeTalentStats(talents).flatMana;
 }
 
 export function talentHealingBonusPctFromTalents(talents: Talent[]): number {
-  return talents.reduce((a, t) => a + (t.statBonus?.healingBoost ?? 0) * t.points, 0);
+  return computeTalentStats(talents).healingBoostPct;
 }
 
 export function talentCritChancePctFromTalents(talents: Talent[]): number {
-  return talents.reduce((a, t) => a + (t.statBonus?.critChance ?? 0) * t.points, 0);
+  return computeTalentStats(talents).critChancePct;
 }
 
 export function talentHastePctFromTalents(talents: Talent[]): number {
-  return talents.reduce((a, t) => a + (t.statBonus?.haste ?? 0) * t.points, 0);
+  return computeTalentStats(talents).hastePct;
 }
 
 export function naturePerfectionCritBonus(naturalPerfectionStacks: number): number {
@@ -72,7 +121,7 @@ export function naturePerfectionCritBonus(naturalPerfectionStacks: number): numb
 export function computedMaxMana(cls: ClassType | null, level: number, talents: Talent[]): number {
   if (!cls) return 100;
   const { intellect } = effectivePrimaryStats(cls, level);
-  return Math.round(intellect * MANA_PER_INTELLECT + talentFlatManaFromTalents(talents));
+  return Math.round(intellect * MANA_PER_INTELLECT + computeTalentStats(talents).flatMana);
 }
 
 export function spellHealingMultiplierFromProgress(
@@ -82,7 +131,7 @@ export function spellHealingMultiplierFromProgress(
 ): number {
   if (!cls) return 1;
   const { spirit } = effectivePrimaryStats(cls, level);
-  const talentPct = talentHealingBonusPctFromTalents(talents);
+  const talentPct = computeTalentStats(talents).healingBoostPct;
   const spiritPct = spirit * HEALING_PCT_PER_SPIRIT;
   return 1 + (spiritPct + talentPct) / 100;
 }
@@ -110,12 +159,20 @@ export function randomAllyLevel(playerLevel: number): number {
   return Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
 }
 
-export function allyMaxHealthForRoleAndLevel(role: 'TANK' | 'DPS', level: number): number {
+const ALLY_HEALTH_DEFAULTS = npcPoolsData.allyHealthDefaults as Record<'TANK' | 'DPS', { base: number; perLevel: number }>;
+
+export function allyMaxHealthForPoolEntry(
+  role: 'TANK' | 'DPS',
+  level: number,
+  healthScaling?: { base: number; perLevel: number },
+): number {
+  const s = healthScaling ?? ALLY_HEALTH_DEFAULTS[role];
   const lv = Math.max(1, level);
-  if (role === 'TANK') {
-    return Math.round(98 + (lv - 1) * 14);
-  }
-  return Math.round(52 + (lv - 1) * 5.5);
+  return Math.round(s.base + (lv - 1) * s.perLevel);
+}
+
+export function allyMaxHealthForRoleAndLevel(role: 'TANK' | 'DPS', level: number): number {
+  return allyMaxHealthForPoolEntry(role, level, undefined);
 }
 
 export function healerMaxHealthFromStats(_cls: ClassType | null, level: number): number {
@@ -128,18 +185,19 @@ export function buildPlayerStatBreakdown(
   talents: Talent[],
 ): PlayerStatBreakdown {
   const { intellect, spirit } = effectivePrimaryStats(cls, level);
-  const manaFromTalents = talentFlatManaFromTalents(talents);
+  const tStats = computeTalentStats(talents);
+  const manaFromTalents = tStats.flatMana;
   const manaFromIntellect = Math.round(intellect * MANA_PER_INTELLECT);
   const maxMana = manaFromIntellect + manaFromTalents;
   const spiritRawPct = spirit * HEALING_PCT_PER_SPIRIT;
-  const talentRawPct = talentHealingBonusPctFromTalents(talents);
+  const talentRawPct = tStats.healingBoostPct;
   const healingBonusPctFromSpirit = Math.round(spiritRawPct * 10) / 10;
   const healingBonusPctFromTalents = Math.round(talentRawPct * 10) / 10;
   const totalHealingBonusPct = spiritRawPct + talentRawPct;
   const healingEffectMultiplier = Math.round((1 + totalHealingBonusPct / 100) * 1000) / 1000;
   const spiritRegenMult = Math.round(spiritManaRegenMultiplier(spirit) * 1000) / 1000;
-  const critChancePct = talentCritChancePctFromTalents(talents);
-  const hastePct = talentHastePctFromTalents(talents);
+  const critChancePct = tStats.critChancePct;
+  const hastePct = tStats.hastePct;
   const bonusHealing = Math.round(100 * (healingEffectMultiplier - 1));
   return {
     intellect,

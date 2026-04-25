@@ -8,50 +8,89 @@ import {
   SPELLS,
   getManaRegenPerSecond,
   MANA_POTION_USES_PER_DUNGEON,
+  MANA_REGEN_BUFF_UI_MULTIPLIER,
 } from '../constants.ts';
-import { ClassType, SpellType } from '../types.ts';
+import { PlayerCombatStats } from '../types.ts';
+import { spellEffectTooltipText } from '../spellTooltip.ts';
 import { xpProgressWithinLevel } from '../gameStorage.ts';
 import { motion } from 'motion/react';
 import { glowForSpellId } from '../gameIcons.ts';
 import { GameIcon } from './GameIcon.tsx';
 
+function spellSlotButtonClass(
+  borderClass: string,
+  state: {
+    spellsEnabled: boolean;
+    reordering: boolean;
+    draggingHere: boolean;
+    cooldown: number;
+    isLowMana: boolean;
+    noPotionCharges: boolean;
+  },
+) {
+  let extra = '';
+  if (!state.spellsEnabled && !state.reordering) {
+    extra += ' cursor-not-allowed opacity-50';
+  } else if (!state.spellsEnabled && state.reordering) {
+    extra += ' cursor-grab touch-none opacity-50 active:cursor-grabbing';
+  }
+  if (state.draggingHere) extra += ' opacity-30';
+  if (state.spellsEnabled) {
+    if (state.cooldown > 0) extra += ' opacity-60';
+    else if (state.isLowMana || state.noPotionCharges) extra += ' opacity-45';
+    else extra += ' hover:-translate-y-1 hover:bg-slate-700 shadow-lg';
+  }
+  return `ui-spell-slot-base ${borderClass}${extra}`;
+}
+
+function emptySpellSlotClass(reordering: boolean, draggingHere: boolean) {
+  let extra = 'ui-spell-slot-base ui-spell-slot-empty';
+  if (reordering) extra += ' ui-spell-slot-drop-target';
+  if (draggingHere) extra += ' opacity-30';
+  return extra;
+}
+
+function spellBarIconClass(highlighted: boolean, canInteract: boolean) {
+  let c = 'shrink-0';
+  if (highlighted) c += ' ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900';
+  if (canInteract) c += ' transition-transform group-hover:scale-105';
+  return c;
+}
+
+function spellTooltipVisibilityClass(previewOpen: boolean) {
+  return previewOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100';
+}
+
 interface ActionBarsProps {
+  playerCombatStats: PlayerCombatStats;
   spellIds: string[];
   cooldowns: Record<string, number>;
   onCast: (id: string) => void;
-  xp: number;
-  mana: number;
-  maxMana: number;
-  manaRegenBuffTicksRemaining: number;
-  spiritRegenLockoutTicksRemaining: number;
-  spirit: number;
-  spellsEnabled: boolean;
   allowReorder?: boolean;
   onReorderSlots?: (fromIndex: number, toIndex: number) => void;
-  manaPotionChargesRemaining: number;
-  spellHealingMultiplier: number;
-  actionBarHighlights: Record<string, boolean>;
-  playerClass: ClassType;
 }
 
 export function ActionBars({
+  playerCombatStats,
   spellIds,
   cooldowns,
   onCast,
-  xp,
-  mana,
-  maxMana,
-  manaRegenBuffTicksRemaining,
-  spiritRegenLockoutTicksRemaining,
-  spirit,
-  spellsEnabled,
   allowReorder = false,
   onReorderSlots,
-  manaPotionChargesRemaining,
-  spellHealingMultiplier,
-  actionBarHighlights,
-  playerClass,
 }: ActionBarsProps) {
+  const {
+    xp,
+    mana,
+    maxMana,
+    manaRegenBuffTicksRemaining,
+    spiritRegenLockoutTicksRemaining,
+    spirit,
+    spellsEnabled,
+    manaPotionChargesRemaining,
+    spellHealingMultiplier,
+    actionBarHighlights,
+    playerClass,
+  } = playerCombatStats;
   const barRootRef = useRef<HTMLDivElement>(null);
   const spellTipRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const suppressPreviewClickUntilRef = useRef(0);
@@ -135,112 +174,25 @@ export function ActionBars({
   const regenBuffActive = manaRegenBuffTicksRemaining > 0;
   const spiritRegenPaused =
     spiritRegenLockoutTicksRemaining > 0 && manaRegenBuffTicksRemaining <= 0;
-  const getSpellColor = (id: string) => {
-    switch (id) {
-        case 'flash_heal': return 'border-sky-400';
-        case 'renew': return 'border-green-500';
-        case 'greater_heal': return 'border-yellow-400';
-        case 'rejuvenation': return 'border-emerald-500';
-        case 'regrowth': return 'border-lime-500';
-        case 'wild_growth': return 'border-purple-500';
-        case 'swiftmend': return 'border-emerald-400';
-        case 'mana_potion': return 'border-blue-500';
-        default: return 'border-slate-700';
-    }
-  }
-
-  const getSpellEffectDescription = (id: string) => {
-    const spell = SPELLS[id];
-    if (!spell) return '';
-
-    const effDirect =
-      spell.healing > 0 ? Math.round(spell.healing * spellHealingMultiplier) : 0;
-    const hotTicks = spell.hotDuration ?? 0;
-    const hotPerTick = spell.hotHealingPerTick ?? 0;
-    const hasHot = hotTicks > 0 && hotPerTick > 0;
-    const effHotTotal = hasHot
-      ? Math.round(hotPerTick * hotTicks * spellHealingMultiplier * 10) / 10
-      : 0;
-    const durSec = hotTicks / 10;
-    const fmtHeal = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-
-    const sentences: string[] = [];
-
-    if (id === 'swiftmend') {
-      return 'Consumes a HoT on the target to burst-heal. Requires Rejuvenation or Regrowth';
-    }
-    if (id === 'mana_potion') {
-      if (spell.manaRestore) sentences.push(`Restores ${spell.manaRestore} Mana.`);
-      if (
-        spell.manaRegenBuffDurationTicks !== undefined &&
-        spell.manaRegenBuffMultiplier !== undefined
-      ) {
-        const r = getManaRegenPerSecond(0, 50, spirit);
-        const label = Number.isInteger(r) ? String(r) : r.toFixed(1);
-        const regenDur = spell.manaRegenBuffDurationTicks / 10;
-        sentences.push(
-          `Restores another ${label} Mana per second over ${regenDur} sec.`,
-        );
-      }
-      return sentences.join('\n');
-    }
-
-    if (spell.type === SpellType.AOE) {
-      if (hasHot && effDirect > 0) {
-        sentences.push(
-          `Heals the entire party for ${effDirect} and another ${fmtHeal(effHotTotal)} over ${durSec} sec.`,
-        );
-      } else if (effDirect > 0) {
-        sentences.push(`Heals the entire party for ${effDirect}.`);
-      } else if (hasHot) {
-        sentences.push(
-          `Heals the entire party for another ${fmtHeal(effHotTotal)} over ${durSec} sec.`,
-        );
-      } else {
-        sentences.push('Heals the entire party.');
-      }
-      return sentences.join('\n');
-    }
-
-    if (hasHot && effDirect > 0) {
-      sentences.push(
-        `Heals a friendly target for ${effDirect} and another ${fmtHeal(effHotTotal)} over ${durSec} sec.`,
-      );
-    } else if (hasHot) {
-      sentences.push(
-        `Heals a friendly target for another ${fmtHeal(effHotTotal)} over ${durSec} sec.`,
-      );
-    } else if (effDirect > 0) {
-      sentences.push(`Heals a friendly target for ${effDirect}.`);
-    }
-
-    return sentences.join('\n');
-  };
 
   return (
-    <div
-      ref={barRootRef}
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]"
-    >
+    <div ref={barRootRef} className="ui-action-bar-root">
       <div className="absolute inset-0 bg-slate-900" aria-hidden />
-      <div className="relative z-10 flex flex-col items-center gap-1.5 px-3 py-2 sm:gap-2 sm:px-4 sm:py-2.5">
+      <div className="ui-action-bar-stack">
       {!spellsEnabled ? (
-        <div className="relative w-full max-w-2xl px-0.5">
+        <div className="ui-xp-bar-wrap">
           <div
-            className="relative h-[14.4px] w-full sm:h-4"
+            className="ui-xp-bar-track"
             role="progressbar"
             aria-valuenow={xpIntoLevel}
             aria-valuemin={0}
             aria-valuemax={xpForNextLevel}
           >
-            <div className="absolute inset-0 flex items-stretch gap-1">
+            <div className="ui-xp-bar-segments">
               {xpSegmentFillPercents.map((fillPct, i) => (
-                <div
-                  key={i}
-                  className="relative min-w-0 flex-1 overflow-hidden rounded-full border border-amber-700/40 bg-slate-950/80"
-                >
+                <div key={i} className="ui-xp-bar-segment-shell">
                   <motion.div
-                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-600 to-yellow-500"
+                    className="ui-xp-bar-segment-fill"
                     initial={false}
                     animate={{ width: `${fillPct}%` }}
                     transition={{ type: 'tween', duration: 0.2 }}
@@ -249,16 +201,10 @@ export function ActionBars({
                 </div>
               ))}
             </div>
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-              <span
-                className="font-mono text-base font-black italic tabular-nums text-white sm:text-lg"
-                style={{
-                  textShadow:
-                    '0 1px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000,1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,0 2px 0 #000,0 -2px 0 #000,2px 0 0 #000,-2px 0 0 #000,2px 1px 0 #000,-2px -1px 0 #000,-1px 2px 0 #000,1px -2px 0 #000',
-                }}
-              >
+            <div className="ui-xp-bar-label-wrap">
+              <span className="ui-xp-bar-label">
                 {xpIntoLevel}
-                <span className="ml-0.5 text-sm font-normal not-italic opacity-95 sm:text-base">
+                <span className="ui-xp-bar-label-denom">
                   / {xpForNextLevel}
                 </span>
               </span>
@@ -266,16 +212,16 @@ export function ActionBars({
           </div>
         </div>
       ) : null}
-      <div className="relative flex w-full flex-col items-center gap-1.5">
-        <div className="relative w-full max-w-2xl overflow-hidden rounded-md border border-slate-800/80 bg-slate-950/35 py-1.5 sm:py-2">
+      <div className="ui-action-bar-column">
+        <div className="ui-mana-pool-panel">
         <motion.div
-          className="pointer-events-none absolute inset-y-0 left-0 bg-blue-600/25 border-r border-blue-500/20"
+          className="ui-mana-pool-underlay"
           initial={false}
           animate={{ width: `${manaPercent}%` }}
           transition={{ type: 'tween', duration: 0.2 }}
           aria-hidden
         />
-        <div className="relative z-10 flex w-full items-center justify-between gap-2 px-2 sm:px-2.5">
+        <div className="ui-mana-pool-row">
         <div className="flex min-w-0 flex-col gap-0 leading-tight">
           <span className="text-sm font-black uppercase tracking-wide text-slate-400">Mana Pool</span>
           <span className="text-sm font-mono font-bold tracking-tight">
@@ -285,7 +231,7 @@ export function ActionBars({
                   +{Number.isInteger(regenPerSec) ? regenPerSec : regenPerSec.toFixed(1)}/s
                 </span>
                 <span className="ml-1.5 text-xs font-black uppercase text-blue-400/90">
-                  {SPELLS.mana_potion.manaRegenBuffMultiplier}× Potion
+                  {MANA_REGEN_BUFF_UI_MULTIPLIER}× Potion
                 </span>
                 <span className="ml-1.5 text-xs text-slate-600 line-through decoration-slate-600">
                   +{baseRegenPerSec}/s
@@ -303,12 +249,12 @@ export function ActionBars({
             )}
           </span>
         </div>
-        <span className="shrink-0 font-mono text-lg font-black italic text-blue-400 tabular-nums sm:text-xl">
-          {Math.floor(mana)}<span className="ml-0.5 text-base font-normal text-slate-400 opacity-90 sm:text-lg">/ {maxMana}</span>
+        <span className="ui-mana-pool-readout">
+          {Math.floor(mana)}<span className="ui-mana-pool-readout-max">/ {maxMana}</span>
         </span>
         </div>
         </div>
-      <div className="relative z-10 flex justify-center gap-2 sm:gap-2.5">
+      <div className="ui-spell-bar-row">
         {spellIds.map((id, index) => {
           const reordering = allowReorder && onReorderSlots;
           if (id === '') {
@@ -338,11 +284,9 @@ export function ActionBars({
                         }
                       : undefined
                   }
-                  className={`relative flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 border-b-4 border-slate-700 bg-slate-900/40 sm:h-[4.75rem] sm:w-[4.75rem] ${
-                    reordering ? 'ring-1 ring-dashed ring-slate-600' : ''
-                  } ${draggingBarIndex === index ? 'opacity-30' : ''}`}
+                  className={emptySpellSlotClass(!!reordering, draggingBarIndex === index)}
                 >
-                  <div className="absolute left-1 top-0.5 rounded bg-slate-900/50 px-1 font-mono text-xs font-black text-slate-600">
+                  <div className="ui-spell-slot-index">
                     {index + 1}
                   </div>
                 </div>
@@ -355,7 +299,8 @@ export function ActionBars({
 
           const cooldown = cooldowns[id] || 0;
           const isLowMana = mana < spell.manaCost;
-          const noPotionCharges = id === 'mana_potion' && manaPotionChargesRemaining <= 0;
+          const noPotionCharges =
+            Boolean(spell.limitedDungeonConsumable) && manaPotionChargesRemaining <= 0;
           const castBlocked = cooldown > 0 || isLowMana || noPotionCharges;
           const disabled = spellsEnabled && castBlocked;
 
@@ -412,16 +357,14 @@ export function ActionBars({
                   onCast(id);
                 }}
                 disabled={disabled}
-                className={`
-                  relative flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 border-b-4 bg-slate-800 transition-all active:scale-95 sm:h-[4.75rem] sm:w-[4.75rem]
-                  ${getSpellColor(id)}
-                  ${!spellsEnabled && !reordering ? 'cursor-not-allowed opacity-50' : ''}
-                  ${!spellsEnabled && reordering ? 'cursor-grab touch-none opacity-50 active:cursor-grabbing' : ''}
-                  ${draggingBarIndex === index ? 'opacity-30' : ''}
-                  ${spellsEnabled && cooldown > 0 ? 'opacity-60' : ''}
-                  ${spellsEnabled && cooldown <= 0 && (isLowMana || noPotionCharges) ? 'opacity-45' : ''}
-                  ${spellsEnabled && cooldown <= 0 && !isLowMana && !noPotionCharges ? 'hover:bg-slate-700 hover:-translate-y-1 shadow-lg' : ''}
-                `}
+                className={spellSlotButtonClass(spell.actionBarBorderClass, {
+                  spellsEnabled,
+                  reordering: !!reordering,
+                  draggingHere: draggingBarIndex === index,
+                  cooldown,
+                  isLowMana,
+                  noPotionCharges,
+                })}
               >
                 <GameIcon
                   iconPath={spell.icon}
@@ -432,49 +375,42 @@ export function ActionBars({
                     spellsEnabled &&
                     (cooldown > 0 || isLowMana || noPotionCharges)
                   }
-                  className={`shrink-0 ${
-                    actionBarHighlights[id]
-                      ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900'
-                      : ''
-                  } ${
-                    spellsEnabled && cooldown <= 0 && !isLowMana && !noPotionCharges
-                      ? 'transition-transform group-hover:scale-105'
-                      : ''
-                  }`}
+                  className={spellBarIconClass(
+                    Boolean(actionBarHighlights[id]),
+                    spellsEnabled && cooldown <= 0 && !isLowMana && !noPotionCharges,
+                  )}
                 />
                 
-                <span className="max-w-[4.25rem] truncate text-center text-sm font-black uppercase leading-none tracking-tight text-slate-100 group-hover:text-white">
+                <span className="ui-spell-name-label group-hover:text-white">
                     {spell.name.split(' ')[0]}
                 </span>
 
                 {spell.manaCost > 0 && (
-                  <div className="absolute right-1 top-1 font-mono text-xs font-bold text-slate-500">
+                  <div className="ui-spell-mana-cost">
                       {spell.manaCost}
                   </div>
                 )}
-                {id === 'mana_potion' && spellsEnabled && (
-                  <div className="absolute bottom-1 right-1 rounded bg-slate-900/80 px-1 font-mono text-[10px] font-black tabular-nums text-blue-300">
+                {spell.limitedDungeonConsumable && spellsEnabled && (
+                  <div className="ui-spell-potion-badge">
                     {manaPotionChargesRemaining}/{MANA_POTION_USES_PER_DUNGEON}
                   </div>
                 )}
 
-                {/* Cooldown Overlay */}
                 {cooldown > 0 && (
-                  <div className="absolute inset-0 bg-slate-950/80 flex items-center justify-center overflow-hidden">
+                  <div className="ui-spell-cd-overlay">
                     <motion.div 
-                        className="absolute inset-x-0 bottom-0 bg-blue-500/20"
+                        className="ui-spell-cd-sweep"
                         initial={{ height: '100%' }}
                         animate={{ height: `${(cooldown / spell.cooldown) * 100}%` }}
                         transition={{ duration: 0.1 }}
                     />
-                    <span className="relative z-10 text-2xl font-black italic text-white drop-shadow-[0_0_5px_rgba(0,0,0,1)]">
+                    <span className="ui-spell-cd-text">
                       {cooldown > 10 ? Math.ceil(cooldown / 10) : (cooldown / 10).toFixed(1)}
                     </span>
                   </div>
                 )}
 
-                {/* Keybind overlay */}
-                <div className="absolute left-1 top-0.5 rounded bg-slate-900/50 px-1 font-mono text-xs font-black text-slate-500">
+                <div className="ui-spell-slot-index ui-spell-slot-index-filled">
                    {index + 1}
                 </div>
               </button>
@@ -484,31 +420,29 @@ export function ActionBars({
                   if (el) spellTipRefs.current[id] = el;
                   else delete spellTipRefs.current[id];
                 }}
-                className={`pointer-events-none absolute bottom-full left-1/2 z-[200] mb-3 flex w-[min(20rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] items-start gap-1.5 shadow-2xl transition-opacity sm:gap-2 ${
-                  previewTooltipSpellId === id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                }`}
+                className={`ui-spell-tooltip ${spellTooltipVisibilityClass(previewTooltipSpellId === id)}`}
                 style={{ transform: 'translateX(-50%)' }}
               >
                 <GameIcon
                   iconPath={spell.icon}
                   glow={glowForSpellId(id)}
                   size="md"
-                  className="shrink-0 ring-1 ring-white/10"
+                  className="ui-spell-tooltip-icon"
                 />
-                <div className="min-w-0 flex-1 break-words border border-slate-600/90 bg-slate-950 px-2.5 py-2">
-                  <div className="mb-1 border-b border-slate-800 pb-1 text-sm font-black uppercase italic text-white">
+                <div className="ui-spell-tooltip-body">
+                  <div className="ui-spell-tooltip-title">
                     {spell.name}
                   </div>
                   {spell.manaCost > 0 ? (
-                    <div className="text-sm font-bold tabular-nums text-white">{spell.manaCost} Mana</div>
+                    <div className="ui-spell-tooltip-mana">{spell.manaCost} Mana</div>
                   ) : null}
                   <div
-                    className={`whitespace-pre-line text-sm font-medium leading-snug text-amber-100 ${spell.manaCost > 0 ? 'mt-1.5' : ''}`}
+                    className={`ui-spell-tooltip-desc${spell.manaCost > 0 ? ' mt-1.5' : ''}`}
                   >
-                    {getSpellEffectDescription(id)}
+                    {spellEffectTooltipText(spell, { spellHealingMultiplier, spirit })}
                   </div>
                 </div>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950" aria-hidden />
+                <div className="ui-spell-tooltip-arrow" aria-hidden />
               </div>
             </div>
           );

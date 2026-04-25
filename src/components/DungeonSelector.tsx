@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useRef, useCallback, type PointerEvent as ReactPointerEvent } from 'react';
+import { useRef, useCallback, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { AnimatePresence } from 'motion/react';
 import { bossCombatProfileForDungeon, TICKS_PER_SECOND } from '../constants.ts';
 import { DUNGEONS } from '../dungeons/index.ts';
 import { type BossDebuffTargeting, type Dungeon } from '../types.ts';
 import { computeDungeonXpGain, levelsOverDungeonMax } from '../gameStorage.ts';
 import { Lock } from 'lucide-react';
 import { GameIcon } from './GameIcon.tsx';
+import { DungeonQueueModal } from './DungeonQueueModal.tsx';
 import { BOSS_BUFF_ICON_TINT } from '../gameIcons.ts';
 
 interface DungeonSelectorProps {
@@ -19,93 +21,6 @@ interface DungeonSelectorProps {
 }
 
 const DRAG_THRESHOLD_PX = 10;
-
-type DungeonCardId = (typeof DUNGEONS)[number]['id'];
-
-type DungeonCardTheme = {
-  borderLeft: string;
-  viaTint: string;
-  ring: string;
-  cardShadow: string;
-  borderHover: string;
-  deploy: string;
-  iconTint: string;
-};
-
-const DUNGEON_CARD_THEME = {
-  deadmines: {
-    borderLeft: 'border-l-amber-700',
-    viaTint: 'via-amber-950/40',
-    ring: 'ring-amber-900/30',
-    cardShadow: 'shadow-[0_20px_50px_-12px_rgba(180,83,9,0.32)]',
-    borderHover: 'hover:border-amber-500',
-    deploy: 'bg-amber-700 text-amber-50',
-    iconTint: 'rgba(251,191,36,0.5)',
-  },
-  wailing_caverns: {
-    borderLeft: 'border-l-teal-600',
-    viaTint: 'via-teal-950/45',
-    ring: 'ring-teal-800/25',
-    cardShadow: 'shadow-[0_20px_50px_-12px_rgba(13,148,136,0.32)]',
-    borderHover: 'hover:border-teal-500',
-    deploy: 'bg-teal-600 text-white',
-    iconTint: 'rgba(45,212,191,0.48)',
-  },
-  scarlet_monastery: {
-    borderLeft: 'border-l-rose-600',
-    viaTint: 'via-rose-950/40',
-    ring: 'ring-rose-900/30',
-    cardShadow: 'shadow-[0_20px_50px_-12px_rgba(225,29,72,0.28)]',
-    borderHover: 'hover:border-rose-500',
-    deploy: 'bg-rose-700 text-rose-50',
-    iconTint: 'rgba(251,113,133,0.5)',
-  },
-  zul_farrak: {
-    borderLeft: 'border-l-yellow-500',
-    viaTint: 'via-yellow-950/35',
-    ring: 'ring-yellow-900/25',
-    cardShadow: 'shadow-[0_20px_50px_-12px_rgba(202,138,4,0.32)]',
-    borderHover: 'hover:border-yellow-400',
-    deploy: 'bg-amber-600 text-amber-50',
-    iconTint: 'rgba(250,204,21,0.48)',
-  },
-  sunken_temple: {
-    borderLeft: 'border-l-emerald-600',
-    viaTint: 'via-emerald-950/40',
-    ring: 'ring-emerald-900/25',
-    cardShadow: 'shadow-[0_20px_50px_-12px_rgba(5,150,105,0.32)]',
-    borderHover: 'hover:border-emerald-500',
-    deploy: 'bg-emerald-700 text-emerald-50',
-    iconTint: 'rgba(52,211,153,0.5)',
-  },
-  blackrock_depths: {
-    borderLeft: 'border-l-orange-600',
-    viaTint: 'via-orange-950/45',
-    ring: 'ring-orange-950/30',
-    cardShadow: 'shadow-[0_20px_50px_-12px_rgba(234,88,12,0.35)]',
-    borderHover: 'enabled:hover:border-orange-500',
-    deploy: 'bg-orange-700 text-orange-50',
-    iconTint: 'rgba(251,146,60,0.52)',
-  },
-  stratholme: {
-    borderLeft: 'border-l-violet-600',
-    viaTint: 'via-violet-950/38',
-    ring: 'ring-violet-900/25',
-    cardShadow: 'shadow-[0_20px_50px_-12px_rgba(124,58,237,0.28)]',
-    borderHover: 'hover:border-violet-500',
-    deploy: 'bg-violet-800 text-violet-50',
-    iconTint: 'rgba(167,139,250,0.48)',
-  },
-  scholomance: {
-    borderLeft: 'border-l-indigo-500',
-    viaTint: 'via-indigo-950/45',
-    ring: 'ring-indigo-900/30',
-    cardShadow: 'shadow-[0_20px_50px_-12px_rgba(99,102,241,0.32)]',
-    borderHover: 'hover:border-indigo-500',
-    deploy: 'bg-indigo-700 text-indigo-50',
-    iconTint: 'rgba(129,140,248,0.5)',
-  },
-} satisfies Record<DungeonCardId, DungeonCardTheme>;
 
 const CARD_SHELL =
   'relative flex h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 pt-4 pb-4 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:pt-5 sm:pb-5 md:px-7 md:pt-6 md:pb-6 max-sm:px-6 max-sm:pt-3.5 max-sm:pb-3.5';
@@ -132,7 +47,7 @@ function BossMechanicsStrip({
   dimmed: boolean;
 }) {
   const profile = bossCombatProfileForDungeon(dungeon);
-  const cardTheme = DUNGEON_CARD_THEME[dungeon.id as DungeonCardId];
+  const cardTheme = dungeon.cardTheme;
 
   const cardShell =
     'flex h-full min-h-0 min-w-0 flex-1 basis-0 flex-col gap-1.5 rounded-md border bg-slate-900/75 px-2 py-2 sm:gap-1.5 sm:px-2 sm:py-2 md:gap-2 md:px-2.5 md:py-2.5';
@@ -286,6 +201,7 @@ function BossMechanicsStrip({
 }
 
 export function DungeonSelector({ onSelect, level, completedDungeonIds }: DungeonSelectorProps) {
+  const [queueDungeon, setQueueDungeon] = useState<Dungeon | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef({
     active: false,
@@ -358,9 +274,9 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
         dragRef.current.suppressClick = false;
         return;
       }
-      if (!isLocked) onSelect(dungeon);
+      if (!isLocked) setQueueDungeon(dungeon);
     },
-    [onSelect],
+    [],
   );
 
   return (
@@ -393,7 +309,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
             const showReducedXp = !isLocked && levelsOverDungeonMax(dungeon, level) > 0;
             const nominalClearXp = computeDungeonXpGain(dungeon, dungeon.levelMax);
             const clearXp = computeDungeonXpGain(dungeon, level);
-            const theme = DUNGEON_CARD_THEME[dungeon.id as DungeonCardId];
+            const theme = dungeon.cardTheme;
             const bossCombat = bossCombatProfileForDungeon(dungeon);
             const showBossMechanicsRow =
               isLocked ||
@@ -542,7 +458,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                       : theme.deploy
                   }`}
                 >
-                  {isLocked ? 'LOCKED' : 'DEPLOY'}
+                  {isLocked ? 'LOCKED' : 'FIND GROUP'}
                 </div>
 
                 {isLocked ? <div className="pointer-events-none absolute inset-0 rounded-xl bg-slate-950/15" /> : null}
@@ -552,6 +468,20 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
         </div>
         <div className="mx-auto mt-2 h-px w-16 shrink-0 bg-white/25" aria-hidden />
       </div>
+
+      <AnimatePresence>
+        {queueDungeon ? (
+          <DungeonQueueModal
+            dungeon={queueDungeon}
+            enterButtonClassName={queueDungeon.cardTheme.deploy}
+            onClose={() => setQueueDungeon(null)}
+            onConfirmEnter={(d) => {
+              onSelect(d);
+              setQueueDungeon(null);
+            }}
+          />
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

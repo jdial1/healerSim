@@ -1,0 +1,74 @@
+{
+  "allyHealthDefaults": {
+    "TANK": { "base": 98, "perLevel": 14 },
+    "DPS": { "base": 52, "perLevel": 5.5 }
+  },
+  "tankPool": [
+    {
+      "name": "Tanky McShield",
+      "role": "TANK"
+    },
+    {
+      "name": "Ironheart Bear",
+      "role": "TANK"
+    },
+    {
+      "name": "Sunbreaker",
+      "role": "TANK"
+    },
+    {
+      "name": "Stonekin",
+      "role": "TANK"
+    }
+  ],
+  "dpsPool": [
+    {
+      "name": "Zappy Mage",
+      "role": "DPS"
+    },
+    {
+      "name": "Sneaky Rogue",
+      "role": "DPS"
+    },
+    {
+      "name": "Shadow Warlock",
+      "role": "DPS"
+    },
+    {
+      "name": "Wildfire Mage",
+      "role": "DPS"
+    },
+    {
+      "name": "Frostweaver",
+      "role": "DPS"
+    },
+    {
+      "name": "Blade Dancer",
+      "role": "DPS"
+    },
+    {
+      "name": "Hunter Mark",
+      "role": "DPS"
+    },
+    {
+      "name": "Demon Hunter",
+      "role": "DPS"
+    },
+    {
+      "name": "Retri Pally",
+      "role": "DPS"
+    },
+    {
+      "name": "Shadow Priest",
+      "role": "DPS"
+    },
+    {
+      "name": "Windwalker",
+      "role": "DPS"
+    },
+    {
+      "name": "Feral Kitty",
+      "role": "DPS"
+    }
+  ]
+}

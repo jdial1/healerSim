@@ -3,26 +3,42 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment, useMemo } from 'react';
 import { registerSW } from 'virtual:pwa-register';
 import { useGameEngine } from './hooks/useGameEngine.ts';
+import {
+  useKeyboardCombatKeys,
+  type KeyboardCombatSnapshot,
+} from './hooks/useKeyboardCombatKeys.ts';
 import { HealGrid } from './components/HealGrid.tsx';
 import { ActionBars } from './components/ActionBars.tsx';
-import { ClassSelector } from './components/ClassSelector.tsx';
+import { CharacterRoster } from './components/CharacterRoster.tsx';
 import { DungeonSelector } from './components/DungeonSelector.tsx';
-import { GameHUD, TRASH_PACK_COUNT } from './components/GameHUD.tsx';
+import { maxLevelAcrossRoster } from './gameStorage.ts';
+import { GameHUD } from './components/GameHUD.tsx';
+import { TRASH_PACK_COUNT } from './constants.ts';
+import {
+  PLAYER_BUFF_MANA_REGEN_POTION,
+  PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT,
+  getPlayerBuffRemainingTicks,
+} from './talentMechanics.ts';
+import { partyWithHealerManaRegenDisplayBuff } from './buffDisplay.ts';
 import { TalentTree } from './components/TalentTree.tsx';
 import { DungeonOutcomeModal } from './components/DungeonOutcomeModal.tsx';
 import { MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
 import { spellHealingMultiplierFromProgress, effectivePrimaryStats } from './playerStats.ts';
+import type { PlayerCombatStats } from './types.ts';
 import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Star, LogOut } from 'lucide-react';
+import { Trophy, Star, LogOut, Home } from 'lucide-react';
 
 export default function App() {
   const {
     state,
-    selectClass,
+    roster,
+    loadCharacter,
+    startNewClass,
+    returnToRoster,
     startDungeon,
     abandonDungeon,
     castSpell,
@@ -35,10 +51,19 @@ export default function App() {
     actionBarHighlights,
   } = useGameEngine();
   const [targetId, setTargetId] = useState<string | null>(null);
+  const [showRoster, setShowRoster] = useState(true);
   const [showTalents, setShowTalents] = useState(false);
   const [showPlayerStats, setShowPlayerStats] = useState(false);
+  const paladinUnlocked = maxLevelAcrossRoster(roster) >= 5;
   const [pwaNeedsRefresh, setPwaNeedsRefresh] = useState(false);
   const swUpdate = useRef<((reload?: boolean) => Promise<void>) | undefined>(undefined);
+  const keyboardRef = useRef<KeyboardCombatSnapshot>({
+    party: [],
+    currentDungeon: null,
+    activeActionBars: [],
+    targetId: null,
+    castSpell: () => {},
+  });
 
   useEffect(() => {
     swUpdate.current = registerSW({
@@ -49,18 +74,18 @@ export default function App() {
     });
   }, []);
 
-  const handleCast = useCallback((spellId: string) => {
-    if (!state.currentDungeon) return;
-    if (!targetId && state.party.length > 0) {
-      // Default to tank if no target
-      const tank = state.party.find(u => u.role === 'TANK');
-      if (tank) {
-          castSpell(spellId, tank.id);
+  const handleCast = useCallback(
+    (spellId: string) => {
+      if (!state.currentDungeon) return;
+      if (!targetId && state.party.length > 0) {
+        const tank = state.party.find((u) => u.role === 'TANK');
+        if (tank) castSpell(spellId, tank.id);
+      } else if (targetId) {
+        castSpell(spellId, targetId);
       }
-    } else if (targetId) {
-      castSpell(spellId, targetId);
-    }
-  }, [state.currentDungeon, targetId, state.party, castSpell]);
+    },
+    [state.currentDungeon, targetId, state.party, castSpell],
+  );
 
   useEffect(() => {
     if (!targetId) return;
@@ -68,40 +93,80 @@ export default function App() {
     if (!alive) setTargetId(null);
   }, [state.party, targetId]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key;
-      // Handle numbers 1-5
-      const num = parseInt(key);
-      if (isNaN(num) || num < 1 || num > 5) return;
-      
-      const index = num - 1;
+  const manaRegenTicksForUi = useMemo(
+    () =>
+      state.currentDungeon
+        ? getPlayerBuffRemainingTicks(state.playerCombatBuffs, PLAYER_BUFF_MANA_REGEN_POTION)
+        : 0,
+    [state.currentDungeon, state.playerCombatBuffs],
+  );
 
-      if (e.shiftKey) {
-        const member = state.party[index];
-        if (member && member.health > 0) {
-          setTargetId(member.id);
-        }
-      } else if (state.currentDungeon) {
-        const spellId = state.activeActionBars[index];
-        if (spellId) {
-          handleCast(spellId);
-        }
-      }
+  const spiritLockTicksForUi = useMemo(
+    () =>
+      state.currentDungeon
+        ? getPlayerBuffRemainingTicks(state.playerCombatBuffs, PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT)
+        : 0,
+    [state.currentDungeon, state.playerCombatBuffs],
+  );
+
+  const partyForHealGrid = useMemo(
+    () => partyWithHealerManaRegenDisplayBuff(state.party, manaRegenTicksForUi),
+    [state.party, manaRegenTicksForUi],
+  );
+
+  const playerCombatStats = useMemo((): PlayerCombatStats | null => {
+    if (!state.playerClass) return null;
+    return {
+      playerClass: state.playerClass,
+      xp: state.xp,
+      mana: state.currentDungeon ? state.mana : state.maxMana,
+      maxMana: state.maxMana,
+      manaRegenBuffTicksRemaining: manaRegenTicksForUi,
+      spiritRegenLockoutTicksRemaining: spiritLockTicksForUi,
+      spirit: effectivePrimaryStats(state.playerClass, state.level).spirit,
+      spellsEnabled: !!state.currentDungeon,
+      manaPotionChargesRemaining: Math.max(
+        0,
+        MANA_POTION_USES_PER_DUNGEON - state.manaPotionsUsedThisDungeon,
+      ),
+      spellHealingMultiplier: spellHealingMultiplierFromProgress(
+        state.playerClass,
+        state.level,
+        state.talents,
+      ),
+      actionBarHighlights,
     };
+  }, [
+    state.playerClass,
+    state.xp,
+    state.mana,
+    state.maxMana,
+    state.currentDungeon,
+    state.level,
+    state.manaPotionsUsedThisDungeon,
+    state.talents,
+    manaRegenTicksForUi,
+    spiritLockTicksForUi,
+    actionBarHighlights,
+  ]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.party, state.currentDungeon, state.activeActionBars, handleCast]);
+  keyboardRef.current = {
+    party: state.party,
+    currentDungeon: state.currentDungeon,
+    activeActionBars: state.activeActionBars,
+    targetId,
+    castSpell,
+  };
+  useKeyboardCombatKeys(keyboardRef, setTargetId);
 
   return (
     <div
       className={`bg-slate-950 font-sans selection:bg-blue-500 selection:text-white ${
-        state.playerClass ? 'min-h-dvh max-h-dvh overflow-hidden' : 'min-h-dvh'
+        state.playerClass && !showRoster ? 'min-h-dvh max-h-dvh overflow-hidden' : 'min-h-dvh'
       }`}
     >
       <AnimatePresence mode="wait">
-        {showTalents && state.playerClass ? (
+        {showTalents && state.playerClass && !showRoster ? (
           <TalentTree 
             talents={state.talents}
             talentPoints={state.talentPoints}
@@ -113,14 +178,25 @@ export default function App() {
           />
         ) : null}
 
-        {!state.playerClass ? (
+        {showRoster || !state.playerClass ? (
           <motion.div
-            key="class-select"
+            key="character-roster"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, x: -100 }}
           >
-            <ClassSelector onSelect={selectClass} />
+            <CharacterRoster
+              roster={roster}
+              paladinUnlocked={paladinUnlocked}
+              onContinue={(cls) => {
+                loadCharacter(cls);
+                setShowRoster(false);
+              }}
+              onCreate={(cls) => {
+                startNewClass(cls);
+                setShowRoster(false);
+              }}
+            />
           </motion.div>
         ) : !state.currentDungeon ? (
           <motion.div
@@ -130,27 +206,51 @@ export default function App() {
             exit={{ opacity: 0, y: -100 }}
             className="relative flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden"
           >
-            {/* Global Actions Overlay */}
-            <div className="fixed top-3 right-3 flex gap-2 items-center z-[60]">
-               <button 
+            <div className="fixed top-3 right-3 z-[60] flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  returnToRoster();
+                  setShowRoster(true);
+                }}
+                className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-900/80 px-2 py-1 shadow-sm backdrop-blur-md transition-colors hover:border-slate-500 hover:bg-slate-800"
+                aria-label="Main menu"
+              >
+                <Home size={12} strokeWidth={2.5} className="shrink-0 text-slate-300" aria-hidden />
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-300 sm:text-[9px]">
+                  Menu
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowTalents(true)}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all border ${state.talentPoints > 0 ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-pulse' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-white'}`}
-               >
-                  <Star size={10} fill={state.talentPoints > 0 ? 'currentColor' : 'none'} className={state.talentPoints > 0 ? 'text-yellow-400' : ''} />
-                  <span className="text-[11px] font-black uppercase tracking-widest whitespace-nowrap sm:text-[9px]">TALENTS ({state.talentPoints})</span>
-               </button>
-               <button
-                  type="button"
-                  onClick={() => setShowPlayerStats(true)}
-                  className="flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900/80 px-2 py-1 shadow-sm backdrop-blur-md transition-colors hover:border-slate-600 hover:bg-slate-800"
-                >
-                  <Trophy size={10} className="text-blue-500" />
-                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-300 sm:text-[9px]">
-                    LVL <span className="text-white">{state.level}</span>
-                  </span>
-                </button>
+                className={`flex items-center gap-1.5 rounded border px-2 py-1 transition-all ${
+                  state.talentPoints > 0
+                    ? 'animate-pulse border-blue-400 bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.6)]'
+                    : 'border-slate-800 bg-slate-900 text-slate-500 hover:text-white'
+                }`}
+              >
+                <Star
+                  size={10}
+                  fill={state.talentPoints > 0 ? 'currentColor' : 'none'}
+                  className={state.talentPoints > 0 ? 'text-yellow-400' : ''}
+                />
+                <span className="whitespace-nowrap text-[11px] font-black uppercase tracking-widest sm:text-[9px]">
+                  TALENTS ({state.talentPoints})
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPlayerStats(true)}
+                className="flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900/80 px-2 py-1 shadow-sm backdrop-blur-md transition-colors hover:border-slate-600 hover:bg-slate-800"
+              >
+                <Trophy size={10} className="text-blue-500" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-300 sm:text-[9px]">
+                  LVL <span className="text-white">{state.level}</span>
+                </span>
+              </button>
             </div>
-            
+
             <DungeonSelector
               onSelect={startDungeon}
               level={state.level}
@@ -189,12 +289,7 @@ export default function App() {
 
             <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-48 pb-36 sm:pt-52 sm:pb-40">
                <div className="mt-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-1 self-center overflow-y-auto px-2 pb-2">
-                 <HealGrid 
-                  party={state.party}
-                  selectedId={targetId}
-                  onTargetSelect={setTargetId}
-                  manaRegenBuffTicksRemaining={state.manaRegenBuffTicksRemaining}
-                 />
+                 <HealGrid party={partyForHealGrid} selectedId={targetId} onTargetSelect={setTargetId} />
                </div>
             </main>
           </motion.div>
@@ -202,7 +297,7 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showPlayerStats && state.playerClass ? (
+        {showPlayerStats && state.playerClass && !showRoster ? (
           <PlayerStatsModal
             playerClass={state.playerClass}
             level={state.level}
@@ -212,35 +307,16 @@ export default function App() {
         ) : null}
       </AnimatePresence>
 
-      {state.playerClass && (
+      {state.playerClass && !showRoster && playerCombatStats ? (
         <ActionBars
-          playerClass={state.playerClass}
+          playerCombatStats={playerCombatStats}
           spellIds={state.activeActionBars}
           cooldowns={cooldowns}
           onCast={handleCast}
-          xp={state.xp}
-          mana={state.currentDungeon ? state.mana : state.maxMana}
-          maxMana={state.maxMana}
-          manaRegenBuffTicksRemaining={state.currentDungeon ? state.manaRegenBuffTicksRemaining : 0}
-          spiritRegenLockoutTicksRemaining={
-            state.currentDungeon ? state.spiritRegenLockoutTicksRemaining : 0
-          }
-          spirit={effectivePrimaryStats(state.playerClass, state.level).spirit}
-          spellsEnabled={!!state.currentDungeon}
-          allowReorder={!!state.playerClass && !state.currentDungeon}
+          allowReorder={!state.currentDungeon}
           onReorderSlots={reorderActionBar}
-          manaPotionChargesRemaining={Math.max(
-            0,
-            MANA_POTION_USES_PER_DUNGEON - state.manaPotionsUsedThisDungeon,
-          )}
-          spellHealingMultiplier={spellHealingMultiplierFromProgress(
-            state.playerClass,
-            state.level,
-            state.talents,
-          )}
-          actionBarHighlights={actionBarHighlights}
         />
-      )}
+      ) : null}
 
       <AnimatePresence>
         {dungeonOutcome ? (
@@ -278,7 +354,7 @@ export default function App() {
       {!state.currentDungeon ? (
         <p
           className={`fixed left-0 right-0 z-[25] text-center font-mono text-[10px] tracking-wide text-slate-600 ${
-            state.playerClass
+            state.playerClass && !showRoster
               ? 'hidden bottom-40 sm:bottom-44 sm:block'
               : 'bottom-[max(1rem,env(safe-area-inset-bottom,0px))]'
           }`}

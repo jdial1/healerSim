@@ -93,6 +93,17 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
                   </span>
                 ) : null}
               </div>
+            ) : outcome.xpGained > 0 ? (
+              <div className="flex flex-col items-center gap-3">
+                <span className="rounded-lg border border-slate-700/80 bg-slate-950/90 px-6 py-4 text-2xl font-black uppercase tracking-widest text-slate-300 shadow-[0_0_24px_rgba(148,163,184,0.12)] sm:px-8 sm:py-5 sm:text-3xl">
+                  +{outcome.xpGained} XP
+                </span>
+                {outcome.levelUp ? (
+                  <span className="rounded border border-amber-800/60 bg-amber-950/40 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-amber-300 sm:text-sm">
+                    Level up
+                  </span>
+                ) : null}
+              </div>
             ) : null}
             <button
               type="button"

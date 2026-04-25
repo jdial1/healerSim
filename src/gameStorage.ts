@@ -5,9 +5,10 @@
 
 import { ClassType, Dungeon, GameState, Talent } from './types.ts';
 import { PRIEST_TALENTS, DRUID_TALENTS, PALADIN_TALENTS } from './talents/index.ts';
-import { dungeonBaseXp, dungeonXpTierMultiplier } from './constants.ts';
+import { dungeonBaseXp, dungeonXpTierMultiplier, TRASH_PACK_COUNT } from './constants.ts';
+import balanceData from './data/balance.json';
 import { computedMaxMana } from './playerStats.ts';
-import { classSpellOrder } from './talentMechanics.ts';
+import { classSpellOrder, starterSpellsForClass } from './playerStats.ts';
 
 function nominalClearXpForDifficulty(difficulty: number): number {
   return Math.round(dungeonBaseXp(difficulty) * dungeonXpTierMultiplier(difficulty));
@@ -53,16 +54,37 @@ export function computeDungeonXpGain(dungeon: Dungeon, playerLevel: number): num
   const base = dungeonBaseXp(dungeon.difficulty);
   const tier = dungeonXpTierMultiplier(dungeon.difficulty);
   const levelsOver = Math.max(0, playerLevel - dungeon.levelMax);
-  return Math.max(0, Math.round(base * tier * Math.pow(0.5, levelsOver)));
+  return Math.max(
+    0,
+    Math.round(base * tier * Math.pow(balanceData.xp.overlevelDiminishingBase, levelsOver)),
+  );
+}
+
+export function dungeonFailureXpFraction(pullsCleared: number): number {
+  const x = balanceData.xp;
+  if (pullsCleared >= TRASH_PACK_COUNT) return x.failureFractionWhenAllTrashCleared;
+  if (pullsCleared === 2) return x.failureFractionWhenTwoPullsCleared;
+  if (pullsCleared === 1) return x.failureFractionWhenOnePullCleared;
+  return 0;
+}
+
+export function computeDungeonFailureXpGain(
+  dungeon: Dungeon,
+  playerLevel: number,
+  pullsCleared: number,
+): number {
+  const full = computeDungeonXpGain(dungeon, playerLevel);
+  return Math.round(full * dungeonFailureXpFraction(pullsCleared));
 }
 
 export function levelsOverDungeonMax(dungeon: Dungeon, playerLevel: number): number {
   return Math.max(0, playerLevel - dungeon.levelMax);
 }
 
-const STORAGE_KEY = 'healerSim.save.v1';
+const ROSTER_KEY = 'healerSim.roster.v2';
+const LEGACY_SAVE_KEY = 'healerSim.save.v1';
 
-type SavedShape = {
+export type SavedShape = {
   v: 1;
   xp: number;
   talentRanks: Record<string, number>;
@@ -70,6 +92,62 @@ type SavedShape = {
   playerClass: ClassType | null;
   actionBarSpellIds?: string[];
 };
+
+export type RosterV2 = {
+  v: 2;
+  lastPlayedClass: ClassType | null;
+  byClass: Partial<Record<ClassType, SavedShape>>;
+};
+
+function emptyRoster(): RosterV2 {
+  return { v: 2, lastPlayedClass: null, byClass: {} };
+}
+
+export function readRoster(): RosterV2 {
+  if (typeof localStorage === 'undefined') return emptyRoster();
+  try {
+    const raw = localStorage.getItem(ROSTER_KEY);
+    if (raw) {
+      const r = JSON.parse(raw) as RosterV2;
+      if (r.v === 2 && r.byClass && typeof r.byClass === 'object') {
+        return {
+          v: 2,
+          lastPlayedClass: r.lastPlayedClass ?? null,
+          byClass: { ...r.byClass },
+        };
+      }
+    }
+    const legacyRaw = localStorage.getItem(LEGACY_SAVE_KEY);
+    if (legacyRaw) {
+      const p = JSON.parse(legacyRaw) as SavedShape;
+      if (p.v === 1 && p.playerClass) {
+        const migrated: RosterV2 = {
+          v: 2,
+          lastPlayedClass: p.playerClass,
+          byClass: { [p.playerClass]: { ...p, playerClass: p.playerClass } },
+        };
+        writeRoster(migrated);
+        return migrated;
+      }
+    }
+  } catch {}
+  return emptyRoster();
+}
+
+export function writeRoster(roster: RosterV2): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+}
+
+export function maxLevelAcrossRoster(roster: RosterV2): number {
+  let max = 1;
+  for (const shape of Object.values(roster.byClass)) {
+    if (!shape) continue;
+    const L = levelFromTotalXp(shape.xp);
+    if (L > max) max = L;
+  }
+  return max;
+}
 
 function spellIdMultisetEqual(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -98,15 +176,9 @@ export function reconcileActionBarOrder(prev: string[], defaultBar: string[]): s
 }
 
 function talentTreeTemplate(cls: ClassType): Talent[] {
-  if (cls === ClassType.PRIEST) return PRIEST_TALENTS;
-  if (cls === ClassType.DRUID) return DRUID_TALENTS;
+  if (cls === 'PRIEST') return PRIEST_TALENTS;
+  if (cls === 'DRUID') return DRUID_TALENTS;
   return PALADIN_TALENTS;
-}
-
-function starterSpells(cls: ClassType): string[] {
-  if (cls === ClassType.PRIEST) return ['flash_heal', 'renew'];
-  if (cls === ClassType.DRUID) return ['rejuvenation', 'regrowth'];
-  return ['flash_heal'];
 }
 
 export function buildSpellLoadout(
@@ -114,7 +186,7 @@ export function buildSpellLoadout(
   talents: Talent[],
 ): { unlockedSpells: string[]; activeActionBars: string[] } {
   if (!cls) return { unlockedSpells: [], activeActionBars: [] };
-  const starter = starterSpells(cls);
+  const starter = starterSpellsForClass(cls);
   const extra: string[] = [];
   for (const t of talents) {
     if (t.spellId && t.points > 0 && !extra.includes(t.spellId)) extra.push(t.spellId);
@@ -181,37 +253,30 @@ export function computeMetaFromProgress(
   };
 }
 
-export function readStoredProgress(): Partial<GameState> | null {
-  if (typeof localStorage === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw) as SavedShape;
-    if (p.v !== 1) return null;
-    const talents = mergeSavedTalentRanks(p.talentRanks, p.playerClass ?? null);
-    const meta = computeMetaFromProgress(p.xp, p.playerClass ?? null, talents);
-    const activeActionBars = applySavedActionBarOrder(
-      meta.activeActionBars,
-      Array.isArray(p.actionBarSpellIds) ? p.actionBarSpellIds : undefined,
-    );
-    return {
-      ...meta,
-      activeActionBars,
-      playerClass: p.playerClass ?? null,
-      completedDungeonIds: Array.isArray(p.completedDungeonIds) ? p.completedDungeonIds : [],
-    };
-  } catch {
-    return null;
-  }
+export function patchFromSavedShape(shape: SavedShape): Partial<GameState> | null {
+  if (!shape.playerClass) return null;
+  const cls = shape.playerClass;
+  const talents = mergeSavedTalentRanks(shape.talentRanks, cls);
+  const meta = computeMetaFromProgress(shape.xp, cls, talents);
+  const activeActionBars = applySavedActionBarOrder(
+    meta.activeActionBars,
+    Array.isArray(shape.actionBarSpellIds) ? shape.actionBarSpellIds : undefined,
+  );
+  return {
+    ...meta,
+    activeActionBars,
+    playerClass: cls,
+    completedDungeonIds: Array.isArray(shape.completedDungeonIds) ? shape.completedDungeonIds : [],
+  };
 }
 
-export function writeStoredProgress(state: GameState): void {
-  if (typeof localStorage === 'undefined') return;
+export function serializeCharacter(state: GameState): SavedShape | null {
+  if (!state.playerClass) return null;
   const talentRanks: Record<string, number> = {};
   for (const t of state.talents) {
     talentRanks[t.id] = t.points;
   }
-  const payload: SavedShape = {
+  return {
     v: 1,
     xp: state.xp,
     talentRanks,
@@ -219,5 +284,15 @@ export function writeStoredProgress(state: GameState): void {
     playerClass: state.playerClass,
     actionBarSpellIds: state.activeActionBars,
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+
+export function mergeRosterWithCharacter(roster: RosterV2, state: GameState): RosterV2 {
+  const blob = serializeCharacter(state);
+  if (!blob) return roster;
+  const cls = blob.playerClass;
+  return {
+    ...roster,
+    byClass: { ...roster.byClass, [cls]: blob },
+    lastPlayedClass: cls,
+  };
 }

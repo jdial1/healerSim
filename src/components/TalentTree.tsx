@@ -6,16 +6,18 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, RotateCcw, X } from 'lucide-react';
-import { ClassType, Talent } from '../types.ts';
-import { unmetChainedPrerequisiteTalents } from '../playerStats.ts';
+import { ClassType, Talent, type IconGlow } from '../types.ts';
+import { talentTreeGlowForClass, unmetChainedPrerequisiteTalents } from '../playerStats.ts';
 import { GameIcon } from './GameIcon.tsx';
-import type { IconGlow } from '../gameIcons.ts';
+import type { ExclusiveSplitPair } from '../talentSplitPairs.ts';
 import {
-  computeScatteredTalentPositions,
-  collectExclusiveSplitPairs,
-  splitPairContaining,
-  type ExclusiveSplitPair,
-} from '../talentGridScatter.ts';
+  buildTalentTreeUiGraph,
+  pairHasAnyPoints,
+  prereqConnectionStroke,
+  TALENT_GRID_COLS,
+  TALENT_GRID_ROWS,
+  talentInExclusiveSplit,
+} from '../talentTreeUiGraph.ts';
 
 interface TalentTreeProps {
   talents: Talent[];
@@ -27,59 +29,53 @@ interface TalentTreeProps {
   playerClass: ClassType;
 }
 
-const GRID_COLS = 5;
-const GRID_ROWS = 7;
-const PCT_W = 100 / GRID_COLS;
-const PCT_H = 100 / GRID_ROWS;
+type TalentStatKey = keyof NonNullable<Talent['statBonus']>;
 
-function skipDuplicatePrereqLineToBottom(
-  pairs: ExclusiveSplitPair[],
-  child: Talent,
-  parentId: string,
-): boolean {
-  const pair = pairs.find((x) => x.bottom.id === child.id);
-  if (!pair) return false;
-  const topPrereqs = pair.top.prerequisites ?? [];
-  return topPrereqs.includes(parentId);
+const STAT_ORDER: TalentStatKey[] = [
+  'healingBoost',
+  'manaPool',
+  'haste',
+  'critChance',
+  'manaReturnOnDirectHeal',
+];
+
+const STAT_LABELS: Record<TalentStatKey, string> = {
+  healingBoost: 'Healing',
+  manaPool: 'Mana',
+  haste: 'Haste',
+  critChance: 'Crit',
+  manaReturnOnDirectHeal: 'Regen',
+};
+
+function statKeysFromBonus(t: Talent): TalentStatKey[] {
+  const b = t.statBonus;
+  if (!b) return [];
+  const out: TalentStatKey[] = [];
+  if (b.healingBoost) out.push('healingBoost');
+  if (b.manaPool) out.push('manaPool');
+  if (b.haste) out.push('haste');
+  if (b.critChance) out.push('critChance');
+  if (b.manaReturnOnDirectHeal) out.push('manaReturnOnDirectHeal');
+  return out;
 }
 
-function lineAnchorPct(
-  t: Talent,
-  pairs: ExclusiveSplitPair[],
-  pos: (u: Talent) => { gridX: number; gridY: number },
-): { x: string; y: string } {
-  const pair = splitPairContaining(t.id, pairs);
-  const ppos = pos(t);
-  if (pair) {
-    const a = pos(pair.top);
-    const b = pos(pair.bottom);
-    const midY = (a.gridY + b.gridY) / 2;
-    return {
-      x: `${a.gridX * PCT_W + PCT_W / 2}%`,
-      y: `${midY * PCT_H + PCT_H / 2}%`,
-    };
+function uniqueStatsPresent(all: Talent[]): TalentStatKey[] {
+  const seen = new Set<TalentStatKey>();
+  for (const t of all) {
+    for (const k of statKeysFromBonus(t)) seen.add(k);
   }
-  return {
-    x: `${ppos.gridX * PCT_W + PCT_W / 2}%`,
-    y: `${ppos.gridY * PCT_H + PCT_H / 2}%`,
-  };
+  return STAT_ORDER.filter((k) => seen.has(k));
 }
 
-function pairHasAnyPoints(pair: ExclusiveSplitPair): boolean {
-  return pair.top.points > 0 || pair.bottom.points > 0;
+function splitPairMatchesStat(pair: ExclusiveSplitPair, key: TalentStatKey): boolean {
+  return statKeysFromBonus(pair.top).includes(key) || statKeysFromBonus(pair.bottom).includes(key);
 }
 
-function prereqLineLit(p: Talent, t: Talent, pairs: ExclusiveSplitPair[]): boolean {
-  const pairP = splitPairContaining(p.id, pairs);
-  const parentLit = pairP ? pairHasAnyPoints(pairP) : p.points > 0;
-  if (!parentLit) return false;
-  const pairT = splitPairContaining(t.id, pairs);
-  if (pairT) return pairHasAnyPoints(pairT);
-  return t.points > 0;
-}
-
-function detailDescription(talent: Talent, pairs: ExclusiveSplitPair[]): string {
-  if (splitPairContaining(talent.id, pairs)) {
+function detailDescription(
+  talent: Talent,
+  pairIndexByTalentId: Map<string, number>,
+): string {
+  if (talentInExclusiveSplit(talent.id, pairIndexByTalentId)) {
     return talent.description.replace(/\s*Exclusive with [^.]+\.?/gi, '').trim();
   }
   return talent.description;
@@ -99,10 +95,6 @@ function learnBlockedReason(talent: Talent, allTalents: Talent[], talentPoints: 
   return null;
 }
 
-function talentGlowForClass(cls: ClassType): IconGlow {
-  return cls === ClassType.DRUID ? 'nature' : 'spell';
-}
-
 export function TalentTree({
   talents,
   talentPoints,
@@ -113,9 +105,12 @@ export function TalentTree({
   playerClass,
 }: TalentTreeProps) {
   const [selectedTalentId, setSelectedTalentId] = useState<string | null>(null);
-  const talentGlow = talentGlowForClass(playerClass);
+  const [statHighlightKey, setStatHighlightKey] = useState<TalentStatKey | null>(null);
+  const talentGlow = talentTreeGlowForClass(playerClass);
 
-  const exclusiveSplitPairs = useMemo(() => collectExclusiveSplitPairs(talents), [talents]);
+  const uiGraph = useMemo(() => buildTalentTreeUiGraph(talents), [talents]);
+  const { pairs: exclusiveSplitPairs, pairIndexByTalentId, connections } = uiGraph;
+  const talentById = useMemo(() => new Map(talents.map((t) => [t.id, t] as const)), [talents]);
   const hasSpentTalents = talents.some((t) => t.points > 0);
 
   const selectedTalent = useMemo(
@@ -128,16 +123,17 @@ export function TalentTree({
     return learnBlockedReason(selectedTalent, talents, talentPoints, playerLevel);
   }, [selectedTalent, talents, talentPoints, playerLevel]);
 
-  const displayGrid = useMemo(
-    () => computeScatteredTalentPositions(talents, GRID_COLS, GRID_ROWS),
-    [talents],
-  );
-
-  const gridPos = (t: Talent) => displayGrid.get(t.id) ?? { gridX: t.gridX, gridY: t.gridY };
+  const statPills = useMemo(() => uniqueStatsPresent(talents), [talents]);
+  const effectiveStatHighlight =
+    statHighlightKey !== null && statPills.includes(statHighlightKey) ? statHighlightKey : null;
 
   const isTalentAccessible = (talent: Talent) => {
     if (talent.levelReq > playerLevel) return false;
     return unmetChainedPrerequisiteTalents(talents, talent).length === 0;
+  };
+
+  const toggleStatHighlight = (key: TalentStatKey) => {
+    setStatHighlightKey((prev) => (prev === key ? null : key));
   };
 
   return (
@@ -168,43 +164,63 @@ export function TalentTree({
       </div>
 
       <div className="flex-1 overflow-y-auto bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed p-4">
+        <div className="mx-auto w-full max-w-2xl">
+          <div className="mb-2 flex min-h-[2rem] flex-wrap items-center justify-center gap-2">
+            {statPills.map((key) => {
+              const sel = effectiveStatHighlight === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleStatHighlight(key)}
+                  className={`rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-wide transition-colors sm:text-[10px] ${
+                    sel
+                      ? 'border-emerald-400 bg-emerald-600 text-white shadow-[0_0_10px_rgba(52,211,153,0.45)]'
+                      : 'border-slate-600 bg-slate-800 text-slate-300 hover:border-slate-500 hover:bg-slate-700'
+                  }`}
+                >
+                  {STAT_LABELS[key]}
+                </button>
+              );
+            })}
+          </div>
         <div
-          className="relative mx-auto grid aspect-[5/7] w-full max-w-2xl gap-2 sm:gap-3"
-          style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`, gridTemplateRows: `repeat(${GRID_ROWS}, 1fr)` }}
+          className="relative grid aspect-[5/7] w-full gap-2 sm:gap-3"
+          style={{
+            gridTemplateColumns: `repeat(${TALENT_GRID_COLS}, 1fr)`,
+            gridTemplateRows: `repeat(${TALENT_GRID_ROWS}, 1fr)`,
+          }}
         >
           <svg className="pointer-events-none absolute inset-0 h-full w-full">
-            {talents.flatMap((t) =>
-              (t.prerequisites || []).flatMap((pid) => {
-                const p = talents.find((parent) => parent.id === pid);
-                if (!p) return [];
-                if (skipDuplicatePrereqLineToBottom(exclusiveSplitPairs, t, pid)) return [];
-                const a1 = lineAnchorPct(p, exclusiveSplitPairs, gridPos);
-                const a2 = lineAnchorPct(t, exclusiveSplitPairs, gridPos);
-                const lit = prereqLineLit(p, t, exclusiveSplitPairs);
-                const syn =
-                  t.synergyWith?.includes(p.id) || p.synergyWith?.includes(t.id) || false;
-                const pairP = splitPairContaining(p.id, exclusiveSplitPairs);
-                const dashUnlocked = pairP ? pairHasAnyPoints(pairP) : p.points > 0;
-                return [
-                  <line
-                    key={`${p.id}-${t.id}`}
-                    x1={a1.x}
-                    y1={a1.y}
-                    x2={a2.x}
-                    y2={a2.y}
-                    stroke={lit ? (syn ? '#a855f7' : '#3b82f6') : '#1e293b'}
-                    strokeWidth={syn && lit ? '3' : '2'}
-                    strokeDasharray={dashUnlocked ? '0' : '4'}
-                    className={syn && lit ? 'drop-shadow-[0_0_6px_rgba(168,85,247,0.7)]' : undefined}
-                  />,
-                ];
-              }),
-            )}
+            {connections.map((conn) => {
+              const strokeProps = prereqConnectionStroke(
+                conn,
+                talentById,
+                exclusiveSplitPairs,
+                pairIndexByTalentId,
+              );
+              return (
+                <line
+                  key={conn.key}
+                  x1={conn.x1}
+                  y1={conn.y1}
+                  x2={conn.x2}
+                  y2={conn.y2}
+                  stroke={strokeProps.stroke}
+                  strokeWidth={strokeProps.strokeWidth}
+                  strokeDasharray={strokeProps.strokeDasharray}
+                  className={strokeProps.className}
+                />
+              );
+            })}
           </svg>
 
           {exclusiveSplitPairs.map((pair) => {
-            const posTop = gridPos(pair.top);
-            const posBot = gridPos(pair.bottom);
+            const posTop = { gridX: pair.top.gridX, gridY: pair.top.gridY };
+            const posBot = { gridX: pair.bottom.gridX, gridY: pair.bottom.gridY };
+            const pairStatMatch =
+              effectiveStatHighlight !== null && splitPairMatchesStat(pair, effectiveStatHighlight);
+            const pairStatDim = effectiveStatHighlight !== null && !pairStatMatch;
             const accTop = isTalentAccessible(pair.top);
             const accBot = isTalentAccessible(pair.bottom);
             const ptTop = pair.top.points > 0;
@@ -249,7 +265,7 @@ export function TalentTree({
             return (
               <div
                 key={`split-${pair.top.id}-${pair.bottom.id}`}
-                className="relative z-10 flex flex-col items-center justify-center"
+                className={`relative z-10 flex flex-col items-center justify-center ${pairStatDim ? 'opacity-[0.38]' : ''}`}
                 style={{
                   gridColumnStart: posTop.gridX + 1,
                   gridRowStart: posTop.gridY + 1,
@@ -259,7 +275,7 @@ export function TalentTree({
                 <div
                   className={`flex h-12 w-full max-w-[6.75rem] flex-row overflow-hidden rounded-md border-2 border-slate-600 bg-slate-950 shadow-sm transition-transform sm:h-16 sm:max-w-[8.75rem] ${
                     isSelected ? 'scale-110 ring-4 ring-blue-500 ring-offset-2 ring-offset-slate-950' : ''
-                  }`}
+                  } ${pairStatMatch ? 'shadow-[0_0_16px_rgba(52,211,153,0.55)] ring-2 ring-emerald-400/90 ring-offset-2 ring-offset-slate-950' : ''}`}
                 >
                   {sideButton(pair.top, accTop, ptTop)}
                   <div className="w-px shrink-0 self-stretch bg-slate-400" aria-hidden />
@@ -270,19 +286,21 @@ export function TalentTree({
           })}
 
           {talents.map((talent) => {
-            const pair = splitPairContaining(talent.id, exclusiveSplitPairs);
-            if (pair && talent.id === pair.bottom.id) return null;
-            if (pair && talent.id === pair.top.id) return null;
+            if (talentInExclusiveSplit(talent.id, pairIndexByTalentId)) return null;
 
             const accessible = isTalentAccessible(talent);
             const hasPoints = talent.points > 0;
             const isSelected = selectedTalentId === talent.id;
-            const { gridX, gridY } = gridPos(talent);
+            const { gridX, gridY } = talent;
+            const statMatch =
+              effectiveStatHighlight !== null &&
+              statKeysFromBonus(talent).includes(effectiveStatHighlight);
+            const statDim = effectiveStatHighlight !== null && !statMatch;
 
             return (
               <div
                 key={talent.id}
-                className="relative z-10 flex flex-col items-center justify-center"
+                className={`relative z-10 flex flex-col items-center justify-center ${statDim ? 'opacity-[0.38]' : ''}`}
                 style={{ gridColumnStart: gridX + 1, gridRowStart: gridY + 1 }}
               >
                 <button
@@ -298,6 +316,7 @@ export function TalentTree({
                           : 'border-slate-800 bg-slate-900 opacity-50'
                     }
                     ${isSelected ? 'scale-110 ring-4 ring-blue-500 ring-offset-2 ring-offset-slate-950' : ''}
+                    ${statMatch ? 'shadow-[0_0_16px_rgba(52,211,153,0.55)] ring-2 ring-emerald-400/90 ring-offset-2 ring-offset-slate-950' : ''}
                   `}
                 >
                   <GameIcon
@@ -316,6 +335,7 @@ export function TalentTree({
               </div>
             );
           })}
+        </div>
         </div>
       </div>
 
@@ -336,7 +356,7 @@ export function TalentTree({
                 </h3>
               </div>
               <p className="mt-1 text-sm italic text-slate-400">
-                {detailDescription(selectedTalent, exclusiveSplitPairs)}
+                {detailDescription(selectedTalent, pairIndexByTalentId)}
                 {selectedTalent.maxRankBonusDescription && selectedTalent.points === selectedTalent.maxPoints ? (
                   <span className="mt-2 block text-xs not-italic text-amber-200/90">
                     {selectedTalent.maxRankBonusDescription}

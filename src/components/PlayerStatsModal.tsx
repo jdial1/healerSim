@@ -2,16 +2,10 @@ import { type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { ChevronDown, X } from 'lucide-react';
 import { ClassType, Talent } from '../types.ts';
-import { buildPlayerStatBreakdown } from '../playerStats.ts';
+import { buildPlayerStatBreakdown, classPortraitForPlayer } from '../playerStats.ts';
 import { getManaRegenPerSecond } from '../constants.ts';
-import { CLASS_PORTRAIT_GLOW, CLASS_PORTRAIT_ICON } from '../gameIcons.ts';
+import { classDisplayName } from '../classUiData.ts';
 import { GameIcon } from './GameIcon.tsx';
-
-const CLASS_LABEL: Record<ClassType, string> = {
-  [ClassType.PRIEST]: 'Holy Priest',
-  [ClassType.DRUID]: 'Resto Druid',
-  [ClassType.PALADIN]: 'Holy Paladin',
-};
 
 interface PlayerStatsModalProps {
   playerClass: ClassType;
@@ -114,6 +108,7 @@ export function PlayerStatsModal({
 }: PlayerStatsModalProps) {
   const b = buildPlayerStatBreakdown(playerClass, level, talents);
   const regenSec = getManaRegenPerSecond(0, 0, b.spirit);
+  const portrait = classPortraitForPlayer(playerClass);
 
   return (
     <motion.div
@@ -145,7 +140,7 @@ export function PlayerStatsModal({
             className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col items-center sm:max-w-2xl"
           >
             <p className="mb-2 w-full shrink-0 text-center text-sm font-black uppercase tracking-[0.14em] text-slate-300 sm:mb-3 sm:text-base sm:tracking-[0.16em]">
-              {CLASS_LABEL[playerClass]}
+              {classDisplayName(playerClass)}
             </p>
             <div className="flex min-h-0 w-full max-w-xl flex-1 items-stretch justify-center gap-3 sm:max-w-2xl sm:gap-4">
               <VerticalResourceBar
@@ -157,10 +152,10 @@ export function PlayerStatsModal({
               <div className="flex w-[9rem] shrink-0 flex-col items-stretch gap-2 self-stretch sm:w-[11rem] sm:gap-2.5">
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-2 border-slate-600 bg-slate-900/80 shadow-[0_16px_48px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]">
                   <GameIcon
-                    iconPath={CLASS_PORTRAIT_ICON[playerClass]}
-                    glow={CLASS_PORTRAIT_GLOW[playerClass]}
+                    iconPath={portrait.portraitIcon}
+                    glow={portrait.portraitGlow}
                     size="heroTall"
-                    title={CLASS_LABEL[playerClass]}
+                    title={classDisplayName(playerClass)}
                     className="rounded-none"
                   />
                 </div>
