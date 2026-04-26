@@ -2,7 +2,7 @@
   {
     "id": "d_r0c0",
     "name": "Nature's Focus",
-    "description": "Healing 2% per point.",
+    "description": "Healing 2% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -17,7 +17,7 @@
   {
     "id": "d_r0c1",
     "name": "Furor",
-    "description": "Max mana 45 per point.",
+    "description": "Max mana 45 per point. Max rank: +135 mana total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -32,7 +32,7 @@
   {
     "id": "d_r0c2",
     "name": "Verdant Heart",
-    "description": "Haste 2% per point.",
+    "description": "Haste 2% per point. Max rank: +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -47,7 +47,7 @@
   {
     "id": "d_r0c3",
     "name": "Wildseed Attunement",
-    "description": "Crit 2% per point.",
+    "description": "Crit 2% per point. Max rank: +4% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -62,7 +62,7 @@
   {
     "id": "d_r0c4",
     "name": "Living Vine",
-    "description": "Direct heals return 2 mana per point.",
+    "description": "Direct heals return 2 mana per point. Max rank: +4 mana per direct heal total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -77,7 +77,7 @@
   {
     "id": "d_r1c0",
     "name": "Grove Harmony",
-    "description": "Healing 3% per point.",
+    "description": "Healing 3% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -95,7 +95,7 @@
   {
     "id": "d_r1c1",
     "name": "Tranquil Well",
-    "description": "Max mana 60 per point.",
+    "description": "Max mana 60 per point. Max rank: +120 mana total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -129,7 +129,7 @@
   {
     "id": "d_r1c3",
     "name": "Moonkin's Favor",
-    "description": "Crit 2% per point.",
+    "description": "Crit 2% per point. Max rank: +4% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -166,7 +166,7 @@
   {
     "id": "d_r2c0",
     "name": "Barkskin Rite",
-    "description": "Haste 2.5% per point.",
+    "description": "Haste 2.5% per point. Max rank: +5% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
@@ -254,7 +254,7 @@
   {
     "id": "d_r3c0",
     "name": "Cenarion Bloom",
-    "description": "Healing 4% per point.",
+    "description": "Healing 4% per point. Max rank: +4% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
@@ -339,7 +339,7 @@
   {
     "id": "d_r4c0",
     "name": "Eternal Spring",
-    "description": "Max mana 100.",
+    "description": "Max mana 100. Max rank: +100 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -357,7 +357,7 @@
   {
     "id": "d_r4c1",
     "name": "Grovekeeper",
-    "description": "Healing 6% per point.",
+    "description": "Healing 6% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -391,7 +391,7 @@
   {
     "id": "d_r4c3",
     "name": "Verdant Infusion",
-    "description": "Haste 4% per point.",
+    "description": "Haste 4% per point. Max rank: +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -409,7 +409,7 @@
   {
     "id": "d_r4c4",
     "name": "Wildcrown's Boon",
-    "description": "Crit 4% and mana +80.",
+    "description": "Crit 4% and mana +80. Max rank: +4% crit chance, +80 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -428,7 +428,7 @@
   {
     "id": "d_r5c0",
     "name": "Heartwood Pact",
-    "description": "Healing 5% and haste 3%.",
+    "description": "Healing 5% and haste 3%. Max rank: +5% healing, +3% haste total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -447,7 +447,7 @@
   {
     "id": "d_r5c1",
     "name": "Dreamwalker's Mending",
-    "description": "Healing 5% per point.",
+    "description": "Healing 5% per point. Max rank: +5% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -465,7 +465,7 @@
   {
     "id": "d_r5c2",
     "name": "Barkskin Mastery",
-    "description": "Crit 4% and healing 3%.",
+    "description": "Crit 4% and healing 3%. Max rank: +4% crit chance, +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -484,7 +484,7 @@
   {
     "id": "d_r5c3",
     "name": "Groveheart",
-    "description": "Haste 5% and max mana 100.",
+    "description": "Haste 5% and max mana 100. Max rank: +5% haste, +100 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -503,7 +503,7 @@
   {
     "id": "d_r5c4",
     "name": "Skylord's Bounty",
-    "description": "Healing 4% and crit 3%.",
+    "description": "Healing 4% and crit 3%. Max rank: +4% healing, +3% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,

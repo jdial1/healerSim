@@ -2,7 +2,7 @@
   {
     "id": "h_r0c0",
     "name": "Seal of Wisdom",
-    "description": "Crit 1.2% per point. Mana sustain favors critical heals.",
+    "description": "Crit 1.2% per point. Mana sustain favors critical heals. Max rank: +3.6% crit chance, +75 mana total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -18,7 +18,7 @@
   {
     "id": "h_r0c1",
     "name": "Spiritual Focus",
-    "description": "Haste 2% per point.",
+    "description": "Haste 2% per point. Max rank: +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -33,7 +33,7 @@
   {
     "id": "h_r0c2",
     "name": "Healing Light",
-    "description": "Healing 3% per point.",
+    "description": "Healing 3% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -48,7 +48,7 @@
   {
     "id": "h_r0c3",
     "name": "Sanctified Resilience",
-    "description": "Crit 1.5% per point.",
+    "description": "Crit 1.5% per point. Max rank: +3% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -63,7 +63,7 @@
   {
     "id": "h_r0c4",
     "name": "Infusion",
-    "description": "Return 2 mana on direct heals per point.",
+    "description": "Return 2 mana on direct heals per point. Max rank: +4 mana per direct heal total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -78,7 +78,7 @@
   {
     "id": "h_r1c0",
     "name": "Libram of Clarity",
-    "description": "Crit 2% and max mana 40 per point.",
+    "description": "Crit 2% and max mana 40 per point. Max rank: +4% crit chance, +80 mana total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -129,7 +129,7 @@
   {
     "id": "h_r1c3",
     "name": "Crusader's Zeal",
-    "description": "Healing 3% per point.",
+    "description": "Healing 3% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -147,7 +147,7 @@
   {
     "id": "h_r2c0",
     "name": "Aegis of Devotion",
-    "description": "Haste 2.5% per point.",
+    "description": "Haste 2.5% per point. Max rank: +5% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
@@ -213,7 +213,7 @@
   {
     "id": "h_r3c0",
     "name": "Laying on Hands Rite",
-    "description": "Healing 4% per point.",
+    "description": "Healing 4% per point. Max rank: +4% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
@@ -247,7 +247,7 @@
   {
     "id": "h_r3c2",
     "name": "Light's Vigor",
-    "description": "Crit 2% and healing 2% per point.",
+    "description": "Crit 2% and healing 2% per point. Max rank: +4% crit chance, +4% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 13,
@@ -307,7 +307,7 @@
   {
     "id": "h_r4c0",
     "name": "Radiant Conviction",
-    "description": "Crit 3% and max mana 80.",
+    "description": "Crit 3% and max mana 80. Max rank: +3% crit chance, +80 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -326,7 +326,7 @@
   {
     "id": "h_r4c1",
     "name": "Glimmering Promise",
-    "description": "Healing 5% per point.",
+    "description": "Healing 5% per point. Max rank: +5% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -344,7 +344,7 @@
   {
     "id": "h_r4c2",
     "name": "Light's Grace",
-    "description": "Haste 4% and healing 3%.",
+    "description": "Haste 4% and healing 3%. Max rank: +4% haste, +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -363,7 +363,7 @@
   {
     "id": "h_r4c3",
     "name": "Hallowed Aegis",
-    "description": "Healing 4% and crit 2%.",
+    "description": "Healing 4% and crit 2%. Max rank: +4% healing, +2% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -404,7 +404,7 @@
   {
     "id": "h_r5c0",
     "name": "Silver Hand's Mending",
-    "description": "Haste 5% and crit 3%.",
+    "description": "Haste 5% and crit 3%. Max rank: +5% haste, +3% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -423,7 +423,7 @@
   {
     "id": "h_r5c1",
     "name": "Argent Aegis",
-    "description": "Healing 5% and crit 2%.",
+    "description": "Healing 5% and crit 2%. Max rank: +5% healing, +2% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -442,7 +442,7 @@
   {
     "id": "h_r5c2",
     "name": "Argent Vindicator",
-    "description": "Healing 3% and haste 4%.",
+    "description": "Healing 3% and haste 4%. Max rank: +3% healing, +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -461,7 +461,7 @@
   {
     "id": "h_r5c3",
     "name": "Highlord's Gift",
-    "description": "Crit 3% and healing 3%.",
+    "description": "Crit 3% and healing 3%. Max rank: +3% crit chance, +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -480,7 +480,7 @@
   {
     "id": "h_r5c4",
     "name": "Champion's Litany",
-    "description": "Haste 3% and healing 3%.",
+    "description": "Haste 3% and healing 3%. Max rank: +3% haste, +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,

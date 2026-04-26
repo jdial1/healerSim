@@ -2,7 +2,7 @@
   {
     "id": "p_r0c0",
     "name": "Mental Fortitude",
-    "description": "Increases max mana by 40 per point. Max rank: +300 mana total from this talent.",
+    "description": "Increases max mana by 40 per point. Max rank: +120 mana total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -18,7 +18,7 @@
   {
     "id": "p_r0c1",
     "name": "Mending Prose",
-    "description": "Increases all healing by 3% per point.",
+    "description": "Increases all healing by 3% per point. Max rank: +9% healing total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -33,7 +33,7 @@
   {
     "id": "p_r0c2",
     "name": "Improved Renew",
-    "description": "Renew ticks heal for 4% more per point.",
+    "description": "Renew ticks heal for 4% more per point. Max rank: +12% healing total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -48,7 +48,7 @@
   {
     "id": "p_r0c3",
     "name": "Solemn Absolution",
-    "description": "Increases crit chance by 1.5% per point.",
+    "description": "Increases crit chance by 1.5% per point. Max rank: +4.5% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -63,7 +63,7 @@
   {
     "id": "p_r0c4",
     "name": "Benediction",
-    "description": "Return 3 mana on direct heals per point.",
+    "description": "Return 3 mana on direct heals per point. Max rank: +6 mana per direct heal total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -78,7 +78,7 @@
   {
     "id": "p_r1c0",
     "name": "Harrowed Focus",
-    "description": "Increases haste by 2% per point.",
+    "description": "Increases haste by 2% per point. Max rank: +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -96,7 +96,7 @@
   {
     "id": "p_r1c1",
     "name": "Gentle Absolution",
-    "description": "Increases all healing by 3% per point.",
+    "description": "Increases all healing by 3% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -130,7 +130,7 @@
   {
     "id": "p_r1c3",
     "name": "Chorus of Atonement",
-    "description": "Increases crit chance by 2% per point.",
+    "description": "Increases crit chance by 2% per point. Max rank: +4% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -148,7 +148,7 @@
   {
     "id": "p_r1c4",
     "name": "Path of the Sun",
-    "description": "Path of the Sun: your heals are 3% more effective. Exclusive with Path of the Moon.",
+    "description": "Path of the Sun: your heals are 3% more effective. Exclusive with Path of the Moon. Max rank: +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 5,
@@ -170,7 +170,7 @@
   {
     "id": "p_r2c0",
     "name": "Resonant Words",
-    "description": "Increases haste by 2.5% per point.",
+    "description": "Increases haste by 2.5% per point. Max rank: +5% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
@@ -204,7 +204,7 @@
   {
     "id": "p_r2c2",
     "name": "Rapture",
-    "description": "Increases all healing by 4% per point.",
+    "description": "Increases all healing by 4% per point. Max rank: +8% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
@@ -257,7 +257,7 @@
   {
     "id": "p_r3c0",
     "name": "Seraphic Boon",
-    "description": "Max mana +80 per point.",
+    "description": "Max mana +80 per point. Max rank: +80 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
@@ -307,7 +307,7 @@
   {
     "id": "p_r3c3",
     "name": "Luminous Aegis",
-    "description": "Shield strength from crits is 10% more effective per point.",
+    "description": "Shield strength from crits is 10% more effective per point. Max rank: +10% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 13,
@@ -326,7 +326,7 @@
   {
     "id": "p_r3c4",
     "name": "Gleaming Proclamation",
-    "description": "Your Flash Heal has 5% more crit chance. Resonates with Harsh Confession.",
+    "description": "Your Flash Heal has 5% more crit chance. Resonates with Harsh Confession. Max rank: +5% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
@@ -348,7 +348,7 @@
   {
     "id": "p_r4c0",
     "name": "Fervor of the Martyr",
-    "description": "When a party member is below 30% health, your healing to them is 8% more per point.",
+    "description": "When a party member is below 30% health, your healing to them is 8% more per point. Max rank: +16% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 17,
@@ -398,7 +398,7 @@
   {
     "id": "p_r4c3",
     "name": "Celestial Reach",
-    "description": "Haste 4% per point.",
+    "description": "Haste 4% per point. Max rank: +8% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 17,
@@ -432,7 +432,7 @@
   {
     "id": "p_r5c0",
     "name": "Crest of the Archon",
-    "description": "Max mana +120.",
+    "description": "Max mana +120. Max rank: +120 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -450,7 +450,7 @@
   {
     "id": "p_r5c1",
     "name": "Hallowed Ground",
-    "description": "Healing 10% per point.",
+    "description": "Healing 10% per point. Max rank: +10% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -468,7 +468,7 @@
   {
     "id": "p_r5c2",
     "name": "Benedictory Echo",
-    "description": "Crit 6% per point.",
+    "description": "Crit 6% per point. Max rank: +6% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -486,7 +486,7 @@
   {
     "id": "p_r5c3",
     "name": "Astral Harmony",
-    "description": "Haste 6% per point.",
+    "description": "Haste 6% per point. Max rank: +6% haste total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
