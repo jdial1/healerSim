@@ -5,6 +5,7 @@ import {
   SPELL_TAG_SWIFTMEND_CONSUMABLE,
   SPELL_TAG_SWIFTMEND_PREFER,
   spellHasTag,
+  TICKS_PER_SECOND,
 } from './constants.ts';
 import type { MechanicId } from './mechanicsRegistry.ts';
 
@@ -24,6 +25,20 @@ export const SURGE_OF_LIGHT_TICKS = 6 * TICKS_1S;
 export const HEALER_UNIT_ID = '5';
 
 export const PRIEST_RENEW = 'renew';
+export const PRIEST_TALENT_ID_MENTAL_FORTITUDE = 'p_r0c0';
+
+const MENTAL_FORTITUDE_MAX_RANK_MANA_FRACTION_PER_5S = 0.01;
+
+export function priestMentalFortitudeMaxRankCombatManaPerTick(
+  playerClass: ClassType | null,
+  maxMana: number,
+  talents: Talent[],
+): number {
+  if (playerClass !== 'PRIEST') return 0;
+  const t = talents.find((x) => x.id === PRIEST_TALENT_ID_MENTAL_FORTITUDE);
+  if (!t || t.maxPoints <= 0 || t.points < t.maxPoints) return 0;
+  return (maxMana * MENTAL_FORTITUDE_MAX_RANK_MANA_FRACTION_PER_5S) / (5 * TICKS_PER_SECOND);
+}
 
 export function talentRanks(talents: Talent[], mechanicId: MechanicId): number {
   return talents

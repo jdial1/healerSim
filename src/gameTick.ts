@@ -34,6 +34,7 @@ import {
   naturalPerfectionStacksFrom,
   capstoneFormAfterBuffTick,
   upsertNaturalPerfectionStacks,
+  priestMentalFortitudeMaxRankCombatManaPerTick,
 } from './talentMechanics.ts';
 import { effectivePrimaryStats } from './playerStats.ts';
 import { T_SPIRIT_AMP } from './combatHelper.ts';
@@ -495,7 +496,9 @@ function resolvePlayerSystemsAfterEnvironmentalDamage(
   );
   const spirit =
     state.playerClass !== null ? effectivePrimaryStats(state.playerClass, state.level).spirit : 0;
-  const regenThisTick = manaRegenAmountPerTick(lockTicksPre, buffTicksPre, spirit);
+  const regenThisTick =
+    manaRegenAmountPerTick(lockTicksPre, buffTicksPre, spirit) +
+    priestMentalFortitudeMaxRankCombatManaPerTick(state.playerClass, state.maxMana, state.talents);
   const newMana = Math.min(state.maxMana, state.mana + regenThisTick);
   let pComb = tickPlayerBuffs(state.playerCombatBuffs);
   let newParty = partyAfterEnv;

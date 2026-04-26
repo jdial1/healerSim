@@ -537,6 +537,6 @@
       "p_r5c3"
     ],
     "mechanicId": "capstone_archangel",
-    "maxRankBonusDescription": "Transforms combat visuals while active."
+    "maxRankBonusDescription": "For 15s, each single-target direct heal also heals every other living ally."
   }
 ]

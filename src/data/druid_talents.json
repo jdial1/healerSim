@@ -522,7 +522,7 @@
   {
     "id": "d_cap",
     "name": "Nature's Grace",
-    "description": "The ground around you flowers: passively heal all living allies a small amount each second for 20s. Visual bloom on your character.",
+    "description": "The ground around you flowers: passively heal all living allies a small amount each combat tick for 20s. Visual bloom on your character.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 40,
@@ -536,6 +536,6 @@
       "d_r5c3"
     ],
     "mechanicId": "capstone_natures_grace",
-    "maxRankBonusDescription": "Ground VFX and passive group healing."
+    "maxRankBonusDescription": "For 20s, every combat tick heals all living allies by 40% of your level each."
   }
 ]
