@@ -21,15 +21,15 @@
     "enemies": [
       {
         "name": "Defias Pirate",
-        "icon": "lorc/pirate-skull"
+        "icon": "wow/spell_shadow_deathcoil"
       },
       {
         "name": "Defias Miner",
-        "icon": "delapouite/miner"
+        "icon": "wow/trade_mining"
       },
       {
         "name": "Smite",
-        "icon": "lorc/spiked-mace"
+        "icon": "wow/ability_warrior_savageblow"
       }
     ],
     "bossCombat": {
@@ -37,7 +37,7 @@
         {
           "abilityId": "vc_gut_slash",
           "name": "Gut Slash",
-          "icon": "lorc/bleeding-wound",
+          "icon": "wow/ability_creature_poison_03",
           "durationTicks": 120,
           "damagePerTick": 0.7,
           "targeting": "single_random"
@@ -47,7 +47,7 @@
         {
           "abilityId": "vc_blade_flurry",
           "name": "Blade Flurry",
-          "icon": "lorc/sword-clash",
+          "icon": "wow/ability_warrior_savageblow",
           "durationTicks": 100,
           "partyDamageMultiplier": 1.3
         }
@@ -56,7 +56,7 @@
         {
           "abilityId": "vc_ambush",
           "name": "Ambush",
-          "icon": "lorc/crossed-swords",
+          "icon": "wow/spell_holy_renew",
           "damage": 26,
           "targeting": "single_random"
         }
@@ -85,15 +85,15 @@
     "enemies": [
       {
         "name": "Raptor",
-        "icon": "delapouite/velociraptor"
+        "icon": "wow/ability_hunter_pet_raptor"
       },
       {
         "name": "Ooze",
-        "icon": "delapouite/slime"
+        "icon": "wow/ability_creature_poison_03"
       },
       {
         "name": "Druid of the Fang",
-        "icon": "lorc/snake-totem"
+        "icon": "wow/ability_creature_poison_03"
       }
     ],
     "bossCombat": {
@@ -101,7 +101,7 @@
         {
           "abilityId": "verdan_strangle",
           "name": "Strangling Roots",
-          "icon": "delapouite/vines",
+          "icon": "wow/spell_nature_rejuvenation",
           "durationTicks": 180,
           "damagePerTick": 0.6,
           "targeting": "single_random"
@@ -111,7 +111,7 @@
         {
           "abilityId": "verdan_thrive",
           "name": "Thrive",
-          "icon": "lorc/lotus",
+          "icon": "wow/spell_nature_rejuvenation",
           "durationTicks": 150,
           "partyDamageMultiplier": 1.4
         }
@@ -120,7 +120,7 @@
         {
           "abilityId": "verdan_spore_burst",
           "name": "Spore Burst",
-          "icon": "lorc/poison-gas",
+          "icon": "wow/ability_creature_poison_03",
           "damage": 30,
           "targeting": "all_living"
         }
@@ -149,15 +149,15 @@
     "enemies": [
       {
         "name": "Scarlet Knight",
-        "icon": "delapouite/knight-banner"
+        "icon": "wow/ability_warrior_savageblow"
       },
       {
         "name": "Scarlet Monk",
-        "icon": "delapouite/monk-face"
+        "icon": "wow/spell_holy_innerfire"
       },
       {
         "name": "Mograine",
-        "icon": "lorc/crowned-skull"
+        "icon": "wow/spell_holy_renew"
       }
     ],
     "bossCombat": {
@@ -165,7 +165,7 @@
         {
           "abilityId": "smite_sear",
           "name": "Holy Fire",
-          "icon": "lorc/sunbeams",
+          "icon": "wow/spell_holy_renew",
           "durationTicks": 40,
           "damagePerTick": 2.4,
           "targeting": "two_random"
@@ -175,7 +175,7 @@
         {
           "abilityId": "smite_fury",
           "name": "Resurrection Fury",
-          "icon": "lorc/crowned-skull",
+          "icon": "wow/spell_holy_renew",
           "durationTicks": 80,
           "partyDamageMultiplier": 1.8
         }
@@ -184,7 +184,7 @@
         {
           "abilityId": "smite_penance",
           "name": "Penitent Flare",
-          "icon": "lorc/glowing-hands",
+          "icon": "wow/spell_holy_flashheal",
           "damage": 40,
           "targeting": "single_random"
         }
@@ -213,15 +213,15 @@
     "enemies": [
       {
         "name": "Sandfury Troll",
-        "icon": "skoll/troll"
+        "icon": "wow/ability_creature_poison_03"
       },
       {
         "name": "Shadowcaster",
-        "icon": "lorc/crystal-ball"
+        "icon": "wow/spell_nature_sleep"
       },
       {
         "name": "Basilisk",
-        "icon": "lorc/lizardman"
+        "icon": "wow/ability_creature_poison_03"
       }
     ],
     "bossCombat": {
@@ -229,7 +229,7 @@
         {
           "abilityId": "ukorz_sand",
           "name": "Sandstorm",
-          "icon": "delapouite/sandstorm",
+          "icon": "wow/inv_misc_dust",
           "durationTicks": 110,
           "damagePerTick": 1,
           "targeting": "all_living"
@@ -239,7 +239,7 @@
         {
           "abilityId": "ukorz_bloodlust",
           "name": "Berserker Rage",
-          "icon": "skoll/troll",
+          "icon": "wow/ability_creature_poison_03",
           "durationTicks": 140,
           "partyDamageMultiplier": 1.5
         }
@@ -248,7 +248,7 @@
         {
           "abilityId": "ukorz_impale",
           "name": "Impale",
-          "icon": "lorc/barbute",
+          "icon": "wow/ability_warrior_savageblow",
           "damage": 54,
           "targeting": "single_random"
         }
@@ -277,15 +277,15 @@
     "enemies": [
       {
         "name": "Atal'ai Exile",
-        "icon": "lorc/alien-stare"
+        "icon": "wow/spell_nature_regeneration"
       },
       {
         "name": "Nightmare Wyrm",
-        "icon": "lorc/dragon-head"
+        "icon": "wow/spell_fire_flamebolt"
       },
       {
         "name": "Dragonkin",
-        "icon": "lorc/double-dragon"
+        "icon": "wow/spell_fire_flamebolt"
       }
     ],
     "bossCombat": {
@@ -293,7 +293,7 @@
         {
           "abilityId": "eranikus_corruption",
           "name": "Deep Slumber",
-          "icon": "lorc/evil-bud",
+          "icon": "wow/spell_nature_sleep",
           "durationTicks": 250,
           "damagePerTick": 0.5,
           "targeting": "two_random"
@@ -303,7 +303,7 @@
         {
           "abilityId": "eranikus_frenzy",
           "name": "Nightmare Haze",
-          "icon": "lorc/dragon-breath",
+          "icon": "wow/spell_fire_flamebolt",
           "durationTicks": 200,
           "partyDamageMultiplier": 1.36
         }
@@ -312,7 +312,7 @@
         {
           "abilityId": "eranikus_acid",
           "name": "Acid Breath",
-          "icon": "lorc/dragon-breath",
+          "icon": "wow/spell_fire_flamebolt",
           "damage": 42,
           "targeting": "all_living"
         }
@@ -341,15 +341,15 @@
     "enemies": [
       {
         "name": "Dark Iron Dwarf",
-        "icon": "delapouite/dwarf-face"
+        "icon": "wow/ability_warrior_savageblow"
       },
       {
         "name": "Fire Elemental",
-        "icon": "lorc/campfire"
+        "icon": "wow/spell_fire_flamebolt"
       },
       {
         "name": "Houndmaster",
-        "icon": "lorc/hound"
+        "icon": "wow/ability_hunter_beastcall"
       }
     ],
     "bossCombat": {
@@ -357,7 +357,7 @@
         {
           "abilityId": "thaurissan_inferno",
           "name": "Magma Splash",
-          "icon": "lorc/fire-ray",
+          "icon": "wow/spell_fire_flamebolt",
           "durationTicks": 60,
           "damagePerTick": 1.8,
           "targeting": "all_living"
@@ -367,7 +367,7 @@
         {
           "abilityId": "thaurissan_avatar",
           "name": "Avatar of Flame",
-          "icon": "lorc/campfire",
+          "icon": "wow/spell_fire_flamebolt",
           "durationTicks": 135,
           "partyDamageMultiplier": 1.7
         }
@@ -376,7 +376,7 @@
         {
           "abilityId": "thaurissan_dominate",
           "name": "Hand of Thaurissan",
-          "icon": "lorc/crown-of-thorns",
+          "icon": "wow/spell_holy_renew",
           "damage": 72,
           "targeting": "single_random"
         }
@@ -405,15 +405,15 @@
     "enemies": [
       {
         "name": "Plague Ghoul",
-        "icon": "lorc/fanged-skull"
+        "icon": "wow/spell_shadow_deathcoil"
       },
       {
         "name": "Patchwork Horror",
-        "icon": "lorc/frankenstein-creature"
+        "icon": "wow/spell_shadow_deathcoil"
       },
       {
         "name": "Banshee",
-        "icon": "lorc/ghost"
+        "icon": "wow/spell_shadow_deathcoil"
       }
     ],
     "bossCombat": {
@@ -421,7 +421,7 @@
         {
           "abilityId": "rivendare_plague",
           "name": "Necrotic Plague",
-          "icon": "delapouite/plague-doctor-profile",
+          "icon": "wow/spell_shadow_deathcoil",
           "durationTicks": 150,
           "damagePerTick": 1.3,
           "targeting": "two_random"
@@ -431,7 +431,7 @@
         {
           "abilityId": "rivendare_deathwish",
           "name": "Death's Advance",
-          "icon": "lorc/horse-head",
+          "icon": "wow/ability_mount_nightmarehorse",
           "durationTicks": 160,
           "partyDamageMultiplier": 1.56
         }
@@ -440,7 +440,7 @@
         {
           "abilityId": "rivendare_death_coil",
           "name": "Death Coil",
-          "icon": "lorc/death-zone",
+          "icon": "wow/spell_shadow_deathcoil",
           "damage": 82,
           "targeting": "single_random"
         }
@@ -469,15 +469,15 @@
     "enemies": [
       {
         "name": "Risen Guard",
-        "icon": "delapouite/shambling-zombie"
+        "icon": "wow/spell_shadow_deathcoil"
       },
       {
         "name": "Necromancer",
-        "icon": "lorc/death-note"
+        "icon": "wow/spell_shadow_deathcoil"
       },
       {
         "name": "Voidwalker",
-        "icon": "lorc/shadow-follower"
+        "icon": "wow/spell_shadow_deathcoil"
       }
     ],
     "bossCombat": {
@@ -485,7 +485,7 @@
         {
           "abilityId": "gandling_curse",
           "name": "Incinerate Soul",
-          "icon": "lorc/cursed-star",
+          "icon": "wow/spell_shadow_deathcoil",
           "durationTicks": 50,
           "damagePerTick": 4.4,
           "targeting": "single_random"
@@ -495,7 +495,7 @@
         {
           "abilityId": "gandling_darkmastery",
           "name": "Dark Mastery",
-          "icon": "delapouite/graduate-cap",
+          "icon": "wow/spell_shadow_darkritual",
           "durationTicks": 180,
           "partyDamageMultiplier": 1.7
         }
@@ -504,7 +504,7 @@
         {
           "abilityId": "gandling_shadow_bolt",
           "name": "Shadow Volley",
-          "icon": "lorc/death-note",
+          "icon": "wow/spell_shadow_deathcoil",
           "damage": 58,
           "targeting": "all_living"
         }

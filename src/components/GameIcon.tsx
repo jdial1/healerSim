@@ -41,6 +41,7 @@ export function GameIcon({
   title,
   dimmed = false,
   accentTint,
+  imageFit = 'contain',
 }: {
   iconPath: string;
   glow: IconGlow;
@@ -49,6 +50,7 @@ export function GameIcon({
   title?: string;
   dimmed?: boolean;
   accentTint?: string;
+  imageFit?: 'contain' | 'cover';
 }) {
   const tint = accentTint ?? ICON_TINT[glow];
   const tall = size === 'heroTall';
@@ -74,7 +76,7 @@ export function GameIcon({
           onError={() => {
             setCandidateIndex((i) => (i + 1 < candidates.length ? i + 1 : i));
           }}
-          className="pointer-events-none max-h-full max-w-full select-none object-contain object-center mix-blend-screen opacity-95 [filter:drop-shadow(0_2px_3px_rgba(0,0,0,0.88))_drop-shadow(0_1px_1px_rgba(0,0,0,0.55))]"
+          className={`pointer-events-none h-full w-full select-none object-center ${imageFit === 'cover' ? 'object-cover' : 'object-contain'} mix-blend-screen opacity-95 [filter:drop-shadow(0_2px_3px_rgba(0,0,0,0.88))_drop-shadow(0_1px_1px_rgba(0,0,0,0.55))]`}
         />
         <div
           className="pointer-events-none absolute inset-0 mix-blend-soft-light"

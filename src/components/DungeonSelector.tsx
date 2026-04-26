@@ -12,7 +12,7 @@ import { computeDungeonXpGain, levelsOverDungeonMax } from '../gameStorage.ts';
 import { Lock } from 'lucide-react';
 import { GameIcon } from './GameIcon.tsx';
 import { DungeonQueueModal } from './DungeonQueueModal.tsx';
-import { BOSS_BUFF_ICON_TINT } from '../gameIcons.ts';
+import { BOSS_BUFF_ICON_TINT, LOCKED_DUNGEON_WOW_ICON } from '../gameIcons.ts';
 
 interface DungeonSelectorProps {
   onSelect: (dungeon: Dungeon) => void;
@@ -24,8 +24,6 @@ const DRAG_THRESHOLD_PX = 10;
 
 const CARD_SHELL =
   'relative flex h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 pt-4 pb-4 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:pt-5 sm:pb-5 md:px-7 md:pt-6 md:pb-6 max-sm:px-6 max-sm:pt-3.5 max-sm:pb-3.5';
-
-const LOCKED_ROSTER_ICON = 'badges/question';
 
 function debuffTargetingDescription(t: BossDebuffTargeting): string {
   if (t === 'single_random') return 'Hits 1 ally';
@@ -63,7 +61,7 @@ function BossMechanicsStrip({
             >
               <span className="text-[10px] font-black uppercase tracking-tight text-slate-500 sm:text-[9px] md:text-xs">?</span>
               <GameIcon
-                iconPath={LOCKED_ROSTER_ICON}
+                iconPath={LOCKED_DUNGEON_WOW_ICON}
                 glow="spell"
                 size="md"
                 dimmed
@@ -357,7 +355,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                     </div>
                     <div className="relative shrink-0 self-center">
                       <GameIcon
-                        iconPath={dungeon.cardIcon}
+                        iconPath={isLocked ? LOCKED_DUNGEON_WOW_ICON : dungeon.cardIcon}
                         glow="spell"
                         size="dungeonCard"
                         title={dungeon.name}
@@ -382,7 +380,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                             className="flex min-h-[2.5rem] shrink-0 items-center justify-start sm:min-h-0"
                           >
                             <GameIcon
-                              iconPath={LOCKED_ROSTER_ICON}
+                              iconPath={LOCKED_DUNGEON_WOW_ICON}
                               glow="spell"
                               size="dungeonRoster"
                               title="Unknown"
@@ -392,7 +390,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                         ))}
                         <div className="flex min-h-[2.5rem] shrink-0 items-center justify-start sm:min-h-0">
                           <GameIcon
-                            iconPath={LOCKED_ROSTER_ICON}
+                            iconPath={LOCKED_DUNGEON_WOW_ICON}
                             glow="spell"
                             size="dungeonRoster"
                             title="Unknown"

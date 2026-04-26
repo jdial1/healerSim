@@ -7,7 +7,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/brain",
+    "icon": "wow/spell_holy_powerwordshield",
     "gridX": 0,
     "gridY": 0,
     "statBonus": {
@@ -23,7 +23,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/ball-heart",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 1,
     "gridY": 0,
     "statBonus": {
@@ -38,7 +38,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/prayer",
+    "icon": "wow/spell_holy_renew",
     "gridX": 2,
     "gridY": 0,
     "statBonus": {
@@ -53,7 +53,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/target-dummy",
+    "icon": "wow/spell_holy_testoffaith",
     "gridX": 3,
     "gridY": 0,
     "statBonus": {
@@ -68,7 +68,7 @@
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/light-bulb",
+    "icon": "wow/spell_holy_surgeoflight",
     "gridX": 4,
     "gridY": 0,
     "statBonus": {
@@ -83,7 +83,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/wind-hole",
+    "icon": "wow/spell_holy_sealofwisdom",
     "gridX": 0,
     "gridY": 1,
     "prerequisites": [
@@ -101,7 +101,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/sun",
+    "icon": "wow/spell_holy_renew",
     "gridX": 1,
     "gridY": 1,
     "prerequisites": [
@@ -119,7 +119,7 @@
     "maxPoints": 1,
     "levelReq": 5,
     "cost": 1,
-    "icon": "delapouite/hand-of-god",
+    "icon": "wow/spell_holy_greaterheal",
     "gridX": 2,
     "gridY": 1,
     "prerequisites": [
@@ -135,7 +135,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/extra-lucid",
+    "icon": "wow/spell_holy_prayerofhealing",
     "gridX": 3,
     "gridY": 1,
     "prerequisites": [
@@ -153,7 +153,7 @@
     "maxPoints": 1,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/bright-explosion",
+    "icon": "wow/spell_holy_holynova",
     "gridX": 4,
     "gridY": 1,
     "prerequisites": [
@@ -175,7 +175,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/echo-ripples",
+    "icon": "wow/spell_holy_borrowedtime",
     "gridX": 0,
     "gridY": 2,
     "prerequisites": [
@@ -193,7 +193,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/energy-shield",
+    "icon": "wow/spell_holy_powerwordshield",
     "gridX": 1,
     "gridY": 2,
     "prerequisites": [
@@ -209,7 +209,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "delapouite/holy-hand-grenade",
+    "icon": "wow/spell_holy_renew",
     "gridX": 2,
     "gridY": 2,
     "prerequisites": [
@@ -227,7 +227,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/arcing-bolt",
+    "icon": "wow/spell_holy_searinglightpriest",
     "gridX": 3,
     "gridY": 2,
     "prerequisites": [
@@ -243,7 +243,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/moon",
+    "icon": "wow/spell_holy_symbolofhope",
     "gridX": 4,
     "gridY": 2,
     "prerequisites": [
@@ -262,7 +262,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "delapouite/jester-hat",
+    "icon": "wow/spell_holy_divinespirit",
     "gridX": 0,
     "gridY": 3,
     "prerequisites": [
@@ -280,7 +280,7 @@
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/chained-heart",
+    "icon": "wow/spell_holy_hopeandgrace",
     "gridX": 1,
     "gridY": 3,
     "prerequisites": [
@@ -296,7 +296,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/holy-symbol",
+    "icon": "wow/spell_holy_circleofrenewal",
     "gridX": 2,
     "gridY": 3,
     "prerequisites": [
@@ -312,7 +312,7 @@
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/surrounded-shield",
+    "icon": "wow/spell_holy_renew",
     "gridX": 3,
     "gridY": 3,
     "prerequisites": [
@@ -331,7 +331,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/lightning-tear",
+    "icon": "wow/spell_holy_renew",
     "gridX": 4,
     "gridY": 3,
     "prerequisites": [
@@ -353,7 +353,7 @@
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/candle-flame",
+    "icon": "wow/spell_holy_hopeandgrace",
     "gridX": 0,
     "gridY": 4,
     "prerequisites": [
@@ -371,7 +371,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/extra-lucid",
+    "icon": "wow/spell_holy_powerinfusion",
     "gridX": 1,
     "gridY": 4,
     "prerequisites": [
@@ -387,7 +387,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/angel-outfit",
+    "icon": "wow/spell_holy_resurrection",
     "gridX": 2,
     "gridY": 4,
     "prerequisites": [
@@ -403,7 +403,7 @@
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "delapouite/ascending-block",
+    "icon": "wow/spell_holy_healingfocus",
     "gridX": 3,
     "gridY": 4,
     "prerequisites": [
@@ -421,7 +421,7 @@
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/angel-wings",
+    "icon": "wow/ability_priest_ascension",
     "gridX": 4,
     "gridY": 4,
     "prerequisites": [
@@ -437,7 +437,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/crown",
+    "icon": "wow/spell_holy_renew",
     "gridX": 0,
     "gridY": 5,
     "prerequisites": [
@@ -455,7 +455,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/globe",
+    "icon": "wow/spell_holy_guardianspirit",
     "gridX": 1,
     "gridY": 5,
     "prerequisites": [
@@ -473,7 +473,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "delapouite/sparkles",
+    "icon": "wow/spell_holy_divinehymn",
     "gridX": 2,
     "gridY": 5,
     "prerequisites": [
@@ -491,7 +491,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/clockwork",
+    "icon": "wow/spell_holy_borrowedtime",
     "gridX": 3,
     "gridY": 5,
     "prerequisites": [
@@ -509,7 +509,7 @@
     "maxPoints": 2,
     "levelReq": 21,
     "cost": 1,
-    "icon": "delapouite/perspective-dice-six-faces-random",
+    "icon": "wow/spell_holy_painsupression",
     "gridX": 4,
     "gridY": 5,
     "prerequisites": [
@@ -528,7 +528,7 @@
     "maxPoints": 1,
     "levelReq": 40,
     "cost": 1,
-    "icon": "lorc/crown",
+    "icon": "wow/ability_priest_ascension",
     "gridX": 2,
     "gridY": 6,
     "prerequisites": [

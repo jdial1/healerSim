@@ -7,7 +7,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/brain",
+    "icon": "wow/spell_holy_sealofwisdom",
     "gridX": 0,
     "gridY": 0,
     "statBonus": {
@@ -23,7 +23,7 @@
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/wind-hole",
+    "icon": "wow/spell_holy_sealofwisdom",
     "gridX": 1,
     "gridY": 0,
     "statBonus": {
@@ -38,7 +38,7 @@
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/bright-explosion",
+    "icon": "wow/spell_holy_holynova",
     "gridX": 2,
     "gridY": 0,
     "statBonus": {
@@ -53,7 +53,7 @@
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/target-dummy",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 3,
     "gridY": 0,
     "statBonus": {
@@ -68,7 +68,7 @@
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/energy-shield",
+    "icon": "wow/spell_holy_powerwordshield",
     "gridX": 4,
     "gridY": 0,
     "statBonus": {
@@ -83,7 +83,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/book-pile",
+    "icon": "wow/inv_misc_book_09",
     "gridX": 0,
     "gridY": 1,
     "prerequisites": [
@@ -102,7 +102,7 @@
     "maxPoints": 1,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/light-bulb",
+    "icon": "wow/spell_holy_surgeoflight",
     "gridX": 1,
     "gridY": 1,
     "prerequisites": [
@@ -118,7 +118,7 @@
     "maxPoints": 1,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/sun-rays",
+    "icon": "wow/spell_holy_holybolt",
     "gridX": 2,
     "gridY": 1,
     "prerequisites": [
@@ -134,7 +134,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/crossed-swords",
+    "icon": "wow/spell_holy_renew",
     "gridX": 3,
     "gridY": 1,
     "prerequisites": [
@@ -152,7 +152,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "delapouite/templar-shield",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 0,
     "gridY": 2,
     "prerequisites": [
@@ -170,7 +170,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/tower-bridge",
+    "icon": "wow/spell_holy_power",
     "gridX": 1,
     "gridY": 2,
     "prerequisites": [
@@ -186,7 +186,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/sunrise",
+    "icon": "wow/spell_holy_holyprotection",
     "gridX": 2,
     "gridY": 2,
     "prerequisites": [
@@ -202,7 +202,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/vibrating-shield",
+    "icon": "wow/ability_paladin_shieldofthetemplar",
     "gridX": 3,
     "gridY": 2,
     "prerequisites": [
@@ -218,7 +218,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/cross-flare",
+    "icon": "wow/spell_holy_searinglight",
     "gridX": 0,
     "gridY": 3,
     "prerequisites": [
@@ -236,7 +236,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/anchor",
+    "icon": "wow/ability_paladin_beaconoflight",
     "gridX": 1,
     "gridY": 3,
     "prerequisites": [
@@ -252,7 +252,7 @@
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/heart",
+    "icon": "wow/spell_holy_holyprotection",
     "gridX": 2,
     "gridY": 3,
     "prerequisites": [
@@ -271,7 +271,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/holy-oak",
+    "icon": "wow/ability_paladin_beaconoflight",
     "gridX": 3,
     "gridY": 3,
     "prerequisites": [
@@ -290,7 +290,7 @@
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/wing-cloak",
+    "icon": "wow/ability_paladin_blessedmending",
     "gridX": 4,
     "gridY": 3,
     "prerequisites": [
@@ -312,7 +312,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/jeweled-chalice",
+    "icon": "wow/spell_holy_righteousfury",
     "gridX": 0,
     "gridY": 4,
     "prerequisites": [
@@ -331,7 +331,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/heart-inside",
+    "icon": "wow/spell_holy_heal",
     "gridX": 1,
     "gridY": 4,
     "prerequisites": [
@@ -349,7 +349,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/lightsaber",
+    "icon": "wow/spell_holy_lightsgrace",
     "gridX": 2,
     "gridY": 4,
     "prerequisites": [
@@ -368,7 +368,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/surrounded-shield",
+    "icon": "wow/spell_holy_blessingofprotection",
     "gridX": 3,
     "gridY": 4,
     "prerequisites": [
@@ -387,7 +387,7 @@
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/crossed-swords",
+    "icon": "wow/spell_holy_crusade",
     "gridX": 4,
     "gridY": 4,
     "prerequisites": [
@@ -409,7 +409,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/hand",
+    "icon": "wow/spell_holy_blindingheal",
     "gridX": 0,
     "gridY": 5,
     "prerequisites": [
@@ -428,7 +428,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/vortex",
+    "icon": "wow/spell_holy_divineillumination",
     "gridX": 1,
     "gridY": 5,
     "prerequisites": [
@@ -447,7 +447,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/whip",
+    "icon": "wow/spell_holy_weaponmastery",
     "gridX": 2,
     "gridY": 5,
     "prerequisites": [
@@ -466,7 +466,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/gold-bar",
+    "icon": "wow/spell_holy_sealofprotection",
     "gridX": 3,
     "gridY": 5,
     "prerequisites": [
@@ -485,7 +485,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/violin",
+    "icon": "wow/spell_holy_sealofsalvation",
     "gridX": 4,
     "gridY": 5,
     "prerequisites": [
@@ -505,7 +505,7 @@
     "maxPoints": 1,
     "levelReq": 40,
     "cost": 1,
-    "icon": "lorc/angel-wings",
+    "icon": "wow/spell_holy_avenginewrath",
     "gridX": 2,
     "gridY": 6,
     "prerequisites": [

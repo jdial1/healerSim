@@ -7,7 +7,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "delapouite/ginkgo-leaf",
+    "icon": "wow/spell_nature_rejuvenation",
     "gridX": 0,
     "gridY": 0,
     "statBonus": {
@@ -22,7 +22,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/arcing-bolt",
+    "icon": "wow/spell_nature_moonglow",
     "gridX": 1,
     "gridY": 0,
     "statBonus": {
@@ -37,7 +37,7 @@
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/wind-hole",
+    "icon": "wow/spell_nature_insectswarm",
     "gridX": 2,
     "gridY": 0,
     "statBonus": {
@@ -52,7 +52,7 @@
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "delapouite/seedling",
+    "icon": "wow/spell_nature_abolishmagic",
     "gridX": 3,
     "gridY": 0,
     "statBonus": {
@@ -67,7 +67,7 @@
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "lorc/roots",
+    "icon": "wow/spell_nature_stranglevines",
     "gridX": 4,
     "gridY": 0,
     "statBonus": {
@@ -82,7 +82,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "delapouite/forest",
+    "icon": "wow/spell_nature_rejuvenation",
     "gridX": 0,
     "gridY": 1,
     "prerequisites": [
@@ -100,7 +100,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/heart-bottle",
+    "icon": "wow/spell_nature_tranquility",
     "gridX": 1,
     "gridY": 1,
     "prerequisites": [
@@ -118,7 +118,7 @@
     "maxPoints": 1,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/health-normal",
+    "icon": "wow/spell_nature_healingtouch",
     "gridX": 2,
     "gridY": 1,
     "prerequisites": [
@@ -134,7 +134,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/owl",
+    "icon": "wow/spell_nature_starfall",
     "gridX": 3,
     "gridY": 1,
     "prerequisites": [
@@ -152,7 +152,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "lorc/leaf-orchid",
+    "icon": "wow/spell_nature_rejuvenation",
     "gridX": 4,
     "gridY": 1,
     "prerequisites": [
@@ -171,7 +171,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/tree-bark",
+    "icon": "wow/spell_nature_thorns",
     "gridX": 0,
     "gridY": 2,
     "prerequisites": [
@@ -189,7 +189,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "delapouite/seedling",
+    "icon": "wow/spell_nature_abolishmagic",
     "gridX": 1,
     "gridY": 2,
     "prerequisites": [
@@ -208,7 +208,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/fruiting",
+    "icon": "wow/spell_nature_resistnature",
     "gridX": 2,
     "gridY": 2,
     "prerequisites": [
@@ -224,7 +224,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/flowers",
+    "icon": "wow/spell_nature_giftofthewild",
     "gridX": 3,
     "gridY": 2,
     "prerequisites": [
@@ -240,7 +240,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "lorc/tap",
+    "icon": "wow/spell_nature_stoneclawtotem",
     "gridX": 4,
     "gridY": 2,
     "prerequisites": [
@@ -259,7 +259,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/cherry",
+    "icon": "wow/spell_nature_healingway",
     "gridX": 0,
     "gridY": 3,
     "prerequisites": [
@@ -277,7 +277,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/surrounded-shield",
+    "icon": "wow/spell_nature_natureguardian",
     "gridX": 1,
     "gridY": 3,
     "prerequisites": [
@@ -296,7 +296,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "delapouite/circle-forest",
+    "icon": "wow/ability_druid_flourish",
     "gridX": 2,
     "gridY": 3,
     "prerequisites": [
@@ -312,7 +312,7 @@
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/flower-tulip",
+    "icon": "wow/spell_nature_rejuvenation",
     "gridX": 3,
     "gridY": 3,
     "prerequisites": [
@@ -328,7 +328,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "lorc/lotus-flower",
+    "icon": "wow/inv_misc_herb_felblossom",
     "gridX": 4,
     "gridY": 3,
     "prerequisites": [
@@ -344,7 +344,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/water-bolt",
+    "icon": "wow/spell_nature_resistnature",
     "gridX": 0,
     "gridY": 4,
     "prerequisites": [
@@ -362,7 +362,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "delapouite/bonsai-tree",
+    "icon": "wow/spell_nature_rejuvenation",
     "gridX": 1,
     "gridY": 4,
     "prerequisites": [
@@ -380,7 +380,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "delapouite/bonsai-tree",
+    "icon": "wow/spell_nature_rejuvenation",
     "gridX": 2,
     "gridY": 4,
     "prerequisites": [
@@ -396,7 +396,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/compass",
+    "icon": "wow/spell_nature_naturesblessing",
     "gridX": 3,
     "gridY": 4,
     "prerequisites": [
@@ -414,7 +414,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "lorc/pine-tree",
+    "icon": "wow/spell_nature_rejuvenation",
     "gridX": 4,
     "gridY": 4,
     "prerequisites": [
@@ -433,7 +433,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/broken-heart",
+    "icon": "wow/spell_nature_faeriefire",
     "gridX": 0,
     "gridY": 5,
     "prerequisites": [
@@ -452,7 +452,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/drop",
+    "icon": "wow/spell_nature_protectionformnature",
     "gridX": 1,
     "gridY": 5,
     "prerequisites": [
@@ -470,7 +470,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/wood-axe",
+    "icon": "wow/spell_nature_stoneclawtotem",
     "gridX": 2,
     "gridY": 5,
     "prerequisites": [
@@ -489,7 +489,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/giant",
+    "icon": "wow/spell_nature_giftofthewild",
     "gridX": 3,
     "gridY": 5,
     "prerequisites": [
@@ -508,7 +508,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "lorc/visored-helm",
+    "icon": "wow/spell_nature_forceofnature",
     "gridX": 4,
     "gridY": 5,
     "prerequisites": [
@@ -527,7 +527,7 @@
     "maxPoints": 1,
     "levelReq": 40,
     "cost": 1,
-    "icon": "lorc/flowers",
+    "icon": "wow/spell_nature_giftofthewild",
     "gridX": 2,
     "gridY": 6,
     "prerequisites": [

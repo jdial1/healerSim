@@ -6,12 +6,16 @@
     "manaCost": 18,
     "healing": 20,
     "cooldown": 0,
-    "icon": "lorc/glowing-hands",
+    "icon": "wow/spell_holy_flashheal",
     "color": "bg-yellow-400",
     "actionBarBorderClass": "border-sky-400",
     "glowType": "spell",
-    "tags": ["synergy-direct"],
-    "balance": { "directHealSynergyMultiplier": 1.15 }
+    "tags": [
+      "synergy-direct"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    }
   },
   "greater_heal": {
     "id": "greater_heal",
@@ -20,12 +24,18 @@
     "manaCost": 36,
     "healing": 66,
     "cooldown": 50,
-    "icon": "delapouite/hand-of-god",
+    "icon": "wow/spell_holy_greaterheal",
     "color": "bg-yellow-100",
     "actionBarBorderClass": "border-yellow-400",
     "glowType": "spell",
-    "tags": ["surge-finisher", "tree-of-life-big-direct", "synergy-direct"],
-    "balance": { "directHealSynergyMultiplier": 1.15 }
+    "tags": [
+      "surge-finisher",
+      "tree-of-life-big-direct",
+      "synergy-direct"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    }
   },
   "renew": {
     "id": "renew",
@@ -36,11 +46,13 @@
     "hotDuration": 150,
     "hotHealingPerTick": 1.1,
     "cooldown": 0,
-    "icon": "lorc/prayer",
+    "icon": "wow/spell_holy_renew",
     "color": "bg-green-300",
     "actionBarBorderClass": "border-green-500",
     "glowType": "spell",
-    "tags": ["synergy-primer-source"]
+    "tags": [
+      "synergy-primer-source"
+    ]
   },
   "rejuvenation": {
     "id": "rejuvenation",
@@ -51,7 +63,7 @@
     "hotDuration": 120,
     "hotHealingPerTick": 1.8,
     "cooldown": 0,
-    "icon": "lorc/leaf-swirl",
+    "icon": "wow/spell_nature_rejuvenation",
     "color": "bg-green-500",
     "actionBarBorderClass": "border-emerald-500",
     "glowType": "nature",
@@ -71,7 +83,7 @@
     "hotDuration": 60,
     "hotHealingPerTick": 0.9,
     "cooldown": 0,
-    "icon": "lorc/fruiting",
+    "icon": "wow/spell_nature_resistnature",
     "color": "bg-emerald-400",
     "actionBarBorderClass": "border-lime-500",
     "glowType": "nature",
@@ -82,7 +94,9 @@
       "swiftmend-consumable",
       "swiftmend-prefer"
     ],
-    "balance": { "directHealSynergyMultiplier": 1.15 }
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    }
   },
   "wild_growth": {
     "id": "wild_growth",
@@ -93,7 +107,7 @@
     "hotDuration": 70,
     "hotHealingPerTick": 1.36,
     "cooldown": 100,
-    "icon": "delapouite/circle-forest",
+    "icon": "wow/ability_druid_flourish",
     "color": "bg-lime-400",
     "actionBarBorderClass": "border-purple-500",
     "glowType": "nature",
@@ -111,13 +125,17 @@
     "manaCost": 18,
     "healing": 85,
     "cooldown": 150,
-    "icon": "lorc/fruiting",
+    "icon": "wow/spell_nature_resistnature",
     "color": "bg-emerald-300",
     "actionBarBorderClass": "border-emerald-400",
     "staticEffectDescription": "Consumes a HoT on the target to burst-heal. Requires Rejuvenation or Regrowth",
     "glowType": "nature",
-    "tags": ["synergy-direct"],
-    "balance": { "directHealSynergyMultiplier": 1.15 }
+    "tags": [
+      "synergy-direct"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    }
   },
   "healing_touch": {
     "id": "healing_touch",
@@ -126,12 +144,17 @@
     "manaCost": 34,
     "healing": 62,
     "cooldown": 45,
-    "icon": "lorc/health-normal",
+    "icon": "wow/spell_nature_healingtouch",
     "color": "bg-teal-300",
     "actionBarBorderClass": "border-teal-400",
     "glowType": "nature",
-    "tags": ["tree-of-life-big-direct", "synergy-direct"],
-    "balance": { "directHealSynergyMultiplier": 1.15 }
+    "tags": [
+      "tree-of-life-big-direct",
+      "synergy-direct"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    }
   },
   "lifebloom": {
     "id": "lifebloom",
@@ -142,11 +165,15 @@
     "hotDuration": 100,
     "hotHealingPerTick": 1,
     "cooldown": 0,
-    "icon": "lorc/lotus-flower",
+    "icon": "wow/inv_misc_herb_felblossom",
     "color": "bg-cyan-500",
     "actionBarBorderClass": "border-cyan-400",
     "glowType": "nature",
-    "tags": ["synergy-primer-source", "druid-hot", "druid-cultivation-hot"]
+    "tags": [
+      "synergy-primer-source",
+      "druid-hot",
+      "druid-cultivation-hot"
+    ]
   },
   "holy_light": {
     "id": "holy_light",
@@ -155,12 +182,17 @@
     "manaCost": 34,
     "healing": 64,
     "cooldown": 45,
-    "icon": "lorc/sun-rays",
+    "icon": "wow/spell_holy_holybolt",
     "color": "bg-amber-200",
     "actionBarBorderClass": "border-amber-200",
     "glowType": "spell",
-    "tags": ["tree-of-life-big-direct", "synergy-direct"],
-    "balance": { "directHealSynergyMultiplier": 1.15 }
+    "tags": [
+      "tree-of-life-big-direct",
+      "synergy-direct"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    }
   },
   "light_of_dawn": {
     "id": "light_of_dawn",
@@ -171,11 +203,14 @@
     "hotDuration": 65,
     "hotHealingPerTick": 1.25,
     "cooldown": 95,
-    "icon": "lorc/sunrise",
+    "icon": "wow/spell_holy_holyprotection",
     "color": "bg-amber-400",
     "actionBarBorderClass": "border-amber-400",
     "glowType": "spell",
-    "tags": ["archangel-skip", "synergy-primer-source"]
+    "tags": [
+      "archangel-skip",
+      "synergy-primer-source"
+    ]
   },
   "circle_of_healing": {
     "id": "circle_of_healing",
@@ -186,11 +221,14 @@
     "hotDuration": 65,
     "hotHealingPerTick": 1.3,
     "cooldown": 95,
-    "icon": "lorc/holy-symbol",
+    "icon": "wow/spell_holy_circleofrenewal",
     "color": "bg-violet-300",
     "actionBarBorderClass": "border-violet-400",
     "glowType": "spell",
-    "tags": ["archangel-skip", "synergy-primer-source"]
+    "tags": [
+      "archangel-skip",
+      "synergy-primer-source"
+    ]
   },
   "mana_potion": {
     "id": "mana_potion",
@@ -202,7 +240,7 @@
     "manaRegenBuffMultiplier": 2,
     "manaRegenBuffDurationTicks": 100,
     "cooldown": 300,
-    "icon": "delapouite/magic-potion",
+    "icon": "wow/inv_potion_76",
     "color": "bg-blue-500",
     "actionBarBorderClass": "border-blue-500",
     "limitedDungeonConsumable": true,

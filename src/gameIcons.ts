@@ -9,19 +9,28 @@ import theme from './data/theme.json';
 
 export type { IconGlow };
 
-const GAME_ICON_BASES = [
-  'https://cdn.jsdelivr.net/gh/game-icons/icons@master',
-  'https://cdn.statically.io/gh/game-icons/icons/master',
-  'https://raw.githubusercontent.com/game-icons/icons/master',
-] as const;
+const WOW_ICON_BASE = 'https://wow.zamimg.com/images/wow/icons/large';
+
+const WOW_ICON_EXTS = ['jpg', 'png'] as const;
+
+export const LOCKED_DUNGEON_WOW_ICON = 'wow/inv_misc_questionmark';
+
+function toWowIconName(iconPath: string): string {
+  const normalized = iconPath.trim().toLowerCase();
+  if (!normalized) return 'spell_holy_heal';
+  if (normalized.startsWith('wow/')) return normalized.slice('wow/'.length);
+  if (!normalized.includes('/')) return normalized;
+  return 'spell_holy_heal';
+}
 
 export function gameIconUrl(iconPath: string): string {
-  return `${GAME_ICON_BASES[0]}/${iconPath}.svg`;
+  const wowIcon = toWowIconName(iconPath);
+  return `${WOW_ICON_BASE}/${wowIcon}.${WOW_ICON_EXTS[0]}`;
 }
 
 export function gameIconUrlCandidates(iconPath: string): readonly string[] {
-  const suffix = `/${iconPath}.svg`;
-  return GAME_ICON_BASES.map((base) => `${base}${suffix}`);
+  const wowIcon = toWowIconName(iconPath);
+  return WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${wowIcon}.${ext}`);
 }
 
 export function glowForSpellId(spellId: string | undefined): IconGlow {

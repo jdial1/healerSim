@@ -3,7 +3,7 @@
     "priest_grace": {
       "sourceSpellId": "priest_grace",
       "displayName": "Grace",
-      "icon": "lorc/angel-wings",
+      "icon": "wow/ability_priest_ascension",
       "maxStacks": 3,
       "defaultDurationTicks": 80,
       "dispellable": false,

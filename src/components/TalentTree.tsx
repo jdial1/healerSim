@@ -250,7 +250,8 @@ export function TalentTree({
                     size="sm"
                     title={side.name}
                     dimmed={!pts}
-                    className={!acc ? 'opacity-50' : ''}
+                    imageFit="cover"
+                    className={`h-full w-full min-h-0 min-w-0 rounded-none p-0 ${!acc ? 'opacity-50' : ''}`}
                   />
                   <div className="absolute bottom-0.5 right-0.5 rounded border border-slate-700 bg-slate-900 px-0.5 text-[9px] font-bold leading-none text-white sm:text-[10px]">
                     {side.points}/{side.maxPoints}
@@ -325,7 +326,8 @@ export function TalentTree({
                     size="sm"
                     title={talent.name}
                     dimmed={!hasPoints}
-                    className={!accessible ? 'opacity-50' : ''}
+                    imageFit="cover"
+                    className={`h-full w-full min-h-0 min-w-0 rounded-none p-0 ${!accessible ? 'opacity-50' : ''}`}
                   />
                   <div className="absolute -bottom-2 -right-2 rounded border border-slate-700 bg-slate-900 px-1 text-[10px] font-bold text-white">
                     {talent.points}/{talent.maxPoints}
