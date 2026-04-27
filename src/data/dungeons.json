@@ -6,7 +6,7 @@
     "levelMin": 1,
     "levelMax": 3,
     "bossName": "Edwin VanCleef",
-    "bossHealth": 1000,
+    "bossHealth": 7720,
     "bossIcon": "delapouite/pirate-captain",
     "cardIcon": "lorc/wooden-door",
     "cardTheme": {
@@ -71,7 +71,7 @@
     "levelMin": 4,
     "levelMax": 6,
     "bossName": "Verdan the Everliving",
-    "bossHealth": 2500,
+    "bossHealth": 13730,
     "bossIcon": "delapouite/shambling-mound",
     "cardIcon": "delapouite/cobra",
     "cardTheme": {
@@ -136,7 +136,7 @@
     "levelMin": 7,
     "levelMax": 9,
     "bossName": "High Inspector Whitemane",
-    "bossHealth": 5000,
+    "bossHealth": 22310,
     "bossIcon": "delapouite/pope-crown",
     "cardIcon": "lorc/burning-book",
     "cardTheme": {
@@ -201,7 +201,7 @@
     "levelMin": 10,
     "levelMax": 12,
     "bossName": "Chief Ukorz Sandscalp",
-    "bossHealth": 12000,
+    "bossHealth": 34320,
     "bossIcon": "delapouite/ceremonial-mask",
     "cardIcon": "delapouite/cactus",
     "cardTheme": {
@@ -266,7 +266,7 @@
     "levelMin": 13,
     "levelMax": 15,
     "bossName": "Shade of Eranikus",
-    "bossHealth": 25000,
+    "bossHealth": 44620,
     "bossIcon": "lorc/dragon-head",
     "cardIcon": "delapouite/star-altar",
     "cardTheme": {
@@ -298,9 +298,9 @@
           "abilityId": "eranikus_corruption",
           "name": "Deep Slumber",
           "icon": "lorc/sleepy",
-          "durationTicks": 250,
+          "durationTicks": 140,
           "damagePerTick": 0.5,
-          "targeting": "two_random",
+          "targeting": "single_random",
           "dispellable": false
         }
       ],
@@ -331,7 +331,7 @@
     "levelMin": 16,
     "levelMax": 18,
     "bossName": "Emperor Thaurissan",
-    "bossHealth": 55000,
+    "bossHealth": 55770,
     "bossIcon": "lorc/hand-clench",
     "cardIcon": "delapouite/prisoner",
     "cardTheme": {
@@ -396,7 +396,7 @@
     "levelMin": 19,
     "levelMax": 21,
     "bossName": "Baron Rivendare",
-    "bossHealth": 110000,
+    "bossHealth": 66920,
     "bossIcon": "lorc/grim-reaper",
     "cardIcon": "lorc/skeleton",
     "cardTheme": {
@@ -461,7 +461,7 @@
     "levelMin": 22,
     "levelMax": 24,
     "bossName": "Darkmaster Gandling",
-    "bossHealth": 250000,
+    "bossHealth": 72930,
     "bossIcon": "lorc/wizard-staff",
     "cardIcon": "delapouite/vial",
     "cardTheme": {

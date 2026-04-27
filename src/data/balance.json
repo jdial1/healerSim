@@ -6,7 +6,7 @@
     "multiplierPerPartyLevelOverDungeonMax": 0.62
   },
   "trash": {
-    "maxHealthFractionOfBoss": 0.1
+    "maxHealthFractionOfBoss": 0.155
   },
   "xp": {
     "dungeonTierAdditivePerDifficultyOver1": 0.2,
@@ -18,9 +18,9 @@
     "failureFractionWhenOnePullCleared": 0.2
   },
   "playerStats": {
-    "manaPerIntellect": 5,
-    "healingPctPerSpirit": 0.4,
-    "manaRegenMultPerSpirit": 0.015
+    "manaPerIntellect": 10,
+    "healingPctPerSpirit": 0.5,
+    "manaRegenMultPerSpirit": 0.02
   },
   "combat": {
     "shared": {

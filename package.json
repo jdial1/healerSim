@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "icons:verify": "node scripts/verify-wow-icons.mjs"
+    "icons:verify": "node scripts/verify-wow-icons.mjs",
+    "test:dungeons": "tsx scripts/test-dungeons.ts",
+    "test:class": "tsx scripts/test-classes.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

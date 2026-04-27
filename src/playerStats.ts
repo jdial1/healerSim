@@ -84,7 +84,7 @@ export interface TalentStatModifiers {
 export function effectiveTalentPointWeight(points: number, maxPoints: number): number {
   const spent = Math.max(0, Math.min(points, maxPoints));
   if (spent === 0) return 0;
-  return spent === maxPoints ? spent * 2 : spent;
+  return spent === maxPoints ? spent * 1.2 : spent;
 }
 
 export function computeTalentStats(talents: Talent[]): TalentStatModifiers {

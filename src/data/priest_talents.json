@@ -11,7 +11,7 @@
     "gridX": 0,
     "gridY": 0,
     "statBonus": {
-      "manaPool": 40
+      "manaPool": 15
     },
     "maxRankBonusDescription": "Regenerate 1% of total mana every 5 seconds in combat."
   },
@@ -42,7 +42,7 @@
     "gridX": 2,
     "gridY": 0,
     "statBonus": {
-      "haste": 2
+      "haste": 1
     }
   },
   {
@@ -57,7 +57,7 @@
     "gridX": 3,
     "gridY": 0,
     "statBonus": {
-      "critChance": 1.5
+      "critChance": 1
     }
   },
   {
@@ -88,7 +88,7 @@
       "p_r0c0"
     ],
     "statBonus": {
-      "haste": 2
+      "haste": 1
     }
   },
   {
@@ -140,7 +140,7 @@
       "p_r0c3"
     ],
     "statBonus": {
-      "critChance": 2
+      "critChance": 1.2
     }
   },
   {
@@ -180,7 +180,7 @@
       "p_r1c0"
     ],
     "statBonus": {
-      "haste": 2.5
+      "haste": 1.5
     }
   },
   {
@@ -267,7 +267,7 @@
       "p_r2c0"
     ],
     "statBonus": {
-      "manaPool": 80
+      "manaPool": 40
     }
   },
   {
@@ -318,7 +318,7 @@
     ],
     "mechanicId": "luminous_aegis",
     "statBonus": {
-      "healingBoost": 5
+      "healingBoost": 3
     }
   },
   {
@@ -336,7 +336,7 @@
       "p_r2c3"
     ],
     "statBonus": {
-      "critChance": 5
+      "critChance": 2.5
     },
     "mechanicId": "gleaming_proclamation",
     "synergyWith": [
@@ -374,7 +374,7 @@
       "p_r3c0"
     ],
     "statBonus": {
-      "healingBoost": 8
+      "healingBoost": 4
     }
   },
   {
@@ -424,7 +424,7 @@
       "p_r3c3"
     ],
     "statBonus": {
-      "haste": 4
+      "haste": 2
     }
   },
   {
@@ -458,7 +458,7 @@
       "p_r4c0"
     ],
     "statBonus": {
-      "manaPool": 120
+      "manaPool": 60
     }
   },
   {
@@ -476,7 +476,7 @@
       "p_r4c1"
     ],
     "statBonus": {
-      "healingBoost": 10
+      "healingBoost": 5
     }
   },
   {
@@ -494,7 +494,7 @@
       "p_r4c2"
     ],
     "statBonus": {
-      "critChance": 6
+      "critChance": 3
     }
   },
   {
@@ -512,7 +512,7 @@
       "p_r4c3"
     ],
     "statBonus": {
-      "haste": 6
+      "haste": 3
     }
   },
   {

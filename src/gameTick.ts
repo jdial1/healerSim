@@ -646,7 +646,7 @@ function resolveOngoingCombatAfterPartyAlive(
   const nextIcd = sys.internalCooldowns;
   const nextForm = sys.capstoneForm;
 
-  const partyDps = 2 + state.level * 2;
+  const partyDps = 5 + Math.pow(state.level, 1.25) * 2;
   const deadDpsCount = newParty.filter((u) => u.role === 'DPS' && u.health <= 0).length;
   const sleepingDpsCount = newParty.filter((u) => u.role === 'DPS' && u.health > 0 && hasDeepSlumberDebuff(u)).length;
   const inactiveDpsCount = deadDpsCount + sleepingDpsCount;

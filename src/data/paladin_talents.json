@@ -11,8 +11,8 @@
     "gridX": 0,
     "gridY": 0,
     "statBonus": {
-      "critChance": 1.2,
-      "manaPool": 25
+      "critChance": 0.5,
+      "manaPool": 15
     }
   },
   {
@@ -57,7 +57,7 @@
     "gridX": 3,
     "gridY": 0,
     "statBonus": {
-      "critChance": 1.5
+      "critChance": 1
     }
   },
   {
@@ -90,7 +90,7 @@
       "h_r0c0"
     ],
     "statBonus": {
-      "critChance": 2,
+      "critChance": 1,
       "manaPool": 40
     }
   },
@@ -259,7 +259,7 @@
       "h_r2c2"
     ],
     "statBonus": {
-      "critChance": 2,
+      "critChance": 1,
       "healingBoost": 2
     }
   },
@@ -319,7 +319,7 @@
       "h_r3c0"
     ],
     "statBonus": {
-      "critChance": 3,
+      "critChance": 1.5,
       "manaPool": 80
     }
   },
@@ -356,7 +356,7 @@
       "h_r3c2"
     ],
     "statBonus": {
-      "haste": 4,
+      "haste": 2,
       "healingBoost": 3
     }
   },
@@ -416,8 +416,8 @@
       "h_r4c0"
     ],
     "statBonus": {
-      "haste": 5,
-      "critChance": 3
+      "haste": 2,
+      "critChance": 1.5
     }
   },
   {
@@ -455,7 +455,7 @@
     ],
     "statBonus": {
       "healingBoost": 3,
-      "haste": 4
+      "haste": 2
     }
   },
   {
@@ -473,7 +473,7 @@
       "h_r4c3"
     ],
     "statBonus": {
-      "critChance": 3,
+      "critChance": 1.5,
       "healingBoost": 3
     }
   },

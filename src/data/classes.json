@@ -42,22 +42,22 @@
   ],
   "statCurves": {
     "PRIEST": {
-      "baseIntellect": 20,
-      "baseSpirit": 18,
-      "intellectPerLevel": 2,
-      "spiritPerLevel": 1
+      "baseIntellect": 30,
+      "baseSpirit": 20,
+      "intellectPerLevel": 3,
+      "spiritPerLevel": 1.5
     },
     "DRUID": {
-      "baseIntellect": 16,
-      "baseSpirit": 22,
-      "intellectPerLevel": 1,
-      "spiritPerLevel": 2
+      "baseIntellect": 25,
+      "baseSpirit": 25,
+      "intellectPerLevel": 2,
+      "spiritPerLevel": 2.5
     },
     "PALADIN": {
-      "baseIntellect": 22,
-      "baseSpirit": 16,
-      "intellectPerLevel": 2,
-      "spiritPerLevel": 1
+      "baseIntellect": 35,
+      "baseSpirit": 18,
+      "intellectPerLevel": 3.5,
+      "spiritPerLevel": 1.5
     }
   },
   "progression": {
