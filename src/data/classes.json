@@ -11,7 +11,10 @@
       "locked": false,
       "portraitUrl": "",
       "portraitIcon": "lorc/angel-outfit",
-      "portraitGlow": "spell"
+      "portraitGlow": "spell",
+      "passiveTraitName": "Echo of Light",
+      "passiveTraitDescription": "A portion of direct healing lingers on the target as a brief heal over time.",
+      "passiveTraitIcon": "wow/spell_holy_surgeoflight"
     },
     {
       "id": "DRUID",
@@ -24,7 +27,10 @@
       "locked": false,
       "portraitUrl": "",
       "portraitIcon": "delapouite/ginkgo-leaf",
-      "portraitGlow": "nature"
+      "portraitGlow": "nature",
+      "passiveTraitName": "Omen of Clarity",
+      "passiveTraitDescription": "HoT ticks can grant Clearcasting, making your next Regrowth or Healing Touch cost no mana.",
+      "passiveTraitIcon": "wow/spell_nature_focusedmind"
     },
     {
       "id": "PALADIN",
@@ -37,27 +43,36 @@
       "locked": true,
       "portraitUrl": "",
       "portraitIcon": "lorc/winged-shield",
-      "portraitGlow": "spell"
+      "portraitGlow": "spell",
+      "passiveTraitName": "Lightbringer's Resolve",
+      "passiveTraitDescription": "Healing the tank splashes to the lowest-health ally. Taking environmental damage restores a sliver of mana and can grant Holy Power.",
+      "passiveTraitIcon": "wow/spell_holy_crusade"
     }
   ],
   "statCurves": {
     "PRIEST": {
       "baseIntellect": 30,
       "baseSpirit": 20,
-      "intellectPerLevel": 3,
-      "spiritPerLevel": 1.5
+      "intellectPerLevel": 3.5,
+      "spiritPerLevel": 1.5,
+      "baseUniqueStat": 8,
+      "uniqueStatPerLevel": 0.55
     },
     "DRUID": {
       "baseIntellect": 25,
       "baseSpirit": 25,
       "intellectPerLevel": 2,
-      "spiritPerLevel": 2.5
+      "spiritPerLevel": 1.8,
+      "baseUniqueStat": 10,
+      "uniqueStatPerLevel": 0.65
     },
     "PALADIN": {
       "baseIntellect": 35,
       "baseSpirit": 18,
       "intellectPerLevel": 3.5,
-      "spiritPerLevel": 1.5
+      "spiritPerLevel": 1.5,
+      "baseUniqueStat": 7,
+      "uniqueStatPerLevel": 0.5
     }
   },
   "progression": {

@@ -1,5 +1,11 @@
 import { ClassType, GameState, PartyDebuff, Spell, Unit } from './types.ts';
-import { talentRanks, hasPlayerBuff, HEALER_UNIT_ID } from './talentMechanics.ts';
+import {
+  talentRanks,
+  hasPlayerBuff,
+  HEALER_UNIT_ID,
+  isDirectHealSpell,
+  upsertPlayerBuff,
+} from './talentMechanics.ts';
 import { GRACE_PARTY_AURA, GRACE_SOURCE_ID } from './auraConfig.ts';
 import {
   SPELLS,
@@ -11,9 +17,11 @@ import type { HealManaCostContext, ManaAfterHealContext } from './combatHookRegi
 import { generateCombatUid } from './combatUid.ts';
 import { mapEntityById } from './mapEntityById.ts';
 import { BALANCE } from './balance.ts';
-import { effectiveTalentPointWeight } from './playerStats.ts';
+import { effectiveTalentPointWeight, effectiveUniqueStatRating } from './playerStats.ts';
 
 export { GRACE_SOURCE_ID };
+export const PLAYER_BUFF_OMEN_CLEARCASTING = 'omen_clearcasting';
+export const ECHO_OF_LIGHT_SOURCE = 'echo_of_light';
 
 const SHARED = BALANCE.combat.shared;
 const PRIEST = BALANCE.combat.priest;
@@ -50,6 +58,16 @@ export function healManaCostSurgeFinisher(
   return undefined;
 }
 
+export function healManaCostDruidClearcasting(
+  s: GameState,
+  ctx: HealManaCostContext,
+): number | undefined {
+  if (s.playerClass !== 'DRUID') return undefined;
+  if (!hasPlayerBuff(s.playerCombatBuffs, PLAYER_BUFF_OMEN_CLEARCASTING)) return undefined;
+  if (ctx.spellId !== 'regrowth' && ctx.spellId !== 'healing_touch') return undefined;
+  return 0;
+}
+
 export function healManaCostTreeOfLife(
   s: GameState,
   ctx: HealManaCostContext,
@@ -77,6 +95,8 @@ export function runHealManaCost(
   const ctx: HealManaCostContext = { classType, spell, spellId, surgeFree };
   const v1 = healManaCostSurgeFinisher(s, ctx);
   if (v1 !== undefined) return v1;
+  const v0 = healManaCostDruidClearcasting(s, ctx);
+  if (v0 !== undefined) return v0;
   const v2 = healManaCostTreeOfLife(s, ctx);
   if (v2 !== undefined) return v2;
   return spell.manaCost;
@@ -314,6 +334,10 @@ export function applyDivineAegis(
   }
   const daRanks = talentRanks(s.talents, 'divine_aegis');
   let mult = PRIEST.divineAegisShieldFractionPerRank * daRanks;
+  if (s.playerClass === 'PRIEST') {
+    const rating = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
+    mult *= 1 + rating * PRIEST.divinityAegisMultBonusPerRating;
+  }
   if (talentRanks(s.talents, 'luminous_aegis') > 0) {
     mult *= 1 + PRIEST.luminousAegisMultiplierPerRank * talentRanks(s.talents, 'luminous_aegis');
   }
@@ -594,3 +618,137 @@ export function applyAegisBurstsFromShieldTransitions(s: GameState, before: Unit
 
 export const DRUID_HARMONY_HOT_BUFF = 'druid_harmony_for_hot';
 export const DRUID_HARMONY_HOT_TICKS = 6 * 10;
+
+function appendEchoOfLightBuff(unit: Unit, echoTotal: number): Unit {
+  const dur = PRIEST.passiveEchoOfLightDurationTicks;
+  const hpt = echoTotal / dur;
+  const buff = {
+    id: generateCombatUid(`echo-${unit.id}`, Date.now(), Math.random),
+    name: 'Echo of Light',
+    remainingTicks: dur,
+    healingPerTick: hpt,
+    icon: 'wow/spell_holy_surgeoflight',
+    sourceSpellId: ECHO_OF_LIGHT_SOURCE,
+    rendersAsHoTRing: true as const,
+  };
+  const kept = unit.buffs.filter((b) => b.sourceSpellId !== ECHO_OF_LIGHT_SOURCE);
+  return { ...unit, buffs: [...kept, buff] };
+}
+
+export function applyEchoOfLightPriest(
+  s: GameState,
+  partyBefore: Unit[],
+  party: Unit[],
+  spell: Spell,
+  spellId: string,
+  targetId: string,
+): Unit[] {
+  if (s.playerClass !== 'PRIEST' || spellId === 'mana_potion' || !isDirectHealSpell(spell, spellId)) {
+    return party;
+  }
+  if (spell.type === 'AOE') {
+    let out = party;
+    for (const u of party) {
+      const b = partyBefore.find((x) => x.id === u.id);
+      if (!b || u.health <= 0) continue;
+      const gained = u.health - b.health;
+      if (gained <= 0) continue;
+      const echoTotal = gained * PRIEST.passiveEchoOfLightHealFraction;
+      out = mapEntityById(out, u.id, (unit) => appendEchoOfLightBuff(unit, echoTotal));
+    }
+    return out;
+  }
+  const b = partyBefore.find((x) => x.id === targetId);
+  const u = party.find((x) => x.id === targetId);
+  if (!b || !u || u.health <= 0) return party;
+  const gained = u.health - b.health;
+  if (gained <= 0) return party;
+  const echoTotal = gained * PRIEST.passiveEchoOfLightHealFraction;
+  return mapEntityById(party, targetId, (unit) => appendEchoOfLightBuff(unit, echoTotal));
+}
+
+export function applyLightbringerResolveSplash(
+  s: GameState,
+  partyBefore: Unit[],
+  party: Unit[],
+  spell: Spell,
+  spellId: string,
+  targetId: string,
+): Unit[] {
+  if (s.playerClass !== 'PALADIN' || spellId === 'mana_potion' || !isDirectHealSpell(spell, spellId)) {
+    return party;
+  }
+  if (spell.type === 'AOE') return party;
+  const tank = party.find((u) => u.role === 'TANK' && u.health > 0);
+  if (!tank || targetId !== tank.id) return party;
+  const beforeT = partyBefore.find((u) => u.id === tank.id);
+  const afterT = party.find((u) => u.id === tank.id);
+  if (!beforeT || !afterT) return party;
+  const healed = afterT.health - beforeT.health;
+  if (healed <= 0) return party;
+  const splash = healed * PALADIN.passiveLightbringerSplashFraction;
+  let bestId: string | null = null;
+  let bestPct = 2;
+  for (const u of party) {
+    if (u.health <= 0 || u.id === tank.id) continue;
+    const pct = u.maxHealth > 0 ? u.health / u.maxHealth : 1;
+    if (pct < bestPct) {
+      bestPct = pct;
+      bestId = u.id;
+    }
+  }
+  if (!bestId) return party;
+  return mapEntityById(party, bestId, (u) => ({
+    ...u,
+    health: Math.min(u.maxHealth, u.health + splash),
+  }));
+}
+
+export function paladinRadianceHealMultiplier(s: GameState, unit: Unit): number {
+  if (s.playerClass !== 'PALADIN' || unit.maxHealth <= 0) return 1;
+  const r = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
+  const missing = Math.max(0, 1 - unit.health / unit.maxHealth);
+  const bonus = Math.min(
+    PALADIN.radianceHealMultBonusCap,
+    missing * r * PALADIN.radianceHealMultPerMissingHealthPerRating,
+  );
+  return 1 + bonus;
+}
+
+export function priestDivinityOverhealAbsorb(overheal: number, rating: number): number {
+  if (overheal <= 0 || rating <= 0) return 0;
+  return overheal * Math.min(0.45, rating * PRIEST.divinityOverhealToShieldPerRating);
+}
+
+export function druidVitalityBloomTickExtras(
+  s: GameState,
+  tickAmtAfterModifiers: number,
+): { extraHeal: number; mana: number } {
+  if (s.playerClass !== 'DRUID' || tickAmtAfterModifiers <= 0) return { extraHeal: 0, mana: 0 };
+  const r = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
+  if (r <= 0) return { extraHeal: 0, mana: 0 };
+  const p = Math.min(DRUID.vitalityBloomChanceCap, r * DRUID.vitalityBloomChancePerRating);
+  if (Math.random() >= p) return { extraHeal: 0, mana: 0 };
+  let mana = 0;
+  if (Math.random() < DRUID.vitalityBloomManaRefundChance) {
+    mana = DRUID.vitalityBloomManaRefundAmount;
+  }
+  return { extraHeal: tickAmtAfterModifiers * DRUID.vitalityBloomHealFractionOfTick, mana };
+}
+
+export function rollOmenOfClarityOnHotTick(
+  s: GameState,
+  tickAmt: number,
+  sourceSpellId: string,
+  playerCombatBuffs: GameState['playerCombatBuffs'],
+  random: () => number,
+): GameState['playerCombatBuffs'] {
+  if (s.playerClass !== 'DRUID' || tickAmt <= 0 || !spellHasTag(sourceSpellId, SPELL_TAG_DRUID_HOT)) {
+    return playerCombatBuffs;
+  }
+  const r = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
+  if (r <= 0) return playerCombatBuffs;
+  const p = Math.min(DRUID.passiveOmenProcChanceCap, r * DRUID.passiveOmenProcPerHotTickPerRating);
+  if (random() >= p) return playerCombatBuffs;
+  return upsertPlayerBuff(playerCombatBuffs, PLAYER_BUFF_OMEN_CLEARCASTING, DRUID.passiveOmenClearcastingTicks, 1);
+}

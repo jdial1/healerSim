@@ -1,5 +1,5 @@
 import { useState, useReducer, useEffect, useCallback, useRef, useMemo } from 'react';
-import { GameState, ClassType, Dungeon } from '../types.ts';
+import { GameState, ClassType, Dungeon, DungeonPace } from '../types.ts';
 import { TICK_RATE } from '../constants.ts';
 import {
   readRoster,
@@ -62,12 +62,9 @@ export function useGameEngine() {
     dispatch({ type: 'ABANDON_DUNGEON' });
   }, []);
 
-  const startDungeon = useCallback(
-    (dungeon: Dungeon) => {
-      dispatch({ type: 'START_DUNGEON', dungeon });
-    },
-    [],
-  );
+  const startDungeon = useCallback((dungeon: Dungeon, pace: DungeonPace) => {
+    dispatch({ type: 'START_DUNGEON', dungeon, pace });
+  }, []);
 
   const unlockTalent = useCallback((talentId: string) => {
     dispatch({ type: 'UNLOCK_TALENT', talentId });

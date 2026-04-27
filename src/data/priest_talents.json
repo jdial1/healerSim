@@ -27,7 +27,8 @@
     "gridX": 1,
     "gridY": 0,
     "statBonus": {
-      "healingBoost": 3
+      "healingBoost": 3,
+      "uniqueStat": 0.8
     }
   },
   {
@@ -197,7 +198,10 @@
     "prerequisites": [
       "p_r1c1"
     ],
-    "mechanicId": "divine_aegis"
+    "mechanicId": "divine_aegis",
+    "statBonus": {
+      "uniqueStat": 1.2
+    }
   },
   {
     "id": "p_r2c2",
@@ -214,7 +218,8 @@
       "p_r1c2"
     ],
     "statBonus": {
-      "healingBoost": 4
+      "healingBoost": 4,
+      "uniqueStat": 0.9
     }
   },
   {

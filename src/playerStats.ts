@@ -19,7 +19,24 @@ export interface ClassStatCurve {
   baseSpirit: number;
   intellectPerLevel: number;
   spiritPerLevel: number;
+  baseUniqueStat: number;
+  uniqueStatPerLevel: number;
 }
+
+export const UNIQUE_STAT_LABELS: Record<ClassType, string> = {
+  PRIEST: 'Divinity',
+  DRUID: 'Vitality',
+  PALADIN: 'Radiance',
+};
+
+export const UNIQUE_STAT_DESCRIPTIONS: Record<ClassType, string> = {
+  PRIEST:
+    'Turns overhealing from direct heals into absorb shields and strengthens critical Divine Aegis shields. Higher Divinity improves both effects.',
+  DRUID:
+    'Makes HoT ticks more explosive: a chance to bloom for extra healing on tick, with a chance to return a little mana on that bloom. Higher Vitality improves bloom odds and impact.',
+  PALADIN:
+    'Increases healing on injured targets—the lower their health, the larger the bonus, up to a cap. Higher Radiance raises how much missing health amplifies your heals.',
+};
 
 export const CLASS_STAT_CURVE = classesData.statCurves as Record<ClassType, ClassStatCurve>;
 
@@ -74,11 +91,24 @@ export function effectivePrimaryStats(
   };
 }
 
+export function effectiveUniqueStatRating(
+  cls: ClassType | null,
+  level: number,
+  talents: Talent[],
+): number {
+  if (!cls) return 0;
+  const c = CLASS_STAT_CURVE[cls];
+  const lv = Math.max(1, level);
+  const base = c.baseUniqueStat + (lv - 1) * c.uniqueStatPerLevel;
+  return base + computeTalentStats(talents).uniqueStatFlat;
+}
+
 export interface TalentStatModifiers {
   flatMana: number;
   healingBoostPct: number;
   critChancePct: number;
   hastePct: number;
+  uniqueStatFlat: number;
 }
 
 export function effectiveTalentPointWeight(points: number, maxPoints: number): number {
@@ -98,9 +128,10 @@ export function computeTalentStats(talents: Talent[]): TalentStatModifiers {
         healingBoostPct: acc.healingBoostPct + (sb.healingBoost ?? 0) * p,
         critChancePct: acc.critChancePct + (sb.critChance ?? 0) * p,
         hastePct: acc.hastePct + (sb.haste ?? 0) * p,
+        uniqueStatFlat: acc.uniqueStatFlat + (sb.uniqueStat ?? 0) * p,
       };
     },
-    { flatMana: 0, healingBoostPct: 0, critChancePct: 0, hastePct: 0 },
+    { flatMana: 0, healingBoostPct: 0, critChancePct: 0, hastePct: 0, uniqueStatFlat: 0 },
   );
 }
 
@@ -159,6 +190,12 @@ export interface PlayerStatBreakdown {
   critChancePct: number;
   hastePct: number;
   bonusHealing: number;
+  uniqueStatLabel: string;
+  uniqueStatRating: number;
+  uniqueStatDescription: string;
+  passiveTraitName: string;
+  passiveTraitDescription: string;
+  passiveTraitIcon: string;
 }
 
 export function randomAllyLevel(playerLevel: number): number {
@@ -205,6 +242,14 @@ export function buildPlayerStatBreakdown(
   const critChancePct = tStats.critChancePct;
   const hastePct = tStats.hastePct;
   const bonusHealing = Math.round(100 * (healingEffectMultiplier - 1));
+  const sel = classesData.selector.find((r) => r.id === cls) as
+    | {
+        passiveTraitName?: string;
+        passiveTraitDescription?: string;
+        passiveTraitIcon?: string;
+      }
+    | undefined;
+  const uniqueStatRating = Math.round(effectiveUniqueStatRating(cls, level, talents) * 10) / 10;
   return {
     intellect,
     spirit,
@@ -222,6 +267,12 @@ export function buildPlayerStatBreakdown(
     critChancePct,
     hastePct,
     bonusHealing,
+    uniqueStatLabel: UNIQUE_STAT_LABELS[cls],
+    uniqueStatRating,
+    uniqueStatDescription: UNIQUE_STAT_DESCRIPTIONS[cls],
+    passiveTraitName: sel?.passiveTraitName ?? '',
+    passiveTraitDescription: sel?.passiveTraitDescription ?? '',
+    passiveTraitIcon: sel?.passiveTraitIcon ?? 'wow/spell_holy_sealofwisdom',
   };
 }
 

@@ -1,7 +1,7 @@
 {
   "allyHealthDefaults": {
     "TANK": { "base": 98, "perLevel": 14 },
-    "DPS": { "base": 52, "perLevel": 5.5 }
+    "DPS": { "base": 52, "perLevel": 8.5 }
   },
   "tankPool": [
     {

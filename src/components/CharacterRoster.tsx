@@ -7,6 +7,7 @@ import type { ClassType } from '../types.ts';
 import { levelFromTotalXp, type RosterV2 } from '../gameStorage.ts';
 import { ClassPickList } from './ClassPickList.tsx';
 import type { ClassUiRow } from '../classUiData.ts';
+import { GameIcon } from './GameIcon.tsx';
 
 interface CharacterRosterProps {
   roster: RosterV2;
@@ -20,7 +21,7 @@ export function CharacterRoster({ roster, paladinUnlocked, onContinue, onCreate 
     <ClassPickList
       title={
         <>
-          HEALER <br /> <span className="text-blue-500">ROSTER</span>
+          Heal<span className="text-blue-500">ers</span>
         </>
       }
       isRowLocked={(row: ClassUiRow) => row.id === 'PALADIN' && !paladinUnlocked}
@@ -34,15 +35,29 @@ export function CharacterRoster({ roster, paladinUnlocked, onContinue, onCreate 
         const level = saved ? levelFromTotalXp(saved.xp) : null;
         const locked = row.id === 'PALADIN' && !paladinUnlocked;
         const hasSave = !!saved;
+        const passive = (
+          <span className="flex items-center gap-2">
+            <GameIcon iconPath={row.passiveTraitIcon} glow="spell" size="xs" />
+            <span className="text-[11px] font-bold leading-tight text-slate-400">{row.passiveTraitName}</span>
+          </span>
+        );
         if (hasSave) {
           return (
-            <>
-              LVL <span className="text-white">{level}</span>
-            </>
+            <div className="space-y-1.5">
+              <div>
+                LVL <span className="text-white">{level}</span>
+              </div>
+              {passive}
+            </div>
           );
         }
         if (locked) return '—';
-        return <span className="text-slate-500">New character</span>;
+        return (
+          <div className="space-y-1.5">
+            <span className="text-slate-500">New character</span>
+            {passive}
+          </div>
+        );
       }}
     />
   );

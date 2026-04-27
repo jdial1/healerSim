@@ -7,6 +7,7 @@ import {
   Spell,
   ClassType,
   Dungeon,
+  DungeonPace,
   Unit,
   BossCombatProfile,
   BossCombatOverrides,
@@ -49,6 +50,18 @@ export function trashMaxHealthForDungeon(dungeon: Dungeon): number {
     1,
     Math.round(dungeon.bossHealth * balanceData.trash.maxHealthFractionOfBoss),
   );
+}
+
+export function dungeonPaceDpsMultiplier(pace: DungeonPace): number {
+  if (pace === 'fast') return 1.3333;
+  if (pace === 'normal') return 1;
+  return 0.6667;
+}
+
+export function dungeonPaceXpMultiplier(pace: DungeonPace): number {
+  if (pace === 'fast') return 0.5;
+  if (pace === 'normal') return 1;
+  return 2;
 }
 
 export function dungeonXpTierMultiplier(difficulty: number): number {

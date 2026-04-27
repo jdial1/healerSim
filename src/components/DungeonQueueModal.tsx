@@ -1,13 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Swords, Plus, X } from 'lucide-react';
-import { type Dungeon } from '../types.ts';
+import { Shield, Swords, Plus, X, Zap, Gauge, Snail } from 'lucide-react';
+import { type Dungeon, type DungeonPace } from '../types.ts';
+import { dungeonPaceXpMultiplier } from '../constants.ts';
 
 interface DungeonQueueModalProps {
   dungeon: Dungeon;
   onClose: () => void;
-  onConfirmEnter: (dungeon: Dungeon) => void;
-  enterButtonClassName: string;
+  onConfirmEnter: (dungeon: Dungeon, pace: DungeonPace) => void;
 }
 
 function shuffleRoles(): ('tank' | 'dps')[] {
@@ -22,12 +22,53 @@ function shuffleRoles(): ('tank' | 'dps')[] {
   return roles;
 }
 
-export function DungeonQueueModal({
-  dungeon,
-  onClose,
-  onConfirmEnter,
-  enterButtonClassName,
-}: DungeonQueueModalProps) {
+const PACE_OPTIONS: {
+  pace: DungeonPace;
+  label: string;
+  trashSec: number;
+  bossSec: number;
+  Icon: typeof Zap;
+  ring: string;
+  iconClass: string;
+  labelClass: string;
+  subClass: string;
+}[] = [
+  {
+    pace: 'fast',
+    label: 'Fast',
+    trashSec: 15,
+    bossSec: 30,
+    Icon: Zap,
+    ring: 'border-emerald-500/70 bg-emerald-950/50 shadow-[0_0_18px_rgba(52,211,153,0.2)] hover:border-emerald-400/90 hover:bg-emerald-950/65',
+    iconClass: 'text-emerald-400',
+    labelClass: 'text-emerald-100',
+    subClass: 'text-emerald-500/90',
+  },
+  {
+    pace: 'normal',
+    label: 'Normal',
+    trashSec: 20,
+    bossSec: 40,
+    Icon: Gauge,
+    ring: 'border-amber-500/65 bg-amber-950/45 shadow-[0_0_16px_rgba(245,158,11,0.15)] hover:border-amber-400/85 hover:bg-amber-950/60',
+    iconClass: 'text-amber-400',
+    labelClass: 'text-amber-100',
+    subClass: 'text-amber-500/85',
+  },
+  {
+    pace: 'slow',
+    label: 'Slow',
+    trashSec: 30,
+    bossSec: 60,
+    Icon: Snail,
+    ring: 'border-sky-500/55 bg-sky-950/40 shadow-[0_0_14px_rgba(56,189,248,0.12)] hover:border-sky-400/80 hover:bg-sky-950/55',
+    iconClass: 'text-sky-400',
+    labelClass: 'text-sky-100',
+    subClass: 'text-sky-500/85',
+  },
+];
+
+export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQueueModalProps) {
   const [tank, setTank] = useState(0);
   const [dps, setDps] = useState(0);
   const [groupReady, setGroupReady] = useState(false);
@@ -154,15 +195,32 @@ export function DungeonQueueModal({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.2 }}
-              className="mt-5"
+              className="mt-5 space-y-2"
             >
-              <button
-                type="button"
-                onClick={() => onConfirmEnter(dungeon)}
-                className={`w-full rounded-lg py-3.5 text-center text-base font-black uppercase tracking-wider ${enterButtonClassName}`}
-              >
-                Enter Dungeon
-              </button>
+              <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                Dungeon pace
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {PACE_OPTIONS.map(({ pace, label, trashSec, bossSec, Icon, ring, iconClass, labelClass, subClass }) => (
+                  <button
+                    key={pace}
+                    type="button"
+                    onClick={() => onConfirmEnter(dungeon, pace)}
+                    className={`flex flex-col items-center gap-1 rounded-lg border-2 px-1.5 py-2.5 text-center transition-colors ${ring}`}
+                  >
+                    <Icon className={`h-6 w-6 shrink-0 ${iconClass}`} strokeWidth={2.2} aria-hidden />
+                    <span className={`text-[11px] font-black uppercase leading-tight tracking-tight ${labelClass}`}>
+                      {label}
+                    </span>
+                    <span className={`font-mono text-[9px] font-bold tabular-nums leading-none ${subClass}`}>
+                      {trashSec}s / {bossSec}s
+                    </span>
+                    <span className={`font-mono text-[9px] font-bold tabular-nums leading-none ${subClass}`}>
+                      ×{dungeonPaceXpMultiplier(pace)} XP
+                    </span>
+                  </button>
+                ))}
+              </div>
             </motion.div>
           ) : (
             <motion.p

@@ -2,6 +2,7 @@ import { GameState, PlayerCombatBuff, Spell, Unit } from './types.ts';
 import { MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
 import { manaPotionInstantMana, manaPotionOverTimeTotal } from './manaPotionIcon.ts';
 import { spellHasTag } from './constants.ts';
+import { effectiveUniqueStatRating } from './playerStats.ts';
 import {
   talentRanks,
   hasPlayerBuff,
@@ -29,12 +30,16 @@ import {
   directHealSynergyMultiplier,
   swiftmendCanApply,
 } from './combatHelper.ts';
+import { BALANCE } from './balance.ts';
 import {
   archangelEchoShieldBonusFraction,
   archangelSkipsSpell,
   graceHealMultiplierOnTarget,
   isPriestSurgeFinisher,
+  paladinRadianceHealMultiplier,
+  priestDivinityOverhealAbsorb,
   resolveManaAfterHealCast,
+  PLAYER_BUFF_OMEN_CLEARCASTING,
 } from './combatHooks.ts';
 import {
   runCastDirectHealMultipliers,
@@ -188,6 +193,13 @@ function validateStandardHeal(s: GameState, input: CastInput, common: CommonVali
   if (surgeFree) {
     pbuffsBaseline = withBuffRemoved(pbuffsBaseline, 'surge_of_light');
   }
+  if (
+    s.playerClass === 'DRUID' &&
+    hasPlayerBuff(s.playerCombatBuffs, PLAYER_BUFF_OMEN_CLEARCASTING) &&
+    (spellId === 'regrowth' || spellId === 'healing_touch')
+  ) {
+    pbuffsBaseline = withBuffRemoved(pbuffsBaseline, PLAYER_BUFF_OMEN_CLEARCASTING);
+  }
   return {
     kind: 'standard',
     spell,
@@ -317,15 +329,29 @@ function patchPartyStandardDirectAndHot(s: GameState, ready: StandardReady): { n
   const archEchoBonusPerTarget = archEchoTargets > 0 ? archShieldBonus / archEchoTargets : 0;
   const awSplashFraction = runPaladinAvengingWrathSplashFraction(s);
   const graceRanks = talentRanks(s.talents, 'priest_grace');
+  const shieldTicksDefault = BALANCE.combat.shared.shieldDefaultTicks;
   let newParty2 = s.party.map((u) => ({ ...u, buffs: u.buffs.map((b) => ({ ...b })) }));
   const healOne = (u: Unit) => {
     if (u.health <= 0) return u;
     const syn = directHealSynergyMultiplier(u, spellId);
     const gr = graceHealMultiplierOnTarget(u, graceRanks);
     const healAmp = runCastDirectHealMultipliers(s, spell, spellId);
-    const directAmt = spell.healing * healMultB * critH * tMod * syn * gr * healAmp;
+    const rad = s.playerClass === 'PALADIN' ? paladinRadianceHealMultiplier(s, u) : 1;
+    const directAmt = spell.healing * healMultB * critH * tMod * syn * gr * healAmp * rad;
+    const room = Math.max(0, u.maxHealth - u.health);
+    const applied = Math.min(room, directAmt);
+    const overheal = Math.max(0, directAmt - applied);
+    let shieldAdd = 0;
+    if (s.playerClass === 'PRIEST' && overheal > 0) {
+      const rating = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
+      shieldAdd = priestDivinityOverhealAbsorb(overheal, rating);
+    }
     const th = Math.min(u.maxHealth, u.health + directAmt);
-    return { ...u, health: th };
+    const nextShield = u.shield + shieldAdd;
+    let nextShieldTicks = u.shieldTicksRemaining;
+    if (shieldAdd > 0) nextShieldTicks = shieldTicksDefault;
+    if (nextShield <= 0) nextShieldTicks = 0;
+    return { ...u, health: th, shield: nextShield, shieldTicksRemaining: nextShieldTicks };
   };
   const addHot = (u: Unit) => {
     if (u.health <= 0) return u;

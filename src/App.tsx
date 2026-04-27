@@ -13,6 +13,7 @@ import {
 import { HealGrid } from './components/HealGrid.tsx';
 import { ActionBars } from './components/ActionBars.tsx';
 import { CharacterRoster } from './components/CharacterRoster.tsx';
+import { SplashScreen } from './components/SplashScreen.tsx';
 import { DungeonSelector } from './components/DungeonSelector.tsx';
 import { maxLevelAcrossRoster } from './gameStorage.ts';
 import { GameHUD } from './components/GameHUD.tsx';
@@ -31,6 +32,8 @@ import type { PlayerCombatStats } from './types.ts';
 import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Star, LogOut, Home } from 'lucide-react';
+
+const REPO_URL = 'https://github.com/jdial1/healerSim';
 
 export default function App() {
   const {
@@ -53,6 +56,7 @@ export default function App() {
   } = useGameEngine();
   const [targetId, setTargetId] = useState<string | null>(null);
   const [showRoster, setShowRoster] = useState(true);
+  const [splashDismissed, setSplashDismissed] = useState(false);
   const [showTalents, setShowTalents] = useState(false);
   const [showPlayerStats, setShowPlayerStats] = useState(false);
   const paladinUnlocked = maxLevelAcrossRoster(roster) >= 5;
@@ -207,25 +211,31 @@ export default function App() {
         ) : null}
 
         {showRoster || !state.playerClass ? (
-          <motion.div
-            key="character-roster"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, x: -100 }}
-          >
-            <CharacterRoster
-              roster={roster}
-              paladinUnlocked={paladinUnlocked}
-              onContinue={(cls) => {
-                loadCharacter(cls);
-                setShowRoster(false);
-              }}
-              onCreate={(cls) => {
-                startNewClass(cls);
-                setShowRoster(false);
-              }}
-            />
-          </motion.div>
+          <AnimatePresence mode="wait">
+            {!splashDismissed ? (
+              <SplashScreen key="splash" onEnter={() => setSplashDismissed(true)} />
+            ) : (
+              <motion.div
+                key="character-roster"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, x: -100 }}
+              >
+                <CharacterRoster
+                  roster={roster}
+                  paladinUnlocked={paladinUnlocked}
+                  onContinue={(cls) => {
+                    loadCharacter(cls);
+                    setShowRoster(false);
+                  }}
+                  onCreate={(cls) => {
+                    startNewClass(cls);
+                    setShowRoster(false);
+                  }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         ) : !state.currentDungeon ? (
           <motion.div
             key="dungeon-select"
@@ -380,15 +390,18 @@ export default function App() {
       ) : null}
 
       {!state.currentDungeon ? (
-        <p
-          className={`fixed left-0 right-0 z-[25] text-center font-mono text-[10px] tracking-wide text-slate-600 ${
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`fixed left-0 right-0 z-[25] block text-center font-mono text-[10px] tracking-wide text-slate-600 underline-offset-2 transition-colors hover:text-slate-400 hover:underline ${
             state.playerClass && !showRoster
               ? 'hidden bottom-40 sm:bottom-44 sm:block'
               : 'bottom-[max(1rem,env(safe-area-inset-bottom,0px))]'
           }`}
         >
           v{__APP_VERSION__}
-        </p>
+        </a>
       ) : null}
     </div>
   );

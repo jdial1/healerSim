@@ -13,7 +13,7 @@ import {
 import { AnimatePresence } from 'motion/react';
 import { bossCombatProfileForDungeon, TICKS_PER_SECOND } from '../constants.ts';
 import { DUNGEONS } from '../dungeons/index.ts';
-import { type BossDebuffTargeting, type Dungeon } from '../types.ts';
+import { type BossDebuffTargeting, type Dungeon, type DungeonPace } from '../types.ts';
 import { computeDungeonXpGain, levelsOverDungeonMax } from '../gameStorage.ts';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { GameIcon } from './GameIcon.tsx';
@@ -21,7 +21,7 @@ import { DungeonQueueModal } from './DungeonQueueModal.tsx';
 import { BOSS_BUFF_ICON_TINT, LOCKED_DUNGEON_ICON } from '../gameIcons.ts';
 
 interface DungeonSelectorProps {
-  onSelect: (dungeon: Dungeon) => void;
+  onSelect: (dungeon: Dungeon, pace: DungeonPace) => void;
   level: number;
   completedDungeonIds: string[];
 }
@@ -564,10 +564,9 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
         {queueDungeon ? (
           <DungeonQueueModal
             dungeon={queueDungeon}
-            enterButtonClassName={queueDungeon.cardTheme.deploy}
             onClose={() => setQueueDungeon(null)}
-            onConfirmEnter={(d) => {
-              onSelect(d);
+            onConfirmEnter={(d, pace) => {
+              onSelect(d, pace);
               setQueueDungeon(null);
             }}
           />

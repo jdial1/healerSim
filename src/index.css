@@ -176,6 +176,45 @@
   .ui-mana-regen-overlay {
     @apply absolute inset-0 flex items-center justify-center bg-slate-950/90 px-0.5 text-[10px] font-black text-blue-300 sm:text-[7px];
   }
+  .ui-splash-root {
+    @apply fixed inset-0 z-[80] flex flex-col overflow-hidden bg-slate-950;
+  }
+  .ui-splash-aurora {
+    @apply pointer-events-none absolute inset-0 overflow-hidden;
+  }
+  .ui-splash-blob {
+    @apply absolute rounded-full blur-[100px] sm:blur-[120px];
+  }
+  .ui-splash-blob-1 {
+    @apply -left-[25%] -top-[35%] h-[min(100vw,42rem)] w-[min(100vw,42rem)] bg-blue-600/30;
+    animation: ui-splash-blob-1 22s ease-in-out infinite;
+  }
+  .ui-splash-blob-2 {
+    @apply -right-[20%] top-[10%] h-[min(95vw,38rem)] w-[min(95vw,38rem)] bg-emerald-600/18;
+    animation: ui-splash-blob-2 26s ease-in-out infinite;
+    animation-delay: -4s;
+  }
+  .ui-splash-blob-3 {
+    @apply bottom-[-25%] left-[15%] h-[min(90vw,36rem)] w-[min(90vw,36rem)] bg-indigo-600/22;
+    animation: ui-splash-blob-3 20s ease-in-out infinite;
+    animation-delay: -7s;
+  }
+  .ui-splash-shimmer {
+    @apply absolute -left-1/4 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white to-transparent opacity-0;
+    animation: ui-splash-shimmer 11s ease-in-out infinite;
+  }
+  .ui-splash-grid {
+    @apply absolute inset-0 opacity-[0.14];
+    background-image:
+      linear-gradient(rgb(148 163 184 / 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(148 163 184 / 0.12) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, black 20%, transparent 72%);
+    animation: ui-splash-grid-drift 14s linear infinite;
+  }
+  .ui-splash-vignette {
+    @apply pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,transparent_0%,rgb(2,6,23)_72%)] opacity-90;
+  }
 }
 
 @keyframes lfg-border-flash {
@@ -187,5 +226,68 @@
   50% {
     border-color: rgb(250 204 21 / 0.95);
     box-shadow: 0 0 22px 2px rgb(250 204 21 / 0.35);
+  }
+}
+
+@keyframes ui-splash-blob-1 {
+  0%,
+  100% {
+    transform: translate(-8%, -12%) scale(1);
+  }
+  40% {
+    transform: translate(12%, 8%) scale(1.12);
+  }
+  70% {
+    transform: translate(-4%, 14%) scale(0.94);
+  }
+}
+
+@keyframes ui-splash-blob-2 {
+  0%,
+  100% {
+    transform: translate(10%, 18%) scale(1.05);
+  }
+  45% {
+    transform: translate(-14%, -6%) scale(1.08);
+  }
+  80% {
+    transform: translate(6%, -12%) scale(0.92);
+  }
+}
+
+@keyframes ui-splash-blob-3 {
+  0%,
+  100% {
+    transform: translate(-18%, 22%) scale(0.98);
+  }
+  50% {
+    transform: translate(18%, -10%) scale(1.1);
+  }
+}
+
+@keyframes ui-splash-shimmer {
+  0% {
+    transform: translateX(-30%) skewX(-12deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.12;
+  }
+  50% {
+    transform: translateX(130%) skewX(-12deg);
+    opacity: 0.08;
+  }
+  100% {
+    transform: translateX(130%) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes ui-splash-grid-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 48px, 0);
   }
 }

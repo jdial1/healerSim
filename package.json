@@ -1,7 +1,7 @@
 {
   "name": "healersim",
   "private": true,
-  "version": "0.1.82",
+  "version": "0.1.84",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -12,7 +12,9 @@
     "lint": "tsc --noEmit",
     "icons:verify": "node scripts/verify-wow-icons.mjs",
     "test:dungeons": "tsx scripts/test-dungeons.ts",
-    "test:class": "tsx scripts/test-classes.ts"
+    "test:class": "tsx scripts/test-classes.ts",
+    "test:spells": "tsx scripts/test-spells.ts",
+    "tests": "npm run test:dungeons && npm run test:class && npm run test:spells"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

@@ -70,7 +70,10 @@
     "icon": "wow/spell_nature_natureguardian",
     "gridX": 4,
     "gridY": 0,
-    "mechanicId": "druid_verdant_reservoir"
+    "mechanicId": "druid_verdant_reservoir",
+    "statBonus": {
+      "uniqueStat": 1
+    }
   },
   {
     "id": "d_r1c0",
@@ -228,7 +231,10 @@
     "prerequisites": [
       "d_r1c3"
     ],
-    "mechanicId": "photosynthesis"
+    "mechanicId": "photosynthesis",
+    "statBonus": {
+      "uniqueStat": 1.1
+    }
   },
   {
     "id": "d_r2c4",
@@ -247,7 +253,10 @@
     "exclusiveWith": [
       "d_r1c4"
     ],
-    "mechanicId": "druid_path_deep_roots"
+    "mechanicId": "druid_path_deep_roots",
+    "statBonus": {
+      "uniqueStat": 0.85
+    }
   },
   {
     "id": "d_r3c0",

@@ -6,7 +6,7 @@
     "multiplierPerPartyLevelOverDungeonMax": 0.62
   },
   "trash": {
-    "maxHealthFractionOfBoss": 0.155
+    "maxHealthFractionOfBoss": 0.16667
   },
   "xp": {
     "dungeonTierAdditivePerDifficultyOver1": 0.2,
@@ -30,6 +30,10 @@
       "dispellableCurseCleanseProcPerRank": 0.08
     },
     "priest": {
+      "divinityOverhealToShieldPerRating": 0.0035,
+      "divinityAegisMultBonusPerRating": 0.004,
+      "passiveEchoOfLightHealFraction": 0.08,
+      "passiveEchoOfLightDurationTicks": 50,
       "pathMoonMaxManaReturnPerRank": 0.01,
       "meditativeManaReturnPerRankPerTick": 0.003,
       "divineAegisShieldFractionPerRank": 0.2,
@@ -44,6 +48,11 @@
       "aegisBurstHealPerAbsorbPerRank": 0.15
     },
     "paladin": {
+      "radianceHealMultPerMissingHealthPerRating": 0.0028,
+      "radianceHealMultBonusCap": 0.24,
+      "passiveLightbringerSplashFraction": 0.15,
+      "passiveLightbringerEnvDamageManaPerHp": 0.07,
+      "passiveLightbringerEnvDamageHolyPowerChance": 0.09,
       "devotionDamageReductionPerRank": 0.04,
       "devotionDamageTakenFloor": 0.72,
       "vowProtectorCritManaRefundFraction": 0.15,
@@ -57,6 +66,14 @@
       "avengingWrathSplashFraction": 0.3
     },
     "druid": {
+      "vitalityBloomChancePerRating": 0.0018,
+      "vitalityBloomChanceCap": 0.26,
+      "vitalityBloomHealFractionOfTick": 0.42,
+      "vitalityBloomManaRefundChance": 0.16,
+      "vitalityBloomManaRefundAmount": 0.55,
+      "passiveOmenProcPerHotTickPerRating": 0.00035,
+      "passiveOmenProcChanceCap": 0.055,
+      "passiveOmenClearcastingTicks": 70,
       "treeOfLifeHotManaCostFactor": 0.7,
       "treeOfLifeBigDirectManaCostFactor": 1.2,
       "treeOfLifeFlashHealHealingThreshold": 20,

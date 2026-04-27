@@ -11,6 +11,7 @@ import {
   effectiveTalentPointWeight,
   talentTreeGlowForClass,
   unmetChainedPrerequisiteTalents,
+  UNIQUE_STAT_LABELS,
 } from '../playerStats.ts';
 import { GameIcon } from './GameIcon.tsx';
 import type { ExclusiveSplitPair } from '../talentSplitPairs.ts';
@@ -41,6 +42,7 @@ const STAT_ORDER: TalentStatKey[] = [
   'haste',
   'critChance',
   'manaReturnOnDirectHeal',
+  'uniqueStat',
 ];
 
 const STAT_LABELS: Record<TalentStatKey, string> = {
@@ -49,6 +51,7 @@ const STAT_LABELS: Record<TalentStatKey, string> = {
   haste: 'Haste',
   critChance: 'Crit',
   manaReturnOnDirectHeal: 'Regen',
+  uniqueStat: '',
 };
 
 const STAT_SUFFIX: Record<TalentStatKey, string> = {
@@ -57,6 +60,7 @@ const STAT_SUFFIX: Record<TalentStatKey, string> = {
   haste: '%',
   critChance: '%',
   manaReturnOnDirectHeal: '',
+  uniqueStat: '',
 };
 
 function statKeysFromBonus(t: Talent): TalentStatKey[] {
@@ -68,6 +72,7 @@ function statKeysFromBonus(t: Talent): TalentStatKey[] {
   if (b.haste) out.push('haste');
   if (b.critChance) out.push('critChance');
   if (b.manaReturnOnDirectHeal) out.push('manaReturnOnDirectHeal');
+  if (b.uniqueStat) out.push('uniqueStat');
   return out;
 }
 
@@ -133,6 +138,7 @@ function rankDescriptionFromStatBonus(talent: Talent, rank: number): string | nu
   if (bonus.critChance) parts.push(`+${formatRankValue(bonus.critChance * rank)}% crit`);
   if (bonus.manaReturnOnDirectHeal)
     parts.push(`+${formatRankValue(bonus.manaReturnOnDirectHeal * rank)} mana return`);
+  if (bonus.uniqueStat) parts.push(`+${formatRankValue(bonus.uniqueStat * rank)} class stat`);
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
@@ -315,6 +321,8 @@ export function TalentTree({
               const sel = effectiveStatHighlight === key;
               const suffix = STAT_SUFFIX[key];
               const total = formatRankValue(statTotals[key]);
+              const pillLabel =
+                key === 'uniqueStat' ? UNIQUE_STAT_LABELS[playerClass] : STAT_LABELS[key];
               return (
                 <button
                   key={key}
@@ -326,7 +334,7 @@ export function TalentTree({
                       : 'border-slate-600 bg-slate-800 text-slate-300 hover:border-slate-500 hover:bg-slate-700'
                   }`}
                 >
-                  <span>{STAT_LABELS[key]}</span>
+                  <span>{pillLabel}</span>
                   <span className={`text-[9px] leading-tight sm:text-[10px] ${sel ? 'text-emerald-100' : 'text-emerald-300'}`}>
                     +{total}
                     {suffix}

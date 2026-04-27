@@ -21,23 +21,36 @@ export type ClassUiRow = {
   portraitIcon: string;
   portraitGlow: string;
   icon: LucideIcon;
+  passiveTraitName: string;
+  passiveTraitDescription: string;
+  passiveTraitIcon: string;
 };
 
 export function classUiRows(): ClassUiRow[] {
-  return classesData.selector.map((row) => ({
-    id: row.id as ClassType,
-    name: row.name,
-    description: row.description,
-    iconKey: row.iconKey,
-    color: row.color,
-    textColor: row.textColor,
-    hoverBorderClass: row.hoverBorderClass,
-    jsonLocked: row.locked,
-    portraitUrl: row.portraitUrl,
-    portraitIcon: row.portraitIcon,
-    portraitGlow: row.portraitGlow,
-    icon: ICON_BY_KEY[row.iconKey],
-  }));
+  return classesData.selector.map((row) => {
+    const ext = row as typeof row & {
+      passiveTraitName?: string;
+      passiveTraitDescription?: string;
+      passiveTraitIcon?: string;
+    };
+    return {
+      id: row.id as ClassType,
+      name: row.name,
+      description: row.description,
+      iconKey: row.iconKey,
+      color: row.color,
+      textColor: row.textColor,
+      hoverBorderClass: row.hoverBorderClass,
+      jsonLocked: row.locked,
+      portraitUrl: row.portraitUrl,
+      portraitIcon: row.portraitIcon,
+      portraitGlow: row.portraitGlow,
+      icon: ICON_BY_KEY[row.iconKey],
+      passiveTraitName: ext.passiveTraitName ?? '',
+      passiveTraitDescription: ext.passiveTraitDescription ?? '',
+      passiveTraitIcon: ext.passiveTraitIcon ?? 'wow/spell_holy_sealofwisdom',
+    };
+  });
 }
 
 export function classDisplayName(cls: ClassType): string {

@@ -6,7 +6,7 @@
     "levelMin": 1,
     "levelMax": 3,
     "bossName": "Edwin VanCleef",
-    "bossHealth": 7720,
+    "bossHealth": 5150,
     "bossIcon": "delapouite/pirate-captain",
     "cardIcon": "lorc/wooden-door",
     "cardTheme": {
@@ -39,7 +39,7 @@
           "name": "Gut Slash",
           "icon": "lorc/sunder-armor",
           "durationTicks": 120,
-          "damagePerTick": 0.7,
+          "damagePerTick": 0.9,
           "targeting": "single_random",
           "dispellable": false
         }
@@ -71,7 +71,7 @@
     "levelMin": 4,
     "levelMax": 6,
     "bossName": "Verdan the Everliving",
-    "bossHealth": 13730,
+    "bossHealth": 9500,
     "bossIcon": "delapouite/shambling-mound",
     "cardIcon": "delapouite/cobra",
     "cardTheme": {
@@ -136,7 +136,7 @@
     "levelMin": 7,
     "levelMax": 9,
     "bossName": "High Inspector Whitemane",
-    "bossHealth": 22310,
+    "bossHealth": 14450,
     "bossIcon": "delapouite/pope-crown",
     "cardIcon": "lorc/burning-book",
     "cardTheme": {
@@ -168,8 +168,8 @@
           "abilityId": "smite_sear",
           "name": "Holy Fire",
           "icon": "lorc/burning-embers",
-          "durationTicks": 40,
-          "damagePerTick": 2.4,
+          "durationTicks": 50,
+          "damagePerTick": 3.5,
           "targeting": "two_random",
           "dispellable": false
         }
@@ -188,7 +188,7 @@
           "abilityId": "smite_penance",
           "name": "Penitent Flare",
           "icon": "lorc/angel-wings",
-          "damage": 40,
+          "damage": 38,
           "targeting": "single_random"
         }
       ]
@@ -201,7 +201,7 @@
     "levelMin": 10,
     "levelMax": 12,
     "bossName": "Chief Ukorz Sandscalp",
-    "bossHealth": 34320,
+    "bossHealth": 19850,
     "bossIcon": "delapouite/ceremonial-mask",
     "cardIcon": "delapouite/cactus",
     "cardTheme": {
@@ -266,7 +266,7 @@
     "levelMin": 13,
     "levelMax": 15,
     "bossName": "Shade of Eranikus",
-    "bossHealth": 44620,
+    "bossHealth": 25550,
     "bossIcon": "lorc/dragon-head",
     "cardIcon": "delapouite/star-altar",
     "cardTheme": {
@@ -296,11 +296,11 @@
       "debuffTemplates": [
         {
           "abilityId": "eranikus_corruption",
-          "name": "Deep Slumber",
-          "icon": "lorc/sleepy",
+          "name": "Nightmare Corrosion",
+          "icon": "lorc/acid-blob",
           "durationTicks": 140,
-          "damagePerTick": 0.5,
-          "targeting": "single_random",
+          "damagePerTick": 1.5,
+          "targeting": "two_random",
           "dispellable": false
         }
       ],
@@ -318,7 +318,7 @@
           "abilityId": "eranikus_acid",
           "name": "Acid Breath",
           "icon": "lorc/acid-blob",
-          "damage": 42,
+          "damage": 45,
           "targeting": "all_living"
         }
       ]
@@ -331,7 +331,7 @@
     "levelMin": 16,
     "levelMax": 18,
     "bossName": "Emperor Thaurissan",
-    "bossHealth": 55770,
+    "bossHealth": 31550,
     "bossIcon": "lorc/hand-clench",
     "cardIcon": "delapouite/prisoner",
     "cardTheme": {
@@ -364,7 +364,7 @@
           "name": "Magma Splash",
           "icon": "lorc/volcano",
           "durationTicks": 60,
-          "damagePerTick": 1.8,
+          "damagePerTick": 2.5,
           "targeting": "all_living",
           "dispellable": false
         }
@@ -383,7 +383,7 @@
           "abilityId": "thaurissan_dominate",
           "name": "Hand of Thaurissan",
           "icon": "lorc/hand-clench",
-          "damage": 72,
+          "damage": 45,
           "targeting": "single_random"
         }
       ]
@@ -396,7 +396,7 @@
     "levelMin": 19,
     "levelMax": 21,
     "bossName": "Baron Rivendare",
-    "bossHealth": 66920,
+    "bossHealth": 37800,
     "bossIcon": "lorc/grim-reaper",
     "cardIcon": "lorc/skeleton",
     "cardTheme": {
@@ -429,8 +429,8 @@
           "name": "Necrotic Plague",
           "icon": "lorc/skeletal-hand",
           "durationTicks": 150,
-          "damagePerTick": 1.3,
-          "targeting": "two_random",
+          "damagePerTick": 1.6,
+          "targeting": "all_living",
           "dispellable": false
         }
       ],
@@ -448,7 +448,7 @@
           "abilityId": "rivendare_death_coil",
           "name": "Death Coil",
           "icon": "delapouite/dead-head",
-          "damage": 82,
+          "damage": 55,
           "targeting": "single_random"
         }
       ]
@@ -461,7 +461,7 @@
     "levelMin": 22,
     "levelMax": 24,
     "bossName": "Darkmaster Gandling",
-    "bossHealth": 72930,
+    "bossHealth": 44300,
     "bossIcon": "lorc/wizard-staff",
     "cardIcon": "delapouite/vial",
     "cardTheme": {
@@ -493,8 +493,8 @@
           "abilityId": "gandling_curse",
           "name": "Incinerate Soul",
           "icon": "lorc/soul-vessel",
-          "durationTicks": 50,
-          "damagePerTick": 4.4,
+          "durationTicks": 120,
+          "damagePerTick": 3.2,
           "targeting": "single_random",
           "dispellable": true
         }
@@ -513,7 +513,7 @@
           "abilityId": "gandling_shadow_bolt",
           "name": "Shadow Volley",
           "icon": "lorc/lightning-glow",
-          "damage": 58,
+          "damage": 40,
           "targeting": "all_living"
         }
       ]

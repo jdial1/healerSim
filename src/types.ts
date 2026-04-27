@@ -155,6 +155,7 @@ export interface Talent {
     haste?: number;
     critChance?: number;
     manaReturnOnDirectHeal?: number;
+    uniqueStat?: number;
   };
   exclusiveWith?: string[];
   mechanicId?: MechanicId;
@@ -217,6 +218,8 @@ export type DungeonRunOutcome =
 
 export type CombatPhase = 'TRASH' | 'BOSS';
 
+export type DungeonPace = 'fast' | 'normal' | 'slow';
+
 export interface PlayerCombatStats {
   playerClass: ClassType;
   level: number;
@@ -246,6 +249,7 @@ export interface GameState {
   unlockedSpells: string[];
   activeActionBars: string[];
   currentDungeon: Dungeon | null;
+  dungeonPace: DungeonPace | null;
   dungeonProgress: number;
   combatPhase: CombatPhase;
   trashPullsRemaining: number;

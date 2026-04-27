@@ -6,6 +6,7 @@
 import type { ClassType } from '../types.ts';
 import type { ClassUiRow } from '../classUiData.ts';
 import { ClassPickList } from './ClassPickList.tsx';
+import { GameIcon } from './GameIcon.tsx';
 
 interface ClassSelectorProps {
   onSelect: (cls: ClassType) => void;
@@ -22,6 +23,17 @@ export function ClassSelector({ onSelect }: ClassSelectorProps) {
       isRowLocked={(row: ClassUiRow) => row.jsonLocked}
       onRowActivate={onSelect}
       showDescription
+      subline={(row) => (
+        <span className="flex items-center gap-2 text-left">
+          <GameIcon iconPath={row.passiveTraitIcon} glow="spell" size="sm" />
+          <span>
+            <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
+              Class trait
+            </span>
+            <span className="text-xs font-bold text-slate-300">{row.passiveTraitName}</span>
+          </span>
+        </span>
+      )}
     />
   );
 }

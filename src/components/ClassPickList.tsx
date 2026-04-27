@@ -67,11 +67,14 @@ export function ClassPickList({
                   {row.name}
                 </h3>
                 {showDescription ? (
-                  <p className="mt-2 max-w-xs text-base font-medium leading-tight text-slate-400 sm:text-sm">
-                    {row.description}
-                  </p>
+                  <div className="mt-2 max-w-md space-y-2">
+                    <p className="max-w-xs text-base font-medium leading-tight text-slate-400 sm:text-sm">
+                      {row.description}
+                    </p>
+                    {extra ? <div className="text-slate-400">{extra}</div> : null}
+                  </div>
                 ) : extra ? (
-                  <p className="mt-2 font-mono text-sm font-bold text-slate-400">{extra}</p>
+                  <div className="mt-2 font-mono text-sm font-bold text-slate-400">{extra}</div>
                 ) : null}
               </div>
               {locked ? (

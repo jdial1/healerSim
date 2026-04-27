@@ -5,6 +5,7 @@ import { ClassType, Talent } from '../types.ts';
 import { buildPlayerStatBreakdown } from '../playerStats.ts';
 import { getManaRegenPerSecond } from '../constants.ts';
 import { classDisplayName, classUiRowForClass } from '../classUiData.ts';
+import { GameIcon } from './GameIcon.tsx';
 
 interface PlayerStatsModalProps {
   playerClass: ClassType;
@@ -12,6 +13,8 @@ interface PlayerStatsModalProps {
   talents: Talent[];
   onClose: () => void;
 }
+
+const RESOURCE_BAR_SEGMENTS = 10;
 
 interface VerticalResourceBarProps {
   pool: number;
@@ -25,14 +28,14 @@ function VerticalResourceBar({ pool, fillClass, glowClass, valueClassName }: Ver
   return (
     <div className="flex min-h-0 w-24 flex-col items-stretch gap-2 self-stretch sm:w-28">
       <div
-        className={`relative min-h-0 flex-1 overflow-hidden rounded-lg border-2 border-slate-600/95 bg-slate-950/95 shadow-[inset_0_3px_10px_rgba(0,0,0,0.72)] ${glowClass}`}
+        className={`relative flex min-h-0 flex-1 flex-col gap-[3px] overflow-hidden rounded-lg border-2 border-slate-600/95 bg-slate-950/95 p-[3px] shadow-[inset_0_3px_10px_rgba(0,0,0,0.72)] ${glowClass}`}
       >
-        <motion.div
-          className={`absolute bottom-0 left-0 right-0 rounded-b-md ${fillClass} shadow-[0_0_14px_rgba(0,0,0,0.4)]`}
-          initial={false}
-          animate={{ height: '100%' }}
-          transition={{ type: 'tween', duration: 0.25 }}
-        />
+        {Array.from({ length: RESOURCE_BAR_SEGMENTS }, (_, i) => (
+          <div
+            key={i}
+            className={`min-h-0 flex-1 rounded-sm ${fillClass} shadow-[0_0_6px_rgba(0,0,0,0.35)] first:rounded-t-md last:rounded-b-md`}
+          />
+        ))}
       </div>
       <span
         className={`shrink-0 whitespace-nowrap text-center font-mono text-sm font-black tabular-nums tracking-tight sm:text-base ${valueClassName}`}
@@ -60,12 +63,15 @@ interface StatPanelProps {
 }
 
 function StatPanel({ title, children }: StatPanelProps) {
+  const showHeader = title.trim().length > 0;
   return (
     <div className="overflow-hidden rounded border border-slate-600/90 bg-black/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-      <div className="flex items-center justify-between border-b border-slate-700 bg-slate-800/95 px-2 py-1.5">
-        <span className="text-[11px] font-bold uppercase tracking-wide text-amber-100/95">{title}</span>
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={2.5} aria-hidden />
-      </div>
+      {showHeader ? (
+        <div className="flex items-center justify-between border-b border-slate-700 bg-slate-800/95 px-2 py-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-amber-100/95">{title}</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={2.5} aria-hidden />
+        </div>
+      ) : null}
       <div className="px-1.5 py-1.5">{children}</div>
     </div>
   );
@@ -144,7 +150,7 @@ export function PlayerStatsModal({
             <div className="flex min-h-0 w-full max-w-xl flex-1 items-stretch justify-center gap-3 sm:max-w-2xl sm:gap-4">
               <VerticalResourceBar
                 pool={b.maxHealth}
-                fillClass="bg-gradient-to-t from-red-950 to-red-500"
+                fillClass="bg-red-600"
                 glowClass="shadow-[inset_0_0_0_1px_rgba(248,113,113,0.2)]"
                 valueClassName="text-red-300"
               />
@@ -162,7 +168,7 @@ export function PlayerStatsModal({
               </div>
               <VerticalResourceBar
                 pool={b.maxMana}
-                fillClass="bg-gradient-to-t from-blue-900 to-sky-400"
+                fillClass="bg-sky-500"
                 glowClass="shadow-[inset_0_0_0_1px_rgba(56,189,248,0.12)]"
                 valueClassName="text-sky-300"
               />
@@ -182,6 +188,23 @@ export function PlayerStatsModal({
             <SpellStatRow label="Crit Chance" value={formatCritChance(b.critChancePct)} />
             <SpellStatRow label="Mana Regen" value={`${formatManaRegen(regenSec)}/s`} />
             <SpellStatRow label="Haste" value={formatCritChance(b.hastePct)} />
+          </StatPanel>
+        </div>
+        <div className="space-y-2 px-3 pb-3 sm:px-4 sm:pb-4">
+          <StatPanel title="">
+            <div className="flex gap-3 px-1.5 py-2">
+              <GameIcon iconPath={b.passiveTraitIcon} glow="spell" size="md" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black uppercase tracking-wide text-amber-100">{b.passiveTraitName}</p>
+                <p className="mt-1 text-[12px] leading-snug text-slate-400">{b.passiveTraitDescription}</p>
+              </div>
+            </div>
+          </StatPanel>
+          <StatPanel title="">
+            <div className="px-1.5 py-2">
+              <SpellStatRow label={b.uniqueStatLabel} value={String(b.uniqueStatRating)} />
+              <p className="mt-2 px-1.5 text-[12px] leading-snug text-slate-400">{b.uniqueStatDescription}</p>
+            </div>
           </StatPanel>
         </div>
       </div>

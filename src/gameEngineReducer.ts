@@ -1,4 +1,4 @@
-import { GameState, ClassType, Dungeon } from './types.ts';
+import { GameState, ClassType, Dungeon, DungeonPace } from './types.ts';
 import {
   TICK_RATE,
   TRASH_PACK_COUNT,
@@ -25,12 +25,12 @@ import { advanceCombatTick, type TickRandom } from './gameTick.ts';
 import { tryApplySpellCast, type CastRuntime } from './spellCastPipeline.ts';
 
 export type GameAction =
-  | { type: 'TICK'; random: TickRandom; now: number }
+  | { type: 'TICK'; random: TickRandom; now: number; dpsMultiplier?: number }
   | { type: 'SET'; state: GameState }
   | { type: 'REORDER_ACTION_BAR'; from: number; to: number }
   | { type: 'DISMISS_DUNGEON_OUTCOME' }
   | { type: 'ABANDON_DUNGEON' }
-  | { type: 'START_DUNGEON'; dungeon: Dungeon }
+  | { type: 'START_DUNGEON'; dungeon: Dungeon; pace: DungeonPace }
   | { type: 'UNLOCK_TALENT'; talentId: string }
   | { type: 'RESPEC_TALENTS' }
   | { type: 'CAST_SPELL'; spellId: string; targetId: string; critRoll: number }
@@ -57,7 +57,9 @@ function tickSpellCooldowns(state: GameState): GameState {
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'TICK':
-      return tickSpellCooldowns(advanceCombatTick(state, action.random, action.now));
+      return tickSpellCooldowns(
+        advanceCombatTick(state, action.random, action.now, action.dpsMultiplier),
+      );
     case 'SET':
       return action.state;
     case 'REORDER_ACTION_BAR': {
@@ -88,13 +90,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         bossMechanicCountdownTicks: 0,
         bossMechanicOrdinal: 0,
         spellCooldowns: {},
+        dungeonPace: null,
       };
     case 'START_DUNGEON': {
       const dungeon = action.dungeon;
+      const pace = action.pace;
       const trashHp = trashMaxHealthForDungeon(dungeon);
       return {
         ...state,
         currentDungeon: dungeon,
+        dungeonPace: pace,
         dungeonProgress: 0,
         combatPhase: 'TRASH',
         trashPullsRemaining: TRASH_PACK_COUNT,
@@ -246,6 +251,7 @@ export function emptyGameBase(): GameState {
     unlockedSpells: [],
     activeActionBars: [],
     currentDungeon: null,
+    dungeonPace: null,
     dungeonProgress: 0,
     combatPhase: 'TRASH',
     trashPullsRemaining: TRASH_PACK_COUNT,

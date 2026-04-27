@@ -28,7 +28,9 @@ import {
   applyBeaconEcho,
   applyBindingHealSelf,
   applyDivineAegis,
+  applyEchoOfLightPriest,
   applyGraceStacksFromDirectHeal,
+  applyLightbringerResolveSplash,
   applyLivingSeed,
   druidHotTickManaReturn,
   druidHotTickRateMultiplier,
@@ -51,6 +53,7 @@ import {
   priestShieldMaintenanceHasteBonus,
   priestMeditativeManaReturnPerTick,
   priestFlashCritBonusFromSynergy,
+  druidVitalityBloomTickExtras,
   rollSurgeOfLight,
   vowCrusaderAoEMultiplier,
 } from './combatHooks.ts';
@@ -111,6 +114,8 @@ export type HotTickModifierContext = {
   unit: Unit;
   buff: Buff;
   healPerTick: number;
+  appliedTickHeal?: number;
+  vitalityBloomMana?: number;
 };
 
 export type SpecialHealCastContext = {
@@ -156,7 +161,9 @@ export function runHotTickAmount(ctx: HotTickModifierContext): number {
   amt *= druidHarmonyHotTickMultiplier(state, state.playerCombatBuffs);
   amt *= cultivationHotMultiplier(state, ctx.buff.sourceSpellId);
   amt *= deepRootsHotMultiplier(state, ctx.unit, ctx.buff.sourceSpellId);
-  return amt;
+  const vb = druidVitalityBloomTickExtras(state, amt);
+  ctx.vitalityBloomMana = vb.mana;
+  return amt + vb.extraHeal;
 }
 
 export function runHotTickRateMultiplier(ctx: HotTickModifierContext): number {
@@ -164,7 +171,9 @@ export function runHotTickRateMultiplier(ctx: HotTickModifierContext): number {
 }
 
 export function runHotTickManaReturn(ctx: HotTickModifierContext): number {
-  return druidHotTickManaReturn(ctx.state, ctx.buff.sourceSpellId);
+  let m = druidHotTickManaReturn(ctx.state, ctx.buff.sourceSpellId);
+  m += ctx.vitalityBloomMana ?? 0;
+  return m;
 }
 
 export function runCastDirectHealMultipliers(s: GameState, spell: Spell, spellId: string): number {
@@ -307,6 +316,26 @@ export function runOnHealLand(
         ),
       };
     }
+  }
+
+  if (s.playerClass === 'PRIEST') {
+    acc = {
+      ...acc,
+      party: applyEchoOfLightPriest(s, ctx.partyBeforeCast, acc.party, ctx.spell, ctx.spellId, ctx.targetId),
+    };
+  }
+  if (s.playerClass === 'PALADIN') {
+    acc = {
+      ...acc,
+      party: applyLightbringerResolveSplash(
+        s,
+        ctx.partyBeforeCast,
+        acc.party,
+        ctx.spell,
+        ctx.spellId,
+        ctx.targetId,
+      ),
+    };
   }
 
   return acc;

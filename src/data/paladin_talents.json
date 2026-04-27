@@ -208,7 +208,10 @@
     "prerequisites": [
       "h_r1c3"
     ],
-    "mechanicId": "devotion_aura"
+    "mechanicId": "devotion_aura",
+    "statBonus": {
+      "uniqueStat": 0.75
+    }
   },
   {
     "id": "h_r3c0",
@@ -225,7 +228,8 @@
       "h_r2c0"
     ],
     "statBonus": {
-      "healingBoost": 4
+      "healingBoost": 4,
+      "uniqueStat": 0.7
     }
   },
   {
@@ -242,7 +246,10 @@
     "prerequisites": [
       "h_r2c1"
     ],
-    "mechanicId": "beacon_of_light"
+    "mechanicId": "beacon_of_light",
+    "statBonus": {
+      "uniqueStat": 1.25
+    }
   },
   {
     "id": "h_r3c2",
