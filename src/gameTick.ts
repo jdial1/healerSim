@@ -28,7 +28,7 @@ import {
   upsertPlayerBuff,
   tickPlayerBuffs,
   ICD_SPIRIT_REDEMPTION,
-  PLAYER_BUFF_MANA_REGEN_POTION,
+  getManaPotionDripPerTick,
   PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT,
   getPlayerBuffRemainingTicks,
   naturalPerfectionStacksFrom,
@@ -39,14 +39,33 @@ import {
 import { effectivePrimaryStats } from './playerStats.ts';
 import { T_SPIRIT_AMP } from './combatHelper.ts';
 import { GRACE_SOURCE_ID } from './auraConfig.ts';
-import { runDamageTakenMultiplier, runHotTickAmount, runOnShieldTransition } from './combatPipeline.ts';
+import {
+  runDamageTakenMultiplier,
+  runHotTickAmount,
+  runHotTickManaReturn,
+  runHotTickRateMultiplier,
+  runOnShieldTransition,
+  runDruidBarkskinSelfHealOnDamage,
+  runPriestMeditativeManaReturnPerTick,
+} from './combatPipeline.ts';
 import { computeMetaFromProgress, computeDungeonXpGain, computeDungeonFailureXpGain } from './gameStorage.ts';
 import { generateCombatUid } from './combatUid.ts';
 
 export type TickRandom = () => number;
+const DEEP_SLUMBER_SOURCE_ABILITY_ID = 'eranikus_corruption';
 
 function randomIntInclusive(min: number, max: number, random: TickRandom): number {
   return Math.floor(random() * (max - min + 1)) + min;
+}
+
+function hasDeepSlumberDebuff(unit: Unit): boolean {
+  return unit.debuffs.some((d) => d.sourceAbilityId === DEEP_SLUMBER_SOURCE_ABILITY_ID);
+}
+
+function removeDeepSlumberDebuff(unit: Unit): Unit {
+  const debuffs = unit.debuffs.filter((d) => d.sourceAbilityId !== DEEP_SLUMBER_SOURCE_ABILITY_ID);
+  if (debuffs.length === unit.debuffs.length) return unit;
+  return { ...unit, debuffs };
 }
 
 function applyBossDebuffTemplate(
@@ -68,6 +87,7 @@ function applyBossDebuffTemplate(
         damagePerTick: template.damagePerTick,
         icon: template.icon,
         sourceAbilityId: template.abilityId,
+        dispellable: template.dispellable,
       };
       return { ...u, debuffs: [debuff] };
     });
@@ -134,6 +154,7 @@ function applyDamageToUnitVitality(
   shield: number;
   shieldTicksRemaining: number;
   livingSeedPool: number;
+  tookHealthDamage: number;
   naturalPerfectionTick: 0 | 1;
 } {
   if (damage <= 0) {
@@ -142,6 +163,7 @@ function applyDamageToUnitVitality(
       shield: v.shield,
       shieldTicksRemaining: v.shieldTicksRemaining,
       livingSeedPool: v.livingSeedPool,
+      tookHealthDamage: 0,
       naturalPerfectionTick: 0,
     };
   }
@@ -162,6 +184,7 @@ function applyDamageToUnitVitality(
     shield: sh,
     shieldTicksRemaining: ticks,
     livingSeedPool: seed,
+    tookHealthDamage: hit.tookHealthDamage,
     naturalPerfectionTick,
   };
 }
@@ -196,13 +219,14 @@ function applyBossAttackTemplate(
     if (tankDead && (u.role === 'DPS' || u.role === 'HEALER')) dmg *= 2;
     const out = applyDamageToUnitVitality(u, dmg, natRank);
     if (out.naturalPerfectionTick) naturalPerfectionAdd = 1;
-    return {
+    const withDamage = {
       ...u,
       health: out.health,
       shield: out.shield,
       shieldTicksRemaining: out.shieldTicksRemaining,
       livingSeedPool: out.livingSeedPool,
     };
+    return removeDeepSlumberDebuff(withDamage);
   });
 
   return { party: next, naturalPerfectionAdd };
@@ -298,7 +322,7 @@ function processPartyEnvironmentalTick(
   bossSelfBuffsForPartyDamageMult: BossSelfBuff[],
   random: TickRandom,
   naturalPerfectionStacks: number,
-): { party: Unit[]; naturalPerfectionStacks: number } {
+): { party: Unit[]; naturalPerfectionStacks: number; manaReturnFromHotTicks: number } {
   const bossPartyDamageMult =
     state.combatPhase === 'BOSS' && bossSelfBuffsForPartyDamageMult.length > 0
       ? Math.max(...bossSelfBuffsForPartyDamageMult.map((b) => b.partyDamageMultiplier))
@@ -307,6 +331,7 @@ function processPartyEnvironmentalTick(
   const tankIndex = partyAfterBossAI.findIndex((u) => u.role === 'TANK');
   const newParty: Unit[] = [];
   let nextNat = naturalPerfectionStacks;
+  let manaFromHotTicks = 0;
   const natRank = talentRanks(state.talents, 'natural_perfection');
 
   for (let idx = 0; idx < partyAfterBossAI.length; idx++) {
@@ -357,6 +382,9 @@ function processPartyEnvironmentalTick(
     curShieldTicks = vit.shieldTicksRemaining;
     liveSeed = vit.livingSeedPool;
     if (vit.naturalPerfectionTick) nextNat = Math.min(5, nextNat + 1);
+    if (state.playerClass === 'DRUID' && unit.role === 'HEALER' && vit.tookHealthDamage > 0) {
+      currentHealth = Math.min(unit.maxHealth, currentHealth + runDruidBarkskinSelfHealOnDamage(state, vit.tookHealthDamage));
+    }
 
     const dotLevelMult = state.currentDungeon
       ? damageTakenMultiplierFromDungeonLevelGap(unit.level, state.currentDungeon.levelMax)
@@ -378,7 +406,9 @@ function processPartyEnvironmentalTick(
         return;
       }
       const hpTick = buff.healingPerTick;
-      let tickAcc = (buff.tickAccumulator ?? 0) + (buff.tickIntervalScale ?? 1);
+      let tickAcc =
+        (buff.tickAccumulator ?? 0) +
+        (buff.tickIntervalScale ?? 1) * runHotTickRateMultiplier({ state, unit, buff, healPerTick: hpTick });
       let rem = buff.remainingTicks;
       while (tickAcc >= 1 && rem > 0 && hpTick > 0) {
         tickAcc -= 1;
@@ -391,6 +421,7 @@ function processPartyEnvironmentalTick(
         if (currentHealth > 0) {
           currentHealth = Math.min(unit.maxHealth, currentHealth + tickAmt);
         }
+        manaFromHotTicks += runHotTickManaReturn({ state, unit, buff, healPerTick: hpTick });
       }
       rem -= 1;
       if (rem <= 0 && buff.bloomBurstHeal && currentHealth > 0) {
@@ -423,7 +454,7 @@ function processPartyEnvironmentalTick(
     });
   }
 
-  return { party: newParty, naturalPerfectionStacks: nextNat };
+  return { party: newParty, naturalPerfectionStacks: nextNat, manaReturnFromHotTicks: manaFromHotTicks };
 }
 
 function mergeBossAiIntoState(state: GameState, boss: ReturnType<typeof processBossAI>): GameState {
@@ -440,7 +471,7 @@ function resolvePartyAfterEnvironmentalDamage(
   stateWithBoss: GameState,
   boss: ReturnType<typeof processBossAI>,
   random: TickRandom,
-): { party: Unit[]; naturalPerfectionStacks: number } {
+): { party: Unit[]; naturalPerfectionStacks: number; manaReturnFromHotTicks: number } {
   const dmg = processPartyEnvironmentalTick(
     stateWithBoss,
     boss.party,
@@ -452,7 +483,11 @@ function resolvePartyAfterEnvironmentalDamage(
     ),
   );
   const newParty = runOnShieldTransition(stateBeforeBossMerge, boss.party, dmg.party);
-  return { party: newParty, naturalPerfectionStacks: dmg.naturalPerfectionStacks };
+  return {
+    party: newParty,
+    naturalPerfectionStacks: dmg.naturalPerfectionStacks,
+    manaReturnFromHotTicks: dmg.manaReturnFromHotTicks,
+  };
 }
 
 function tickBossDisplayedBuffSurfaces(
@@ -487,19 +522,27 @@ function resolvePlayerSystemsAfterEnvironmentalDamage(
   state: GameState,
   partyAfterEnv: Unit[],
   dmgNaturalPerfectionStacks: number,
+  manaReturnFromHotTicks: number,
 ): PlayerSystemsAfterDamage {
   let nextIcd = advanceInternalCooldowns(state.internalCooldowns);
-  const buffTicksPre = getPlayerBuffRemainingTicks(state.playerCombatBuffs, PLAYER_BUFF_MANA_REGEN_POTION);
   const lockTicksPre = getPlayerBuffRemainingTicks(
     state.playerCombatBuffs,
     PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT,
   );
   const spirit =
     state.playerClass !== null ? effectivePrimaryStats(state.playerClass, state.level).spirit : 0;
+  const potionDrip = getManaPotionDripPerTick(state.playerCombatBuffs);
   const regenThisTick =
-    manaRegenAmountPerTick(lockTicksPre, buffTicksPre, spirit) +
-    priestMentalFortitudeMaxRankCombatManaPerTick(state.playerClass, state.maxMana, state.talents);
-  const newMana = Math.min(state.maxMana, state.mana + regenThisTick);
+    manaRegenAmountPerTick(lockTicksPre, spirit) +
+    potionDrip +
+    priestMentalFortitudeMaxRankCombatManaPerTick(
+      state.playerClass,
+      state.maxMana,
+      state.talents,
+      lockTicksPre,
+    ) +
+    runPriestMeditativeManaReturnPerTick(state, lockTicksPre);
+  const newMana = Math.min(state.maxMana, state.mana + regenThisTick + manaReturnFromHotTicks);
   let pComb = tickPlayerBuffs(state.playerCombatBuffs);
   let newParty = partyAfterEnv;
   const healerB = newParty.find((u) => u.role === 'HEALER');
@@ -605,7 +648,9 @@ function resolveOngoingCombatAfterPartyAlive(
 
   const partyDps = 2 + state.level * 2;
   const deadDpsCount = newParty.filter((u) => u.role === 'DPS' && u.health <= 0).length;
-  const bossDpsMult = state.combatPhase === 'BOSS' ? Math.pow(0.7, deadDpsCount) : 1;
+  const sleepingDpsCount = newParty.filter((u) => u.role === 'DPS' && u.health > 0 && hasDeepSlumberDebuff(u)).length;
+  const inactiveDpsCount = deadDpsCount + sleepingDpsCount;
+  const bossDpsMult = state.combatPhase === 'BOSS' ? Math.pow(0.7, inactiveDpsCount) : 1;
   const effectivePartyDps = partyDps * bossDpsMult;
   let currentEnemyHealth = state.enemyHealth - effectivePartyDps;
   let newTrashPulls = state.trashPullsRemaining;
@@ -702,17 +747,19 @@ export function advanceCombatTick(state: GameState, random: TickRandom, now: num
 
   const boss = processBossAI(state, random, now);
   const stateWithBoss = mergeBossAiIntoState(state, boss);
-  const { party: partyAfterEnv, naturalPerfectionStacks } = resolvePartyAfterEnvironmentalDamage(
+  const { party: partyAfterEnv, naturalPerfectionStacks, manaReturnFromHotTicks } =
+    resolvePartyAfterEnvironmentalDamage(
     state,
     stateWithBoss,
     boss,
     random,
-  );
+    );
   const bossBuffsNext = tickBossDisplayedBuffSurfaces(state.combatPhase, boss.bossSelfBuffs);
   const sys = resolvePlayerSystemsAfterEnvironmentalDamage(
     state,
     partyAfterEnv,
     naturalPerfectionStacks,
+    manaReturnFromHotTicks,
   );
   const fail = resolveCombatFailureFromTick(state, sys.party);
   if (fail) return fail;

@@ -1,11 +1,21 @@
 import { Spell } from './types.ts';
-import { getManaRegenPerSecond } from './constants.ts';
+import { manaPotionInstantMana, manaPotionOverTimeTotal } from './manaPotionIcon.ts';
 
 export function spellEffectTooltipText(
   spell: Spell,
-  ctx: { spellHealingMultiplier: number; spirit: number },
+  ctx: { spellHealingMultiplier: number; spirit: number; playerLevel?: number },
 ): string {
   if (spell.staticEffectDescription) return spell.staticEffectDescription;
+
+  if (spell.id === 'mana_potion' && ctx.playerLevel !== undefined) {
+    const instant = manaPotionInstantMana(ctx.playerLevel);
+    const over = manaPotionOverTimeTotal(ctx.playerLevel);
+    const dur = (spell.manaRegenBuffDurationTicks ?? 100) / 10;
+    const fmtMana = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+    return [`Restores ${fmtMana(instant)} Mana.`, `Restores another ${fmtMana(over)} Mana over ${dur} sec.`].join(
+      '\n',
+    );
+  }
 
   const effDirect =
     spell.healing > 0 ? Math.round(spell.healing * ctx.spellHealingMultiplier) : 0;
@@ -19,27 +29,6 @@ export function spellEffectTooltipText(
   const fmtHeal = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
   const sentences: string[] = [];
-
-  if (
-    spell.manaRestore !== undefined &&
-    spell.manaRestore > 0 &&
-    spell.manaCost === 0 &&
-    spell.healing === 0
-  ) {
-    sentences.push(`Restores ${spell.manaRestore} Mana.`);
-    if (
-      spell.manaRegenBuffDurationTicks !== undefined &&
-      spell.manaRegenBuffMultiplier !== undefined
-    ) {
-      const r = getManaRegenPerSecond(0, 50, ctx.spirit);
-      const label = Number.isInteger(r) ? String(r) : r.toFixed(1);
-      const regenDur = spell.manaRegenBuffDurationTicks / 10;
-      sentences.push(
-        `Restores another ${label} Mana per second over ${regenDur} sec.`,
-      );
-    }
-    return sentences.join('\n');
-  }
 
   if (spell.type === 'AOE') {
     if (hasHot && effDirect > 0) {

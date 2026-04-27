@@ -81,10 +81,16 @@ export interface TalentStatModifiers {
   hastePct: number;
 }
 
+export function effectiveTalentPointWeight(points: number, maxPoints: number): number {
+  const spent = Math.max(0, Math.min(points, maxPoints));
+  if (spent === 0) return 0;
+  return spent === maxPoints ? spent * 2 : spent;
+}
+
 export function computeTalentStats(talents: Talent[]): TalentStatModifiers {
   return talents.reduce(
     (acc, t) => {
-      const p = t.points;
+      const p = effectiveTalentPointWeight(t.points, t.maxPoints);
       const sb = t.statBonus;
       if (!sb) return acc;
       return {

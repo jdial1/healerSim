@@ -8,7 +8,7 @@
     "bossName": "Edwin VanCleef",
     "bossHealth": 1000,
     "bossIcon": "delapouite/pirate-captain",
-    "cardIcon": "delapouite/gold-mine",
+    "cardIcon": "lorc/wooden-door",
     "cardTheme": {
       "borderLeft": "border-l-amber-700",
       "viaTint": "via-amber-950/40",
@@ -21,15 +21,15 @@
     "enemies": [
       {
         "name": "Defias Pirate",
-        "icon": "wow/spell_shadow_deathcoil"
+        "icon": "delapouite/pirate-hook"
       },
       {
         "name": "Defias Miner",
-        "icon": "wow/trade_mining"
+        "icon": "lorc/dynamite"
       },
       {
         "name": "Smite",
-        "icon": "wow/ability_warrior_savageblow"
+        "icon": "lorc/anchor"
       }
     ],
     "bossCombat": {
@@ -37,17 +37,18 @@
         {
           "abilityId": "vc_gut_slash",
           "name": "Gut Slash",
-          "icon": "wow/ability_creature_poison_03",
+          "icon": "lorc/sunder-armor",
           "durationTicks": 120,
           "damagePerTick": 0.7,
-          "targeting": "single_random"
+          "targeting": "single_random",
+          "dispellable": false
         }
       ],
       "selfBuffTemplates": [
         {
           "abilityId": "vc_blade_flurry",
           "name": "Blade Flurry",
-          "icon": "wow/ability_warrior_savageblow",
+          "icon": "lorc/crossed-swords",
           "durationTicks": 100,
           "partyDamageMultiplier": 1.3
         }
@@ -56,7 +57,7 @@
         {
           "abilityId": "vc_ambush",
           "name": "Ambush",
-          "icon": "wow/spell_holy_renew",
+          "icon": "delapouite/smoke-bomb",
           "damage": 26,
           "targeting": "single_random"
         }
@@ -71,8 +72,8 @@
     "levelMax": 6,
     "bossName": "Verdan the Everliving",
     "bossHealth": 2500,
-    "bossIcon": "cathelineau/tree-face",
-    "cardIcon": "delapouite/cave-entrance",
+    "bossIcon": "delapouite/shambling-mound",
+    "cardIcon": "delapouite/cobra",
     "cardTheme": {
       "borderLeft": "border-l-teal-600",
       "viaTint": "via-teal-950/45",
@@ -85,15 +86,15 @@
     "enemies": [
       {
         "name": "Raptor",
-        "icon": "wow/ability_hunter_pet_raptor"
+        "icon": "delapouite/velociraptor"
       },
       {
         "name": "Ooze",
-        "icon": "wow/ability_creature_poison_03"
+        "icon": "delapouite/slimy-muddiness"
       },
       {
         "name": "Druid of the Fang",
-        "icon": "wow/ability_creature_poison_03"
+        "icon": "delapouite/cobra"
       }
     ],
     "bossCombat": {
@@ -101,17 +102,18 @@
         {
           "abilityId": "verdan_strangle",
           "name": "Strangling Roots",
-          "icon": "wow/spell_nature_rejuvenation",
+          "icon": "lorc/vines",
           "durationTicks": 180,
           "damagePerTick": 0.6,
-          "targeting": "single_random"
+          "targeting": "single_random",
+          "dispellable": false
         }
       ],
       "selfBuffTemplates": [
         {
           "abilityId": "verdan_thrive",
           "name": "Thrive",
-          "icon": "wow/spell_nature_rejuvenation",
+          "icon": "lorc/sprout",
           "durationTicks": 150,
           "partyDamageMultiplier": 1.4
         }
@@ -120,7 +122,7 @@
         {
           "abilityId": "verdan_spore_burst",
           "name": "Spore Burst",
-          "icon": "wow/ability_creature_poison_03",
+          "icon": "delapouite/dandelion-flower",
           "damage": 30,
           "targeting": "all_living"
         }
@@ -135,8 +137,8 @@
     "levelMax": 9,
     "bossName": "High Inspector Whitemane",
     "bossHealth": 5000,
-    "bossIcon": "lorc/crowned-heart",
-    "cardIcon": "delapouite/church",
+    "bossIcon": "delapouite/pope-crown",
+    "cardIcon": "lorc/burning-book",
     "cardTheme": {
       "borderLeft": "border-l-rose-600",
       "viaTint": "via-rose-950/40",
@@ -149,15 +151,15 @@
     "enemies": [
       {
         "name": "Scarlet Knight",
-        "icon": "wow/ability_warrior_savageblow"
+        "icon": "delapouite/templar-shield"
       },
       {
         "name": "Scarlet Monk",
-        "icon": "wow/spell_holy_innerfire"
+        "icon": "delapouite/monk-face"
       },
       {
         "name": "Mograine",
-        "icon": "wow/spell_holy_renew"
+        "icon": "delapouite/pope-crown"
       }
     ],
     "bossCombat": {
@@ -165,17 +167,18 @@
         {
           "abilityId": "smite_sear",
           "name": "Holy Fire",
-          "icon": "wow/spell_holy_renew",
+          "icon": "lorc/burning-embers",
           "durationTicks": 40,
           "damagePerTick": 2.4,
-          "targeting": "two_random"
+          "targeting": "two_random",
+          "dispellable": false
         }
       ],
       "selfBuffTemplates": [
         {
           "abilityId": "smite_fury",
           "name": "Resurrection Fury",
-          "icon": "wow/spell_holy_renew",
+          "icon": "lorc/holy-grail",
           "durationTicks": 80,
           "partyDamageMultiplier": 1.8
         }
@@ -184,7 +187,7 @@
         {
           "abilityId": "smite_penance",
           "name": "Penitent Flare",
-          "icon": "wow/spell_holy_flashheal",
+          "icon": "lorc/angel-wings",
           "damage": 40,
           "targeting": "single_random"
         }
@@ -199,8 +202,8 @@
     "levelMax": 12,
     "bossName": "Chief Ukorz Sandscalp",
     "bossHealth": 12000,
-    "bossIcon": "lorc/tribal-mask",
-    "cardIcon": "delapouite/egyptian-pyramids",
+    "bossIcon": "delapouite/ceremonial-mask",
+    "cardIcon": "delapouite/cactus",
     "cardTheme": {
       "borderLeft": "border-l-yellow-500",
       "viaTint": "via-yellow-950/35",
@@ -213,15 +216,15 @@
     "enemies": [
       {
         "name": "Sandfury Troll",
-        "icon": "wow/ability_creature_poison_03"
+        "icon": "lorc/shamanic-flask"
       },
       {
         "name": "Shadowcaster",
-        "icon": "wow/spell_nature_sleep"
+        "icon": "lorc/voodoo-doll"
       },
       {
         "name": "Basilisk",
-        "icon": "wow/ability_creature_poison_03"
+        "icon": "lorc/lizard-tongue"
       }
     ],
     "bossCombat": {
@@ -229,17 +232,18 @@
         {
           "abilityId": "ukorz_sand",
           "name": "Sandstorm",
-          "icon": "wow/inv_misc_dust",
+          "icon": "lorc/sand-snake",
           "durationTicks": 110,
           "damagePerTick": 1,
-          "targeting": "all_living"
+          "targeting": "all_living",
+          "dispellable": false
         }
       ],
       "selfBuffTemplates": [
         {
           "abilityId": "ukorz_bloodlust",
           "name": "Berserker Rage",
-          "icon": "wow/ability_creature_poison_03",
+          "icon": "lorc/voodoo-doll",
           "durationTicks": 140,
           "partyDamageMultiplier": 1.5
         }
@@ -248,7 +252,7 @@
         {
           "abilityId": "ukorz_impale",
           "name": "Impale",
-          "icon": "wow/ability_warrior_savageblow",
+          "icon": "lorc/knife-thrust",
           "damage": 54,
           "targeting": "single_random"
         }
@@ -263,8 +267,8 @@
     "levelMax": 15,
     "bossName": "Shade of Eranikus",
     "bossHealth": 25000,
-    "bossIcon": "lorc/dragon-breath",
-    "cardIcon": "delapouite/temple-gate",
+    "bossIcon": "lorc/dragon-head",
+    "cardIcon": "delapouite/star-altar",
     "cardTheme": {
       "borderLeft": "border-l-emerald-600",
       "viaTint": "via-emerald-950/40",
@@ -277,15 +281,15 @@
     "enemies": [
       {
         "name": "Atal'ai Exile",
-        "icon": "wow/spell_nature_regeneration"
+        "icon": "delapouite/star-altar"
       },
       {
         "name": "Nightmare Wyrm",
-        "icon": "wow/spell_fire_flamebolt"
+        "icon": "lorc/dragon-head"
       },
       {
         "name": "Dragonkin",
-        "icon": "wow/spell_fire_flamebolt"
+        "icon": "lorc/bat"
       }
     ],
     "bossCombat": {
@@ -293,17 +297,18 @@
         {
           "abilityId": "eranikus_corruption",
           "name": "Deep Slumber",
-          "icon": "wow/spell_nature_sleep",
+          "icon": "lorc/sleepy",
           "durationTicks": 250,
           "damagePerTick": 0.5,
-          "targeting": "two_random"
+          "targeting": "two_random",
+          "dispellable": false
         }
       ],
       "selfBuffTemplates": [
         {
           "abilityId": "eranikus_frenzy",
           "name": "Nightmare Haze",
-          "icon": "wow/spell_fire_flamebolt",
+          "icon": "delapouite/dream-catcher",
           "durationTicks": 200,
           "partyDamageMultiplier": 1.36
         }
@@ -312,7 +317,7 @@
         {
           "abilityId": "eranikus_acid",
           "name": "Acid Breath",
-          "icon": "wow/spell_fire_flamebolt",
+          "icon": "lorc/acid-blob",
           "damage": 42,
           "targeting": "all_living"
         }
@@ -327,8 +332,8 @@
     "levelMax": 18,
     "bossName": "Emperor Thaurissan",
     "bossHealth": 55000,
-    "bossIcon": "delapouite/imperial-crown",
-    "cardIcon": "lorc/anvil",
+    "bossIcon": "lorc/hand-clench",
+    "cardIcon": "delapouite/prisoner",
     "cardTheme": {
       "borderLeft": "border-l-orange-600",
       "viaTint": "via-orange-950/45",
@@ -341,15 +346,15 @@
     "enemies": [
       {
         "name": "Dark Iron Dwarf",
-        "icon": "wow/ability_warrior_savageblow"
+        "icon": "lorc/dwarf-face"
       },
       {
         "name": "Fire Elemental",
-        "icon": "wow/spell_fire_flamebolt"
+        "icon": "lorc/magma-creature"
       },
       {
         "name": "Houndmaster",
-        "icon": "wow/ability_hunter_beastcall"
+        "icon": "lorc/beer-stein"
       }
     ],
     "bossCombat": {
@@ -357,17 +362,18 @@
         {
           "abilityId": "thaurissan_inferno",
           "name": "Magma Splash",
-          "icon": "wow/spell_fire_flamebolt",
+          "icon": "lorc/volcano",
           "durationTicks": 60,
           "damagePerTick": 1.8,
-          "targeting": "all_living"
+          "targeting": "all_living",
+          "dispellable": false
         }
       ],
       "selfBuffTemplates": [
         {
           "abilityId": "thaurissan_avatar",
           "name": "Avatar of Flame",
-          "icon": "wow/spell_fire_flamebolt",
+          "icon": "lorc/chain-mail",
           "durationTicks": 135,
           "partyDamageMultiplier": 1.7
         }
@@ -376,7 +382,7 @@
         {
           "abilityId": "thaurissan_dominate",
           "name": "Hand of Thaurissan",
-          "icon": "wow/spell_holy_renew",
+          "icon": "lorc/hand-clench",
           "damage": 72,
           "targeting": "single_random"
         }
@@ -391,8 +397,8 @@
     "levelMax": 21,
     "bossName": "Baron Rivendare",
     "bossHealth": 110000,
-    "bossIcon": "lorc/horse-head",
-    "cardIcon": "delapouite/plague-doctor-profile",
+    "bossIcon": "lorc/grim-reaper",
+    "cardIcon": "lorc/skeleton",
     "cardTheme": {
       "borderLeft": "border-l-violet-600",
       "viaTint": "via-violet-950/38",
@@ -405,15 +411,15 @@
     "enemies": [
       {
         "name": "Plague Ghoul",
-        "icon": "wow/spell_shadow_deathcoil"
+        "icon": "lorc/skeleton"
       },
       {
         "name": "Patchwork Horror",
-        "icon": "wow/spell_shadow_deathcoil"
+        "icon": "lorc/fleshy-mass"
       },
       {
         "name": "Banshee",
-        "icon": "wow/spell_shadow_deathcoil"
+        "icon": "lorc/ghost"
       }
     ],
     "bossCombat": {
@@ -421,17 +427,18 @@
         {
           "abilityId": "rivendare_plague",
           "name": "Necrotic Plague",
-          "icon": "wow/spell_shadow_deathcoil",
+          "icon": "lorc/skeletal-hand",
           "durationTicks": 150,
           "damagePerTick": 1.3,
-          "targeting": "two_random"
+          "targeting": "two_random",
+          "dispellable": false
         }
       ],
       "selfBuffTemplates": [
         {
           "abilityId": "rivendare_deathwish",
           "name": "Death's Advance",
-          "icon": "wow/ability_mount_nightmarehorse",
+          "icon": "delapouite/path-distance",
           "durationTicks": 160,
           "partyDamageMultiplier": 1.56
         }
@@ -440,7 +447,7 @@
         {
           "abilityId": "rivendare_death_coil",
           "name": "Death Coil",
-          "icon": "wow/spell_shadow_deathcoil",
+          "icon": "delapouite/dead-head",
           "damage": 82,
           "targeting": "single_random"
         }
@@ -455,8 +462,8 @@
     "levelMax": 24,
     "bossName": "Darkmaster Gandling",
     "bossHealth": 250000,
-    "bossIcon": "delapouite/graduate-cap",
-    "cardIcon": "delapouite/spooky-house",
+    "bossIcon": "lorc/wizard-staff",
+    "cardIcon": "delapouite/vial",
     "cardTheme": {
       "borderLeft": "border-l-indigo-500",
       "viaTint": "via-indigo-950/45",
@@ -469,15 +476,15 @@
     "enemies": [
       {
         "name": "Risen Guard",
-        "icon": "wow/spell_shadow_deathcoil"
+        "icon": "delapouite/spooky-house"
       },
       {
         "name": "Necromancer",
-        "icon": "wow/spell_shadow_deathcoil"
+        "icon": "delapouite/candles"
       },
       {
         "name": "Voidwalker",
-        "icon": "wow/spell_shadow_deathcoil"
+        "icon": "delapouite/vial"
       }
     ],
     "bossCombat": {
@@ -485,17 +492,18 @@
         {
           "abilityId": "gandling_curse",
           "name": "Incinerate Soul",
-          "icon": "wow/spell_shadow_deathcoil",
+          "icon": "lorc/soul-vessel",
           "durationTicks": 50,
           "damagePerTick": 4.4,
-          "targeting": "single_random"
+          "targeting": "single_random",
+          "dispellable": true
         }
       ],
       "selfBuffTemplates": [
         {
           "abilityId": "gandling_darkmastery",
           "name": "Dark Mastery",
-          "icon": "wow/spell_shadow_darkritual",
+          "icon": "lorc/ink-swirl",
           "durationTicks": 180,
           "partyDamageMultiplier": 1.7
         }
@@ -504,7 +512,7 @@
         {
           "abilityId": "gandling_shadow_bolt",
           "name": "Shadow Volley",
-          "icon": "wow/spell_shadow_deathcoil",
+          "icon": "lorc/lightning-glow",
           "damage": 58,
           "targeting": "all_living"
         }

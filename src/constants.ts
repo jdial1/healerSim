@@ -95,22 +95,12 @@ export function spellHasTag(spellId: string | undefined, tag: string): boolean {
   return SPELLS[spellId]?.tags?.includes(tag) ?? false;
 }
 
-export const MANA_REGEN_BUFF_UI_MULTIPLIER = SPELLS.mana_potion.manaRegenBuffMultiplier!;
-
-function manaPotionRegenMultiplier(manaRegenBuffTicksRemaining: number): number {
-  return manaRegenBuffTicksRemaining > 0 && SPELLS.mana_potion.manaRegenBuffMultiplier !== undefined
-    ? SPELLS.mana_potion.manaRegenBuffMultiplier
-    : 1;
-}
-
 function roundedManaRegenPerTickAndPerSec(
   spiritRegenLockoutTicksRemaining: number,
-  manaRegenBuffTicksRemaining: number,
   spirit: number,
 ): { perTick: number; perSec: number } {
-  const mult = manaPotionRegenMultiplier(manaRegenBuffTicksRemaining);
-  const rawPerTick = MANA_REGEN_PER_TICK * spiritManaRegenMultiplier(spirit) * mult;
-  if (spiritRegenLockoutTicksRemaining > 0 && manaRegenBuffTicksRemaining <= 0) {
+  const rawPerTick = MANA_REGEN_PER_TICK * spiritManaRegenMultiplier(spirit);
+  if (spiritRegenLockoutTicksRemaining > 0) {
     return { perTick: 0, perSec: 0 };
   }
   const rawPerSec = rawPerTick * TICKS_PER_SECOND;
@@ -121,26 +111,16 @@ function roundedManaRegenPerTickAndPerSec(
 
 export function manaRegenAmountPerTick(
   spiritRegenLockoutTicksRemaining: number,
-  manaRegenBuffTicksRemaining: number,
   spirit: number,
 ): number {
-  return roundedManaRegenPerTickAndPerSec(
-    spiritRegenLockoutTicksRemaining,
-    manaRegenBuffTicksRemaining,
-    spirit,
-  ).perTick;
+  return roundedManaRegenPerTickAndPerSec(spiritRegenLockoutTicksRemaining, spirit).perTick;
 }
 
 export function getManaRegenPerSecond(
   spiritRegenLockoutTicksRemaining: number,
-  manaRegenBuffTicksRemaining: number,
   spirit: number,
 ): number {
-  return roundedManaRegenPerTickAndPerSec(
-    spiritRegenLockoutTicksRemaining,
-    manaRegenBuffTicksRemaining,
-    spirit,
-  ).perSec;
+  return roundedManaRegenPerTickAndPerSec(spiritRegenLockoutTicksRemaining, spirit).perSec;
 }
 
 export type AllyHealthScaling = { base: number; perLevel: number };

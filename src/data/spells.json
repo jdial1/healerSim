@@ -236,8 +236,6 @@
     "type": "DIRECT",
     "manaCost": 0,
     "healing": 0,
-    "manaRestore": 40,
-    "manaRegenBuffMultiplier": 2,
     "manaRegenBuffDurationTicks": 100,
     "cooldown": 300,
     "icon": "wow/inv_potion_76",

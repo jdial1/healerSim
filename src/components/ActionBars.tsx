@@ -3,18 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import {
-  SPELLS,
-  getManaRegenPerSecond,
-  MANA_POTION_USES_PER_DUNGEON,
-  MANA_REGEN_BUFF_UI_MULTIPLIER,
-} from '../constants.ts';
+  useState,
+  useEffect,
+  useRef,
+  useLayoutEffect,
+  useCallback,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
+import { SPELLS, getManaRegenPerSecond, MANA_POTION_USES_PER_DUNGEON } from '../constants.ts';
 import { PlayerCombatStats } from '../types.ts';
 import { spellEffectTooltipText } from '../spellTooltip.ts';
 import { xpProgressWithinLevel } from '../gameStorage.ts';
 import { motion } from 'motion/react';
 import { glowForSpellId } from '../gameIcons.ts';
+import { manaPotionDisplayName, manaPotionIconPath } from '../manaPotionIcon.ts';
 import { GameIcon } from './GameIcon.tsx';
 
 function spellSlotButtonClass(
@@ -45,7 +48,7 @@ function spellSlotButtonClass(
 
 function emptySpellSlotClass(reordering: boolean, draggingHere: boolean) {
   let extra = 'ui-spell-slot-base ui-spell-slot-empty';
-  if (reordering) extra += ' ui-spell-slot-drop-target';
+  if (reordering) extra += ' ui-spell-slot-drop-target touch-none';
   if (draggingHere) extra += ' opacity-30';
   return extra;
 }
@@ -59,6 +62,10 @@ function spellBarIconClass(highlighted: boolean, canInteract: boolean) {
 
 function spellTooltipVisibilityClass(previewOpen: boolean) {
   return previewOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100';
+}
+
+function isTouchLikePointer(pointerType: string) {
+  return pointerType === 'touch' || pointerType === 'pen';
 }
 
 interface ActionBarsProps {
@@ -87,9 +94,11 @@ export function ActionBars({
     spirit,
     spellsEnabled,
     manaPotionChargesRemaining,
+    manaPotionDripPerSec,
     spellHealingMultiplier,
     actionBarHighlights,
     playerClass,
+    level,
   } = playerCombatStats;
   const barRootRef = useRef<HTMLDivElement>(null);
   const spellTipRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -97,6 +106,83 @@ export function ActionBars({
   const [previewTooltipSpellId, setPreviewTooltipSpellId] = useState<string | null>(null);
   const [tooltipHoverSpellId, setTooltipHoverSpellId] = useState<string | null>(null);
   const [draggingBarIndex, setDraggingBarIndex] = useState<number | null>(null);
+  const [reorderHoverIndex, setReorderHoverIndex] = useState<number | null>(null);
+  const touchReorderFromRef = useRef<number | null>(null);
+  const touchReorderPointerIdRef = useRef<number | null>(null);
+  const touchReorderMovedRef = useRef(false);
+  const touchReorderStartRef = useRef({ x: 0, y: 0 });
+
+  const actionBarIndexAtPoint = useCallback((clientX: number, clientY: number) => {
+    const root = barRootRef.current;
+    if (!root) return null;
+    const el = document.elementFromPoint(clientX, clientY);
+    if (!el || !root.contains(el)) return null;
+    const slot = el.closest('[data-action-bar-index]');
+    if (!slot || !root.contains(slot)) return null;
+    const v = slot.getAttribute('data-action-bar-index');
+    if (v == null) return null;
+    const i = parseInt(v, 10);
+    return Number.isNaN(i) ? null : i;
+  }, []);
+
+  const handleTouchReorderPointerDown = useCallback(
+    (index: number, e: ReactPointerEvent<HTMLDivElement>) => {
+      if (!allowReorder || !onReorderSlots) return;
+      if (!isTouchLikePointer(e.pointerType)) return;
+      if (touchReorderFromRef.current !== null) return;
+      touchReorderFromRef.current = index;
+      touchReorderPointerIdRef.current = e.pointerId;
+      touchReorderMovedRef.current = false;
+      touchReorderStartRef.current = { x: e.clientX, y: e.clientY };
+      setDraggingBarIndex(index);
+      setReorderHoverIndex(index);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [allowReorder, onReorderSlots],
+  );
+
+  const handleTouchReorderPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (touchReorderFromRef.current === null) return;
+      if (e.pointerId !== touchReorderPointerIdRef.current) return;
+      if (!isTouchLikePointer(e.pointerType)) return;
+      const dx = e.clientX - touchReorderStartRef.current.x;
+      const dy = e.clientY - touchReorderStartRef.current.y;
+      if (dx * dx + dy * dy > 36) touchReorderMovedRef.current = true;
+      e.preventDefault();
+      const hi = actionBarIndexAtPoint(e.clientX, e.clientY);
+      if (hi !== null) setReorderHoverIndex(hi);
+    },
+    [actionBarIndexAtPoint],
+  );
+
+  const handleTouchReorderPointerEnd = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (touchReorderFromRef.current === null) return;
+      if (e.pointerId !== touchReorderPointerIdRef.current) return;
+      if (!isTouchLikePointer(e.pointerType)) return;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+      const from = touchReorderFromRef.current;
+      const moved = touchReorderMovedRef.current;
+      touchReorderFromRef.current = null;
+      touchReorderPointerIdRef.current = null;
+      touchReorderMovedRef.current = false;
+      setDraggingBarIndex(null);
+      setReorderHoverIndex(null);
+      let to = from;
+      const hi = actionBarIndexAtPoint(e.clientX, e.clientY);
+      if (hi !== null) to = hi;
+      if (moved && from !== to && onReorderSlots) {
+        suppressPreviewClickUntilRef.current = performance.now() + 450;
+        onReorderSlots(from, to);
+      } else if (moved) {
+        suppressPreviewClickUntilRef.current = performance.now() + 450;
+      }
+    },
+    [actionBarIndexAtPoint, onReorderSlots],
+  );
 
   useEffect(() => {
     if (spellsEnabled) setPreviewTooltipSpellId(null);
@@ -165,13 +251,11 @@ export function ActionBars({
     return ((xpBarPercent - start) / 10) * 100;
   });
   const manaPercent = (mana / maxMana) * 100;
-  const baseRegenPerSec = getManaRegenPerSecond(0, 0, spirit);
-  const regenPerSec = getManaRegenPerSecond(
-    spiritRegenLockoutTicksRemaining,
-    manaRegenBuffTicksRemaining,
-    spirit,
-  );
+  const baseRegenPerSec = getManaRegenPerSecond(0, spirit);
+  const regenPerSec = getManaRegenPerSecond(spiritRegenLockoutTicksRemaining, spirit);
   const regenBuffActive = manaRegenBuffTicksRemaining > 0;
+  const totalRegenPerSec = regenPerSec + manaPotionDripPerSec;
+  const fmtRegen = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
   const spiritRegenPaused =
     spiritRegenLockoutTicksRemaining > 0 && manaRegenBuffTicksRemaining <= 0;
 
@@ -227,14 +311,12 @@ export function ActionBars({
           <span className="text-sm font-mono font-bold tracking-tight">
             {regenBuffActive ? (
               <>
-                <span className="text-blue-300">
-                  +{Number.isInteger(regenPerSec) ? regenPerSec : regenPerSec.toFixed(1)}/s
-                </span>
+                <span className="text-blue-300">+{fmtRegen(totalRegenPerSec)}/s</span>
                 <span className="ml-1.5 text-xs font-black uppercase text-blue-400/90">
-                  {MANA_REGEN_BUFF_UI_MULTIPLIER}× Potion
+                  +{fmtRegen(manaPotionDripPerSec)}/s potion
                 </span>
                 <span className="ml-1.5 text-xs text-slate-600 line-through decoration-slate-600">
-                  +{baseRegenPerSec}/s
+                  +{fmtRegen(baseRegenPerSec)}/s
                 </span>
               </>
             ) : spiritRegenPaused ? (
@@ -257,9 +339,16 @@ export function ActionBars({
       <div className="ui-spell-bar-row">
         {spellIds.map((id, index) => {
           const reordering = allowReorder && onReorderSlots;
+          const reorderDropHighlight =
+            !!reordering &&
+            reorderHoverIndex !== null &&
+            draggingBarIndex !== null &&
+            reorderHoverIndex === index &&
+            reorderHoverIndex !== draggingBarIndex;
+          const reorderDropRing = reorderDropHighlight ? ' ring-2 ring-amber-400/70 ring-inset' : '';
           if (id === '') {
             return (
-              <div key={`bar-${index}`} className="relative group">
+              <div key={`bar-${index}`} data-action-bar-index={index} className="relative group">
                 <div
                   role="presentation"
                   draggable={false}
@@ -284,7 +373,7 @@ export function ActionBars({
                         }
                       : undefined
                   }
-                  className={emptySpellSlotClass(!!reordering, draggingBarIndex === index)}
+                  className={`${emptySpellSlotClass(!!reordering, draggingBarIndex === index)}${reorderDropRing}`}
                 >
                   <div className="ui-spell-slot-index">
                     {index + 1}
@@ -297,6 +386,9 @@ export function ActionBars({
           const spell = SPELLS[id];
           if (!spell) return null;
 
+          const iconPath = id === 'mana_potion' ? manaPotionIconPath(level) : spell.icon;
+          const displayName = id === 'mana_potion' ? manaPotionDisplayName(level) : spell.name;
+
           const cooldown = cooldowns[id] || 0;
           const isLowMana = mana < spell.manaCost;
           const noPotionCharges =
@@ -304,18 +396,31 @@ export function ActionBars({
           const castBlocked = cooldown > 0 || isLowMana || noPotionCharges;
           const disabled = spellsEnabled && castBlocked;
 
+          const activateSlot = () => {
+            if (performance.now() < suppressPreviewClickUntilRef.current) return;
+            if (!spellsEnabled) {
+              setPreviewTooltipSpellId((prev) => (prev === id ? null : id));
+              return;
+            }
+            if (disabled) return;
+            onCast(id);
+          };
+
           return (
             <div
               key={`bar-${index}`}
+              data-action-bar-index={index}
               className="relative group"
               onPointerEnter={() => setTooltipHoverSpellId(id)}
               onPointerLeave={() => {
                 setTooltipHoverSpellId((cur) => (cur === id ? null : cur));
               }}
             >
-              <button
+              <div
                 id={`spell-${id}`}
-                type="button"
+                role="button"
+                tabIndex={disabled ? -1 : 0}
+                aria-disabled={disabled || undefined}
                 draggable={!!reordering}
                 onDragStart={
                   reordering
@@ -348,29 +453,30 @@ export function ActionBars({
                       }
                     : undefined
                 }
-                onClick={() => {
-                  if (performance.now() < suppressPreviewClickUntilRef.current) return;
-                  if (!spellsEnabled) {
-                    setPreviewTooltipSpellId((prev) => (prev === id ? null : id));
-                    return;
-                  }
-                  onCast(id);
+                onPointerDown={reordering ? (e) => handleTouchReorderPointerDown(index, e) : undefined}
+                onPointerMove={reordering ? handleTouchReorderPointerMove : undefined}
+                onPointerUp={reordering ? handleTouchReorderPointerEnd : undefined}
+                onPointerCancel={reordering ? handleTouchReorderPointerEnd : undefined}
+                onClick={activateSlot}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
+                  activateSlot();
                 }}
-                disabled={disabled}
-                className={spellSlotButtonClass(spell.actionBarBorderClass, {
+                className={`${spellSlotButtonClass(spell.actionBarBorderClass, {
                   spellsEnabled,
                   reordering: !!reordering,
                   draggingHere: draggingBarIndex === index,
                   cooldown,
                   isLowMana,
                   noPotionCharges,
-                })}
+                })}${reorderDropRing}${disabled ? ' cursor-not-allowed' : spellsEnabled || !reordering ? ' cursor-pointer' : ''}`}
               >
                 <GameIcon
-                  iconPath={spell.icon}
+                  iconPath={iconPath}
                   glow={glowForSpellId(id)}
                   size="lg"
-                  title={spell.name}
+                  title={displayName}
                   dimmed={
                     spellsEnabled &&
                     (cooldown > 0 || isLowMana || noPotionCharges)
@@ -382,7 +488,7 @@ export function ActionBars({
                 />
                 
                 <span className="ui-spell-name-label group-hover:text-white">
-                    {spell.name.split(' ')[0]}
+                  {displayName.split(' ')[0]}
                 </span>
 
                 {spell.manaCost > 0 && (
@@ -413,7 +519,7 @@ export function ActionBars({
                 <div className="ui-spell-slot-index ui-spell-slot-index-filled">
                    {index + 1}
                 </div>
-              </button>
+              </div>
 
               <div
                 ref={(el) => {
@@ -424,14 +530,14 @@ export function ActionBars({
                 style={{ transform: 'translateX(-50%)' }}
               >
                 <GameIcon
-                  iconPath={spell.icon}
+                  iconPath={iconPath}
                   glow={glowForSpellId(id)}
                   size="md"
                   className="ui-spell-tooltip-icon"
                 />
                 <div className="ui-spell-tooltip-body">
                   <div className="ui-spell-tooltip-title">
-                    {spell.name}
+                    {displayName}
                   </div>
                   {spell.manaCost > 0 ? (
                     <div className="ui-spell-tooltip-mana">{spell.manaCost} Mana</div>
@@ -439,7 +545,7 @@ export function ActionBars({
                   <div
                     className={`ui-spell-tooltip-desc${spell.manaCost > 0 ? ' mt-1.5' : ''}`}
                   >
-                    {spellEffectTooltipText(spell, { spellHealingMultiplier, spirit })}
+                    {spellEffectTooltipText(spell, { spellHealingMultiplier, spirit, playerLevel: level })}
                   </div>
                 </div>
                 <div className="ui-spell-tooltip-arrow" aria-hidden />

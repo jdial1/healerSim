@@ -4,7 +4,7 @@ import {
   type ExclusiveSplitPair,
 } from './talentSplitPairs.ts';
 
-export const TALENT_GRID_COLS = 5;
+export const TALENT_GRID_COLS = 6;
 export const TALENT_GRID_ROWS = 7;
 
 const PCT_W = 100 / TALENT_GRID_COLS;

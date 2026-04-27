@@ -3,16 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useRef, useCallback, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useRef,
+  useCallback,
+  useState,
+  useLayoutEffect,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { AnimatePresence } from 'motion/react';
 import { bossCombatProfileForDungeon, TICKS_PER_SECOND } from '../constants.ts';
 import { DUNGEONS } from '../dungeons/index.ts';
 import { type BossDebuffTargeting, type Dungeon } from '../types.ts';
 import { computeDungeonXpGain, levelsOverDungeonMax } from '../gameStorage.ts';
-import { Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { GameIcon } from './GameIcon.tsx';
 import { DungeonQueueModal } from './DungeonQueueModal.tsx';
-import { BOSS_BUFF_ICON_TINT, LOCKED_DUNGEON_WOW_ICON } from '../gameIcons.ts';
+import { BOSS_BUFF_ICON_TINT, LOCKED_DUNGEON_ICON } from '../gameIcons.ts';
 
 interface DungeonSelectorProps {
   onSelect: (dungeon: Dungeon) => void;
@@ -22,8 +28,35 @@ interface DungeonSelectorProps {
 
 const DRAG_THRESHOLD_PX = 10;
 
+function scrollEnds(el: HTMLDivElement): { atStart: boolean; atEnd: boolean } {
+  const max = el.scrollWidth - el.clientWidth;
+  if (max <= 0) return { atStart: true, atEnd: true };
+  const sl = el.scrollLeft;
+  return { atStart: sl < 2, atEnd: sl > max - 2 };
+}
+
+function centeredChildIndex(el: HTMLDivElement): number {
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  let bestI = 0;
+  let bestD = Infinity;
+  for (let i = 0; i < el.children.length; i++) {
+    const cr = el.children[i].getBoundingClientRect();
+    const mx = cr.left + cr.width / 2;
+    const d = Math.abs(mx - cx);
+    if (d < bestD) {
+      bestD = d;
+      bestI = i;
+    }
+  }
+  return bestI;
+}
+
 const CARD_SHELL =
-  'relative flex h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 pt-4 pb-4 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:pt-5 sm:pb-5 md:px-7 md:pt-6 md:pb-6 max-sm:px-6 max-sm:pt-3.5 max-sm:pb-3.5';
+  'relative flex max-h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 pt-4 pb-4 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:pt-5 sm:pb-5 md:px-7 md:pt-6 md:pb-6 max-sm:px-6 max-sm:pt-3.5 max-sm:pb-3.5';
+
+const CAROUSEL_SCROLL =
+  'flex min-h-0 flex-1 cursor-grab snap-x snap-mandatory flex-nowrap items-center gap-4 overflow-x-auto overflow-y-clip overscroll-x-contain px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] select-none active:cursor-grabbing sm:gap-5 sm:px-6 [&::-webkit-scrollbar]:hidden';
 
 function debuffTargetingDescription(t: BossDebuffTargeting): string {
   if (t === 'single_random') return 'Hits 1 ally';
@@ -61,7 +94,7 @@ function BossMechanicsStrip({
             >
               <span className="text-[10px] font-black uppercase tracking-tight text-slate-500 sm:text-[9px] md:text-xs">?</span>
               <GameIcon
-                iconPath={LOCKED_DUNGEON_WOW_ICON}
+                iconPath={LOCKED_DUNGEON_ICON}
                 glow="spell"
                 size="md"
                 dimmed
@@ -95,7 +128,7 @@ function BossMechanicsStrip({
               iconPath={d.icon}
               glow="debuff"
               size="md"
-              title={d.name}
+              title={d.dispellable ? `${d.name} (Dispellable)` : d.name}
               dimmed={dimmed}
               className="mx-auto shrink-0"
             />
@@ -119,6 +152,11 @@ function BossMechanicsStrip({
               <p className="text-[10px] font-semibold leading-snug text-slate-400 sm:text-[9px] md:text-xs">
                 {debuffTargetingDescription(d.targeting)}
               </p>
+              {d.dispellable && (
+                <p className="text-[9px] font-bold uppercase tracking-wide text-cyan-400/90 sm:text-[8px] md:text-[10px]">
+                  Dispellable
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -198,8 +236,12 @@ function BossMechanicsStrip({
   );
 }
 
+const GALLERY_NAV_BTN =
+  'pointer-events-auto absolute top-1/2 z-[1] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-slate-950/90 text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-md transition-[opacity,transform] active:scale-95 max-sm:h-10 max-sm:w-10 sm:h-12 sm:w-12';
+
 export function DungeonSelector({ onSelect, level, completedDungeonIds }: DungeonSelectorProps) {
   const [queueDungeon, setQueueDungeon] = useState<Dungeon | null>(null);
+  const [scrollEndsState, setScrollEndsState] = useState({ atStart: true, atEnd: false });
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef({
     active: false,
@@ -266,6 +308,37 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
     window.addEventListener('pointercancel', onWindowUp, true);
   }, []);
 
+  const syncScrollEnds = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setScrollEndsState(scrollEnds(el));
+  }, []);
+
+  useLayoutEffect(() => {
+    syncScrollEnds();
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => syncScrollEnds());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [syncScrollEnds]);
+
+  const scrollGalleryBy = useCallback(
+    (dir: -1 | 1) => {
+      const el = scrollRef.current;
+      if (!el || el.children.length === 0) return;
+      const i = centeredChildIndex(el);
+      const j = i + dir;
+      if (j < 0 || j >= el.children.length) return;
+      (el.children[j] as HTMLElement).scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      });
+    },
+    [],
+  );
+
   const trySelect = useCallback(
     (dungeon: Dungeon, isLocked: boolean) => {
       if (dragRef.current.suppressClick) {
@@ -296,11 +369,31 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
           bottom: 'max(11rem, calc(10.25rem + env(safe-area-inset-bottom, 0px)))',
         }}
       >
-        <div
-          ref={scrollRef}
-          onPointerDown={handlePointerDown}
-          className="flex min-h-0 flex-1 cursor-grab snap-x snap-mandatory flex-nowrap items-stretch gap-4 overflow-x-auto overflow-y-hidden px-4 py-2 select-none active:cursor-grabbing [scrollbar-width:thin] sm:gap-5 sm:px-6"
-        >
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <button
+            type="button"
+            aria-label="Previous dungeon"
+            disabled={scrollEndsState.atStart}
+            onClick={() => scrollGalleryBy(-1)}
+            className={`${GALLERY_NAV_BTN} left-2 max-sm:left-1 sm:left-3 ${scrollEndsState.atStart ? 'pointer-events-none opacity-30' : 'opacity-100 hover:bg-slate-900/95'}`}
+          >
+            <ChevronLeft className="size-6 max-sm:size-5 sm:size-7" strokeWidth={2.25} aria-hidden />
+          </button>
+          <button
+            type="button"
+            aria-label="Next dungeon"
+            disabled={scrollEndsState.atEnd}
+            onClick={() => scrollGalleryBy(1)}
+            className={`${GALLERY_NAV_BTN} right-2 max-sm:right-1 sm:right-3 ${scrollEndsState.atEnd ? 'pointer-events-none opacity-30' : 'opacity-100 hover:bg-slate-900/95'}`}
+          >
+            <ChevronRight className="size-6 max-sm:size-5 sm:size-7" strokeWidth={2.25} aria-hidden />
+          </button>
+          <div
+            ref={scrollRef}
+            onPointerDown={handlePointerDown}
+            onScroll={syncScrollEnds}
+            className={CAROUSEL_SCROLL}
+          >
           {DUNGEONS.map((dungeon) => {
             const isLocked = level < dungeon.levelMin;
             const isCompleted = completedDungeonIds.includes(dungeon.id);
@@ -355,7 +448,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                     </div>
                     <div className="relative shrink-0 self-center">
                       <GameIcon
-                        iconPath={isLocked ? LOCKED_DUNGEON_WOW_ICON : dungeon.cardIcon}
+                        iconPath={isLocked ? LOCKED_DUNGEON_ICON : dungeon.cardIcon}
                         glow="spell"
                         size="dungeonCard"
                         title={dungeon.name}
@@ -380,7 +473,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                             className="flex min-h-[2.5rem] shrink-0 items-center justify-start sm:min-h-0"
                           >
                             <GameIcon
-                              iconPath={LOCKED_DUNGEON_WOW_ICON}
+                              iconPath={LOCKED_DUNGEON_ICON}
                               glow="spell"
                               size="dungeonRoster"
                               title="Unknown"
@@ -390,7 +483,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                         ))}
                         <div className="flex min-h-[2.5rem] shrink-0 items-center justify-start sm:min-h-0">
                           <GameIcon
-                            iconPath={LOCKED_DUNGEON_WOW_ICON}
+                            iconPath={LOCKED_DUNGEON_ICON}
                             glow="spell"
                             size="dungeonRoster"
                             title="Unknown"
@@ -463,8 +556,8 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
               </button>
             );
           })}
+          </div>
         </div>
-        <div className="mx-auto mt-2 h-px w-16 shrink-0 bg-white/25" aria-hidden />
       </div>
 
       <AnimatePresence>

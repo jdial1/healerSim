@@ -86,6 +86,10 @@ export function useGameEngine() {
     });
   }, []);
 
+  const addXpNextLevel = useCallback(() => {
+    dispatch({ type: 'ADD_XP_NEXT_LEVEL' });
+  }, []);
+
   useEffect(() => {
     if (!state.isCombatActive) return;
     const interval = setInterval(() => {
@@ -128,6 +132,7 @@ export function useGameEngine() {
     startDungeon,
     abandonDungeon,
     castSpell,
+    addXpNextLevel,
     unlockTalent,
     respecTalents,
     reorderActionBar,

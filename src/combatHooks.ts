@@ -1,4 +1,4 @@
-import { ClassType, GameState, Spell, Unit } from './types.ts';
+import { ClassType, GameState, PartyDebuff, Spell, Unit } from './types.ts';
 import { talentRanks, hasPlayerBuff, HEALER_UNIT_ID } from './talentMechanics.ts';
 import { GRACE_PARTY_AURA, GRACE_SOURCE_ID } from './auraConfig.ts';
 import {
@@ -11,10 +11,14 @@ import type { HealManaCostContext, ManaAfterHealContext } from './combatHookRegi
 import { generateCombatUid } from './combatUid.ts';
 import { mapEntityById } from './mapEntityById.ts';
 import { BALANCE } from './balance.ts';
+import { effectiveTalentPointWeight } from './playerStats.ts';
 
 export { GRACE_SOURCE_ID };
 
-const BC = BALANCE.combat;
+const SHARED = BALANCE.combat.shared;
+const PRIEST = BALANCE.combat.priest;
+const DRUID = BALANCE.combat.druid;
+const PALADIN = BALANCE.combat.paladin;
 
 export function isPriestSurgeFinisher(spellId: string): boolean {
   return spellHasTag(spellId, 'surge-finisher');
@@ -28,14 +32,14 @@ export function directHealSynergyMultiplierFromIds(unit: Unit, spellId: string):
   if (!spellHasTag(spellId, 'synergy-direct')) return 1;
   if (!unit.buffs.some((b) => spellHasTag(b.sourceSpellId, 'synergy-primer-source'))) return 1;
   const sp = SPELLS[spellId];
-  return sp?.balance?.directHealSynergyMultiplier ?? BC.directHealSynergyMultiplierDefault;
+  return sp?.balance?.directHealSynergyMultiplier ?? SHARED.directHealSynergyMultiplierDefault;
 }
 
 export function devotionDamageTakenMultiplier(s: GameState): number {
   if (s.playerClass !== 'PALADIN') return 1;
   const r = talentRanks(s.talents, 'devotion_aura');
   if (r <= 0) return 1;
-  return Math.max(BC.devotionDamageTakenFloor, 1 - BC.devotionDamageReductionPerRank * r);
+  return Math.max(PALADIN.devotionDamageTakenFloor, 1 - PALADIN.devotionDamageReductionPerRank * r);
 }
 
 export function healManaCostSurgeFinisher(
@@ -53,12 +57,12 @@ export function healManaCostTreeOfLife(
   if (talentRanks(s.talents, 'tree_of_life') <= 0) return undefined;
   const { spell, spellId } = ctx;
   const hot = spell.type === 'HOT' || Boolean(spell.hotDuration && spell.healing > 0);
-  if (hot) return Math.round(spell.manaCost * BC.treeOfLifeHotManaCostFactor);
+  if (hot) return Math.round(spell.manaCost * DRUID.treeOfLifeHotManaCostFactor);
   if (
     spellHasTag(spellId, 'tree-of-life-big-direct') ||
-    (spellId === 'flash_heal' && spell.healing > BC.treeOfLifeFlashHealHealingThreshold)
+    (spellId === 'flash_heal' && spell.healing > DRUID.treeOfLifeFlashHealHealingThreshold)
   ) {
-    return Math.round(spell.manaCost * BC.treeOfLifeBigDirectManaCostFactor);
+    return Math.round(spell.manaCost * DRUID.treeOfLifeBigDirectManaCostFactor);
   }
   return undefined;
 }
@@ -129,10 +133,112 @@ export function manaAfterHealPriestPathMoon(
   ) {
     return Math.min(
       s.maxMana,
-      mOut + s.maxMana * BC.pathMoonMaxManaReturnPerRank * talentRanks(s.talents, 'path_moon'),
+      mOut + s.maxMana * PRIEST.pathMoonMaxManaReturnPerRank * talentRanks(s.talents, 'path_moon'),
     );
   }
   return mOut;
+}
+
+function talentPointsById(talents: GameState['talents'], talentId: string): number {
+  return talents.find((t) => t.id === talentId)?.points ?? 0;
+}
+
+export function priestMeditativeManaReturnPerTick(s: GameState, spiritRegenLockoutTicksRemaining: number): number {
+  if (s.playerClass !== 'PRIEST' || spiritRegenLockoutTicksRemaining > 0) return 0;
+  const ranks = talentPointsById(s.talents, 'p_r0c4');
+  if (ranks <= 0) return 0;
+  return s.maxMana * PRIEST.meditativeManaReturnPerRankPerTick * ranks;
+}
+
+export function druidHotTickManaReturn(s: GameState, sourceSpellId: string): number {
+  if (s.playerClass !== 'DRUID' || !spellHasTag(sourceSpellId, SPELL_TAG_DRUID_HOT)) return 0;
+  const ranks = talentPointsById(s.talents, 'd_r0c4');
+  if (ranks <= 0) return 0;
+  return DRUID.hotTickManaReturnPerRank * ranks;
+}
+
+export function druidHotTickRateMultiplier(s: GameState, sourceSpellId: string): number {
+  if (
+    s.capstoneForm !== 'druid_natures_grace' ||
+    !hasPlayerBuff(s.playerCombatBuffs, 'natures_grace_aura') ||
+    !spellHasTag(sourceSpellId, SPELL_TAG_DRUID_HOT)
+  ) {
+    return 1;
+  }
+  return DRUID.naturesGraceHotTickRateMultiplier;
+}
+
+export function paladinEmergencyCritBonusForTarget(s: GameState, target: Unit | undefined): number {
+  if (s.playerClass !== 'PALADIN' || !target || target.maxHealth <= 0) return 0;
+  const ranks = talentPointsById(s.talents, 'h_r4c0');
+  if (ranks <= 0) return 0;
+  if (target.health / target.maxHealth >= PALADIN.emergencyCritHealthThreshold) return 0;
+  return PALADIN.emergencyCritBonusPerRankBelowHealthFraction * ranks;
+}
+
+export function paladinEmergencyHasteBonusForTarget(s: GameState, target: Unit | undefined): number {
+  if (s.playerClass !== 'PALADIN' || !target || target.maxHealth <= 0) return 0;
+  const missingHealthFraction = 1 - target.health / target.maxHealth;
+  if (missingHealthFraction <= 0) return 0;
+  return missingHealthFraction * PALADIN.emergencyHasteFromMissingHealthMax;
+}
+
+export function druidActiveHotCount(s: GameState): number {
+  return s.party.reduce(
+    (count, unit) =>
+      count + unit.buffs.filter((buff) => buff.remainingTicks > 0 && spellHasTag(buff.sourceSpellId, SPELL_TAG_DRUID_HOT)).length,
+    0,
+  );
+}
+
+export function druidRampHasteBonus(s: GameState): number {
+  if (s.playerClass !== 'DRUID') return 0;
+  const ranks = talentPointsById(s.talents, 'd_r4c3');
+  if (ranks <= 0) return 0;
+  return druidActiveHotCount(s) * DRUID.rampHastePerHotPerRank * ranks;
+}
+
+export function druidRampCritBonus(s: GameState): number {
+  if (s.playerClass !== 'DRUID') return 0;
+  const ranks = talentPointsById(s.talents, 'd_r5c4');
+  if (ranks <= 0) return 0;
+  return druidActiveHotCount(s) * DRUID.rampCritPerHotPerRank * ranks;
+}
+
+export function priestShieldMaintenanceHasteBonus(s: GameState): number {
+  if (s.playerClass !== 'PRIEST') return 0;
+  const ranks = talentPointsById(s.talents, 'p_r5c3');
+  if (ranks <= 0) return 0;
+  const hasAnyShield = s.party.some((unit) => unit.health > 0 && unit.shield > 0);
+  if (!hasAnyShield) return 0;
+  return PRIEST.shieldMaintenanceHastePerRank * ranks;
+}
+
+export function priestSelfShieldDamageReduction(s: GameState): number {
+  if (s.playerClass !== 'PRIEST') return 0;
+  const ranks = talentPointsById(s.talents, 'p_r3c3');
+  if (ranks <= 0) return 0;
+  const healer = s.party.find((unit) => unit.role === 'HEALER');
+  if (!healer || healer.shield <= 0) return 0;
+  return PRIEST.selfShieldDamageReductionPerRank * ranks;
+}
+
+export function druidBarkskinSelfHealOnDamage(s: GameState, damageTaken: number): number {
+  if (s.playerClass !== 'DRUID' || damageTaken <= 0) return 0;
+  const ranks = talentPointsById(s.talents, 'd_r2c0');
+  if (ranks <= 0) return 0;
+  return damageTaken * DRUID.barkskinSelfHealFractionPerRank * ranks;
+}
+
+export function paladinAvengingWrathSplashFraction(s: GameState): number {
+  if (
+    s.playerClass !== 'PALADIN' ||
+    s.capstoneForm !== 'paladin_avenging_wrath' ||
+    !hasPlayerBuff(s.playerCombatBuffs, 'avenging_wrath_aura')
+  ) {
+    return 0;
+  }
+  return PALADIN.avengingWrathSplashFraction;
 }
 
 export function manaAfterHealStatBonusReturnOnDirect(
@@ -141,7 +247,9 @@ export function manaAfterHealStatBonusReturnOnDirect(
   mOut: number,
 ): number {
   const manaR = s.talents.reduce(
-    (a, t) => a + (t.statBonus?.manaReturnOnDirectHeal || 0) * t.points,
+    (a, t) =>
+      a +
+      (t.statBonus?.manaReturnOnDirectHeal || 0) * effectiveTalentPointWeight(t.points, t.maxPoints),
     0,
   );
   if (isDirectHealSpellId(ctx.spell, ctx.spellId)) {
@@ -166,7 +274,9 @@ export function manaAfterHealPaladinBeaconVow(
     ctx.healTargetId === beaconId
   ) {
     const refund =
-      ctx.needMana * BC.paladinVowProtectorCritManaRefundFraction * talentRanks(s.talents, 'paladin_vow_protector');
+      ctx.needMana *
+      PALADIN.vowProtectorCritManaRefundFraction *
+      talentRanks(s.talents, 'paladin_vow_protector');
     return Math.min(s.maxMana, mOut + refund);
   }
   return mOut;
@@ -203,9 +313,9 @@ export function applyDivineAegis(
     return newParty;
   }
   const daRanks = talentRanks(s.talents, 'divine_aegis');
-  let mult = BC.divineAegisShieldFractionPerRank * daRanks;
+  let mult = PRIEST.divineAegisShieldFractionPerRank * daRanks;
   if (talentRanks(s.talents, 'luminous_aegis') > 0) {
-    mult *= 1 + BC.luminousAegisMultiplierPerRank * talentRanks(s.talents, 'luminous_aegis');
+    mult *= 1 + PRIEST.luminousAegisMultiplierPerRank * talentRanks(s.talents, 'luminous_aegis');
   }
   return newParty.map((uNow) => {
     const uOld = oldParty.find((x) => x.id === uNow.id);
@@ -215,7 +325,7 @@ export function applyDivineAegis(
     return {
       ...uNow,
       shield: uNow.shield + gained * mult,
-      shieldTicksRemaining: BC.shieldDefaultTicks,
+      shieldTicksRemaining: SHARED.shieldDefaultTicks,
     };
   });
 }
@@ -237,8 +347,8 @@ export function applyBindingHealSelf(
     healMultB *
     critH *
     tMod *
-    BC.bindingHealSelfFraction *
-    Math.min(BC.bindingHealMaxRanksForCap, talentRanks(s.talents, 'binding_heal'));
+    PRIEST.bindingHealSelfFraction *
+    Math.min(PRIEST.bindingHealMaxRanksForCap, talentRanks(s.talents, 'binding_heal'));
   if (!healerW || !thp || thp.id === healerW.id) return newParty;
   return mapEntityById(newParty, HEALER_UNIT_ID, (u) => ({
     ...u,
@@ -247,9 +357,9 @@ export function applyBindingHealSelf(
 }
 
 export function beaconEchoMultiplier(s: GameState): number {
-  let m = BC.beaconEchoBaseMultiplier;
+  let m = PALADIN.beaconEchoBaseMultiplier;
   if (talentRanks(s.talents, 'paladin_vow_protector') > 0) {
-    m += BC.beaconEchoVowBonusPerRank * talentRanks(s.talents, 'paladin_vow_protector');
+    m += PALADIN.beaconEchoVowBonusPerRank * talentRanks(s.talents, 'paladin_vow_protector');
   }
   return m;
 }
@@ -286,9 +396,9 @@ export function applyLivingSeed(
   if (!isCritH || talentRanks(s.talents, 'living_seed') <= 0) {
     return newParty;
   }
-  let pct = BC.livingSeedPoolFraction;
+  let pct = DRUID.livingSeedPoolFraction;
   if (talentRanks(s.talents, 'living_seed') > 0 && talentRanks(s.talents, 'natural_perfection') > 0) {
-    pct += BC.livingSeedNaturalPerfectionBonusFraction;
+    pct += DRUID.livingSeedNaturalPerfectionBonusFraction;
   }
   const am = spell.healing * healMultB * critH * tMod * pct;
   return mapEntityById(newParty, targetId, (x) => ({ ...x, livingSeedPool: am }));
@@ -301,22 +411,35 @@ export function rollSurgeOfLight(
   return (
     spellId === 'flash_heal' &&
     talentRanks(s.talents, 'surge_of_light') > 0 &&
-    Math.random() < BC.surgeOfLightProcChancePerRank * talentRanks(s.talents, 'surge_of_light')
+    Math.random() < PRIEST.surgeOfLightProcChancePerRank * talentRanks(s.talents, 'surge_of_light')
   );
 }
 
 export function priestFlashCritBonusFromSynergy(s: GameState): number {
   if (talentRanks(s.talents, 'gleaming_proclamation') <= 0) return 0;
   if (talentRanks(s.talents, 'surge_of_light') <= 0) return 0;
-  return BC.gleamingProclamationFlashHealCritBonusPct;
+  return PRIEST.gleamingProclamationFlashHealCritBonusPct;
 }
 
-export function cleanseProcChance(s: GameState): number {
-  const c = talentRanks(s.talents, 'cleanse');
+export function stripOneDispellableDebuff(debuffs: PartyDebuff[]): PartyDebuff[] {
+  for (let i = debuffs.length - 1; i >= 0; i--) {
+    if (debuffs[i].dispellable) {
+      return debuffs.filter((_, j) => j !== i);
+    }
+  }
+  return debuffs;
+}
+
+export function dispellableCurseCleanseProcChance(s: GameState): number {
+  if (!s.playerClass) return 0;
+  let c = 0;
+  if (s.playerClass === 'PRIEST') c = talentRanks(s.talents, 'absolve');
+  else if (s.playerClass === 'DRUID') c = talentRanks(s.talents, 'naturalize');
+  else if (s.playerClass === 'PALADIN') c = talentRanks(s.talents, 'purify');
   if (c <= 0) return 0;
-  let p = BC.cleanseProcPerRank * c;
-  if (talentRanks(s.talents, 'tower_of_radiance') > 0) {
-    p *= BC.cleanseTowerOfRadianceMultiplier;
+  let p = SHARED.dispellableCurseCleanseProcPerRank * c;
+  if (s.playerClass === 'PALADIN' && talentRanks(s.talents, 'tower_of_radiance') > 0) {
+    p *= PALADIN.purifyTowerOfRadianceMultiplier;
   }
   return p;
 }
@@ -330,19 +453,19 @@ export function partyHasDruidHoTOnAnyAlly(s: GameState): boolean {
 export function druidHarmonyHotTickMultiplier(s: GameState, pComb: typeof s.playerCombatBuffs): number {
   const h = talentRanks(s.talents, 'druid_harmony');
   if (h <= 0 || !hasPlayerBuff(pComb, 'druid_harmony_for_hot')) return 1;
-  return 1 + BC.druidHarmonyBonusPerRank * h;
+  return 1 + DRUID.harmonyBonusPerRank * h;
 }
 
 export function druidHarmonyDirectMultiplier(s: GameState): number {
   const h = talentRanks(s.talents, 'druid_harmony');
   if (h <= 0 || !partyHasDruidHoTOnAnyAlly(s)) return 1;
-  return 1 + BC.druidHarmonyBonusPerRank * h;
+  return 1 + DRUID.harmonyBonusPerRank * h;
 }
 
 export function cultivationHotMultiplier(s: GameState, sourceSpellId: string): number {
   if (talentRanks(s.talents, 'druid_path_cultivation') <= 0) return 1;
   if (spellHasTag(sourceSpellId, SPELL_TAG_DRUID_CULTIVATION_HOT)) {
-    return 1 + BC.druidCultivationBonusPerRank * talentRanks(s.talents, 'druid_path_cultivation');
+    return 1 + DRUID.cultivationBonusPerRank * talentRanks(s.talents, 'druid_path_cultivation');
   }
   return 1;
 }
@@ -351,21 +474,40 @@ export function deepRootsHotMultiplier(s: GameState, unit: Unit, sourceSpellId: 
   if (talentRanks(s.talents, 'druid_path_deep_roots') <= 0) return 1;
   if (unit.role !== 'TANK') return 1;
   if (spellHasTag(sourceSpellId, SPELL_TAG_DRUID_HOT)) {
-    return 1 + BC.druidDeepRootsBonusPerRank * talentRanks(s.talents, 'druid_path_deep_roots');
+    return 1 + DRUID.deepRootsBonusPerRank * talentRanks(s.talents, 'druid_path_deep_roots');
   }
   return 1;
 }
 
 export function vowCrusaderAoEMultiplier(s: GameState, spellId: string): number {
   if (spellId !== 'light_of_dawn' || talentRanks(s.talents, 'paladin_vow_crusader') <= 0) return 1;
-  return 1 + BC.paladinVowCrusaderAoEBonusPerRank * talentRanks(s.talents, 'paladin_vow_crusader');
+  return 1 + PALADIN.vowCrusaderAoEBonusPerRank * talentRanks(s.talents, 'paladin_vow_crusader');
 }
 
-export function graceHealMultiplierOnTarget(target: Unit): number {
+export function archangelEchoShieldBonusFraction(
+  s: GameState,
+  spellId: string,
+  spell: Spell,
+): number {
+  if (
+    s.capstoneForm !== 'priest_archangel' ||
+    !hasPlayerBuff(s.playerCombatBuffs, 'archangel') ||
+    archangelSkipsSpell(spellId) ||
+    !isDirectHealSpellId(spell, spellId)
+  ) {
+    return 0;
+  }
+  const totalShield = s.party.reduce((sum, unit) => sum + Math.max(0, unit.shield), 0);
+  if (totalShield <= 0) return 0;
+  return totalShield * PRIEST.archangelEchoShieldConsumeBonusFraction;
+}
+
+export function graceHealMultiplierOnTarget(target: Unit, graceRanks: number): number {
+  if (graceRanks <= 0) return 1;
   const g = target.buffs.find((b) => b.sourceSpellId === GRACE_SOURCE_ID && b.remainingTicks > 0);
   if (!g || !g.stacks) return 1;
   const { maxStacks, healingPerStackLinearBonus } = GRACE_PARTY_AURA;
-  return 1 + healingPerStackLinearBonus * Math.min(maxStacks, g.stacks);
+  return 1 + healingPerStackLinearBonus * graceRanks * Math.min(maxStacks, g.stacks);
 }
 
 export function upsertGraceOnTarget(unit: Unit, stacksAdd: number, graceRanks: number): Unit {
@@ -407,7 +549,7 @@ export function applyGraceStacksFromDirectHeal(
 export function aegisBurstHealFromAbsorb(s: GameState, absorbed: number): number {
   const r = talentRanks(s.talents, 'aegis_burst');
   if (r <= 0 || absorbed <= 0) return 0;
-  return absorbed * BC.aegisBurstHealPerAbsorbPerRank * r;
+  return absorbed * PRIEST.aegisBurstHealPerAbsorbPerRank * r;
 }
 
 export function applyAegisBurstSplash(

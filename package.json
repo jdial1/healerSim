@@ -1,10 +1,11 @@
 {
   "name": "healersim",
   "private": true,
-  "version": "0.1.54",
+  "version": "0.1.82",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
+    "prebuild": "node scripts/download-icons.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

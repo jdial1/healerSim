@@ -44,3 +44,9 @@ export function classDisplayName(cls: ClassType): string {
   const row = classesData.selector.find((r) => r.id === cls);
   return row?.name ?? cls;
 }
+
+export function classUiRowForClass(cls: ClassType): ClassUiRow {
+  const row = classUiRows().find((x) => x.id === cls);
+  if (!row) throw new Error(`Unknown class ${cls}`);
+  return row;
+}

@@ -185,7 +185,13 @@ export function HealGrid({ party, onTargetSelect, selectedId }: HealGridProps) {
                     const secondsLeft = Math.ceil(debuff.remainingTicks / 10);
                     const showCountdown = debuff.remainingTicks < 50;
                     return (
-                      <div key={debuff.id} className="ui-debuff-frame" title={debuff.name}>
+                      <div
+                        key={debuff.id}
+                        className="ui-debuff-frame"
+                        title={
+                          debuff.dispellable ? `${debuff.name} (Dispellable)` : debuff.name
+                        }
+                      >
                         <GameIcon
                           iconPath={debuff.icon}
                           glow={glowForBossAbilityId(debuff.sourceAbilityId)}

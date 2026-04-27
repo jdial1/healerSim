@@ -20,7 +20,6 @@ export interface Spell {
   hotDuration?: number;
   hotHealingPerTick?: number;
   manaRestore?: number;
-  manaRegenBuffMultiplier?: number;
   manaRegenBuffDurationTicks?: number;
   cooldown: number;
   icon: string;
@@ -59,6 +58,7 @@ export interface PartyDebuff {
   damagePerTick: number;
   icon: string;
   sourceAbilityId: string;
+  dispellable: boolean;
 }
 
 export interface BossSelfBuff {
@@ -79,6 +79,7 @@ export interface BossDebuffTemplate {
   durationTicks: number;
   damagePerTick: number;
   targeting: BossDebuffTargeting;
+  dispellable: boolean;
 }
 
 export interface BossAttackTemplate {
@@ -132,6 +133,7 @@ export interface PlayerCombatBuff {
   id: string;
   remainingTicks: number;
   stacks: number;
+  potionDripPerTick?: number;
 }
 
 export interface Talent {
@@ -217,10 +219,12 @@ export type CombatPhase = 'TRASH' | 'BOSS';
 
 export interface PlayerCombatStats {
   playerClass: ClassType;
+  level: number;
   xp: number;
   mana: number;
   maxMana: number;
   manaRegenBuffTicksRemaining: number;
+  manaPotionDripPerSec: number;
   spiritRegenLockoutTicksRemaining: number;
   spirit: number;
   spellsEnabled: boolean;

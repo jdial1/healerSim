@@ -1,23 +1,23 @@
 [
   {
     "id": "p_r0c0",
-    "name": "Mental Fortitude",
+    "name": "Mana Focus I",
     "description": "Increases max mana by 40 per point. Max rank: +120 mana total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_holy_powerwordshield",
+    "icon": "wow/spell_holy_sealofwisdom",
     "gridX": 0,
     "gridY": 0,
     "statBonus": {
       "manaPool": 40
     },
-    "maxRankBonusDescription": "If maxed, regenerate 1% of total mana every 5 seconds in combat."
+    "maxRankBonusDescription": "Regenerate 1% of total mana every 5 seconds in combat."
   },
   {
     "id": "p_r0c1",
-    "name": "Mending Prose",
+    "name": "Healing Focus I",
     "description": "Increases all healing by 3% per point. Max rank: +9% healing total from this talent.",
     "points": 0,
     "maxPoints": 3,
@@ -32,8 +32,8 @@
   },
   {
     "id": "p_r0c2",
-    "name": "Improved Renew",
-    "description": "Renew ticks heal for 4% more per point. Max rank: +12% healing total from this talent.",
+    "name": "Renewal Rhythm",
+    "description": "Increases haste by 2% per point through smoother Renew cadence. Max rank: +6% haste total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -42,12 +42,12 @@
     "gridX": 2,
     "gridY": 0,
     "statBonus": {
-      "healingBoost": 4
+      "haste": 2
     }
   },
   {
     "id": "p_r0c3",
-    "name": "Solemn Absolution",
+    "name": "Critical Focus I",
     "description": "Increases crit chance by 1.5% per point. Max rank: +4.5% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 3,
@@ -62,28 +62,26 @@
   },
   {
     "id": "p_r0c4",
-    "name": "Benediction",
-    "description": "Return 3 mana on direct heals per point. Max rank: +6 mana per direct heal total from this talent.",
+    "name": "Meditative Wellspring",
+    "description": "While not casting, restore 0.3% of max mana per point each tick. Max rank: significantly increased out-of-cast mana sustain from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_holy_surgeoflight",
+    "icon": "wow/spell_holy_divineillumination",
     "gridX": 4,
     "gridY": 0,
-    "statBonus": {
-      "manaReturnOnDirectHeal": 3
-    }
+    "mechanicId": "priest_meditative_wellspring"
   },
   {
     "id": "p_r1c0",
-    "name": "Harrowed Focus",
+    "name": "Haste Focus I",
     "description": "Increases haste by 2% per point. Max rank: +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_holy_sealofwisdom",
+    "icon": "wow/spell_holy_borrowedtime",
     "gridX": 0,
     "gridY": 1,
     "prerequisites": [
@@ -95,13 +93,13 @@
   },
   {
     "id": "p_r1c1",
-    "name": "Gentle Absolution",
+    "name": "Healing Focus III",
     "description": "Increases all healing by 3% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_holy_renew",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 1,
     "gridY": 1,
     "prerequisites": [
@@ -129,13 +127,13 @@
   },
   {
     "id": "p_r1c3",
-    "name": "Chorus of Atonement",
+    "name": "Critical Focus II",
     "description": "Increases crit chance by 2% per point. Max rank: +4% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_holy_prayerofhealing",
+    "icon": "wow/spell_holy_testoffaith",
     "gridX": 3,
     "gridY": 1,
     "prerequisites": [
@@ -147,7 +145,7 @@
   },
   {
     "id": "p_r1c4",
-    "name": "Path of the Sun",
+    "name": "Healing Path",
     "description": "Path of the Sun: your heals are 3% more effective. Exclusive with Path of the Moon. Max rank: +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
@@ -169,7 +167,7 @@
   },
   {
     "id": "p_r2c0",
-    "name": "Resonant Words",
+    "name": "Haste Focus II",
     "description": "Increases haste by 2.5% per point. Max rank: +5% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
@@ -188,7 +186,7 @@
   {
     "id": "p_r2c1",
     "name": "Aegis of Faith",
-    "description": "Critical heals create a shield for 20% of the amount healed, lasting 10s.",
+    "description": "Critical heals create a shield for 20% per point of the amount healed, lasting 10s.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
@@ -203,13 +201,13 @@
   },
   {
     "id": "p_r2c2",
-    "name": "Rapture",
+    "name": "Healing Focus IV",
     "description": "Increases all healing by 4% per point. Max rank: +8% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_holy_renew",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 2,
     "gridY": 2,
     "prerequisites": [
@@ -256,13 +254,13 @@
   },
   {
     "id": "p_r3c0",
-    "name": "Seraphic Boon",
+    "name": "Mana Focus III",
     "description": "Max mana +80 per point. Max rank: +80 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_holy_divinespirit",
+    "icon": "wow/spell_holy_sealofwisdom",
     "gridX": 0,
     "gridY": 3,
     "prerequisites": [
@@ -306,13 +304,13 @@
   },
   {
     "id": "p_r3c3",
-    "name": "Luminous Aegis",
-    "description": "Shield strength from crits is 10% more effective per point. Max rank: +10% healing total from this talent.",
+    "name": "Shielded Healing Focus",
+    "description": "Shield strength from crits is 10% more effective per point. While shielded, you take reduced damage. Max rank: +10% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_holy_renew",
+    "icon": "wow/spell_holy_holynova",
     "gridX": 3,
     "gridY": 3,
     "prerequisites": [
@@ -325,13 +323,13 @@
   },
   {
     "id": "p_r3c4",
-    "name": "Gleaming Proclamation",
+    "name": "Critical Focus III",
     "description": "Your Flash Heal has 5% more crit chance. Resonates with Harsh Confession. Max rank: +5% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_holy_renew",
+    "icon": "wow/spell_holy_testoffaith",
     "gridX": 4,
     "gridY": 3,
     "prerequisites": [
@@ -346,14 +344,30 @@
     ]
   },
   {
+    "id": "p_r3c5",
+    "name": "Absolve",
+    "description": "Heals have a chance to remove a Dispellable curse from the target.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_holy_dispelmagic",
+    "gridX": 5,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c4"
+    ],
+    "mechanicId": "absolve"
+  },
+  {
     "id": "p_r4c0",
-    "name": "Fervor of the Martyr",
+    "name": "Crisis Healing Focus",
     "description": "When a party member is below 30% health, your healing to them is 8% more per point. Max rank: +16% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_holy_hopeandgrace",
+    "icon": "wow/spell_holy_surgeoflight",
     "gridX": 0,
     "gridY": 4,
     "prerequisites": [
@@ -397,13 +411,13 @@
   },
   {
     "id": "p_r4c3",
-    "name": "Celestial Reach",
-    "description": "Haste 4% per point. Max rank: +8% haste total from this talent.",
+    "name": "Shielded Haste Focus I",
+    "description": "Your casting rhythm quickens as your shielding pattern stabilizes. Haste 4% per point. Max rank: +8% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_holy_healingfocus",
+    "icon": "wow/spell_holy_dispelmagic",
     "gridX": 3,
     "gridY": 4,
     "prerequisites": [
@@ -416,12 +430,12 @@
   {
     "id": "p_r4c4",
     "name": "Grace",
-    "description": "Direct heals stack Grace on the target: each stack increases healing received from you by 4% (max 3 stacks, 8s).",
+    "description": "Direct heals stack Grace on the target: each stack increases healing received from you by 4% per point (max 3 stacks, 8s).",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/ability_priest_ascension",
+    "icon": "wow/spell_holy_crusade",
     "gridX": 4,
     "gridY": 4,
     "prerequisites": [
@@ -431,13 +445,13 @@
   },
   {
     "id": "p_r5c0",
-    "name": "Crest of the Archon",
+    "name": "Mana Focus IV",
     "description": "Max mana +120. Max rank: +120 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_renew",
+    "icon": "wow/spell_holy_sealofwisdom",
     "gridX": 0,
     "gridY": 5,
     "prerequisites": [
@@ -449,13 +463,13 @@
   },
   {
     "id": "p_r5c1",
-    "name": "Hallowed Ground",
+    "name": "Healing Focus V",
     "description": "Healing 10% per point. Max rank: +10% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_guardianspirit",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 1,
     "gridY": 5,
     "prerequisites": [
@@ -467,13 +481,13 @@
   },
   {
     "id": "p_r5c2",
-    "name": "Benedictory Echo",
+    "name": "Critical Focus IV",
     "description": "Crit 6% per point. Max rank: +6% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_divinehymn",
+    "icon": "wow/spell_holy_testoffaith",
     "gridX": 2,
     "gridY": 5,
     "prerequisites": [
@@ -485,13 +499,13 @@
   },
   {
     "id": "p_r5c3",
-    "name": "Astral Harmony",
-    "description": "Haste 6% per point. Max rank: +6% haste total from this talent.",
+    "name": "Shielded Haste Focus II",
+    "description": "Refines your absorb-first cadence into faster spell recovery. While any ally has your shield, gain additional haste. Haste 6% per point. Max rank: +6% haste total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_borrowedtime",
+    "icon": "wow/spell_holy_dispelmagic",
     "gridX": 3,
     "gridY": 5,
     "prerequisites": [
@@ -523,12 +537,12 @@
   {
     "id": "p_cap",
     "name": "Archangel",
-    "description": "Archangel: for 15s, your direct heals echo to the whole party. Wings manifest on your bar.",
+    "description": "Archangel: for 15s, your direct heals echo to the whole party and consume active party shields to empower those echoes. Wings manifest on your bar.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 40,
     "cost": 1,
-    "icon": "wow/ability_priest_ascension",
+    "icon": "wow/spell_holy_guardianspirit",
     "gridX": 2,
     "gridY": 6,
     "prerequisites": [
@@ -537,6 +551,6 @@
       "p_r5c3"
     ],
     "mechanicId": "capstone_archangel",
-    "maxRankBonusDescription": "For 15s, each single-target direct heal also heals every other living ally."
+    "maxRankBonusDescription": "For 15s, each single-target direct heal also heals every other living ally and gains bonus healing from consumed shields."
   }
 ]

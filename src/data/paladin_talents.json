@@ -1,13 +1,13 @@
 [
   {
     "id": "h_r0c0",
-    "name": "Seal of Wisdom",
+    "name": "Critical and Mana Focus I",
     "description": "Crit 1.2% per point. Mana sustain favors critical heals. Max rank: +3.6% crit chance, +75 mana total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_holy_sealofwisdom",
+    "icon": "wow/spell_holy_divineillumination",
     "gridX": 0,
     "gridY": 0,
     "statBonus": {
@@ -17,13 +17,13 @@
   },
   {
     "id": "h_r0c1",
-    "name": "Spiritual Focus",
+    "name": "Haste Focus I",
     "description": "Haste 2% per point. Max rank: +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_holy_sealofwisdom",
+    "icon": "wow/spell_holy_borrowedtime",
     "gridX": 1,
     "gridY": 0,
     "statBonus": {
@@ -32,13 +32,13 @@
   },
   {
     "id": "h_r0c2",
-    "name": "Healing Light",
+    "name": "Healing Focus I",
     "description": "Healing 3% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_holy_holynova",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 2,
     "gridY": 0,
     "statBonus": {
@@ -47,13 +47,13 @@
   },
   {
     "id": "h_r0c3",
-    "name": "Sanctified Resilience",
+    "name": "Critical Focus I",
     "description": "Crit 1.5% per point. Max rank: +3% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_holy_holyguidance",
+    "icon": "wow/spell_holy_testoffaith",
     "gridX": 3,
     "gridY": 0,
     "statBonus": {
@@ -62,28 +62,28 @@
   },
   {
     "id": "h_r0c4",
-    "name": "Infusion",
-    "description": "Return 2 mana on direct heals per point. Max rank: +4 mana per direct heal total from this talent.",
+    "name": "Judicator's Precision",
+    "description": "Increases max mana by 30 per point to support sustained casting windows. Max rank: +60 mana total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_holy_powerwordshield",
+    "icon": "wow/spell_holy_sealofwisdom",
     "gridX": 4,
     "gridY": 0,
     "statBonus": {
-      "manaReturnOnDirectHeal": 2
+      "manaPool": 30
     }
   },
   {
     "id": "h_r1c0",
-    "name": "Libram of Clarity",
+    "name": "Critical and Mana Focus II",
     "description": "Crit 2% and max mana 40 per point. Max rank: +4% crit chance, +80 mana total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/inv_misc_book_09",
+    "icon": "wow/spell_holy_divineillumination",
     "gridX": 0,
     "gridY": 1,
     "prerequisites": [
@@ -97,7 +97,7 @@
   {
     "id": "h_r1c1",
     "name": "Illumination",
-    "description": "Critical heals restore the spell manacost.",
+    "description": "Your direct-heal critical strikes refund 100% of that spell's mana cost.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 5,
@@ -112,7 +112,7 @@
   },
   {
     "id": "h_r1c2",
-    "name": "Divine Favor",
+    "name": "Holy Light",
     "description": "Unlocks Holy Light.",
     "points": 0,
     "maxPoints": 1,
@@ -128,13 +128,13 @@
   },
   {
     "id": "h_r1c3",
-    "name": "Crusader's Zeal",
+    "name": "Healing Focus II",
     "description": "Healing 3% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_holy_renew",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 3,
     "gridY": 1,
     "prerequisites": [
@@ -146,13 +146,13 @@
   },
   {
     "id": "h_r2c0",
-    "name": "Aegis of Devotion",
+    "name": "Haste Focus II",
     "description": "Haste 2.5% per point. Max rank: +5% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_holy_holyguidance",
+    "icon": "wow/spell_holy_borrowedtime",
     "gridX": 0,
     "gridY": 2,
     "prerequisites": [
@@ -202,7 +202,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/ability_paladin_shieldofthetemplar",
+    "icon": "wow/spell_holy_greaterblessingofsanctuary",
     "gridX": 3,
     "gridY": 2,
     "prerequisites": [
@@ -212,13 +212,13 @@
   },
   {
     "id": "h_r3c0",
-    "name": "Laying on Hands Rite",
+    "name": "Healing Focus III",
     "description": "Healing 4% per point. Max rank: +4% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_holy_searinglight",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 0,
     "gridY": 3,
     "prerequisites": [
@@ -236,7 +236,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/ability_paladin_beaconoflight",
+    "icon": "wow/spell_holy_divineintervention",
     "gridX": 1,
     "gridY": 3,
     "prerequisites": [
@@ -246,13 +246,13 @@
   },
   {
     "id": "h_r3c2",
-    "name": "Light's Vigor",
+    "name": "Critical and Healing Focus I",
     "description": "Crit 2% and healing 2% per point. Max rank: +4% crit chance, +4% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_holy_holyprotection",
+    "icon": "wow/spell_holy_holynova",
     "gridX": 2,
     "gridY": 3,
     "prerequisites": [
@@ -265,19 +265,19 @@
   },
   {
     "id": "h_r3c3",
-    "name": "Cleanse the Wicked",
-    "description": "Heals have increased chance to remove a random debuff. Synergy: Tower of Radiance improves proc chance.",
+    "name": "Purify",
+    "description": "Heals have a chance to remove a Dispellable curse from the target. Synergy: Tower of Radiance improves proc chance.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/ability_paladin_beaconoflight",
+    "icon": "wow/spell_holy_symbolofhope",
     "gridX": 3,
     "gridY": 3,
     "prerequisites": [
       "h_r2c3"
     ],
-    "mechanicId": "cleanse",
+    "mechanicId": "purify",
     "synergyWith": [
       "h_r2c1"
     ]
@@ -285,12 +285,12 @@
   {
     "id": "h_r3c4",
     "name": "Vow of the Protector",
-    "description": "Beacon healing copy is stronger. Critical heals on your Beacon target refund 15% of that spell manacost per point. Exclusive with Vow of the Crusader.",
+    "description": "Beacon healing copy is stronger. Critical heals on your Beacon target refund 15% of that spell's mana cost per point. Exclusive with Vow of the Crusader.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/ability_paladin_blessedmending",
+    "icon": "wow/spell_holy_blessedlife",
     "gridX": 4,
     "gridY": 3,
     "prerequisites": [
@@ -306,13 +306,13 @@
   },
   {
     "id": "h_r4c0",
-    "name": "Radiant Conviction",
-    "description": "Crit 3% and max mana 80. Max rank: +3% crit chance, +80 mana total from this talent.",
+    "name": "Critical and Mana Focus III",
+    "description": "Crit 3% and max mana 80. Also gain bonus crit healing targets below 40% health. Max rank: +3% crit chance, +80 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_holy_righteousfury",
+    "icon": "wow/spell_holy_divineillumination",
     "gridX": 0,
     "gridY": 4,
     "prerequisites": [
@@ -325,13 +325,13 @@
   },
   {
     "id": "h_r4c1",
-    "name": "Glimmering Promise",
+    "name": "Healing Focus IV",
     "description": "Healing 5% per point. Max rank: +5% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_holy_heal",
+    "icon": "wow/spell_holy_holyguidance",
     "gridX": 1,
     "gridY": 4,
     "prerequisites": [
@@ -343,13 +343,13 @@
   },
   {
     "id": "h_r4c2",
-    "name": "Light's Grace",
+    "name": "Haste and Healing Focus I",
     "description": "Haste 4% and healing 3%. Max rank: +4% haste, +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_holy_lightsgrace",
+    "icon": "wow/spell_holy_blessedresillience",
     "gridX": 2,
     "gridY": 4,
     "prerequisites": [
@@ -362,13 +362,13 @@
   },
   {
     "id": "h_r4c3",
-    "name": "Hallowed Aegis",
+    "name": "Healing and Critical Focus I",
     "description": "Healing 4% and crit 2%. Max rank: +4% healing, +2% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_holy_blessingofprotection",
+    "icon": "wow/spell_holy_resurrection",
     "gridX": 3,
     "gridY": 4,
     "prerequisites": [
@@ -403,13 +403,13 @@
   },
   {
     "id": "h_r5c0",
-    "name": "Silver Hand's Mending",
+    "name": "Haste and Critical Focus",
     "description": "Haste 5% and crit 3%. Max rank: +5% haste, +3% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_blindingheal",
+    "icon": "wow/spell_holy_powerinfusion",
     "gridX": 0,
     "gridY": 5,
     "prerequisites": [
@@ -422,13 +422,13 @@
   },
   {
     "id": "h_r5c1",
-    "name": "Argent Aegis",
+    "name": "Healing and Critical Focus II",
     "description": "Healing 5% and crit 2%. Max rank: +5% healing, +2% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_divineillumination",
+    "icon": "wow/spell_holy_resurrection",
     "gridX": 1,
     "gridY": 5,
     "prerequisites": [
@@ -441,13 +441,13 @@
   },
   {
     "id": "h_r5c2",
-    "name": "Argent Vindicator",
+    "name": "Healing and Haste Focus",
     "description": "Healing 3% and haste 4%. Max rank: +3% healing, +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_weaponmastery",
+    "icon": "wow/spell_holy_hopeandgrace",
     "gridX": 2,
     "gridY": 5,
     "prerequisites": [
@@ -460,13 +460,13 @@
   },
   {
     "id": "h_r5c3",
-    "name": "Highlord's Gift",
+    "name": "Critical and Healing Focus II",
     "description": "Crit 3% and healing 3%. Max rank: +3% crit chance, +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_sealofprotection",
+    "icon": "wow/spell_holy_holynova",
     "gridX": 3,
     "gridY": 5,
     "prerequisites": [
@@ -479,13 +479,13 @@
   },
   {
     "id": "h_r5c4",
-    "name": "Champion's Litany",
-    "description": "Haste 3% and healing 3%. Max rank: +3% haste, +3% healing total from this talent.",
+    "name": "Haste and Healing Focus II",
+    "description": "Haste 3% and healing 3%. Light of Dawn consumes 3 Holy Power to reset its cooldown, and your critical heals can generate Holy Power. Max rank: +3% haste, +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_sealofsalvation",
+    "icon": "wow/spell_holy_blessedresillience",
     "gridX": 4,
     "gridY": 5,
     "prerequisites": [
@@ -500,7 +500,7 @@
   {
     "id": "h_cap",
     "name": "Avenging Wrath",
-    "description": "Avenging Wrath: for 20s, gold aura on your character.",
+    "description": "Avenging Wrath: for 20s, gold aura on your character and Tower of Radiance grants double Holy Power.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 40,
@@ -514,6 +514,6 @@
       "h_r5c3"
     ],
     "mechanicId": "capstone_avenging_wrath",
-    "maxRankBonusDescription": "For 20s, you have the Avenging Wrath combat aura and capstone stance active."
+    "maxRankBonusDescription": "For 20s, you have the Avenging Wrath combat aura and capstone stance active, and Holy Power generation is doubled."
   }
 ]

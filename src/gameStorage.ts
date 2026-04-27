@@ -207,7 +207,13 @@ export function buildSpellLoadout(
   while (healRow.length < 3) {
     healRow.push('');
   }
-  const activeActionBars: string[] = [healRow[0]!, healRow[1]!, healRow[2]!, 'mana_potion'];
+  const activeActionBars: string[] = [
+    healRow[0]!,
+    healRow[1]!,
+    healRow[2]!,
+    'mana_potion',
+    '',
+  ];
   const unlockedSpells = ['mana_potion', ...merged].filter((x, i, a) => a.indexOf(x) === i);
   return { unlockedSpells, activeActionBars };
 }

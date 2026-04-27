@@ -1,13 +1,13 @@
 [
   {
     "id": "d_r0c0",
-    "name": "Nature's Focus",
+    "name": "Healing Focus I",
     "description": "Healing 2% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_nature_rejuvenation",
+    "icon": "wow/spell_nature_healingtouch",
     "gridX": 0,
     "gridY": 0,
     "statBonus": {
@@ -16,7 +16,7 @@
   },
   {
     "id": "d_r0c1",
-    "name": "Furor",
+    "name": "Mana Focus I",
     "description": "Max mana 45 per point. Max rank: +135 mana total from this talent.",
     "points": 0,
     "maxPoints": 3,
@@ -31,13 +31,13 @@
   },
   {
     "id": "d_r0c2",
-    "name": "Verdant Heart",
+    "name": "Haste Focus I",
     "description": "Haste 2% per point. Max rank: +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_nature_insectswarm",
+    "icon": "wow/spell_nature_swiftness",
     "gridX": 2,
     "gridY": 0,
     "statBonus": {
@@ -46,13 +46,13 @@
   },
   {
     "id": "d_r0c3",
-    "name": "Wildseed Attunement",
+    "name": "Critical Focus I",
     "description": "Crit 2% per point. Max rank: +4% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_nature_abolishmagic",
+    "icon": "wow/spell_nature_regeneration",
     "gridX": 3,
     "gridY": 0,
     "statBonus": {
@@ -61,28 +61,26 @@
   },
   {
     "id": "d_r0c4",
-    "name": "Living Vine",
-    "description": "Direct heals return 2 mana per point. Max rank: +4 mana per direct heal total from this talent.",
+    "name": "Verdant Reservoir",
+    "description": "Your HoT ticks return 0.4 mana per point each tick. Max rank: substantially increased mana sustain from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_nature_stranglevines",
+    "icon": "wow/spell_nature_natureguardian",
     "gridX": 4,
     "gridY": 0,
-    "statBonus": {
-      "manaReturnOnDirectHeal": 2
-    }
+    "mechanicId": "druid_verdant_reservoir"
   },
   {
     "id": "d_r1c0",
-    "name": "Grove Harmony",
+    "name": "Healing Focus II",
     "description": "Healing 3% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_nature_rejuvenation",
+    "icon": "wow/spell_nature_healingtouch",
     "gridX": 0,
     "gridY": 1,
     "prerequisites": [
@@ -94,13 +92,13 @@
   },
   {
     "id": "d_r1c1",
-    "name": "Tranquil Well",
+    "name": "Mana Focus III",
     "description": "Max mana 60 per point. Max rank: +120 mana total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_nature_tranquility",
+    "icon": "wow/spell_nature_moonglow",
     "gridX": 1,
     "gridY": 1,
     "prerequisites": [
@@ -128,13 +126,13 @@
   },
   {
     "id": "d_r1c3",
-    "name": "Moonkin's Favor",
+    "name": "Critical Focus II",
     "description": "Crit 2% per point. Max rank: +4% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_nature_starfall",
+    "icon": "wow/spell_nature_regeneration",
     "gridX": 3,
     "gridY": 1,
     "prerequisites": [
@@ -152,7 +150,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_nature_rejuvenation",
+    "icon": "wow/spell_nature_wispheal",
     "gridX": 4,
     "gridY": 1,
     "prerequisites": [
@@ -165,13 +163,13 @@
   },
   {
     "id": "d_r2c0",
-    "name": "Barkskin Rite",
-    "description": "Haste 2.5% per point. Max rank: +5% haste total from this talent.",
+    "name": "Haste Focus II",
+    "description": "Haste 2.5% per point. When you take damage, restore a small amount of your own health. Max rank: +5% haste total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_nature_thorns",
+    "icon": "wow/spell_nature_swiftness",
     "gridX": 0,
     "gridY": 2,
     "prerequisites": [
@@ -224,7 +222,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_nature_giftofthewild",
+    "icon": "wow/spell_nature_forceofnature",
     "gridX": 3,
     "gridY": 2,
     "prerequisites": [
@@ -253,13 +251,13 @@
   },
   {
     "id": "d_r3c0",
-    "name": "Cenarion Bloom",
+    "name": "Healing Focus III",
     "description": "Healing 4% per point. Max rank: +4% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_nature_healingway",
+    "icon": "wow/spell_nature_healingtouch",
     "gridX": 0,
     "gridY": 3,
     "prerequisites": [
@@ -296,7 +294,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/ability_druid_flourish",
+    "icon": "wow/spell_nature_wispsplode",
     "gridX": 2,
     "gridY": 3,
     "prerequisites": [
@@ -307,12 +305,12 @@
   {
     "id": "d_r3c3",
     "name": "Mastery: Harmony",
-    "description": "After a direct heal, your HoT ticks are stronger for 6s. While any ally has your HoT, your direct heals are stronger.",
+    "description": "After a direct heal, your HoT ticks are 6% stronger per point for 6s. While any ally has your HoT, your direct heals are 6% stronger per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_nature_rejuvenation",
+    "icon": "wow/spell_nature_focusedmind",
     "gridX": 3,
     "gridY": 3,
     "prerequisites": [
@@ -328,7 +326,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/inv_misc_herb_felblossom",
+    "icon": "wow/spell_nature_regenerate",
     "gridX": 4,
     "gridY": 3,
     "prerequisites": [
@@ -337,14 +335,30 @@
     "spellId": "lifebloom"
   },
   {
+    "id": "d_r3c5",
+    "name": "Naturalize",
+    "description": "Heals have a chance to remove a Dispellable curse from the target.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_nature_abolishmagic",
+    "gridX": 5,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c4"
+    ],
+    "mechanicId": "naturalize"
+  },
+  {
     "id": "d_r4c0",
-    "name": "Eternal Spring",
+    "name": "Mana Focus IV",
     "description": "Max mana 100. Max rank: +100 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_nature_resistnature",
+    "icon": "wow/spell_nature_moonglow",
     "gridX": 0,
     "gridY": 4,
     "prerequisites": [
@@ -356,13 +370,13 @@
   },
   {
     "id": "d_r4c1",
-    "name": "Grovekeeper",
+    "name": "Healing Focus IV",
     "description": "Healing 6% per point. Max rank: +6% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_nature_rejuvenation",
+    "icon": "wow/spell_nature_healingtouch",
     "gridX": 1,
     "gridY": 4,
     "prerequisites": [
@@ -390,13 +404,13 @@
   },
   {
     "id": "d_r4c3",
-    "name": "Verdant Infusion",
-    "description": "Haste 4% per point. Max rank: +4% haste total from this talent.",
+    "name": "Haste Focus III",
+    "description": "Your HoT cadence accelerates your follow-up casts. Gain additional haste for each active party HoT. Haste 4% per point. Max rank: +4% haste total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_nature_naturesblessing",
+    "icon": "wow/spell_nature_swiftness",
     "gridX": 3,
     "gridY": 4,
     "prerequisites": [
@@ -408,13 +422,13 @@
   },
   {
     "id": "d_r4c4",
-    "name": "Wildcrown's Boon",
+    "name": "Critical and Mana Focus",
     "description": "Crit 4% and mana +80. Max rank: +4% crit chance, +80 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_nature_rejuvenation",
+    "icon": "wow/spell_nature_lightning",
     "gridX": 4,
     "gridY": 4,
     "prerequisites": [
@@ -427,13 +441,13 @@
   },
   {
     "id": "d_r5c0",
-    "name": "Heartwood Pact",
+    "name": "Healing and Haste Focus",
     "description": "Healing 5% and haste 3%. Max rank: +5% healing, +3% haste total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_nature_faeriefire",
+    "icon": "wow/spell_nature_naturesblessing",
     "gridX": 0,
     "gridY": 5,
     "prerequisites": [
@@ -446,13 +460,13 @@
   },
   {
     "id": "d_r5c1",
-    "name": "Dreamwalker's Mending",
+    "name": "Healing Focus V",
     "description": "Healing 5% per point. Max rank: +5% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_nature_protectionformnature",
+    "icon": "wow/spell_nature_healingtouch",
     "gridX": 1,
     "gridY": 5,
     "prerequisites": [
@@ -464,13 +478,13 @@
   },
   {
     "id": "d_r5c2",
-    "name": "Barkskin Mastery",
+    "name": "Critical and Healing Focus",
     "description": "Crit 4% and healing 3%. Max rank: +4% crit chance, +3% healing total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_nature_stoneclawtotem",
+    "icon": "wow/spell_nature_tranquility",
     "gridX": 2,
     "gridY": 5,
     "prerequisites": [
@@ -483,8 +497,8 @@
   },
   {
     "id": "d_r5c3",
-    "name": "Groveheart",
-    "description": "Haste 5% and max mana 100. Max rank: +5% haste, +100 mana total from this talent.",
+    "name": "Haste and Mana Focus",
+    "description": "Sustained HoT upkeep rewards smoother throughput. Haste 5% and max mana 100. Max rank: +5% haste, +100 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -502,13 +516,13 @@
   },
   {
     "id": "d_r5c4",
-    "name": "Skylord's Bounty",
-    "description": "Healing 4% and crit 3%. Max rank: +4% healing, +3% crit chance total from this talent.",
+    "name": "Healing and Critical Focus",
+    "description": "Healing 4% and crit 3%. Gain additional crit for each active party HoT. Max rank: +4% healing, +3% crit chance total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_nature_forceofnature",
+    "icon": "wow/spell_nature_tranquility",
     "gridX": 4,
     "gridY": 5,
     "prerequisites": [
@@ -522,7 +536,7 @@
   {
     "id": "d_cap",
     "name": "Nature's Grace",
-    "description": "The ground around you flowers: passively heal all living allies a small amount each combat tick for 20s. Visual bloom on your character.",
+    "description": "The ground around you flowers: passively heal all living allies a small amount each combat tick for 20s. While active, your HoTs tick faster. Visual bloom on your character.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 40,
@@ -536,6 +550,6 @@
       "d_r5c3"
     ],
     "mechanicId": "capstone_natures_grace",
-    "maxRankBonusDescription": "For 20s, every combat tick heals all living allies by 40% of your level each."
+    "maxRankBonusDescription": "For 20s, every combat tick heals all living allies by 40% of your level each, and your HoTs tick at 150% rate."
   }
 ]

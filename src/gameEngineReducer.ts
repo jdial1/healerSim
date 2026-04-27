@@ -11,6 +11,7 @@ import {
   patchFromSavedShape,
   computeMetaFromProgress,
   reconcileActionBarOrder,
+  xpProgressWithinLevel,
   type RosterV2,
 } from './gameStorage.ts';
 import {
@@ -32,7 +33,8 @@ export type GameAction =
   | { type: 'START_DUNGEON'; dungeon: Dungeon }
   | { type: 'UNLOCK_TALENT'; talentId: string }
   | { type: 'RESPEC_TALENTS' }
-  | { type: 'CAST_SPELL'; spellId: string; targetId: string; critRoll: number };
+  | { type: 'CAST_SPELL'; spellId: string; targetId: string; critRoll: number }
+  | { type: 'ADD_XP_NEXT_LEVEL' };
 
 function tickSpellCooldowns(state: GameState): GameState {
   const prev = state.spellCooldowns;
@@ -119,6 +121,25 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return reduceRespecTalents(state);
     case 'CAST_SPELL':
       return reduceCastSpell(state, action.spellId, action.targetId, action.critRoll);
+    case 'ADD_XP_NEXT_LEVEL': {
+      if (!state.playerClass) return state;
+      const { into, needed } = xpProgressWithinLevel(state.xp);
+      const delta = Math.max(0, needed - into) + 1;
+      const newXp = state.xp + delta;
+      const meta = computeMetaFromProgress(newXp, state.playerClass, state.talents);
+      const activeActionBars = reconcileActionBarOrder(state.activeActionBars, meta.activeActionBars);
+      const party =
+        meta.level > state.level
+          ? generateRandomParty(meta.level, state.playerClass)
+          : state.party;
+      return {
+        ...state,
+        ...meta,
+        activeActionBars,
+        mana: Math.min(meta.maxMana, state.mana),
+        party,
+      };
+    }
     default:
       return state;
   }

@@ -33,7 +33,9 @@ export function priestMentalFortitudeMaxRankCombatManaPerTick(
   playerClass: ClassType | null,
   maxMana: number,
   talents: Talent[],
+  spiritRegenLockoutTicksRemaining: number,
 ): number {
+  if (spiritRegenLockoutTicksRemaining > 0) return 0;
   if (playerClass !== 'PRIEST') return 0;
   const t = talents.find((x) => x.id === PRIEST_TALENT_ID_MENTAL_FORTITUDE);
   if (!t || t.maxPoints <= 0 || t.points < t.maxPoints) return 0;
@@ -117,18 +119,32 @@ export function upsertPlayerBuff(
   id: string,
   ticks: number,
   stacks: number,
+  opts?: { potionDripPerTick?: number },
 ): PlayerCombatBuff[] {
   const i = buffIndex(buffs, id);
+  const drip = opts?.potionDripPerTick;
   if (i < 0) {
-    return [...buffs, { id, remainingTicks: ticks, stacks }];
+    return [
+      ...buffs,
+      { id, remainingTicks: ticks, stacks, ...(drip !== undefined ? { potionDripPerTick: drip } : {}) },
+    ];
   }
+  const prev = buffs[i];
+  const nextDrip = drip !== undefined ? drip : prev.potionDripPerTick;
   const next = [...buffs];
   next[i] = {
     id,
-    remainingTicks: Math.max(ticks, next[i].remainingTicks),
+    remainingTicks: Math.max(ticks, prev.remainingTicks),
     stacks,
+    ...(nextDrip !== undefined ? { potionDripPerTick: nextDrip } : {}),
   };
   return next;
+}
+
+export function getManaPotionDripPerTick(buffs: PlayerCombatBuff[]): number {
+  const b = buffs.find((x) => x.id === PLAYER_BUFF_MANA_REGEN_POTION);
+  if (!b || b.remainingTicks <= 0) return 0;
+  return b.potionDripPerTick ?? 0;
 }
 
 export function addOrRefreshBuffTicks(

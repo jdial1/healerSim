@@ -16,16 +16,16 @@ import { CharacterRoster } from './components/CharacterRoster.tsx';
 import { DungeonSelector } from './components/DungeonSelector.tsx';
 import { maxLevelAcrossRoster } from './gameStorage.ts';
 import { GameHUD } from './components/GameHUD.tsx';
-import { TRASH_PACK_COUNT } from './constants.ts';
+import { TRASH_PACK_COUNT, TICKS_PER_SECOND, MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
 import {
   PLAYER_BUFF_MANA_REGEN_POTION,
   PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT,
   getPlayerBuffRemainingTicks,
+  getManaPotionDripPerTick,
 } from './talentMechanics.ts';
 import { partyWithHealerManaRegenDisplayBuff } from './buffDisplay.ts';
 import { TalentTree } from './components/TalentTree.tsx';
 import { DungeonOutcomeModal } from './components/DungeonOutcomeModal.tsx';
-import { MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
 import { spellHealingMultiplierFromProgress, effectivePrimaryStats } from './playerStats.ts';
 import type { PlayerCombatStats } from './types.ts';
 import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
@@ -42,6 +42,7 @@ export default function App() {
     startDungeon,
     abandonDungeon,
     castSpell,
+    addXpNextLevel,
     unlockTalent,
     respecTalents,
     reorderActionBar,
@@ -110,18 +111,21 @@ export default function App() {
   );
 
   const partyForHealGrid = useMemo(
-    () => partyWithHealerManaRegenDisplayBuff(state.party, manaRegenTicksForUi),
-    [state.party, manaRegenTicksForUi],
+    () =>
+      partyWithHealerManaRegenDisplayBuff(state.party, manaRegenTicksForUi, state.level),
+    [state.party, manaRegenTicksForUi, state.level],
   );
 
   const playerCombatStats = useMemo((): PlayerCombatStats | null => {
     if (!state.playerClass) return null;
     return {
       playerClass: state.playerClass,
+      level: state.level,
       xp: state.xp,
       mana: state.currentDungeon ? state.mana : state.maxMana,
       maxMana: state.maxMana,
       manaRegenBuffTicksRemaining: manaRegenTicksForUi,
+      manaPotionDripPerSec: getManaPotionDripPerTick(state.playerCombatBuffs) * TICKS_PER_SECOND,
       spiritRegenLockoutTicksRemaining: spiritLockTicksForUi,
       spirit: effectivePrimaryStats(state.playerClass, state.level).spirit,
       spellsEnabled: !!state.currentDungeon,
@@ -147,6 +151,7 @@ export default function App() {
     state.talents,
     manaRegenTicksForUi,
     spiritLockTicksForUi,
+    state.playerCombatBuffs,
     actionBarHighlights,
   ]);
 
@@ -158,6 +163,29 @@ export default function App() {
     castSpell,
   };
   useKeyboardCombatKeys(keyboardRef, setTargetId);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || !e.shiftKey || e.key.toLowerCase() !== 'l') return;
+      if (e.repeat) return;
+      const t = e.target;
+      if (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        t instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+      if (t instanceof HTMLElement && (t.isContentEditable || t.closest('[contenteditable="true"]'))) {
+        return;
+      }
+      if (!state.playerClass) return;
+      e.preventDefault();
+      addXpNextLevel();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [state.playerClass, addXpNextLevel]);
 
   return (
     <div

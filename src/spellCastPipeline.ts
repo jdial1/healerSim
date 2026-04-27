@@ -1,5 +1,7 @@
 import { GameState, PlayerCombatBuff, Spell, Unit } from './types.ts';
 import { MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
+import { manaPotionInstantMana, manaPotionOverTimeTotal } from './manaPotionIcon.ts';
+import { spellHasTag } from './constants.ts';
 import {
   talentRanks,
   hasPlayerBuff,
@@ -28,6 +30,7 @@ import {
   swiftmendCanApply,
 } from './combatHelper.ts';
 import {
+  archangelEchoShieldBonusFraction,
   archangelSkipsSpell,
   graceHealMultiplierOnTarget,
   isPriestSurgeFinisher,
@@ -36,6 +39,8 @@ import {
 import {
   runCastDirectHealMultipliers,
   runCritBonusForHealRoll,
+  runPaladinAvengingWrathSplashFraction,
+  runPaladinEmergencyHasteBonusForTarget,
   runOnCrit,
   runOnHealCast,
   runOnHealLand,
@@ -91,6 +96,7 @@ type StandardReady = {
   tower2: boolean;
   tMod: number;
   arch: boolean;
+  paladinEmergencyHasteBonus: number;
   pbuffsBaseline: PlayerCombatBuff[];
 };
 
@@ -166,7 +172,7 @@ function validateStandardHeal(s: GameState, input: CastInput, common: CommonVali
     hasPlayerBuff(s.playerCombatBuffs, 'surge_of_light') && isPriestSurgeFinisher(spellId);
   const healMultB =
     common.eff.healingFromProgress * common.eff.spiritRedemptionHealingMultiplier;
-  const flashCrit = runCritBonusForHealRoll(s, spellId);
+  const flashCrit = runCritBonusForHealRoll(s, spellId, targetId);
   const isCrit = rollCritAgainstEffective(
     critRoll,
     common.eff,
@@ -177,6 +183,7 @@ function validateStandardHeal(s: GameState, input: CastInput, common: CommonVali
   const tower2 = s.holyPower >= 3 && isDirectHealSpell(spell, spellId);
   const tMod = tower2 ? 2 : 1;
   const arch = s.capstoneForm === 'priest_archangel' && hasPlayerBuff(s.playerCombatBuffs, 'archangel');
+  const paladinEmergencyHasteBonus = runPaladinEmergencyHasteBonusForTarget(s, targetId);
   let pbuffsBaseline = s.playerCombatBuffs;
   if (surgeFree) {
     pbuffsBaseline = withBuffRemoved(pbuffsBaseline, 'surge_of_light');
@@ -195,6 +202,7 @@ function validateStandardHeal(s: GameState, input: CastInput, common: CommonVali
     tower2,
     tMod,
     arch,
+    paladinEmergencyHasteBonus,
     pbuffsBaseline,
   };
 }
@@ -274,7 +282,9 @@ function applySwiftmendCast(s: GameState, ready: SwiftmendReady, rt: CastRuntime
 
 function applyManaPotionCast(s: GameState, ready: ManaPotionReady, rt: CastRuntime): GameState {
   const { spell, spellId, eff } = ready;
-  const newManaP = Math.min(s.maxMana, s.mana + (spell.manaRestore || 0));
+  const durTicks = spell.manaRegenBuffDurationTicks ?? 0;
+  const dripPerTick = durTicks > 0 ? manaPotionOverTimeTotal(s.level) / durTicks : 0;
+  const newManaP = Math.min(s.maxMana, s.mana + manaPotionInstantMana(s.level));
   const nPiP = rt.scheduleCooldown({
     spellId,
     rawCooldownTicks: spell.cooldown,
@@ -284,8 +294,9 @@ function applyManaPotionCast(s: GameState, ready: ManaPotionReady, rt: CastRunti
   let pbMp = upsertPlayerBuff(
     s.playerCombatBuffs,
     PLAYER_BUFF_MANA_REGEN_POTION,
-    spell.manaRegenBuffDurationTicks ?? 0,
+    durTicks,
     1,
+    { potionDripPerTick: dripPerTick },
   );
   pbMp = applyPowerInfusionCastsAfterCooldown(pbMp, nPiP);
   return {
@@ -299,11 +310,18 @@ function applyManaPotionCast(s: GameState, ready: ManaPotionReady, rt: CastRunti
 function patchPartyStandardDirectAndHot(s: GameState, ready: StandardReady): { newParty: Unit[] } {
   const { spell, spellId, targetId, healMultB, critH, tMod, arch, eff } = ready;
   const hTickScale = eff.hasteTickScale;
+  const archShieldBonus = archangelEchoShieldBonusFraction(s, spellId, spell);
+  const archEchoTargets = arch
+    ? s.party.filter((u) => u.health > 0 && u.id !== targetId).length
+    : 0;
+  const archEchoBonusPerTarget = archEchoTargets > 0 ? archShieldBonus / archEchoTargets : 0;
+  const awSplashFraction = runPaladinAvengingWrathSplashFraction(s);
+  const graceRanks = talentRanks(s.talents, 'priest_grace');
   let newParty2 = s.party.map((u) => ({ ...u, buffs: u.buffs.map((b) => ({ ...b })) }));
   const healOne = (u: Unit) => {
     if (u.health <= 0) return u;
     const syn = directHealSynergyMultiplier(u, spellId);
-    const gr = graceHealMultiplierOnTarget(u);
+    const gr = graceHealMultiplierOnTarget(u, graceRanks);
     const healAmp = runCastDirectHealMultipliers(s, spell, spellId);
     const directAmt = spell.healing * healMultB * critH * tMod * syn * gr * healAmp;
     const th = Math.min(u.maxHealth, u.health + directAmt);
@@ -315,27 +333,84 @@ function patchPartyStandardDirectAndHot(s: GameState, ready: StandardReady): { n
     const tHot = (spell.hotHealingPerTick || 0) * healMultB * critH;
     return applyPandemicHotToUnit(u, spell, tHot, { hasteTickScale: hTickScale });
   };
+  const directBase = spell.healing * healMultB * critH * tMod;
   if (spell.type === 'AOE') {
     newParty2 = newParty2.map((u) => (u.health > 0 ? addHot(healOne(u)) : u));
   } else {
+    let splashDone = false;
     newParty2 = newParty2.map((u) => {
       if (u.id === targetId) {
-        return addHot(healOne(u));
+        const healed = addHot(healOne(u));
+        if (awSplashFraction > 0 && !splashDone && isDirectHealSpell(spell, spellId)) {
+          splashDone = true;
+          let bestId: string | null = null;
+          let bestPct = 2;
+          for (const ally of newParty2) {
+            if (ally.id === targetId || ally.health <= 0) continue;
+            const pct = ally.health / ally.maxHealth;
+            if (pct < bestPct) {
+              bestPct = pct;
+              bestId = ally.id;
+            }
+          }
+          if (bestId) {
+            newParty2 = newParty2.map((ally) =>
+              ally.id !== bestId
+                ? ally
+                : { ...ally, health: Math.min(ally.maxHealth, ally.health + directBase * awSplashFraction) },
+            );
+          }
+        }
+        return healed;
       }
       if (arch && !archangelSkipsSpell(spellId) && isDirectHealSpell(spell, spellId) && u.health > 0) {
-        return healOne(u);
+        const healed = healOne(u);
+        if (archEchoBonusPerTarget <= 0) return healed;
+        return { ...healed, health: Math.min(healed.maxHealth, healed.health + archEchoBonusPerTarget) };
       }
       return u;
     });
+  }
+  if (arch && archShieldBonus > 0) {
+    newParty2 = newParty2.map((u) => ({ ...u, shield: 0, shieldTicksRemaining: 0 }));
   }
   return { newParty: newParty2 };
 }
 
 function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRuntime): GameState {
-  const { spell, spellId, targetId, needMana, surgeFree, isCrit: isCritH, tower2, pbuffsBaseline, eff } =
+  const {
+    spell,
+    spellId,
+    targetId,
+    needMana,
+    surgeFree,
+    isCrit: isCritH,
+    tower2,
+    paladinEmergencyHasteBonus,
+    pbuffsBaseline,
+    eff,
+  } =
     ready;
+  let castBuffs = pbuffsBaseline;
+  let weaveDirectMult = 1;
+  let weaveHotMult = 1;
+  if (s.playerClass === 'PRIEST') {
+    if (spell.type === 'HOT' && hasPlayerBuff(castBuffs, 'priest_weave_hot')) {
+      weaveHotMult += 0.2;
+      castBuffs = withBuffRemoved(castBuffs, 'priest_weave_hot');
+    }
+    if (isDirectHealSpell(spell, spellId) && hasPlayerBuff(castBuffs, 'priest_weave_direct')) {
+      weaveDirectMult += 0.15;
+      castBuffs = withBuffRemoved(castBuffs, 'priest_weave_direct');
+    }
+  }
   runOnHealCast(s, { spell, spellId, targetId, needMana, surgeFree });
-  const { newParty: partyAfterDirectHot } = patchPartyStandardDirectAndHot(s, ready);
+  const readyWithWeave = {
+    ...ready,
+    healMultB: ready.healMultB * (isDirectHealSpell(spell, spellId) ? weaveDirectMult : weaveHotMult),
+    pbuffsBaseline: castBuffs,
+  };
+  const { newParty: partyAfterDirectHot } = patchPartyStandardDirectAndHot(s, readyWithWeave);
   const landCtx = {
     spell,
     spellId,
@@ -346,26 +421,63 @@ function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRunti
     tMod: ready.tMod,
     isCrit: isCritH,
   };
-  let postHeal = runOnHealLand(s, landCtx, partyAfterDirectHot, pbuffsBaseline);
+  let postHeal = runOnHealLand(s, landCtx, partyAfterDirectHot, castBuffs);
   let newParty2 = postHeal.party;
   let pbuffs = postHeal.playerCombatBuffs;
   runOnCrit(s, landCtx);
   if (isCritH && talentRanks(s.talents, 'power_infusion') > 0) {
     pbuffs = grantPowerInfusionCharges(pbuffs, 3);
   }
+  if (s.playerClass === 'PRIEST' && spell.type === 'HOT') {
+    pbuffs = upsertPlayerBuff(pbuffs, 'priest_weave_direct', 80, 1);
+  } else if (s.playerClass === 'PRIEST' && isDirectHealSpell(spell, spellId) && spell.type !== 'AOE') {
+    pbuffs = upsertPlayerBuff(pbuffs, 'priest_weave_hot', 80, 1);
+  }
+  if (
+    s.playerClass === 'DRUID' &&
+    spellId === 'healing_touch' &&
+    isCritH &&
+    talentRanks(s.talents, 'photosynthesis') > 0
+  ) {
+    newParty2 = newParty2.map((unit) => ({
+      ...unit,
+      buffs: unit.buffs.map((buff) =>
+        buff.remainingTicks > 0 && spellHasTag(buff.sourceSpellId, 'druid-hot')
+          ? { ...buff, remainingTicks: buff.remainingTicks + 20 }
+          : buff,
+      ),
+    }));
+  }
   let mOut = resolveManaAfterHealCast(s, spell, spellId, needMana, surgeFree, isCritH, targetId);
+  const rawCooldownTicks =
+    s.playerClass === 'PALADIN' &&
+    spellId === 'light_of_dawn' &&
+    s.holyPower >= 3 &&
+    (s.talents.find((t) => t.id === 'h_r5c4')?.points ?? 0) > 0
+      ? 0
+      : spell.cooldown;
   const nPi = rt.scheduleCooldown({
     spellId,
-    rawCooldownTicks: spell.cooldown,
-    hastePct: eff.hastePercent,
+    rawCooldownTicks,
+    hastePct: eff.hastePercent + paladinEmergencyHasteBonus,
     powerInfusionStacks: getPlayerBuffStacks(pbuffs, PLAYER_BUFF_POWER_INFUSION),
   });
   let hp2 = s.holyPower;
   if (targetId && spell.type !== 'AOE') {
     const preH = s.party.find((q) => q.id === targetId);
     if (preH && preH.health < preH.maxHealth * 0.5 && talentRanks(s.talents, 'tower_of_radiance') > 0) {
-      hp2 = Math.min(3, hp2 + 1);
+      const gain =
+        s.capstoneForm === 'paladin_avenging_wrath' && hasPlayerBuff(pbuffs, 'avenging_wrath_aura') ? 2 : 1;
+      hp2 = Math.min(3, hp2 + gain);
     }
+  }
+  if (
+    s.playerClass === 'PALADIN' &&
+    isCritH &&
+    (s.talents.find((t) => t.id === 'h_r5c4')?.points ?? 0) > 0 &&
+    Math.random() < 0.25
+  ) {
+    hp2 = Math.min(3, hp2 + 1);
   }
   if (tower2) {
     hp2 = 0;

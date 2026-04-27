@@ -5,12 +5,13 @@ import { BALANCE } from './balance.ts';
 
 export const T_SPIRIT_AMP = 10 * 10;
 
-export const SHIELD_DEFAULT_TICKS = BALANCE.combat.shieldDefaultTicks;
+export const SHIELD_DEFAULT_TICKS = BALANCE.combat.shared.shieldDefaultTicks;
 
-const BC = BALANCE.combat;
+const SHARED = BALANCE.combat.shared;
+const DRUID = BALANCE.combat.druid;
 
 function hotPandemicCapMult(spell: Spell): number {
-  return spell.balance?.hotPandemicDurationCapMult ?? BC.hotPandemicDurationCapMultDefault;
+  return spell.balance?.hotPandemicDurationCapMult ?? SHARED.hotPandemicDurationCapMultDefault;
 }
 
 export function directHealSynergyMultiplier(unit: Unit, spellId: string): number {
@@ -96,5 +97,5 @@ export function resolveSwiftmend(
 
 export function oneHotTickDoubleRoll(photosynthPoints: number): boolean {
   if (photosynthPoints <= 0) return false;
-  return Math.random() < photosynthPoints * BC.photosynthesisDoubleTickChancePerRank;
+  return Math.random() < photosynthPoints * DRUID.photosynthesisDoubleTickChancePerRank;
 }

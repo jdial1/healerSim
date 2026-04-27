@@ -30,7 +30,13 @@ import {
   applyDivineAegis,
   applyGraceStacksFromDirectHeal,
   applyLivingSeed,
-  cleanseProcChance,
+  druidHotTickManaReturn,
+  druidHotTickRateMultiplier,
+  druidRampCritBonus,
+  druidRampHasteBonus,
+  druidBarkskinSelfHealOnDamage,
+  dispellableCurseCleanseProcChance,
+  stripOneDispellableDebuff,
   cultivationHotMultiplier,
   deepRootsHotMultiplier,
   devotionDamageTakenMultiplier,
@@ -38,6 +44,12 @@ import {
   druidHarmonyHotTickMultiplier,
   DRUID_HARMONY_HOT_BUFF,
   DRUID_HARMONY_HOT_TICKS,
+  paladinAvengingWrathSplashFraction,
+  paladinEmergencyCritBonusForTarget,
+  paladinEmergencyHasteBonusForTarget,
+  priestSelfShieldDamageReduction,
+  priestShieldMaintenanceHasteBonus,
+  priestMeditativeManaReturnPerTick,
   priestFlashCritBonusFromSynergy,
   rollSurgeOfLight,
   vowCrusaderAoEMultiplier,
@@ -120,13 +132,18 @@ export function runHasteBonusSum(
   classType: ClassType,
   healer: Unit | undefined,
 ): number {
-  if (classType !== 'DRUID' || !healer) return 0;
-  const p = talentRanks(s.talents, 'photosynthesis');
-  if (p === 0) return 0;
-  if (hasHotOnUnit(healer, 'DRUID')) {
-    return p * BALANCE.combat.photosynthesisHastePerRankWhenSelfHoT;
+  let bonus = 0;
+  if (classType === 'DRUID' && healer) {
+    const p = talentRanks(s.talents, 'photosynthesis');
+    if (p > 0 && hasHotOnUnit(healer, 'DRUID')) {
+      bonus += p * BALANCE.combat.druid.photosynthesisHastePerRankWhenSelfHoT;
+    }
+    bonus += druidRampHasteBonus(s);
   }
-  return 0;
+  if (classType === 'PRIEST') {
+    bonus += priestShieldMaintenanceHasteBonus(s);
+  }
+  return bonus;
 }
 
 export function runHotTickAmount(ctx: HotTickModifierContext): number {
@@ -142,15 +159,33 @@ export function runHotTickAmount(ctx: HotTickModifierContext): number {
   return amt;
 }
 
+export function runHotTickRateMultiplier(ctx: HotTickModifierContext): number {
+  return druidHotTickRateMultiplier(ctx.state, ctx.buff.sourceSpellId);
+}
+
+export function runHotTickManaReturn(ctx: HotTickModifierContext): number {
+  return druidHotTickManaReturn(ctx.state, ctx.buff.sourceSpellId);
+}
+
 export function runCastDirectHealMultipliers(s: GameState, spell: Spell, spellId: string): number {
   let m = druidHarmonyDirectMultiplier(s);
   if (spell.type === 'AOE') m *= vowCrusaderAoEMultiplier(s, spellId);
   return m;
 }
 
-export function runCritBonusForHealRoll(s: GameState, spellId: string): number {
-  if (s.playerClass !== 'PRIEST' || spellId !== 'flash_heal') return 0;
-  return priestFlashCritBonusFromSynergy(s);
+export function runCritBonusForHealRoll(s: GameState, spellId: string, targetId: string): number {
+  let bonus = 0;
+  if (s.playerClass === 'PRIEST' && spellId === 'flash_heal') {
+    bonus += priestFlashCritBonusFromSynergy(s);
+  }
+  if (s.playerClass === 'PALADIN') {
+    const target = s.party.find((u) => u.id === targetId);
+    bonus += paladinEmergencyCritBonusForTarget(s, target);
+  }
+  if (s.playerClass === 'DRUID') {
+    bonus += druidRampCritBonus(s);
+  }
+  return bonus;
 }
 
 export function trySpecialHealCast(s: GameState, ctx: SpecialHealCastContext): GameState | null {
@@ -230,15 +265,17 @@ export function runOnHealLand(
     };
   }
 
-  if (talentRanks(s.talents, 'cleanse') > 0) {
+  {
+    const pCurse = dispellableCurseCleanseProcChance(s);
     const tgt = acc.party.find((x) => x.id === ctx.targetId);
-    if (tgt && isHealSpell(ctx.spell, ctx.spellId) && Math.random() < cleanseProcChance(s)) {
+    if (pCurse > 0 && tgt && isHealSpell(ctx.spell, ctx.spellId) && Math.random() < pCurse) {
       acc = {
         ...acc,
         party: acc.party.map((u) => {
           if (u.id !== ctx.targetId) return u;
-          if (u.debuffs.length === 0) return u;
-          return { ...u, debuffs: u.debuffs.slice(0, -1) };
+          const nextDebuffs = stripOneDispellableDebuff(u.debuffs);
+          if (nextDebuffs === u.debuffs) return u;
+          return { ...u, debuffs: nextDebuffs };
         }),
       };
     }
@@ -276,7 +313,31 @@ export function runOnHealLand(
 }
 
 export function runDamageTakenMultiplier(s: GameState, _ctx: DamageTakenContext): number {
-  return devotionDamageTakenMultiplier(s);
+  let m = devotionDamageTakenMultiplier(s);
+  m *= 1 - priestSelfShieldDamageReduction(s);
+  return m;
+}
+
+export function runPriestMeditativeManaReturnPerTick(
+  s: GameState,
+  spiritRegenLockoutTicksRemaining: number,
+): number {
+  return priestMeditativeManaReturnPerTick(s, spiritRegenLockoutTicksRemaining);
+}
+
+export function runPaladinEmergencyHasteBonusForTarget(s: GameState, targetId: string): number {
+  return paladinEmergencyHasteBonusForTarget(
+    s,
+    s.party.find((unit) => unit.id === targetId),
+  );
+}
+
+export function runDruidBarkskinSelfHealOnDamage(s: GameState, damageTaken: number): number {
+  return druidBarkskinSelfHealOnDamage(s, damageTaken);
+}
+
+export function runPaladinAvengingWrathSplashFraction(s: GameState): number {
+  return paladinAvengingWrathSplashFraction(s);
 }
 
 export function runOnShieldTransition(s: GameState, partyBefore: Unit[], partyAfter: Unit[]): Unit[] {

@@ -2,10 +2,9 @@ import { type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { ChevronDown, X } from 'lucide-react';
 import { ClassType, Talent } from '../types.ts';
-import { buildPlayerStatBreakdown, classPortraitForPlayer } from '../playerStats.ts';
+import { buildPlayerStatBreakdown } from '../playerStats.ts';
 import { getManaRegenPerSecond } from '../constants.ts';
-import { classDisplayName } from '../classUiData.ts';
-import { GameIcon } from './GameIcon.tsx';
+import { classDisplayName, classUiRowForClass } from '../classUiData.ts';
 
 interface PlayerStatsModalProps {
   playerClass: ClassType;
@@ -107,8 +106,8 @@ export function PlayerStatsModal({
   onClose,
 }: PlayerStatsModalProps) {
   const b = buildPlayerStatBreakdown(playerClass, level, talents);
-  const regenSec = getManaRegenPerSecond(0, 0, b.spirit);
-  const portrait = classPortraitForPlayer(playerClass);
+  const regenSec = getManaRegenPerSecond(0, b.spirit);
+  const classRow = classUiRowForClass(playerClass);
 
   return (
     <motion.div
@@ -151,13 +150,11 @@ export function PlayerStatsModal({
               />
               <div className="flex w-[9rem] shrink-0 flex-col items-stretch gap-2 self-stretch sm:w-[11rem] sm:gap-2.5">
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-2 border-slate-600 bg-slate-900/80 shadow-[0_16px_48px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]">
-                  <GameIcon
-                    iconPath={portrait.portraitIcon}
-                    glow={portrait.portraitGlow}
-                    size="heroTall"
-                    title={classDisplayName(playerClass)}
-                    className="rounded-none"
-                  />
+                  <div className="flex h-full items-center justify-center bg-slate-950/60 p-3">
+                    <div className={`${classRow.color} rounded-xl p-5 text-white shadow-[0_0_20px_rgba(0,0,0,0.5)] sm:p-6`}>
+                      <classRow.icon size={72} strokeWidth={3} />
+                    </div>
+                  </div>
                 </div>
                 <p className="shrink-0 text-center text-sm font-bold uppercase tracking-widest text-slate-400 sm:text-base">
                   Level {level}
