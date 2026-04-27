@@ -1,0 +1,42 @@
+{
+  "mana_potion": {
+    "tiers": [
+      {
+        "maxLevel": 5,
+        "icon": "wow/inv_potion_70",
+        "label": "Minor",
+        "instant": 40
+      },
+      {
+        "maxLevel": 10,
+        "icon": "wow/inv_potion_71",
+        "label": "Lesser",
+        "instant": 60
+      },
+      {
+        "maxLevel": 15,
+        "icon": "wow/inv_potion_72",
+        "label": null,
+        "instant": 90
+      },
+      {
+        "maxLevel": 20,
+        "icon": "wow/inv_potion_73",
+        "label": "Greater",
+        "instant": 135
+      },
+      {
+        "maxLevel": 25,
+        "icon": "wow/inv_potion_74",
+        "label": "Superior",
+        "instant": 202
+      },
+      {
+        "maxLevel": 999,
+        "icon": "wow/inv_potion_76",
+        "label": "Major",
+        "instant": 303
+      }
+    ]
+  }
+}

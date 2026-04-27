@@ -1,0 +1,31 @@
+{
+  "paces": {
+    "fast": {
+      "label": "Fast",
+      "trashSec": 15,
+      "bossSec": 30,
+      "dpsMultiplier": 1.3333,
+      "xpMultiplier": 0.5,
+      "icon": "Zap",
+      "theme": "emerald"
+    },
+    "normal": {
+      "label": "Normal",
+      "trashSec": 20,
+      "bossSec": 40,
+      "dpsMultiplier": 1,
+      "xpMultiplier": 1,
+      "icon": "Gauge",
+      "theme": "amber"
+    },
+    "slow": {
+      "label": "Slow",
+      "trashSec": 30,
+      "bossSec": 60,
+      "dpsMultiplier": 0.6667,
+      "xpMultiplier": 2,
+      "icon": "Snail",
+      "theme": "sky"
+    }
+  }
+}

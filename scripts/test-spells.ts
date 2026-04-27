@@ -25,8 +25,11 @@ import {
   priestDivinityOverhealAbsorb,
 } from '../src/combatHooks.ts';
 import { priestMentalFortitudeMaxRankCombatManaPerTick } from '../src/talentMechanics.ts';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { cloneTalentsForClass } from '../src/talents/index.ts';
 import type { ClassType, GameState, Spell, Talent } from '../src/types.ts';
+import { testPalette } from './testColors.ts';
 
 const TEST_LEVEL = 24;
 const PARTY_SIZE = 5;
@@ -48,6 +51,8 @@ const OOM_ROTATIONS: Record<ClassType, { label: string; spells: string[] }> = {
   },
   PALADIN: { label: 'Direct priority (Flash → Holy Light)', spells: ['flash_heal', 'holy_light'] },
 };
+
+const S = testPalette();
 
 function calculateTotalHealing(spell: Spell, multiplier: number): number {
   const direct = spell.healing * multiplier;
@@ -107,7 +112,7 @@ function shellGameState(
   };
 }
 
-function simulateSecondsToOom(
+export function simulateSecondsToOom(
   cls: ClassType,
   level: number,
   talents: Talent[],
@@ -352,7 +357,154 @@ function runStatRoiOverlap(): void {
   console.log('');
 }
 
-runSpellTest();
-runTimeToOomOverlap();
-runRotationalHpmOverlap();
-runStatRoiOverlap();
+export function runSpellTestCondensed(): void {
+  const maxHpmByClass: Record<string, number> = {};
+  for (const [className, spellIds] of Object.entries(CLASS_MAP)) {
+    const multiplier = spellHealingMultiplierFromProgress(className as ClassType, TEST_LEVEL, []);
+    let maxH = 0;
+    for (const sid of spellIds) {
+      const spell = SPELLS[sid];
+      if (!spell || spell.id === 'mana_potion') continue;
+      const totalHeal = calculateTotalHealing(spell, multiplier);
+      const hpm = spell.manaCost > 0 ? totalHeal / spell.manaCost : 0;
+      maxH = Math.max(maxH, hpm);
+    }
+    maxHpmByClass[className] = maxH;
+  }
+
+  const out: string[] = [];
+  out.push(
+    `${S.magenta}[spells]${S.r} ${S.dim}L${TEST_LEVEL} HPM/HPC (party=${PARTY_SIZE})${S.r}`,
+  );
+  for (const [className, spellIds] of Object.entries(CLASS_MAP)) {
+    const multiplier = spellHealingMultiplierFromProgress(className as ClassType, TEST_LEVEL, []);
+    out.push(
+      `${S.cyan}${className}${S.r} ${S.dim}mult=${S.r}x${S.yellow}${multiplier.toFixed(2)}${S.r}`,
+    );
+    const maxH = maxHpmByClass[className] ?? 0;
+    for (const sid of spellIds) {
+      const spell = SPELLS[sid];
+      if (!spell || spell.id === 'mana_potion') continue;
+      const totalHeal = calculateTotalHealing(spell, multiplier);
+      const hpm = spell.manaCost > 0 ? totalHeal / spell.manaCost : 0;
+      const hpmStr =
+        maxH > 0 && hpm >= maxH
+          ? `${S.green}hpm${hpm.toFixed(2)}${S.r}`
+          : `${S.yellow}hpm${hpm.toFixed(2)}${S.r}`;
+      out.push(
+        `${S.dim}${sid}${S.r}|${spell.type}|m${spell.manaCost}|h${Math.round(totalHeal)}|${hpmStr}|hpc${Math.round(totalHeal)}`,
+      );
+    }
+  }
+  for (const cls of ['PRIEST', 'DRUID', 'PALADIN'] as ClassType[]) {
+    const t = cloneTalentsForClass(cls).map((x) => ({ ...x, points: 0 }));
+    const rot = OOM_ROTATIONS[cls];
+    const sec = simulateSecondsToOom(cls, OOM_LEVEL, t, rot.spells, 42, null);
+    const secInt = simulateSecondsToOom(cls, OOM_LEVEL, t, rot.spells, 42, maxManaWithIntellectBonus(cls, OOM_LEVEL, t, 10));
+    const secStr = sec >= 60 ? `${S.green}~${sec.toFixed(0)}s${S.r}` : `${S.yellow}~${sec.toFixed(0)}s${S.r}`;
+    const secIntStr =
+      secInt >= sec ? `${S.green}~${secInt.toFixed(0)}s${S.r}` : `${S.yellow}~${secInt.toFixed(0)}s${S.r}`;
+    out.push(
+      `${S.dim}oom${S.r} L${OOM_LEVEL} ${S.cyan}${cls}${S.r} ${secStr} maxMana=${computedMaxMana(cls, OOM_LEVEL, t)} +10int ${secIntStr} maxMana=${maxManaWithIntellectBonus(cls, OOM_LEVEL, t, 10)}`,
+    );
+  }
+  const mult = spellHealingMultiplierFromProgress('PRIEST', TEST_LEVEL, []);
+  const fh = SPELLS.flash_heal;
+  const gh = SPELLS.greater_heal;
+  const surgeRanks = 3;
+  const pSurge = Math.min(1, BALANCE.combat.priest.surgeOfLightProcChancePerRank * surgeRanks);
+  const hFlash = fh.healing * mult * 1.15;
+  const hGh = gh.healing * mult * 1.15;
+  const rotHeal = (hFlash + pSurge * hGh) / 18;
+  out.push(
+    `${S.dim}rot_priest_flash_surge_gh${S.r} evHpm~${S.green}${rotHeal.toFixed(2)}${S.r} flashHpm~${S.yellow}${(hFlash / fh.manaCost).toFixed(2)}${S.r}`,
+  );
+  const rg = SPELLS.regrowth;
+  const baseTotal = calculateTotalHealing(rg, mult);
+  const rawHpm = baseTotal / rg.manaCost;
+  const rating = effectiveUniqueStatRating('DRUID', TEST_LEVEL, []);
+  const pTick = Math.min(
+    BALANCE.combat.druid.passiveOmenProcChanceCap,
+    rating * BALANCE.combat.druid.passiveOmenProcPerHotTickPerRating,
+  );
+  const nTicks = rg.hotDuration ?? 0;
+  const pAny = 1 - Math.pow(1 - pTick, nTicks);
+  const omenManaFactor = Math.max(0.35, 1 - pAny * 0.85);
+  const critPct = talentCritChancePctFromTalents([]);
+  const directPortion = rg.healing * mult * 1.15;
+  const lsExtra = critPct * (BALANCE.combat.druid.livingSeedPoolFraction * directPortion);
+  const adjHpm = (baseTotal + lsExtra) / (rg.manaCost * omenManaFactor);
+  out.push(
+    `${S.dim}rot_druid_regrowth${S.r} rawHpm~${S.yellow}${rawHpm.toFixed(2)}${S.r} adj~${S.green}${adjHpm.toFixed(2)}${S.r}`,
+  );
+
+  const talents = cloneTalentsForClass('PRIEST').map((t) => ({ ...t, points: 0 }));
+  const multRoi = spellHealingMultiplierFromProgress('PRIEST', ROI_LEVEL, talents);
+  const flash = SPELLS.flash_heal;
+  const baseRating = effectiveUniqueStatRating('PRIEST', ROI_LEVEL, talents);
+  const baseIntMana = computedMaxMana('PRIEST', ROI_LEVEL, talents);
+  const intMana = maxManaWithIntellectBonus('PRIEST', ROI_LEVEL, talents, 10);
+  let hpToFlesh = 0;
+  let shield = 0;
+  let tgtHp = 210;
+  const maxHp = 300;
+  const rng = mulberry32(99);
+  for (let i = 0; i < 100; i++) {
+    const heal = flash.healing * multRoi * 1.15;
+    const room = Math.max(0, maxHp - tgtHp);
+    const toFlesh = Math.min(room, heal);
+    const oh = Math.max(0, heal - room);
+    hpToFlesh += toFlesh;
+    shield += priestDivinityOverhealAbsorb(oh, baseRating);
+    tgtHp = Math.min(maxHp, tgtHp + toFlesh);
+    tgtHp = Math.max(1, tgtHp - (6 + rng() * 6));
+  }
+  let hpToFleshU = 0;
+  let shieldU = 0;
+  tgtHp = 210;
+  const rng2 = mulberry32(99);
+  const ratingU = baseRating + 10;
+  for (let i = 0; i < 100; i++) {
+    const heal = flash.healing * multRoi * 1.15;
+    const room = Math.max(0, maxHp - tgtHp);
+    const toFlesh = Math.min(room, heal);
+    const oh = Math.max(0, heal - room);
+    hpToFleshU += toFlesh;
+    shieldU += priestDivinityOverhealAbsorb(oh, ratingU);
+    tgtHp = Math.min(maxHp, tgtHp + toFlesh);
+    tgtHp = Math.max(1, tgtHp - (6 + rng2() * 6));
+  }
+  const totBase = Math.round(hpToFlesh + shield);
+  const totDiv = Math.round(hpToFleshU + shieldU);
+  out.push(
+    `${S.dim}roi_priest_L${ROI_LEVEL}${S.r} flashx100 total=${S.yellow}${totBase}${S.r} +10div=${S.green}${totDiv}${S.r} intMana ${S.dim}${baseIntMana}->${intMana}${S.r}`,
+  );
+  const pTalents = cloneTalentsForClass('PALADIN').map((t) => ({ ...t, points: 0 }));
+  const pMult = spellHealingMultiplierFromProgress('PALADIN', ROI_LEVEL, pTalents);
+  const hf = SPELLS.flash_heal;
+  const baseR = effectiveUniqueStatRating('PALADIN', ROI_LEVEL, pTalents);
+  const maxH = 300;
+  const curH = 90;
+  const perCast = hf.healing * pMult * 1.15;
+  const sumBase = perCast * radianceMultAt(1 - curH / maxH, baseR) * 100;
+  const sumRad = perCast * radianceMultAt(1 - curH / maxH, baseR + 10) * 100;
+  out.push(
+    `${S.dim}roi_paladin_flashx100_30hp${S.r} ~${S.yellow}${Math.round(sumBase)}${S.r} vs+10rad ~${S.green}${Math.round(sumRad)}${S.r}`,
+  );
+  console.log(out.join('\n'));
+}
+
+export function runSpellTestSuite(): void {
+  runSpellTest();
+  runTimeToOomOverlap();
+  runRotationalHpmOverlap();
+  runStatRoiOverlap();
+}
+
+const spellEntry = process.argv[1];
+const isSpellMain =
+  spellEntry !== undefined && path.resolve(spellEntry) === fileURLToPath(import.meta.url);
+
+if (isSpellMain) {
+  runSpellTestSuite();
+}

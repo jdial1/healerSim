@@ -16,9 +16,9 @@ function nominalClearXpForDifficulty(difficulty: number): number {
 
 function needXpToReachNextLevel(currentLevel: number): number {
   const tier = Math.floor((currentLevel - 1) / 3);
-  const runsInTier = ((currentLevel - 1) % 3) + 1;
+  const runsMultiplier = 1.8 + tier + ((currentLevel - 1) % 3) * 0.8;
   const perClear = nominalClearXpForDifficulty(tier + 1);
-  return Math.max(1, perClear * runsInTier);
+  return Math.max(1, Math.round(perClear * runsMultiplier));
 }
 
 export function totalXpToReachLevel(targetLevel: number): number {

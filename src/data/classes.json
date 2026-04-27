@@ -59,9 +59,9 @@
       "uniqueStatPerLevel": 0.55
     },
     "DRUID": {
-      "baseIntellect": 25,
+      "baseIntellect": 32,
       "baseSpirit": 25,
-      "intellectPerLevel": 2,
+      "intellectPerLevel": 2.5,
       "spiritPerLevel": 1.8,
       "baseUniqueStat": 10,
       "uniqueStatPerLevel": 0.65

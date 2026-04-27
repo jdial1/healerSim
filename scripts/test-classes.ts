@@ -1,10 +1,15 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildPlayerStatBreakdown } from '../src/playerStats.ts';
 import { cloneTalentsForClass } from '../src/talents/index.ts';
 import { collectExclusiveSplitPairs } from '../src/talentSplitPairs.ts';
 import type { ClassType, Talent } from '../src/types.ts';
+import { testPalette } from './testColors.ts';
 
 const CLASSES: ClassType[] = ['PRIEST', 'DRUID', 'PALADIN'];
 const LEVELS = [1, 10, 20, 24];
+
+const C = testPalette();
 
 function getMaxedTalents(cls: ClassType): Talent[] {
   const base = cloneTalentsForClass(cls).map((t) => ({ ...t, points: t.maxPoints }));
@@ -17,7 +22,24 @@ function formatPct(val: number): string {
   return `${val.toFixed(1)}%`;
 }
 
-function runClassTest(): void {
+export function runClassTestCondensed(): void {
+  const rows: string[] = [];
+  for (const cls of CLASSES) {
+    for (const lvl of LEVELS) {
+      const baseStats = buildPlayerStatBreakdown(cls, lvl, []);
+      const maxTalents = getMaxedTalents(cls);
+      const specStats = buildPlayerStatBreakdown(cls, lvl, maxTalents);
+      const healDiff =
+        (specStats.healingEffectMultiplier / baseStats.healingEffectMultiplier - 1) * 100;
+      rows.push(
+        `${C.cyan}${cls}${C.r} ${C.dim}L${lvl}${C.r} ${C.dim}base${C.r} mana=${C.yellow}${Math.floor(baseStats.maxMana)}${C.r} heal%=${C.yellow}${formatPct(baseStats.totalHealingBonusPct)}${C.r} crit=${formatPct(baseStats.critChancePct)} haste=${formatPct(baseStats.hastePct)} int/spr=${baseStats.intellect}/${baseStats.spirit} ${C.dim}|${C.r} ${C.dim}spec${C.r} mana=${C.yellow}${Math.floor(specStats.maxMana)}${C.r} heal%=${C.green}${formatPct(specStats.totalHealingBonusPct)}${C.r} crit=${formatPct(specStats.critChancePct)} haste=${formatPct(specStats.hastePct)} ${C.dim}|${C.r} ${C.yellow}Δmana=${Math.round(specStats.maxMana - baseStats.maxMana)}${C.r} ${C.green}talentHeal+${healDiff.toFixed(1)}%${C.r}`,
+      );
+    }
+  }
+  console.log(rows.join('\n'));
+}
+
+export function runClassTest(): void {
   console.log('⚖️  Class Scaling & Talent Impact Analysis');
   console.log('Comparing [Base Stats] vs [Full Talent Ceiling]\n');
 
@@ -72,4 +94,10 @@ function runClassTest(): void {
   }
 }
 
-runClassTest();
+const classEntry = process.argv[1];
+const isClassMain =
+  classEntry !== undefined && path.resolve(classEntry) === fileURLToPath(import.meta.url);
+
+if (isClassMain) {
+  runClassTest();
+}

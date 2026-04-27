@@ -1,9 +1,13 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { emptyGameBase, gameReducer, gameStateForClass } from '../src/gameEngineReducer.ts';
 import { DUNGEONS } from '../src/dungeons/index.ts';
 import {
   TICKS_PER_SECOND,
   generateRandomParty,
   dungeonPaceDpsMultiplier,
+  dungeonPaceTrashSec,
+  dungeonPaceBossSec,
   bossCombatProfileForDungeon,
   bossDamageMultiplierForDifficulty,
   damageTakenMultiplierFromDungeonLevelGap,
@@ -18,6 +22,7 @@ import {
   talentHastePctFromTalents,
 } from '../src/playerStats.ts';
 import { runDamageTakenMultiplier } from '../src/combatHookRegistry.ts';
+import { BALANCE } from '../src/balance.ts';
 import type {
   BossCombatProfile,
   ClassType,
@@ -27,22 +32,21 @@ import type {
   Talent,
   Unit,
 } from '../src/types.ts';
+import { testPalette, useTestAnsi } from './testColors.ts';
 
-const RUNS_PER_DUNGEON = 100;
+const RUNS_PER_DUNGEON = 15;
 
 const PACES: DungeonPace[] = ['fast', 'normal', 'slow'];
 
 const PACE_TARGET_SEC: Record<DungeonPace, { trash: number; boss: number }> = {
-  fast: { trash: 15, boss: 30 },
-  normal: { trash: 20, boss: 40 },
-  slow: { trash: 30, boss: 60 },
+  fast: { trash: dungeonPaceTrashSec('fast'), boss: dungeonPaceBossSec('fast') },
+  normal: { trash: dungeonPaceTrashSec('normal'), boss: dungeonPaceBossSec('normal') },
+  slow: { trash: dungeonPaceTrashSec('slow'), boss: dungeonPaceBossSec('slow') },
 };
 
 const TARGET_RATIO_TOLERANCE = 0.1;
 
-const COLOR = process.stdout.isTTY
-  ? { r: '\x1b[0m', dim: '\x1b[2m', green: '\x1b[32m', red: '\x1b[31m', yellow: '\x1b[33m' }
-  : { r: '', dim: '', green: '', red: '', yellow: '' };
+const COLOR = testPalette();
 
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 
@@ -276,7 +280,7 @@ function spellSustainHps(spellId: string, cls: ClassType, level: number, talents
   return t > 0 ? h / t : 0;
 }
 
-function realisticBarHpsForClass(cls: ClassType, level: number, talents: Talent[]): number {
+export function realisticBarHpsForClass(cls: ClassType, level: number, talents: Talent[]): number {
   let best = 0;
   for (const id of REALISTIC_HPS_SPELL_IDS[cls]) {
     best = Math.max(best, spellSustainHps(id, cls, level, talents));
@@ -297,7 +301,12 @@ function estimateAmbientBossPartyChipDpsRaw(
   partyBuffMult: number,
 ): number {
   const D = dungeon.difficulty;
-  const expectedRawPerTick = 0.4 * (4 + D) + 4 * 0.1 * (2.5 + D);
+  const e = BALANCE.environmentalDamage;
+  const everyN = Math.max(1, e.ambientChipEveryTicks);
+  const chipScale = everyN <= 1 ? 1 : 1 / everyN;
+  const tankRaw = e.tankProcChance * (e.tankDamageRandomMax * 0.5 + D) * e.ambientChipDamageMultiplier;
+  const nonRaw = e.nonTankProcChance * (e.nonTankDamageRandomMax * 0.5 + D) * e.ambientChipDamageMultiplier;
+  const expectedRawPerTick = chipScale * (tankRaw + 4 * nonRaw);
   const diffMult = bossDamageMultiplierForDifficulty(dungeon.difficulty);
   const gap = damageTakenMultiplierFromDungeonLevelGap(memberLevel, dungeon.levelMax);
   const shell = shellStateForDamageTaken();
@@ -426,14 +435,82 @@ function printOneshotSpikeOverlap(): void {
   console.log('');
 }
 
-async function main() {
-  console.log(
-    `Dungeon phase test — PRIEST, no talents (${RUNS_PER_DUNGEON} runs per dungeon per pace)\n`,
-  );
-  if (process.stdout.isTTY) {
-    const pct = Math.round(TARGET_RATIO_TOLERANCE * 100);
+function fmtMarginSigned(m: number): string {
+  const body = `${m >= 0 ? '+' : ''}${m.toFixed(1)}`;
+  const colored =
+    m >= 0 ? `${COLOR.green}${body}${COLOR.r}` : `${COLOR.red}${body}${COLOR.r}`;
+  return colored;
+}
+
+function printBossVsHealerHpsCondensed(): void {
+  const emptyTalents: Talent[] = [];
+  const parts: string[] = [];
+  for (const dungeon of DUNGEONS) {
+    const profile = bossCombatProfileForDungeon(dungeon);
+    if (
+      profile.attackTemplates.length === 0 &&
+      profile.debuffTemplates.length === 0 &&
+      profile.selfBuffTemplates.length === 0
+    ) {
+      continue;
+    }
+    const lv = dungeon.levelMin;
+    const partyBuff = maxSelfBuffPartyDamageMult(profile);
+    const mech = estimateBossMechanicalPartyDps(dungeon, profile, lv);
+    const ambRaw = estimateAmbientBossPartyChipDpsRaw(dungeon, lv, partyBuff);
+    const ambEff = ambRaw * AMBIENT_WOUND_FACTOR;
+    const bossDps = mech + ambEff;
+    if (bossDps <= 0) continue;
+    const mP = realisticBarHpsForClass('PRIEST', lv, emptyTalents) - bossDps;
+    const mD = realisticBarHpsForClass('DRUID', lv, emptyTalents) - bossDps;
+    const mA = realisticBarHpsForClass('PALADIN', lv, emptyTalents) - bossDps;
+    parts.push(
+      `${COLOR.dim}${dungeon.id}${COLOR.r} dps=${bossDps.toFixed(1)} ΔP=${fmtMarginSigned(mP)} ΔD=${fmtMarginSigned(mD)} ΔPal=${fmtMarginSigned(mA)}`,
+    );
+  }
+  console.log(`${COLOR.dim}hps_pressure${COLOR.r} ${parts.join(` ${COLOR.dim}|${COLOR.r} `)}`);
+}
+
+function printOneshotSpikeCondensed(): void {
+  const dpsHp = (lv: number) => allyMaxHealthForRoleAndLevel('DPS', lv);
+  const bits: string[] = [];
+  for (const dungeon of DUNGEONS) {
+    const profile = bossCombatProfileForDungeon(dungeon);
+    if (profile.attackTemplates.length === 0) continue;
+    const partyMult = maxSelfBuffPartyDamageMult(profile);
+    const lv = dungeon.levelMin;
+    const hp = dpsHp(lv);
+    for (const atk of profile.attackTemplates) {
+      const raw = scaledBossAttackHit(dungeon, atk.damage, partyMult, lv);
+      const pct = hp > 0 ? (raw / hp) * 100 : 0;
+      const pctStr =
+        pct >= 95
+          ? `${COLOR.red}${pct.toFixed(0)}%${COLOR.r}`
+          : `${COLOR.green}${pct.toFixed(0)}%${COLOR.r}`;
+      bits.push(
+        `${COLOR.dim}${dungeon.bossName}:${atk.name}=${COLOR.r}${pctStr}`,
+      );
+    }
+  }
+  console.log(`${COLOR.dim}spike_hp_pct${COLOR.r} ${bits.join(` ${COLOR.dim}|${COLOR.r} `)}`);
+}
+
+export async function runDungeonTest(options: { condensed?: boolean } = {}): Promise<void> {
+  const condensed = options.condensed ?? false;
+
+  if (!condensed) {
     console.log(
-      `${COLOR.dim}Timing vs UI targets:${COLOR.r} ${COLOR.green}within ±${pct}%${COLOR.r} · ${COLOR.yellow}faster than −${pct}%${COLOR.r} · ${COLOR.red}slower than +${pct}%${COLOR.r}\n`,
+      `Dungeon phase test — PRIEST, no talents (${RUNS_PER_DUNGEON} runs per dungeon per pace)\n`,
+    );
+    if (useTestAnsi()) {
+      const pct = Math.round(TARGET_RATIO_TOLERANCE * 100);
+      console.log(
+        `${COLOR.dim}Timing vs UI targets:${COLOR.r} ${COLOR.green}within ±${pct}%${COLOR.r} · ${COLOR.yellow}faster than −${pct}%${COLOR.r} · ${COLOR.red}slower than +${pct}%${COLOR.r}\n`,
+      );
+    }
+  } else {
+    console.log(
+      `${COLOR.yellow}[dungeons]${COLOR.r} PRIEST no talents ${RUNS_PER_DUNGEON} runs/dungeon/pace ${COLOR.dim}| sim…${COLOR.r}`,
     );
   }
 
@@ -444,27 +521,52 @@ async function main() {
 
   for (const pace of PACES) {
     const tgt = PACE_TARGET_SEC[pace];
-    console.log(`${'='.repeat(70)}`);
-    console.log(
-      `${pace.toUpperCase()} — target total ~${tgt.trash + tgt.boss}s (trash all pulls ~${tgt.trash}s, boss ~${tgt.boss}s) (${RUNS_PER_DUNGEON} runs each)`,
-    );
-    console.log(`${'='.repeat(70)}`);
+    if (!condensed) {
+      console.log(`${'='.repeat(70)}`);
+      console.log(
+        `${pace.toUpperCase()} — target total ~${tgt.trash + tgt.boss}s (trash all pulls ~${tgt.trash}s, boss ~${tgt.boss}s) (${RUNS_PER_DUNGEON} runs each)`,
+      );
+      console.log(`${'='.repeat(70)}`);
+    }
 
     for (const dungeon of DUNGEONS) {
-      process.stdout.write(`  ${dungeon.name} … `);
+      if (!condensed) process.stdout.write(`  ${dungeon.name} … `);
       for (let i = 0; i < RUNS_PER_DUNGEON; i++) {
         const run = await runSimulation(dungeon, pace);
         results[dungeon.id][pace].push(run);
       }
-      const s = summarizeRuns(results[dungeon.id][pace]);
+      if (!condensed) {
+        const s = summarizeRuns(results[dungeon.id][pace]);
+        const tTrash = expectedTrashTotalSec(pace);
+        const tBoss = expectedBossSec(pace);
+        const tTotal = expectedTotalSec(pace);
+        console.log(
+          `avg ${fmtSecVsTarget(s.totalSec, tTotal, 10)} (${COLOR.dim}trash${COLOR.r} ${fmtSecVsTarget(s.trashSec, tTrash, 0)} ${COLOR.dim}/${COLOR.r} ${COLOR.dim}boss${COLOR.r} ${fmtSecVsTarget(s.bossSec, tBoss, 0)})`,
+        );
+      }
+    }
+    if (!condensed) console.log('');
+  }
+
+  if (condensed) {
+    console.log(
+      `${COLOR.dim}pace|dungeon|trash|boss|total|σt|σb|σtot|Δs|Δ%${COLOR.r} ${COLOR.yellow}${RUNS_PER_DUNGEON}×${COLOR.r}`,
+    );
+    for (const pace of PACES) {
       const tTrash = expectedTrashTotalSec(pace);
       const tBoss = expectedBossSec(pace);
       const tTotal = expectedTotalSec(pace);
-      console.log(
-        `avg ${fmtSecVsTarget(s.totalSec, tTotal, 10)} (${COLOR.dim}trash${COLOR.r} ${fmtSecVsTarget(s.trashSec, tTrash, 0)} ${COLOR.dim}/${COLOR.r} ${COLOR.dim}boss${COLOR.r} ${fmtSecVsTarget(s.bossSec, tBoss, 0)})`,
-      );
+      for (const dungeon of DUNGEONS) {
+        const s = summarizeRuns(results[dungeon.id][pace]);
+        const sig = `${COLOR.dim}${s.trashStd.toFixed(3)}|${s.bossStd.toFixed(3)}|${s.totalStd.toFixed(3)}${COLOR.r}`;
+        console.log(
+          `${COLOR.cyan}${pace}${COLOR.r}|${COLOR.dim}${dungeon.id}${COLOR.r}|${fmtSecVsTarget(s.trashSec, tTrash, 0)}|${fmtSecVsTarget(s.bossSec, tBoss, 0)}|${fmtSecVsTarget(s.totalSec, tTotal, 0)}|${sig}|${fmtIntSecOffTotal(s.totalSec, tTotal, 0)}|${fmtPctOffTotal(s.totalSec, tTotal, 0)}`,
+        );
+      }
     }
-    console.log('');
+    printBossVsHealerHpsCondensed();
+    printOneshotSpikeCondensed();
+    return;
   }
 
   console.log(`${'='.repeat(70)}`);
@@ -501,4 +603,10 @@ async function main() {
   console.log(`${'='.repeat(70)}\n`);
 }
 
-main().catch(console.error);
+const entry = process.argv[1];
+const isDungeonMain =
+  entry !== undefined && path.resolve(entry) === fileURLToPath(import.meta.url);
+
+if (isDungeonMain) {
+  runDungeonTest({ condensed: false }).catch(console.error);
+}

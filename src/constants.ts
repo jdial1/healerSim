@@ -21,6 +21,7 @@ import {
 import spellsData from './data/spells.json';
 import npcPoolsData from './data/npc_pools.json';
 import balanceData from './data/balance.json';
+import pacingData from './data/pacing.json';
 
 export const TICK_RATE = 100; // ms per tick
 export const MANA_REGEN_PER_TICK = 0.5;
@@ -52,17 +53,25 @@ export function trashMaxHealthForDungeon(dungeon: Dungeon): number {
   );
 }
 
+export const DUNGEON_PACES: DungeonPace[] = ['fast', 'normal', 'slow'];
+
 export function dungeonPaceDpsMultiplier(pace: DungeonPace): number {
-  if (pace === 'fast') return 1.3333;
-  if (pace === 'normal') return 1;
-  return 0.6667;
+  return pacingData.paces[pace].dpsMultiplier;
 }
 
 export function dungeonPaceXpMultiplier(pace: DungeonPace): number {
-  if (pace === 'fast') return 0.5;
-  if (pace === 'normal') return 1;
-  return 2;
+  return pacingData.paces[pace].xpMultiplier;
 }
+
+export function dungeonPaceTrashSec(pace: DungeonPace): number {
+  return pacingData.paces[pace].trashSec;
+}
+
+export function dungeonPaceBossSec(pace: DungeonPace): number {
+  return pacingData.paces[pace].bossSec;
+}
+
+export { pacingData };
 
 export function dungeonXpTierMultiplier(difficulty: number): number {
   return 1 + balanceData.xp.dungeonTierAdditivePerDifficultyOver1 * Math.max(0, difficulty - 1);

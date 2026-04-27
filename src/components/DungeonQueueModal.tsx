@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Swords, Plus, X, Zap, Gauge, Snail } from 'lucide-react';
+import { Shield, Swords, Plus, X, Zap, Gauge, Snail, type LucideIcon } from 'lucide-react';
 import { type Dungeon, type DungeonPace } from '../types.ts';
-import { dungeonPaceXpMultiplier } from '../constants.ts';
+import { DUNGEON_PACES, dungeonPaceXpMultiplier, pacingData } from '../constants.ts';
 
 interface DungeonQueueModalProps {
   dungeon: Dungeon;
@@ -22,51 +22,49 @@ function shuffleRoles(): ('tank' | 'dps')[] {
   return roles;
 }
 
-const PACE_OPTIONS: {
-  pace: DungeonPace;
-  label: string;
-  trashSec: number;
-  bossSec: number;
-  Icon: typeof Zap;
-  ring: string;
-  iconClass: string;
-  labelClass: string;
-  subClass: string;
-}[] = [
-  {
-    pace: 'fast',
-    label: 'Fast',
-    trashSec: 15,
-    bossSec: 30,
-    Icon: Zap,
+const PACE_ICONS = { Zap, Gauge, Snail } as const satisfies Record<string, LucideIcon>;
+type PaceIconName = keyof typeof PACE_ICONS;
+
+const PACE_THEME_CLASSES: Record<
+  string,
+  { ring: string; iconClass: string; labelClass: string; subClass: string }
+> = {
+  emerald: {
     ring: 'border-emerald-500/70 bg-emerald-950/50 shadow-[0_0_18px_rgba(52,211,153,0.2)] hover:border-emerald-400/90 hover:bg-emerald-950/65',
     iconClass: 'text-emerald-400',
     labelClass: 'text-emerald-100',
     subClass: 'text-emerald-500/90',
   },
-  {
-    pace: 'normal',
-    label: 'Normal',
-    trashSec: 20,
-    bossSec: 40,
-    Icon: Gauge,
+  amber: {
     ring: 'border-amber-500/65 bg-amber-950/45 shadow-[0_0_16px_rgba(245,158,11,0.15)] hover:border-amber-400/85 hover:bg-amber-950/60',
     iconClass: 'text-amber-400',
     labelClass: 'text-amber-100',
     subClass: 'text-amber-500/85',
   },
-  {
-    pace: 'slow',
-    label: 'Slow',
-    trashSec: 30,
-    bossSec: 60,
-    Icon: Snail,
+  sky: {
     ring: 'border-sky-500/55 bg-sky-950/40 shadow-[0_0_14px_rgba(56,189,248,0.12)] hover:border-sky-400/80 hover:bg-sky-950/55',
     iconClass: 'text-sky-400',
     labelClass: 'text-sky-100',
     subClass: 'text-sky-500/85',
   },
-];
+};
+
+const PACE_OPTIONS = DUNGEON_PACES.map((pace) => {
+  const def = pacingData.paces[pace];
+  const theme = PACE_THEME_CLASSES[def.theme]!;
+  const Icon = PACE_ICONS[def.icon as PaceIconName];
+  return {
+    pace,
+    label: def.label,
+    trashSec: def.trashSec,
+    bossSec: def.bossSec,
+    Icon,
+    ring: theme.ring,
+    iconClass: theme.iconClass,
+    labelClass: theme.labelClass,
+    subClass: theme.subClass,
+  };
+});
 
 export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQueueModalProps) {
   const [tank, setTank] = useState(0);

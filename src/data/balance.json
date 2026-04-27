@@ -1,24 +1,37 @@
 {
   "boss": {
-    "damageMultiplierPerDifficultyStep": 1.12
+    "damageMultiplierPerDifficultyStep": 1.05
   },
   "partyDamageFromDungeonLevelGap": {
     "multiplierPerPartyLevelOverDungeonMax": 0.62
+  },
+  "partyDps": {
+    "base": 5,
+    "levelExponent": 1.25,
+    "levelMultiplier": 2
+  },
+  "environmentalDamage": {
+    "tankProcChance": 0.35,
+    "tankDamageRandomMax": 8,
+    "nonTankProcChance": 0.08,
+    "nonTankDamageRandomMax": 5,
+    "ambientChipEveryTicks": 7,
+    "ambientChipDamageMultiplier": 2.4
   },
   "trash": {
     "maxHealthFractionOfBoss": 0.16667
   },
   "xp": {
-    "dungeonTierAdditivePerDifficultyOver1": 0.2,
-    "dungeonBaseAmount": 80,
-    "dungeonBaseDifficultyPowBase": 1.35,
-    "overlevelDiminishingBase": 0.5,
+    "dungeonTierAdditivePerDifficultyOver1": 0.25,
+    "dungeonBaseAmount": 115,
+    "dungeonBaseDifficultyPowBase": 1.2,
+    "overlevelDiminishingBase": 0.6,
     "failureFractionWhenAllTrashCleared": 0.5,
     "failureFractionWhenTwoPullsCleared": 0.35,
     "failureFractionWhenOnePullCleared": 0.2
   },
   "playerStats": {
-    "manaPerIntellect": 10,
+    "manaPerIntellect": 12,
     "healingPctPerSpirit": 0.5,
     "manaRegenMultPerSpirit": 0.02
   },
@@ -48,9 +61,9 @@
       "aegisBurstHealPerAbsorbPerRank": 0.15
     },
     "paladin": {
-      "radianceHealMultPerMissingHealthPerRating": 0.0028,
-      "radianceHealMultBonusCap": 0.24,
-      "passiveLightbringerSplashFraction": 0.15,
+      "radianceHealMultPerMissingHealthPerRating": 0.0035,
+      "radianceHealMultBonusCap": 0.3,
+      "passiveLightbringerSplashFraction": 0.2,
       "passiveLightbringerEnvDamageManaPerHp": 0.07,
       "passiveLightbringerEnvDamageHolyPowerChance": 0.09,
       "devotionDamageReductionPerRank": 0.04,
@@ -59,7 +72,7 @@
       "emergencyCritBonusPerRankBelowHealthFraction": 4,
       "emergencyCritHealthThreshold": 0.4,
       "emergencyHasteFromMissingHealthMax": 10,
-      "beaconEchoBaseMultiplier": 0.5,
+      "beaconEchoBaseMultiplier": 0.65,
       "beaconEchoVowBonusPerRank": 0.06,
       "purifyTowerOfRadianceMultiplier": 1.35,
       "vowCrusaderAoEBonusPerRank": 0.2,
@@ -84,7 +97,7 @@
       "deepRootsBonusPerRank": 0.12,
       "photosynthesisDoubleTickChancePerRank": 0.02,
       "photosynthesisHastePerRankWhenSelfHoT": 3,
-      "hotTickManaReturnPerRank": 0.4,
+      "hotTickManaReturnPerRank": 0.6,
       "rampHastePerHotPerRank": 0.12,
       "rampCritPerHotPerRank": 0.08,
       "naturesGraceHotTickRateMultiplier": 1.5,

@@ -91,6 +91,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         bossMechanicOrdinal: 0,
         spellCooldowns: {},
         dungeonPace: null,
+        combatElapsedTicks: 0,
       };
     case 'START_DUNGEON': {
       const dungeon = action.dungeon;
@@ -118,6 +119,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         bossMechanicCountdownTicks: 0,
         bossMechanicOrdinal: 0,
         spellCooldowns: {},
+        combatElapsedTicks: 0,
       };
     }
     case 'UNLOCK_TALENT':
@@ -269,6 +271,7 @@ export function emptyGameBase(): GameState {
     bossMechanicOrdinal: 0,
     dungeonOutcome: null,
     spellCooldowns: {},
+    combatElapsedTicks: 0,
   };
 }
 
@@ -292,6 +295,7 @@ function applyProgressPatchToBase(base: GameState, patch: Partial<GameState>): G
     bossMechanicOrdinal: patch.bossMechanicOrdinal ?? base.bossMechanicOrdinal,
     dungeonOutcome: null,
     spellCooldowns: patch.spellCooldowns ?? base.spellCooldowns,
+    combatElapsedTicks: patch.combatElapsedTicks ?? base.combatElapsedTicks,
   };
 }
 

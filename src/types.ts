@@ -267,4 +267,5 @@ export interface GameState {
   bossMechanicOrdinal: number;
   dungeonOutcome: DungeonRunOutcome | null;
   spellCooldowns: Record<string, number>;
+  combatElapsedTicks: number;
 }

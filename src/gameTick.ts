@@ -308,6 +308,35 @@ export function processBossAI(
   };
 }
 
+export function advanceBossSpikeSimTick(
+  state: GameState,
+  random: TickRandom,
+  now: number,
+): { state: GameState; tankDamageThisTick: number } {
+  if (state.combatPhase !== 'BOSS' || !state.currentDungeon) {
+    throw new Error('advanceBossSpikeSimTick requires BOSS phase and currentDungeon');
+  }
+  const combatElapsedTicks = state.combatElapsedTicks + 1;
+  const st = { ...state, combatElapsedTicks };
+  const tankBefore = st.party.find((u) => u.role === 'TANK');
+  const vit0 = (tankBefore?.health ?? 0) + (tankBefore?.shield ?? 0);
+  const boss = processBossAI(st, random, now);
+  const merged = mergeBossAiIntoState(st, boss);
+  const afterEnv = resolvePartyAfterEnvironmentalDamage(st, merged, boss, random);
+  const tankAfter = afterEnv.party.find((u) => u.role === 'TANK');
+  const vit1 = (tankAfter?.health ?? 0) + (tankAfter?.shield ?? 0);
+  const tankDamageThisTick = Math.max(0, vit0 - vit1);
+  const bossBuffsNext = tickBossDisplayedBuffSurfaces(st.combatPhase, boss.bossSelfBuffs);
+  return {
+    state: {
+      ...merged,
+      party: afterEnv.party,
+      bossSelfBuffs: bossBuffsNext,
+    },
+    tankDamageThisTick,
+  };
+}
+
 function processPartyEnvironmentalTick(
   state: GameState,
   partyAfterBossAI: Unit[],
@@ -336,14 +365,22 @@ function processPartyEnvironmentalTick(
   let paladinResolveHolyPower = 0;
   const natRank = talentRanks(state.talents, 'natural_perfection');
   const PAL = BALANCE.combat.paladin;
+  const envDmg = BALANCE.environmentalDamage;
+  const ambientEvery = envDmg.ambientChipEveryTicks;
+  const ambientBurst = envDmg.ambientChipDamageMultiplier;
+  const allowAmbientChip = ambientEvery <= 1 || state.combatElapsedTicks % ambientEvery === 0;
 
   for (let idx = 0; idx < partyAfterBossAI.length; idx++) {
     const unit = partyAfterBossAI[idx];
     let damage = 0;
     const chance = random();
-    if (unit.role === 'TANK' && chance < 0.4)
-      damage = random() * 8 + (state.currentDungeon?.difficulty || 1);
-    else if (chance < 0.1) damage = random() * 5 + (state.currentDungeon?.difficulty || 1);
+    const diff = state.currentDungeon?.difficulty || 1;
+    if (allowAmbientChip) {
+      if (unit.role === 'TANK' && chance < envDmg.tankProcChance)
+        damage = (random() * envDmg.tankDamageRandomMax + diff) * ambientBurst;
+      else if (chance < envDmg.nonTankProcChance)
+        damage = (random() * envDmg.nonTankDamageRandomMax + diff) * ambientBurst;
+    }
 
     if (state.combatPhase === 'BOSS' && state.currentDungeon) {
       damage *= bossDamageMultiplierForDifficulty(state.currentDungeon.difficulty);
@@ -698,7 +735,8 @@ function resolveOngoingCombatAfterPartyAlive(
   const nextIcd = sys.internalCooldowns;
   const nextForm = sys.capstoneForm;
 
-  const partyDps = 5 + Math.pow(state.level, 1.25) * 2;
+  const pd = BALANCE.partyDps;
+  const partyDps = pd.base + Math.pow(state.level, pd.levelExponent) * pd.levelMultiplier;
   const inactiveDpsCount = newParty.filter((u) => u.role === 'DPS' && u.health <= 0).length;
   const bossDpsMult = state.combatPhase === 'BOSS' ? Math.pow(0.7, inactiveDpsCount) : 1;
   const effectivePartyDps = partyDps * bossDpsMult * dpsPaceMultiplier;
@@ -808,15 +846,18 @@ export function advanceCombatTick(
 ): GameState {
   if (!state.isCombatActive) return state;
 
+  const combatElapsedTicks = state.combatElapsedTicks + 1;
+  const st = { ...state, combatElapsedTicks };
+
   const dpsPaceMultiplier =
     dpsMultiplierOverride !== undefined
       ? dpsMultiplierOverride
-      : state.dungeonPace !== null
-        ? dungeonPaceDpsMultiplier(state.dungeonPace)
+      : st.dungeonPace !== null
+        ? dungeonPaceDpsMultiplier(st.dungeonPace)
         : 1;
 
-  const boss = processBossAI(state, random, now);
-  const stateWithBoss = mergeBossAiIntoState(state, boss);
+  const boss = processBossAI(st, random, now);
+  const stateWithBoss = mergeBossAiIntoState(st, boss);
   const {
     party: partyAfterEnv,
     naturalPerfectionStacks,
@@ -824,10 +865,10 @@ export function advanceCombatTick(
     envPlayerCombatBuffs,
     paladinResolveMana,
     paladinResolveHolyPower,
-  } = resolvePartyAfterEnvironmentalDamage(state, stateWithBoss, boss, random);
-  const bossBuffsNext = tickBossDisplayedBuffSurfaces(state.combatPhase, boss.bossSelfBuffs);
+  } = resolvePartyAfterEnvironmentalDamage(st, stateWithBoss, boss, random);
+  const bossBuffsNext = tickBossDisplayedBuffSurfaces(st.combatPhase, boss.bossSelfBuffs);
   const sys = resolvePlayerSystemsAfterEnvironmentalDamage(
-    state,
+    st,
     partyAfterEnv,
     naturalPerfectionStacks,
     manaReturnFromHotTicks,
@@ -835,9 +876,9 @@ export function advanceCombatTick(
     paladinResolveMana,
     paladinResolveHolyPower,
   );
-  const fail = resolveCombatFailureFromTick(state, sys.party);
+  const fail = resolveCombatFailureFromTick(st, sys.party);
   if (fail) return fail;
-  return resolveOngoingCombatAfterPartyAlive(state, sys, boss, bossBuffsNext, random, dpsPaceMultiplier);
+  return resolveOngoingCombatAfterPartyAlive(st, sys, boss, bossBuffsNext, random, dpsPaceMultiplier);
 }
 
 function finalizeTickState(s: GameState, newMana: number): GameState {

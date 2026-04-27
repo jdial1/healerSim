@@ -11,10 +11,16 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "icons:verify": "node scripts/verify-wow-icons.mjs",
+    "test": "tsx scripts/test-meta.ts",
     "test:dungeons": "tsx scripts/test-dungeons.ts",
     "test:class": "tsx scripts/test-classes.ts",
     "test:spells": "tsx scripts/test-spells.ts",
-    "tests": "npm run test:dungeons && npm run test:class && npm run test:spells"
+    "test:progression": "tsx scripts/test-progression.ts",
+    "test:boss-spikes": "tsx scripts/test-boss-spikes.ts",
+    "test:healing-stress": "tsx scripts/test-healing-stress.ts",
+    "test:talent-roi": "tsx scripts/test-talent-roi.ts",
+    "test:fail-states": "tsx scripts/test-fail-states.ts",
+    "tests": "tsx scripts/test-runner-full.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
