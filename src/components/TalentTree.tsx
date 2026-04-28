@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, RotateCcw, X } from 'lucide-react';
 import { ClassType, Talent, type IconGlow } from '../types.ts';
@@ -184,6 +184,7 @@ export function TalentTree({
 }: TalentTreeProps) {
   const [selectedTalentId, setSelectedTalentId] = useState<string | null>(null);
   const [statHighlightKey, setStatHighlightKey] = useState<TalentStatKey | null>(null);
+  const [confirmRespec, setConfirmRespec] = useState(false);
   const [treePan, setTreePan] = useState({ x: 0, y: 0 });
   const panGestureRef = useRef<{
     pointerId: number;
@@ -200,6 +201,9 @@ export function TalentTree({
   const { pairs: exclusiveSplitPairs, pairIndexByTalentId, connections } = uiGraph;
   const talentById = useMemo(() => new Map(talents.map((t) => [t.id, t] as const)), [talents]);
   const hasSpentTalents = talents.some((t) => t.points > 0);
+  useEffect(() => {
+    if (!hasSpentTalents) setConfirmRespec(false);
+  }, [hasSpentTalents]);
 
   const selectedTalent = useMemo(
     () => talents.find((t) => t.id === selectedTalentId),
@@ -223,13 +227,16 @@ export function TalentTree({
       ),
     [talents],
   );
-  const effectiveStatHighlight =
-    statHighlightKey !== null && statPills.includes(statHighlightKey) ? statHighlightKey : null;
-
-  const isTalentAccessible = (talent: Talent) => {
+  function isTalentAccessible(talent: Talent): boolean {
     if (talent.levelReq > playerLevel) return false;
     return unmetChainedPrerequisiteTalents(talents, talent).length === 0;
-  };
+  }
+  const effectiveStatHighlight =
+    statHighlightKey !== null && statPills.includes(statHighlightKey) ? statHighlightKey : null;
+  const availableTalentIds = useMemo(
+    () => new Set(talents.filter((talent) => isTalentAccessible(talent)).map((talent) => talent.id)),
+    [talents, playerLevel],
+  );
 
   const toggleStatHighlight = (key: TalentStatKey) => {
     setSelectedTalentId(null);
@@ -289,26 +296,33 @@ export function TalentTree({
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-slate-950">
-      <div className="flex w-full items-center justify-between border-b border-slate-800 bg-slate-900 p-4">
+      <div className="ui-frame-divider-bottom flex w-full items-center justify-between bg-slate-900 p-4">
         <div>
-          <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">Specialization</h2>
-          <div className="text-[10px] font-bold tracking-[0.2em] text-blue-500">POINTS AVAILABLE: {talentPoints}</div>
+          <h2 className="ui-heading text-xl tracking-[0.08em] text-white">Talents</h2>
+          <div className="text-[10px] font-semibold tracking-[0.16em] text-amber-300">POINTS AVAILABLE: {talentPoints}</div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={onRespec}
+            onClick={() => {
+              if (confirmRespec) {
+                onRespec();
+                setConfirmRespec(false);
+                return;
+              }
+              setConfirmRespec(true);
+            }}
             disabled={!hasSpentTalents}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800 px-2.5 py-2 text-[10px] font-black uppercase tracking-widest text-slate-200 transition-colors hover:border-amber-500/60 hover:bg-slate-700 hover:text-amber-100 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600 disabled:hover:border-slate-800"
+            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-black uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600 disabled:hover:border-slate-800 ${
+              confirmRespec
+                ? 'ui-state-frame ui-state-selected bg-red-600 text-white hover:bg-red-500'
+                : 'ui-state-frame ui-state-hover bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-amber-100'
+            }`}
           >
             <RotateCcw size={16} className="shrink-0" />
-            Respec
+            {confirmRespec ? 'Confirm' : 'Respec'}
           </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full bg-slate-800 p-2 text-white transition-colors hover:bg-red-600"
-          >
+          <button type="button" onClick={onClose} className="ui-close-button">
             <X size={20} />
           </button>
         </div>
@@ -316,7 +330,10 @@ export function TalentTree({
 
       <div className="flex-1 overflow-y-auto bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed p-4">
         <div className="mx-auto w-full max-w-2xl">
-          <div className="mb-2 flex min-h-[2rem] flex-wrap items-center justify-center gap-2">
+          <div className="mb-2 flex min-h-[2rem] flex-wrap items-center justify-center gap-1.5">
+            <span className="w-full text-center text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+              Core Masteries
+            </span>
             {statPills.map((key) => {
               const sel = effectiveStatHighlight === key;
               const suffix = STAT_SUFFIX[key];
@@ -328,14 +345,14 @@ export function TalentTree({
                   key={key}
                   type="button"
                   onClick={() => toggleStatHighlight(key)}
-                  className={`flex min-h-[2.5rem] min-w-[4rem] flex-col items-center justify-center rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-wide transition-colors sm:text-[10px] ${
+                  className={`flex min-h-[2.5rem] min-w-[4.25rem] flex-col items-center justify-center rounded-full border px-2 py-1.5 text-[9px] font-black uppercase tracking-wide transition-colors sm:min-w-[4.5rem] sm:px-2.5 sm:text-[10px] ${
                     sel
-                      ? 'border-emerald-400 bg-emerald-600 text-white shadow-[0_0_10px_rgba(52,211,153,0.45)]'
-                      : 'border-slate-600 bg-slate-800 text-slate-300 hover:border-slate-500 hover:bg-slate-700'
+                      ? 'ui-state-frame ui-state-selected bg-emerald-600 text-white'
+                      : 'ui-state-frame ui-state-hover bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
                 >
                   <span>{pillLabel}</span>
-                  <span className={`text-[9px] leading-tight sm:text-[10px] ${sel ? 'text-emerald-100' : 'text-emerald-300'}`}>
+                  <span className={`text-[9px] leading-none sm:text-[10px] ${sel ? 'text-emerald-100' : 'text-emerald-300'}`}>
                     +{total}
                     {suffix}
                   </span>
@@ -367,6 +384,7 @@ export function TalentTree({
                 talentById,
                 exclusiveSplitPairs,
                 pairIndexByTalentId,
+                availableTalentIds,
               );
               return (
                 <line
@@ -400,10 +418,10 @@ export function TalentTree({
             const sideButton = (side: Talent, acc: boolean, pts: boolean) => {
               const sel = selectedTalentId === side.id;
               const base = pts
-                ? 'bg-blue-600 shadow-[inset_0_0_0_1px_rgba(250,204,21,0.65)]'
+                ? 'ui-state-frame ui-state-selected bg-slate-800'
                 : acc
-                  ? 'bg-slate-800 hover:bg-slate-700'
-                  : 'bg-slate-950 opacity-55';
+                  ? 'ui-state-frame ui-state-hover bg-slate-800 hover:bg-slate-700'
+                  : 'ui-state-frame ui-state-disabled bg-slate-950 grayscale';
               return (
                 <button
                   key={side.id}
@@ -411,7 +429,7 @@ export function TalentTree({
                   type="button"
                   onClick={() => setSelectedTalentId(side.id)}
                   className={`relative flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center py-0.5 transition-all ${base} ${
-                    sel ? 'z-[1] ring-2 ring-inset ring-blue-400' : ''
+                    sel ? 'z-[1] ui-state-selected' : ''
                   }`}
                 >
                   <GameIcon
@@ -421,9 +439,9 @@ export function TalentTree({
                     title={side.name}
                     dimmed={!pts}
                     imageFit="cover"
-                    className={`h-full w-full min-h-0 min-w-0 rounded-none p-0 ${!acc ? 'opacity-50' : ''}`}
+                    className={`h-full w-full min-h-0 min-w-0 rounded-none p-0 ${!acc ? 'grayscale opacity-50' : ''}`}
                   />
-                  <div className="absolute bottom-0.5 right-0.5 rounded border border-slate-700 bg-slate-900 px-0.5 text-[9px] font-bold leading-none text-white sm:text-[10px]">
+                  <div className="ui-frame absolute bottom-0.5 right-0.5 rounded bg-slate-900 px-0.5 text-[9px] font-bold leading-none text-white sm:text-[10px]">
                     {side.points}/{side.maxPoints}
                   </div>
                   {!acc ? (
@@ -444,9 +462,9 @@ export function TalentTree({
                 }}
               >
                 <div
-                  className={`flex h-12 w-full max-w-[6.75rem] flex-row overflow-hidden rounded-md border-2 border-slate-600 bg-slate-950 shadow-sm transition-transform sm:h-16 sm:max-w-[8.75rem] ${
-                    isSelected ? 'scale-110 ring-4 ring-blue-500 ring-offset-2 ring-offset-slate-950' : ''
-                  } ${pairStatMatch ? 'shadow-[0_0_16px_rgba(52,211,153,0.55)] ring-2 ring-emerald-400/90 ring-offset-2 ring-offset-slate-950' : ''}`}
+                  className={`flex h-12 w-full max-w-[6.75rem] flex-row overflow-hidden rounded-md border border-slate-600 bg-slate-950 shadow-sm transition-transform sm:h-16 sm:max-w-[8.75rem] ${
+                    isSelected ? 'scale-110 ui-state-selected ring-offset-2 ring-offset-slate-950' : ''
+                  } ${pairStatMatch ? 'ui-state-selected ring-offset-2 ring-offset-slate-950' : ''}`}
                 >
                   {sideButton(pair.top, accTop, ptTop)}
                   <div className="w-px shrink-0 self-stretch bg-slate-400" aria-hidden />
@@ -479,16 +497,16 @@ export function TalentTree({
                   type="button"
                   onClick={() => setSelectedTalentId(talent.id)}
                   className={`
-                    relative flex h-12 w-12 items-center justify-center rounded border-2 transition-all sm:h-16 sm:w-16
+                    relative flex h-12 w-12 items-center justify-center rounded-md border transition-all sm:h-16 sm:w-16
                     ${
                       hasPoints
-                        ? 'border-yellow-400 bg-blue-600 shadow-[0_0_15px_rgba(251,191,36,0.4)]'
+                        ? 'ui-state-frame ui-state-selected bg-slate-800'
                         : accessible
-                          ? 'border-slate-600 bg-slate-800 hover:border-white'
-                          : 'border-slate-800 bg-slate-900 opacity-50'
+                          ? 'ui-state-frame ui-state-hover bg-slate-800'
+                          : 'ui-state-frame ui-state-disabled bg-slate-900 grayscale'
                     }
-                    ${isSelected ? 'scale-110 ring-4 ring-blue-500 ring-offset-2 ring-offset-slate-950' : ''}
-                    ${statMatch ? 'shadow-[0_0_16px_rgba(52,211,153,0.55)] ring-2 ring-emerald-400/90 ring-offset-2 ring-offset-slate-950' : ''}
+                    ${isSelected ? 'scale-110 ui-state-selected ring-offset-2 ring-offset-slate-950' : ''}
+                    ${statMatch ? 'ui-state-selected ring-offset-2 ring-offset-slate-950' : ''}
                   `}
                 >
                   <GameIcon
@@ -498,9 +516,9 @@ export function TalentTree({
                     title={talent.name}
                     dimmed={!hasPoints}
                     imageFit="cover"
-                    className={`h-full w-full min-h-0 min-w-0 rounded-none p-0 ${!accessible ? 'opacity-50' : ''}`}
+                    className={`h-full w-full min-h-0 min-w-0 rounded-none p-0 ${!accessible ? 'grayscale opacity-50' : ''}`}
                   />
-                  <div className="absolute -bottom-2 -right-2 rounded border border-slate-700 bg-slate-900 px-1 text-[10px] font-bold text-white">
+                  <div className="ui-frame absolute -bottom-2 -right-2 rounded bg-slate-900 px-1 text-[10px] font-bold text-white">
                     {talent.points}/{talent.maxPoints}
                   </div>
                   {!accessible ? <Lock size={12} className="absolute left-1 top-1 text-slate-500" /> : null}
@@ -513,7 +531,7 @@ export function TalentTree({
         </div>
       </div>
 
-      <div className="h-48 shrink-0 overflow-y-auto border-t border-slate-800 bg-slate-900 p-4">
+      <div className="ui-frame-divider-top h-48 shrink-0 overflow-y-auto bg-slate-900 p-4">
         <AnimatePresence mode="wait">
           {selectedTalent ? (
             <motion.div key={selectedTalent.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -525,9 +543,27 @@ export function TalentTree({
                   title={selectedTalent.name}
                   dimmed={selectedTalent.points === 0}
                 />
-                <h3 className="min-w-0 flex-1 text-lg font-bold uppercase italic text-white">
-                  {selectedTalent.name}
-                </h3>
+                <div className="min-w-0 flex-1">
+                  <h3 className="ui-heading min-w-0 text-lg tracking-[0.06em] text-white">
+                    {selectedTalent.name}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onUnlock(selectedTalent.id)}
+                  disabled={
+                    selectedTalent.points >= selectedTalent.maxPoints || selectedLearnReason !== null
+                  }
+                  className="ui-button-primary ui-state-frame ui-state-hover min-h-[40px] shrink-0 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-50 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 sm:min-h-0"
+                >
+                  {selectedTalent.points >= selectedTalent.maxPoints ? (
+                    'MAXED'
+                  ) : selectedLearnReason ? (
+                    'BLOCKED'
+                  ) : (
+                    'LEARN'
+                  )}
+                </button>
               </div>
               <p className="mt-1 text-sm italic text-slate-400">
                 {selectedTalent.maxPoints > 1 ? (
@@ -539,7 +575,7 @@ export function TalentTree({
                           key={`${selectedTalent.id}-rank-${rank}`}
                           className={`block rounded px-2 py-1 text-xs ${
                             isCurrentRank
-                              ? 'bg-blue-600/45 text-blue-100 ring-1 ring-inset ring-blue-300/80'
+                              ? 'bg-amber-950/60 text-amber-100 ring-1 ring-inset ring-amber-300/70'
                               : 'bg-slate-900/55 text-slate-500'
                           }`}
                         >
@@ -554,24 +590,12 @@ export function TalentTree({
                   detailDescription(selectedTalent, pairIndexByTalentId)
                 )}
               </p>
-              <button
-                type="button"
-                onClick={() => onUnlock(selectedTalent.id)}
-                disabled={
-                  selectedTalent.points >= selectedTalent.maxPoints || selectedLearnReason !== null
-                }
-                className="mt-3 min-h-[44px] w-full rounded bg-blue-600 px-2 py-2.5 text-xs font-bold uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:bg-slate-800 sm:min-h-0 sm:py-2"
-              >
-                {selectedTalent.points >= selectedTalent.maxPoints ? (
-                  'MAXED'
-                ) : selectedLearnReason ? (
-                  <span className="block text-[10px] font-semibold normal-case leading-snug tracking-normal text-amber-200/95 sm:text-[11px]">
-                    {selectedLearnReason}
-                  </span>
-                ) : (
-                  'LEARN TALENT'
-                )}
-              </button>
+              {selectedLearnReason &&
+              selectedTalent.points < selectedTalent.maxPoints ? (
+                <div className="ui-frame mt-2 rounded-md bg-amber-950/25 px-2 py-1.5 text-[10px] font-semibold leading-snug text-amber-200/95 sm:text-[11px]">
+                  {selectedLearnReason}
+                </div>
+              ) : null}
             </motion.div>
           ) : (
             <div

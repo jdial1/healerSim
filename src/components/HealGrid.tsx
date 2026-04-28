@@ -133,9 +133,9 @@ function healthTierClasses(percent: number) {
 
 function healGridRowClass(isSelected: boolean, isDead: boolean, edgeClass: string) {
   const border = isSelected
-    ? 'z-10 scale-[1.02] border-l-[6px] border-blue-300 ring-[3px] ring-blue-400 ring-inset brightness-110'
-    : `border-l-4 border-y border-r border-slate-800 ${edgeClass}`;
-  const dead = isDead ? 'cursor-not-allowed opacity-45 shadow-inner' : '';
+    ? 'z-10 scale-[1.02] border-l-[5px] brightness-110 ui-state-selected'
+    : `ui-state-frame border-l-4 ${edgeClass}`;
+  const dead = isDead ? 'cursor-not-allowed ui-state-disabled shadow-inner' : 'ui-state-hover';
   return `ui-heal-grid-row group ${border} ${dead}`;
 }
 
@@ -343,6 +343,7 @@ function HealGridUnitRow(props: HealGridUnitRowProps) {
               transition={{ type: 'tween', duration: 0.2 }}
               style={{ originX: 0 }}
             />
+            <div className="ui-heal-grid-hp-sheen" aria-hidden />
 
             <div className="ui-heal-grid-content">
               <div className="flex min-w-0 flex-1 flex-col pr-2">

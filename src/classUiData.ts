@@ -1,18 +1,12 @@
-import { Leaf, Shield, Sun, type LucideIcon } from 'lucide-react';
 import classesData from './data/classes.json';
 import type { ClassType } from './types.ts';
-
-const ICON_BY_KEY: Record<string, LucideIcon> = {
-  sun: Sun,
-  leaf: Leaf,
-  shield: Shield,
-};
 
 export type ClassUiRow = {
   id: ClassType;
   name: string;
   description: string;
   iconKey: string;
+  iconPath: string;
   color: string;
   textColor: string;
   hoverBorderClass: string;
@@ -20,7 +14,6 @@ export type ClassUiRow = {
   portraitUrl: string;
   portraitIcon: string;
   portraitGlow: string;
-  icon: LucideIcon;
   passiveTraitName: string;
   passiveTraitDescription: string;
   passiveTraitIcon: string;
@@ -38,6 +31,7 @@ export function classUiRows(): ClassUiRow[] {
       name: row.name,
       description: row.description,
       iconKey: row.iconKey,
+      iconPath: row.portraitIcon,
       color: row.color,
       textColor: row.textColor,
       hoverBorderClass: row.hoverBorderClass,
@@ -45,7 +39,6 @@ export function classUiRows(): ClassUiRow[] {
       portraitUrl: row.portraitUrl,
       portraitIcon: row.portraitIcon,
       portraitGlow: row.portraitGlow,
-      icon: ICON_BY_KEY[row.iconKey],
       passiveTraitName: ext.passiveTraitName ?? '',
       passiveTraitDescription: ext.passiveTraitDescription ?? '',
       passiveTraitIcon: ext.passiveTraitIcon ?? 'wow/spell_holy_sealofwisdom',

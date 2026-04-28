@@ -12,7 +12,7 @@ const M = testPalette();
 
 async function main(): Promise<void> {
   console.log(
-    `${M.cyan}healerSim.test${M.r} ${M.dim}condensed (dungeons + class + spells + progression + boss-spikes + stress + talent-roi + fail-states)${M.r}\n`,
+    `${M.cyan}AEGIS.test${M.r} ${M.dim}condensed (dungeons + class + spells + progression + boss-spikes + stress + talent-roi + fail-states)${M.r}\n`,
   );
   await runDungeonTest({ condensed: true });
   console.log(`\n${M.yellow}[class]${M.r}`);

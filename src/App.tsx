@@ -31,9 +31,10 @@ import { spellHealingMultiplierFromProgress, effectivePrimaryStats } from './pla
 import type { PlayerCombatStats } from './types.ts';
 import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Star, LogOut, Home } from 'lucide-react';
+import { Trophy, Star, LogOut, Settings, ScrollText, Swords } from 'lucide-react';
 
 const REPO_URL = 'https://github.com/jdial1/healerSim';
+const COMMUNITY_URL = 'https://github.com/jdial1/healerSim';
 
 export default function App() {
   const {
@@ -57,9 +58,8 @@ export default function App() {
   const [targetId, setTargetId] = useState<string | null>(null);
   const [showRoster, setShowRoster] = useState(true);
   const [splashDismissed, setSplashDismissed] = useState(false);
-  const [showTalents, setShowTalents] = useState(false);
-  const [showPlayerStats, setShowPlayerStats] = useState(false);
-  const paladinUnlocked = maxLevelAcrossRoster(roster) >= 5;
+  const [menuView, setMenuView] = useState<'dungeons' | 'talents' | 'character'>('dungeons');
+  const paladinUnlocked = maxLevelAcrossRoster(roster) >= 30;
   const [pwaNeedsRefresh, setPwaNeedsRefresh] = useState(false);
   const swUpdate = useRef<((reload?: boolean) => Promise<void>) | undefined>(undefined);
   const keyboardRef = useRef<KeyboardCombatSnapshot>({
@@ -193,20 +193,33 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [state.playerClass, addXpNextLevel]);
 
+  const showCombatUi = !!state.currentDungeon;
+  const showGlobalMenuNav = state.playerClass && !showRoster && !state.currentDungeon;
+  const goToCharacter = () => {
+    setMenuView('character');
+  };
+  const goToTalents = () => {
+    setMenuView('talents');
+  };
+  const goToDungeons = () => {
+    setMenuView('dungeons');
+  };
+  const navTab = menuView;
+
   return (
     <div
-      className={`bg-slate-950 font-sans selection:bg-blue-500 selection:text-white ${
+      className={`bg-slate-950 font-sans selection:bg-amber-500 selection:text-slate-950 ${
         state.playerClass && !showRoster ? 'min-h-dvh max-h-dvh overflow-hidden' : 'min-h-dvh'
       }`}
     >
       <AnimatePresence mode="wait">
-        {showTalents && state.playerClass && !showRoster ? (
+        {menuView === 'talents' && state.playerClass && !showRoster ? (
           <TalentTree 
             talents={state.talents}
             talentPoints={state.talentPoints}
             onUnlock={unlockTalent}
             onRespec={respecTalents}
-            onClose={() => setShowTalents(false)}
+            onClose={goToDungeons}
             playerLevel={state.level}
             playerClass={state.playerClass}
           />
@@ -216,7 +229,11 @@ export default function App() {
           <AnimatePresence mode="wait">
             {!splashDismissed ? (
               <Fragment key="splash">
-                <SplashScreen onEnter={() => setSplashDismissed(true)} />
+                <SplashScreen
+                  onEnter={() => setSplashDismissed(true)}
+                  version={__APP_VERSION__}
+                  communityUrl={COMMUNITY_URL}
+                />
               </Fragment>
             ) : (
               <motion.div
@@ -231,10 +248,12 @@ export default function App() {
                   onContinue={(cls) => {
                     loadCharacter(cls);
                     setShowRoster(false);
+                    setMenuView('dungeons');
                   }}
                   onCreate={(cls) => {
                     startNewClass(cls);
                     setShowRoster(false);
+                    setMenuView('dungeons');
                   }}
                 />
               </motion.div>
@@ -248,49 +267,33 @@ export default function App() {
             exit={{ opacity: 0, y: -100 }}
             className="relative flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden"
           >
-            <div className="fixed top-3 right-3 z-[60] flex items-center gap-2">
+            <div className="fixed left-3 right-3 top-3 z-[60] flex items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={() => {
                   returnToRoster();
                   setShowRoster(true);
                 }}
-                className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-900/80 px-2 py-1 shadow-sm backdrop-blur-md transition-colors hover:border-slate-500 hover:bg-slate-800"
-                aria-label="Main menu"
+                className="ui-panel ui-state-frame ui-state-hover flex h-8 items-center gap-1.5 px-2.5 backdrop-blur-md transition-colors"
+                aria-label="Options"
               >
-                <Home size={12} strokeWidth={2.5} className="shrink-0 text-slate-300" aria-hidden />
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-300 sm:text-[9px]">
-                  Menu
+                <Settings size={12} strokeWidth={2.4} className="-translate-y-px shrink-0 text-amber-200" aria-hidden />
+                <span className="-translate-y-px block text-[11px] font-semibold uppercase leading-none tracking-[0.14em] text-amber-100 sm:text-[10px]">
+                  Options
                 </span>
               </button>
-              <button
-                type="button"
-                onClick={() => setShowTalents(true)}
-                className={`flex items-center gap-1.5 rounded border px-2 py-1 transition-all ${
-                  state.talentPoints > 0
-                    ? 'animate-pulse border-blue-400 bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.6)]'
-                    : 'border-slate-800 bg-slate-900 text-slate-500 hover:text-white'
-                }`}
-              >
-                <Star
-                  size={10}
-                  fill={state.talentPoints > 0 ? 'currentColor' : 'none'}
-                  className={state.talentPoints > 0 ? 'text-yellow-400' : ''}
-                />
-                <span className="whitespace-nowrap text-[11px] font-black uppercase tracking-widest sm:text-[9px]">
-                  TALENTS ({state.talentPoints})
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPlayerStats(true)}
-                className="flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900/80 px-2 py-1 shadow-sm backdrop-blur-md transition-colors hover:border-slate-600 hover:bg-slate-800"
-              >
-                <Trophy size={10} className="text-blue-500" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-300 sm:text-[9px]">
-                  LVL <span className="text-white">{state.level}</span>
-                </span>
-              </button>
+              <div className="ui-panel flex h-8 items-center gap-3 px-3 backdrop-blur-md">
+                <button
+                  type="button"
+                  onClick={goToCharacter}
+                  className="flex h-full items-center gap-1.5 text-amber-100 transition-colors hover:text-amber-300"
+                >
+                  <Trophy size={10} className="-translate-y-px text-amber-400" />
+                  <span className="-translate-y-px block text-[11px] font-semibold uppercase leading-none tracking-[0.14em] sm:text-[10px]">
+                    Lvl <span className="text-white">{state.level}</span>
+                  </span>
+                </button>
+              </div>
             </div>
 
             <DungeonSelector
@@ -310,7 +313,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={abandonDungeon}
-                className="flex items-center gap-1.5 rounded border border-red-500 bg-red-600 px-2.5 py-1.5 text-white shadow-[0_0_12px_rgba(220,38,38,0.35)] transition-colors hover:bg-red-500 sm:px-3 sm:py-2"
+                className="ui-state-frame ui-state-hover flex items-center gap-1.5 rounded bg-slate-900/90 px-2.5 py-1.5 text-slate-300 shadow-sm transition-colors hover:text-red-300 sm:px-3 sm:py-2"
                 aria-label="Leave dungeon"
               >
                 <LogOut size={16} strokeWidth={2.5} className="shrink-0" aria-hidden />
@@ -345,17 +348,18 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showPlayerStats && state.playerClass && !showRoster ? (
+        {menuView === 'character' && state.playerClass && !showRoster ? (
           <PlayerStatsModal
             playerClass={state.playerClass}
             level={state.level}
+            xp={state.xp}
             talents={state.talents}
-            onClose={() => setShowPlayerStats(false)}
+            onClose={goToDungeons}
           />
         ) : null}
       </AnimatePresence>
 
-      {state.playerClass && !showRoster && playerCombatStats ? (
+      {showCombatUi && state.playerClass && !showRoster && playerCombatStats ? (
         <ActionBars
           playerCombatStats={playerCombatStats}
           spellIds={state.activeActionBars}
@@ -364,6 +368,62 @@ export default function App() {
           allowReorder={!state.currentDungeon}
           onReorderSlots={reorderActionBar}
         />
+      ) : null}
+
+      {showGlobalMenuNav ? (
+        <div
+          className="ui-frame-divider-top fixed bottom-0 left-0 right-0 z-[130] bg-slate-950/95 px-3 py-2 shadow-[0_-10px_24px_rgba(0,0,0,0.45)] backdrop-blur-md"
+          style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
+        >
+          <div className="mx-auto flex w-full max-w-md items-center gap-2">
+            <button
+              type="button"
+              onClick={goToCharacter}
+              className={`ui-state-frame flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+                navTab === 'character'
+                  ? 'ui-state-selected bg-amber-900/35 text-amber-100'
+                  : 'ui-state-hover bg-slate-900/70 text-slate-200 hover:text-amber-200'
+              }`}
+              aria-current={navTab === 'character' ? 'page' : undefined}
+            >
+              <ScrollText size={12} className="text-amber-300" />
+              Character
+            </button>
+            <button
+              type="button"
+              onClick={goToTalents}
+              className={`ui-state-frame relative flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 pr-3 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+                navTab === 'talents'
+                  ? 'ui-state-selected bg-amber-900/35 text-amber-100'
+                  : state.talentPoints > 0
+                    ? 'ui-state-hover bg-slate-900/80 text-sky-100 hover:text-sky-50'
+                    : 'ui-state-hover bg-slate-900/70 text-slate-200 hover:text-amber-200'
+              }`}
+              aria-current={navTab === 'talents' ? 'page' : undefined}
+            >
+              <Star size={12} className="text-amber-300" />
+              Talents
+              {state.talentPoints > 0 ? (
+                <span className="absolute right-1 top-1 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border border-red-300/70 bg-red-600 px-1 font-mono text-[9px] font-black leading-none text-white shadow-[0_0_10px_rgba(239,68,68,0.6)]">
+                  {state.talentPoints}
+                </span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={goToDungeons}
+              className={`ui-state-frame flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+                navTab === 'dungeons'
+                  ? 'ui-state-selected bg-amber-900/35 text-amber-100'
+                  : 'ui-state-hover bg-slate-900/70 text-slate-200 hover:text-amber-200'
+              }`}
+              aria-current={navTab === 'dungeons' ? 'page' : undefined}
+            >
+              <Swords size={12} className="text-amber-300" />
+              Dungeons
+            </button>
+          </div>
+        </div>
       ) : null}
 
       <AnimatePresence>
@@ -376,7 +436,7 @@ export default function App() {
 
       {pwaNeedsRefresh ? (
         <div
-          className="fixed bottom-0 left-0 right-0 z-[100] flex flex-wrap items-center justify-center gap-3 border-t border-slate-800 bg-slate-950/95 px-4 py-3 text-center backdrop-blur-md"
+          className="ui-frame-divider-top fixed bottom-0 left-0 right-0 z-[100] flex flex-wrap items-center justify-center gap-3 bg-slate-950/95 px-4 py-3 text-center backdrop-blur-md"
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
         >
           <span className="text-xs font-bold uppercase tracking-wide text-slate-300">
@@ -399,16 +459,12 @@ export default function App() {
         </div>
       ) : null}
 
-      {!state.currentDungeon ? (
+      {!state.currentDungeon && showRoster && splashDismissed ? (
         <a
           href={REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className={`fixed left-0 right-0 z-[25] block text-center font-mono text-[10px] tracking-wide text-slate-600 underline-offset-2 transition-colors hover:text-slate-400 hover:underline ${
-            state.playerClass && !showRoster
-              ? 'hidden bottom-40 sm:bottom-44 sm:block'
-              : 'bottom-[max(1rem,env(safe-area-inset-bottom,0px))]'
-          }`}
+          className="fixed right-3 top-3 z-[25] block text-right font-mono text-[10px] tracking-wide text-slate-600 transition-colors hover:text-slate-400"
         >
           v{__APP_VERSION__}
         </a>

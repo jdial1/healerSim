@@ -49,11 +49,11 @@ export default defineConfig(({ command }) => {
     tailwindcss(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['game_icon.svg'],
       manifest: {
-        id: 'healersim',
-        name: 'healerSim',
-        short_name: 'healerSim',
+        id: 'aegis',
+        name: 'AEGIS',
+        short_name: 'AEGIS',
         description: 'Healer dungeon simulator',
         theme_color: '#020617',
         background_color: '#020617',
@@ -63,7 +63,7 @@ export default defineConfig(({ command }) => {
         start_url: pwaStartUrl(base),
         icons: [
           {
-            src: `${base}icon.svg`,
+            src: `${base}game_icon.svg`,
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'any',

@@ -14,7 +14,6 @@ import { createPortal } from 'react-dom';
 
 import { motion } from 'motion/react';
 
-import { Skull } from 'lucide-react';
 
 import type { BossSelfBuff } from '../types.ts';
 
@@ -62,17 +61,12 @@ function TrashPackSkull({ defeated }: { defeated: boolean }) {
   return (
 
     <div className="relative flex h-9 w-9 items-center justify-center sm:h-10 sm:w-10">
-
-      <Skull
-
-        className={`h-7 w-7 transition-colors duration-300 sm:h-8 sm:w-8 ${
-
-          defeated ? 'text-slate-600' : 'text-sky-500'
-
-        }`}
-
-        strokeWidth={1.75}
-
+      <GameIcon
+        iconPath="lorc/skull-crack"
+        glow="debuff"
+        size="xs"
+        dimmed={defeated}
+        className={defeated ? 'opacity-45 grayscale' : ''}
       />
 
       {defeated ? (
@@ -90,8 +84,7 @@ function TrashPackSkull({ defeated }: { defeated: boolean }) {
         >
 
           <path
-
-            d="M8 8 L32 32 M32 8 L8 32"
+            d="M9 9 L31 31 M31 9 L9 31"
 
             stroke="currentColor"
 
@@ -118,23 +111,13 @@ function BossSkull({ bossActive }: { bossActive: boolean }) {
   return (
 
     <div className="relative flex h-9 w-9 items-center justify-center sm:h-10 sm:w-10">
-
-      <Skull
-
-        className={`h-7 w-7 transition-all duration-300 sm:h-8 sm:w-8 ${
-
-          bossActive
-
-            ? 'fill-red-600 text-red-500 drop-shadow-[0_0_10px_rgba(220,38,38,0.55)]'
-
-            : 'fill-red-950/40 text-red-800/70'
-
-        }`}
-
-        strokeWidth={bossActive ? 2 : 1.5}
-
+      <GameIcon
+        iconPath="lorc/grim-reaper"
+        glow="debuff"
+        size="xs"
+        dimmed={!bossActive}
+        className={bossActive ? '' : 'opacity-45 grayscale'}
       />
-
     </div>
 
   );
@@ -180,7 +163,9 @@ export function GameHUD({
     ? 'h-[3.6rem] sm:h-[4.75rem]'
     : 'h-[4.5rem] sm:h-[4.75rem]';
 
-  const enemyBarFill = bossActive ? 'bg-red-600' : 'bg-orange-500';
+  const enemyBarFill = bossActive
+    ? 'bg-gradient-to-r from-[#2b0f0f] via-[#4a1d1a] to-[#6a2c1e]'
+    : 'bg-gradient-to-r from-[#1a1713] via-[#352019] to-[#5a3022]';
 
   const displayBossName = bossName || 'FINAL BOSS';
 
@@ -234,7 +219,7 @@ export function GameHUD({
 
   return (
     <>
-    <div className="fixed top-0 left-0 right-0 z-40 border-b border-slate-900 bg-slate-950/90 shadow-xl backdrop-blur-md">
+    <div className="ui-frame-divider-bottom fixed top-0 left-0 right-0 z-40 bg-slate-950/90 shadow-xl backdrop-blur-md">
 
       <div className="flex flex-col gap-2 px-3 pb-3 pt-3 sm:gap-2.5 sm:px-4 sm:pb-3.5 sm:pt-4">
 
@@ -250,7 +235,7 @@ export function GameHUD({
 
               </span>
 
-              <h1 className="w-full max-w-full text-balance text-center text-2xl font-black uppercase leading-[1.05] tracking-tight text-white sm:text-3xl md:text-4xl lg:text-5xl">
+              <h1 className="ui-heading w-full max-w-full text-balance text-center text-2xl leading-[1.05] tracking-[0.06em] text-white sm:text-3xl md:text-4xl lg:text-5xl">
 
                 {displayBossName}
 
@@ -263,15 +248,10 @@ export function GameHUD({
             <div className="flex flex-wrap items-center gap-2">
 
               <span className="shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white sm:text-[8px]">
-
-                TRASH
-
+                BATTLE PROGRESS
               </span>
-
-              <span className="text-xs font-black uppercase tracking-tight text-white sm:text-[10px]">
-
+              <span className="text-xs font-black uppercase tracking-tight text-slate-300 sm:text-[10px]">
                 {trashPullsRemaining} pack{trashPullsRemaining === 1 ? '' : 's'} left
-
               </span>
 
             </div>
@@ -282,7 +262,7 @@ export function GameHUD({
 
             <div className="mt-1.5 flex justify-center sm:mt-2">
 
-              <span className="rounded border border-fuchsia-800/60 bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 sm:text-[9px]">
+              <span className="ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 sm:text-[9px]">
 
                 Endless ×{endlessCycleMultiplier(endlessStacks).toFixed(2)}
 
@@ -296,7 +276,7 @@ export function GameHUD({
 
 
 
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-evenly border-t border-slate-800/80 pt-2 sm:pt-2.5">
+        <div className="ui-frame-divider-top mx-auto flex w-full max-w-6xl items-center justify-evenly pt-2 sm:pt-2.5">
 
           {Array.from({ length: TRASH_PACKS }, (_, i) => (
 
@@ -316,11 +296,7 @@ export function GameHUD({
 
         <div className="mx-auto w-full max-w-6xl">
 
-          <div
-
-            className={`relative ${enemyBarHeightClass} w-full overflow-hidden border border-slate-800 bg-slate-900 shadow-inner`}
-
-          >
+          <div className={`ui-frame relative ${enemyBarHeightClass} w-full overflow-hidden rounded-md bg-slate-900 shadow-inner`}>
 
             <motion.div
 
@@ -356,7 +332,7 @@ export function GameHUD({
                         key={b.id}
                         type="button"
                         data-boss-buff-hit
-                        className="relative touch-manipulation rounded-md ring-1 ring-amber-400/45 sm:p-0.5"
+                        className="ui-state-frame ui-state-hover relative touch-manipulation rounded-md sm:p-0.5"
                         aria-label={`${b.name}, show details`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -402,13 +378,9 @@ export function GameHUD({
               ) : null}
 
               {!bossActive ? (
-
-                <span className="min-w-0 truncate text-sm font-black uppercase tracking-wide text-slate-300 sm:text-base">
-
-                  {trashEnemyName}
-
+                <span className="min-w-0 text-sm font-semibold uppercase tracking-[0.08em] text-slate-100 sm:text-base">
+                  TARGET: {trashEnemyName}
                 </span>
-
               ) : null}
 
               <span className="shrink-0 font-mono text-lg font-black tabular-nums text-white sm:text-xl">

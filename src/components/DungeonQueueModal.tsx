@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Swords, Plus, X, Zap, Gauge, Snail, type LucideIcon } from 'lucide-react';
+import { X } from 'lucide-react';
 import { type Dungeon, type DungeonPace } from '../types.ts';
 import { DUNGEON_PACES, dungeonPaceXpMultiplier, pacingData } from '../constants.ts';
+import { GameIcon } from './GameIcon.tsx';
 
 interface DungeonQueueModalProps {
   dungeon: Dungeon;
@@ -22,47 +23,49 @@ function shuffleRoles(): ('tank' | 'dps')[] {
   return roles;
 }
 
-const PACE_ICONS = { Zap, Gauge, Snail } as const satisfies Record<string, LucideIcon>;
-type PaceIconName = keyof typeof PACE_ICONS;
+const PACE_ICON_PATHS: Record<string, string> = {
+  Zap: 'lorc/crossed-swords',
+  Gauge: 'lorc/winged-shield',
+  Snail: 'wow/spell_nature_tranquility',
+};
 
 const PACE_THEME_CLASSES: Record<
   string,
-  { ring: string; iconClass: string; labelClass: string; subClass: string }
+  { ring: string; labelClass: string; subClass: string; selected: string }
 > = {
   emerald: {
-    ring: 'border-emerald-500/70 bg-emerald-950/50 shadow-[0_0_18px_rgba(52,211,153,0.2)] hover:border-emerald-400/90 hover:bg-emerald-950/65',
-    iconClass: 'text-emerald-400',
+    ring: 'ui-state-frame ui-state-hover bg-slate-900/90',
     labelClass: 'text-emerald-100',
-    subClass: 'text-emerald-500/90',
+    subClass: 'text-emerald-300/90',
+    selected: 'ui-state-frame ui-state-selected bg-emerald-950/70',
   },
   amber: {
-    ring: 'border-amber-500/65 bg-amber-950/45 shadow-[0_0_16px_rgba(245,158,11,0.15)] hover:border-amber-400/85 hover:bg-amber-950/60',
-    iconClass: 'text-amber-400',
+    ring: 'ui-state-frame ui-state-hover bg-slate-900/90',
     labelClass: 'text-amber-100',
-    subClass: 'text-amber-500/85',
+    subClass: 'text-amber-300/90',
+    selected: 'ui-state-frame ui-state-selected bg-amber-950/70',
   },
   sky: {
-    ring: 'border-sky-500/55 bg-sky-950/40 shadow-[0_0_14px_rgba(56,189,248,0.12)] hover:border-sky-400/80 hover:bg-sky-950/55',
-    iconClass: 'text-sky-400',
-    labelClass: 'text-sky-100',
-    subClass: 'text-sky-500/85',
+    ring: 'ui-state-frame ui-state-hover bg-slate-900/90',
+    labelClass: 'text-cyan-100',
+    subClass: 'text-cyan-300/90',
+    selected: 'ui-state-frame ui-state-selected bg-cyan-950/70',
   },
 };
 
 const PACE_OPTIONS = DUNGEON_PACES.map((pace) => {
   const def = pacingData.paces[pace];
   const theme = PACE_THEME_CLASSES[def.theme]!;
-  const Icon = PACE_ICONS[def.icon as PaceIconName];
   return {
     pace,
     label: def.label,
     trashSec: def.trashSec,
     bossSec: def.bossSec,
-    Icon,
+    iconPath: PACE_ICON_PATHS[def.icon] ?? 'lorc/holy-grail',
     ring: theme.ring,
-    iconClass: theme.iconClass,
     labelClass: theme.labelClass,
     subClass: theme.subClass,
+    selected: theme.selected,
   };
 });
 
@@ -128,7 +131,7 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 4 }}
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="relative w-full max-w-sm rounded-lg border-2 border-slate-400/70 bg-slate-950/92 p-5 shadow-[0_0_40px_rgba(0,0,0,0.75)] ring-1 ring-inset ring-slate-500/40"
+        className="ui-panel relative w-full max-w-sm p-5 ring-1 ring-inset ring-slate-500/40"
         style={
           borderFlash
             ? {
@@ -138,18 +141,13 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
         }
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-2.5 top-2.5 z-10 rounded-full border border-slate-600 bg-slate-900/90 p-1 text-slate-400 transition-colors hover:border-slate-500 hover:text-white"
-          aria-label="Close"
-        >
+        <button type="button" onClick={onClose} className="ui-close-button absolute right-2.5 top-2.5 z-10 p-1" aria-label="Close">
           <X size={14} strokeWidth={2.5} aria-hidden />
         </button>
 
         <h2
           id="dungeon-queue-heading"
-          className="mb-5 truncate pr-9 pt-0.5 text-center text-xl font-black uppercase italic leading-tight tracking-tighter text-white sm:text-2xl"
+          className="ui-heading mb-5 pr-9 pt-0.5 text-center text-xl leading-tight tracking-[0.06em] text-white sm:text-2xl"
         >
           {dungeon.name}
         </h2>
@@ -158,7 +156,7 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
           <RoleSlot
             current={tank}
             max={1}
-            icon={<Shield className="h-7 w-7" strokeWidth={2.2} />}
+            icon={<GameIcon iconPath="lorc/winged-shield" glow="spell" size="sm" imageFit="cover" />}
             activeTint="text-slate-200"
             dimTint="text-slate-600"
             ringActive="border-slate-400/80 shadow-[0_0_14px_rgba(148,163,184,0.2)]"
@@ -167,7 +165,7 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
           <RoleSlot
             current={1}
             max={1}
-            icon={<Plus className="h-7 w-7" strokeWidth={2.8} />}
+            icon={<GameIcon iconPath="wow/spell_holy_renew" glow="spell" size="sm" imageFit="cover" />}
             activeTint="text-emerald-400"
             dimTint="text-emerald-700"
             ringActive="border-emerald-500/70 shadow-[0_0_16px_rgba(52,211,153,0.35)]"
@@ -177,7 +175,7 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
           <RoleSlot
             current={dps}
             max={3}
-            icon={<Swords className="h-7 w-7" strokeWidth={2.2} />}
+            icon={<GameIcon iconPath="lorc/crossed-swords" glow="debuff" size="sm" imageFit="cover" />}
             activeTint="text-red-400"
             dimTint="text-red-900/80"
             ringActive="border-red-500/60 shadow-[0_0_14px_rgba(248,113,113,0.25)]"
@@ -199,14 +197,14 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
                 Dungeon pace
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {PACE_OPTIONS.map(({ pace, label, trashSec, bossSec, Icon, ring, iconClass, labelClass, subClass }) => (
+                {PACE_OPTIONS.map(({ pace, label, trashSec, bossSec, iconPath, ring, labelClass, subClass, selected }) => (
                   <button
                     key={pace}
                     type="button"
                     onClick={() => onConfirmEnter(dungeon, pace)}
-                    className={`flex flex-col items-center gap-1 rounded-lg border-2 px-1.5 py-2.5 text-center transition-colors ${ring}`}
+                    className={`flex flex-col items-center gap-1 rounded-lg px-1.5 py-2.5 text-center transition-colors ${pace === 'normal' ? selected : ring}`}
                   >
-                    <Icon className={`h-6 w-6 shrink-0 ${iconClass}`} strokeWidth={2.2} aria-hidden />
+                    <GameIcon iconPath={iconPath} glow="spell" size="sm" imageFit="cover" />
                     <span className={`text-[11px] font-black uppercase leading-tight tracking-tight ${labelClass}`}>
                       {label}
                     </span>
@@ -259,7 +257,7 @@ function RoleSlot({
   return (
     <div className="flex flex-col items-center gap-2">
       <div
-        className={`flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full border-2 bg-slate-950/80 transition-all duration-300 ${
+        className={`ui-state-frame flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full bg-slate-950/80 p-1 transition-all duration-300 ${
           lit ? ringActive : ringDim
         } ${lit ? activeTint : dimTint}`}
       >

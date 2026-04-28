@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#1f2f62" />
+      <stop offset="62%" stop-color="#0f1d44" />
+      <stop offset="100%" stop-color="#0b1432" />
+    </radialGradient>
+    <radialGradient id="coreLight" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff9d2" />
+      <stop offset="35%" stop-color="#ffe27a" />
+      <stop offset="100%" stop-color="#ffbe3d" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="cloakBlue" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#73d0ff" />
+      <stop offset="100%" stop-color="#2f8fd8" />
+    </linearGradient>
+    <linearGradient id="goldTrim" x1="0%" x2="100%" y1="0%" y2="0%">
+      <stop offset="0%" stop-color="#d5a83b" />
+      <stop offset="50%" stop-color="#f2cb63" />
+      <stop offset="100%" stop-color="#c9942b" />
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="252" fill="#f8fafc" />
+  <circle cx="256" cy="256" r="224" fill="url(#bgGlow)" />
+  <path
+    d="M256 84c-40 0-73 28-92 57l31 16c12-22 36-39 61-39s49 17 61 39l31-16c-19-29-52-57-92-57Z"
+    fill="url(#cloakBlue)"
+  />
+  <path
+    d="M154 165c2 105 7 180 23 233 26 10 53 17 79 19 26-2 53-9 79-19 16-53 21-128 23-233-23-22-62-38-102-38s-79 16-102 38Z"
+    fill="#12254d"
+  />
+  <path
+    d="M192 193c11-11 34-22 64-22s53 11 64 22c-3 92-8 148-19 185-14 5-29 9-45 10-16-1-31-5-45-10-11-37-16-93-19-185Z"
+    fill="url(#cloakBlue)"
+    fill-opacity="0.8"
+  />
+  <path d="M244 167h24v226h-24z" fill="url(#goldTrim)" />
+  <path d="M188 185c19-14 45-22 68-22s49 8 68 22l-10 18c-17-11-37-18-58-18s-41 7-58 18z" fill="url(#goldTrim)" />
+  <path d="M176 236c16 18 30 30 40 37l-9 16c-16-8-32-22-49-42z" fill="url(#goldTrim)" />
+  <path d="M336 236c-16 18-30 30-40 37l9 16c16-8 32-22 49-42z" fill="url(#goldTrim)" />
+  <circle cx="256" cy="256" r="70" fill="url(#coreLight)" />
+  <path d="M256 194 270 242 318 256 270 270 256 318 242 270 194 256 242 242Z" fill="#fffef1" />
+  <path d="M256 214 266 246 298 256 266 266 256 298 246 266 214 256 246 246Z" fill="#ffe27a" />
+  <circle cx="232" cy="150" r="5" fill="#f8fafc" />
+  <circle cx="280" cy="150" r="5" fill="#f8fafc" />
+</svg>

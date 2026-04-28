@@ -115,6 +115,7 @@ export function prereqConnectionStroke(
   byId: Map<string, Talent>,
   pairs: ExclusiveSplitPair[],
   pairIndexByTalentId: Map<string, number>,
+  availableTalentIds: Set<string>,
 ): { stroke: string; strokeWidth: string; strokeDasharray: string; className?: string } {
   const parent = byId.get(conn.parentId);
   const child = byId.get(conn.childId);
@@ -130,21 +131,39 @@ export function prereqConnectionStroke(
   const childPair = childPairIdx !== undefined ? pairs[childPairIdx] : undefined;
   const childLit = childPair ? pairHasAnyPoints(childPair) : child.points > 0;
 
+  const childAvailable = availableTalentIds.has(child.id);
   const lit = parentLit && childLit;
   const strokeDasharray = parentLit ? '0' : '4';
 
-  if (!lit) {
-    return { stroke: '#1e293b', strokeWidth: '2', strokeDasharray };
-  }
-  if (conn.synergy) {
+  if (lit) {
+    if (conn.synergy) {
+      return {
+        stroke: '#c084fc',
+        strokeWidth: '4',
+        strokeDasharray,
+        className: 'opacity-100 drop-shadow-[0_0_10px_rgba(192,132,252,0.95)]',
+      };
+    }
     return {
-      stroke: '#a855f7',
-      strokeWidth: '3',
+      stroke: '#60a5fa',
+      strokeWidth: '4',
       strokeDasharray,
-      className: 'drop-shadow-[0_0_6px_rgba(168,85,247,0.7)]',
+      className: 'opacity-100 drop-shadow-[0_0_8px_rgba(96,165,250,0.9)]',
     };
   }
-  return { stroke: '#3b82f6', strokeWidth: '2', strokeDasharray };
+
+  if (parentLit && childAvailable) {
+    return {
+      stroke: conn.synergy ? '#c084fc' : '#94a3b8',
+      strokeWidth: '3',
+      strokeDasharray,
+      className: conn.synergy
+        ? 'opacity-95 drop-shadow-[0_0_8px_rgba(192,132,252,0.8)]'
+        : 'opacity-95 drop-shadow-[0_0_6px_rgba(148,163,184,0.75)]',
+    };
+  }
+
+  return { stroke: '#334155', strokeWidth: '2', strokeDasharray, className: 'opacity-55' };
 }
 
 export function talentInExclusiveSplit(

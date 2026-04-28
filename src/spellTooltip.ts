@@ -40,12 +40,13 @@ export function spellDisplayManaCost(spell: Spell, ctx: SpellEffectTooltipContex
 
 export function spellEffectTooltipText(spell: Spell, ctx: SpellEffectTooltipContext): string {
   if (spell.staticEffectDescription) return spell.staticEffectDescription;
+  const integerText = (n: number) => String(Math.round(n));
 
   if (spell.id === 'mana_potion' && ctx.playerLevel !== undefined) {
     const instant = manaPotionInstantMana(ctx.playerLevel);
     const over = manaPotionOverTimeTotal(ctx.playerLevel);
     const dur = (spell.manaRegenBuffDurationTicks ?? 100) / 10;
-    const fmtMana = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+    const fmtMana = (n: number) => integerText(n);
     return [`Restores ${fmtMana(instant)} Mana.`, `Restores another ${fmtMana(over)} Mana over ${dur} sec.`].join(
       '\n',
     );
@@ -57,11 +58,9 @@ export function spellEffectTooltipText(spell: Spell, ctx: SpellEffectTooltipCont
   const hotTicks = spell.hotDuration ?? 0;
   const hotPerTick = spell.hotHealingPerTick ?? 0;
   const hasHot = hotTicks > 0 && hotPerTick > 0;
-  const effHotTotal = hasHot
-    ? Math.round(hotPerTick * hotTicks * rm * ctx.spellHealingMultiplier * 10) / 10
-    : 0;
+  const effHotTotal = hasHot ? Math.round(hotPerTick * hotTicks * rm * ctx.spellHealingMultiplier) : 0;
   const durSec = hotTicks / 10;
-  const fmtHeal = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  const fmtHeal = (n: number) => integerText(n);
 
   const sentences: string[] = [];
 
@@ -95,4 +94,26 @@ export function spellEffectTooltipText(spell: Spell, ctx: SpellEffectTooltipCont
   }
 
   return sentences.join('\n');
+}
+
+function numberTokens(text: string): string[] {
+  const matches = text.match(/\d+(?:\.\d+)?/g);
+  return matches ?? [];
+}
+
+export function spellEffectTooltipTextWithPreviousValues(
+  spell: Spell,
+  previousCtx: SpellEffectTooltipContext,
+  currentCtx: SpellEffectTooltipContext,
+): string {
+  const previous = spellEffectTooltipText(spell, previousCtx);
+  const current = spellEffectTooltipText(spell, currentCtx);
+  const previousNumbers = numberTokens(previous);
+  let idx = 0;
+  return current.replace(/\d+(?:\.\d+)?/g, (currentNum) => {
+    const previousNum = previousNumbers[idx];
+    idx += 1;
+    if (!previousNum || previousNum === currentNum) return currentNum;
+    return `[[${previousNum}|${currentNum}]]`;
+  });
 }

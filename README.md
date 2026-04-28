@@ -1,10 +1,19 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+<img width="1200" height="475" alt="AEGIS gameplay banner" src="public/game_bg.png" />
 </div>
 
-# healerSim
+# AEGIS
 
 Mobile-first healing simulator. Pick a class, tune spells, and heal your party through dungeons.
+
+## Game features
+
+- Class-based healing gameplay with distinct Priest, Druid, and Paladin identity.
+- Talent progression and stat scaling that shape mana economy, throughput, and utility.
+- Real-time party triage across health bars, buffs, debuffs, and incoming damage pressure.
+- Action bar spell management with cooldown, mana, and cast-flow decision making.
+- Dungeon run pacing that rewards efficient healing rotations and resource planning.
+- Mobile-first UI with responsive layouts tuned for quick, readable combat decisions.
 
 ## Run locally
 

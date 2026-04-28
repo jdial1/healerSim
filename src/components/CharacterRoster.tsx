@@ -21,9 +21,10 @@ export function CharacterRoster({ roster, paladinUnlocked, onContinue, onCreate 
     <ClassPickList
       title={
         <>
-          Heal<span className="text-blue-500">ers</span>
+          <span className="inline-block tracking-[0.11em] [font-kerning:normal]">THE ORDER</span>
         </>
       }
+      subtitle="Select your path"
       isRowLocked={(row: ClassUiRow) => row.id === 'PALADIN' && !paladinUnlocked}
       onRowActivate={(cls) => {
         const saved = roster.byClass[cls];
@@ -44,8 +45,8 @@ export function CharacterRoster({ roster, paladinUnlocked, onContinue, onCreate 
         if (hasSave) {
           return (
             <div className="space-y-1.5">
-              <div>
-                LVL <span className="text-white">{level}</span>
+              <div className="font-semibold uppercase tracking-[0.08em] text-slate-300">
+                Lvl <span className="font-bold text-white">{level}</span>
               </div>
               {passive}
             </div>
@@ -54,7 +55,7 @@ export function CharacterRoster({ roster, paladinUnlocked, onContinue, onCreate 
         if (locked) return '—';
         return (
           <div className="space-y-1.5">
-            <span className="text-slate-500">New character</span>
+            <span className="text-slate-500">Initiate</span>
             {passive}
           </div>
         );

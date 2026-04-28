@@ -55,7 +55,7 @@ function emptySpellSlotClass(reordering: boolean, draggingHere: boolean) {
 
 function spellBarIconClass(highlighted: boolean, canInteract: boolean) {
   let c = 'shrink-0';
-  if (highlighted) c += ' ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-900';
+  if (highlighted) c += ' ui-state-selected ring-offset-1 ring-offset-slate-900';
   if (canInteract) c += ' transition-transform group-hover:scale-105';
   return c;
 }
@@ -312,8 +312,8 @@ export function ActionBars({
           <span className="text-sm font-mono font-bold tracking-tight">
             {regenBuffActive ? (
               <>
-                <span className="text-blue-300">+{fmtRegen(totalRegenPerSec)}/s</span>
-                <span className="ml-1.5 text-xs font-black uppercase text-blue-400/90">
+                <span className="text-sky-100">+{fmtRegen(totalRegenPerSec)}/s</span>
+                <span className="ml-1.5 text-xs font-black uppercase text-sky-200/90">
                   +{fmtRegen(manaPotionDripPerSec)}/s potion
                 </span>
                 <span className="ml-1.5 text-xs text-slate-600 line-through decoration-slate-600">
@@ -321,9 +321,9 @@ export function ActionBars({
                 </span>
               </>
             ) : spiritRegenPaused ? (
-              <span className="text-amber-500/90">
+              <span className="text-slate-100">
                 +0/s
-                <span className="ml-1.5 text-xs font-black uppercase tracking-wide">5SR</span>
+                <span className="ml-1.5 text-xs font-black uppercase tracking-wide text-slate-200/95">5SR</span>
               </span>
             ) : (
               <span className="text-slate-500">
@@ -497,11 +497,13 @@ export function ActionBars({
                   )}
                 />
                 
-                <span className="ui-spell-name-label group-hover:text-white">
-                  {displayName.split(' ')[0]}
-                </span>
+                {!spellsEnabled ? (
+                  <span className="ui-spell-name-label group-hover:text-white">
+                    {displayName.split(' ')[0]}
+                  </span>
+                ) : null}
 
-                {spell.manaCost > 0 && (
+                {spell.manaCost > 0 && !spellsEnabled && (
                   <div className="ui-spell-mana-cost">
                       {displayManaCost}
                   </div>

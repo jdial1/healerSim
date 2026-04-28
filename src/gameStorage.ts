@@ -86,8 +86,9 @@ export function levelsOverDungeonMax(dungeon: Dungeon, playerLevel: number): num
   return Math.max(0, playerLevel - dungeon.levelMax);
 }
 
-const ROSTER_KEY = 'healerSim.roster.v2';
-const LEGACY_SAVE_KEY = 'healerSim.save.v1';
+const ROSTER_KEY = 'aegis.roster.v2';
+const LEGACY_SAVE_KEY = 'aegis.save.v1';
+const SUSPEND_KEY = 'aegis.suspend.v1';
 
 export type SavedShape = {
   v: 1;
@@ -102,6 +103,12 @@ export type RosterV2 = {
   v: 2;
   lastPlayedClass: ClassType | null;
   byClass: Partial<Record<ClassType, SavedShape>>;
+};
+
+type SuspendedRun = {
+  v: 1;
+  playerClass: ClassType;
+  state: GameState;
 };
 
 function emptyRoster(): RosterV2 {
@@ -142,6 +149,60 @@ export function readRoster(): RosterV2 {
 export function writeRoster(roster: RosterV2): void {
   if (typeof localStorage === 'undefined') return;
   localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+}
+
+function isSuspendedRun(x: unknown): x is SuspendedRun {
+  if (!x || typeof x !== 'object') return false;
+  const v = (x as { v?: unknown }).v;
+  const playerClass = (x as { playerClass?: unknown }).playerClass;
+  const state = (x as { state?: unknown }).state;
+  if (v !== 1) return false;
+  if (playerClass !== 'DRUID' && playerClass !== 'PRIEST' && playerClass !== 'PALADIN') return false;
+  if (!state || typeof state !== 'object') return false;
+  return true;
+}
+
+function isSuspendableBossState(state: GameState): boolean {
+  return (
+    !!state.playerClass &&
+    state.isCombatActive &&
+    !!state.currentDungeon &&
+    state.combatPhase === 'BOSS'
+  );
+}
+
+export function writeSuspendedRun(state: GameState): void {
+  if (typeof localStorage === 'undefined') return;
+  if (!state.playerClass) return;
+  if (!isSuspendableBossState(state)) return;
+  const run: SuspendedRun = { v: 1, playerClass: state.playerClass, state };
+  localStorage.setItem(SUSPEND_KEY, JSON.stringify(run));
+}
+
+function readSuspendedRun(): SuspendedRun | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(SUSPEND_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isSuspendedRun(parsed)) return null;
+    if (!isSuspendableBossState(parsed.state)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSuspendedRun(): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.removeItem(SUSPEND_KEY);
+}
+
+export function takeSuspendedRunForClass(cls: ClassType): GameState | null {
+  const suspended = readSuspendedRun();
+  if (!suspended || suspended.playerClass !== cls) return null;
+  clearSuspendedRun();
+  return suspended.state;
 }
 
 export function maxLevelAcrossRoster(roster: RosterV2): number {

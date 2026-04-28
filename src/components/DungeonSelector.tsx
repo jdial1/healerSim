@@ -54,10 +54,10 @@ function centeredChildIndex(el: HTMLDivElement): number {
 }
 
 const CARD_SHELL =
-  'relative flex max-h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 pt-4 pb-4 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:pt-5 sm:pb-5 md:px-7 md:pt-6 md:pb-6 max-sm:px-6 max-sm:pt-3.5 max-sm:pb-3.5';
+  'relative flex h-full max-h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 pt-4 pb-4 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:pt-5 sm:pb-5 md:px-7 md:pt-6 md:pb-6 max-sm:px-6 max-sm:pt-3.5 max-sm:pb-3.5';
 
 const CAROUSEL_SCROLL =
-  'flex min-h-0 flex-1 cursor-grab snap-x snap-mandatory flex-nowrap items-center gap-4 overflow-x-auto overflow-y-clip overscroll-x-contain px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] select-none active:cursor-grabbing sm:gap-5 sm:px-6 [&::-webkit-scrollbar]:hidden';
+  'flex min-h-0 flex-1 cursor-grab snap-x snap-mandatory flex-nowrap items-stretch gap-4 overflow-x-auto overflow-y-clip overscroll-x-contain px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] select-none active:cursor-grabbing sm:gap-5 sm:px-6 [&::-webkit-scrollbar]:hidden';
 
 function debuffTargetingDescription(t: BossDebuffTargeting): string {
   if (t === 'single_random') return 'Hits 1 ally';
@@ -82,7 +82,7 @@ function BossMechanicsStrip({
   const cardTheme = dungeon.cardTheme;
 
   const cardShell =
-    'flex h-full min-h-0 min-w-0 flex-1 basis-0 flex-col gap-1.5 rounded-md border bg-slate-900/75 px-2 py-2 sm:gap-1.5 sm:px-2 sm:py-2 md:gap-2 md:px-2.5 md:py-2.5';
+    'flex h-full min-h-[12rem] min-w-0 flex-1 basis-0 flex-col gap-1.5 rounded-md border bg-slate-900/75 px-2.5 py-2 sm:gap-1.5 sm:px-2.5 sm:py-2 md:gap-2 md:px-3 md:py-2.5';
 
   if (isLocked) {
     return (
@@ -122,7 +122,7 @@ function BossMechanicsStrip({
             key={d.abilityId}
             className={`${cardShell} border-rose-900/45`}
           >
-            <p className="line-clamp-3 shrink-0 break-words text-center text-xs font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-[11px] md:text-sm">
+            <p className="line-clamp-2 min-h-[2.5rem] shrink-0 break-normal hyphens-auto px-1 text-center text-[10px] font-bold uppercase leading-snug tracking-tight text-slate-100 sm:min-h-[2.25rem] sm:text-[10px] md:min-h-[2.75rem] md:text-xs">
               {d.name}
             </p>
             <GameIcon
@@ -154,7 +154,7 @@ function BossMechanicsStrip({
                 {debuffTargetingDescription(d.targeting)}
               </p>
               {d.dispellable && (
-                <p className="text-[9px] font-bold uppercase tracking-wide text-cyan-400/90 sm:text-[8px] md:text-[10px]">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-sky-300/90 sm:text-[8px] md:text-[10px]">
                   Dispellable
                 </p>
               )}
@@ -166,7 +166,7 @@ function BossMechanicsStrip({
             key={a.abilityId}
             className={`${cardShell} border-orange-900/50`}
           >
-            <p className="line-clamp-3 shrink-0 break-words text-center text-xs font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-[11px] md:text-sm">
+            <p className="line-clamp-2 min-h-[2.5rem] shrink-0 break-normal hyphens-auto px-1 text-center text-[10px] font-bold uppercase leading-snug tracking-tight text-slate-100 sm:min-h-[2.25rem] sm:text-[10px] md:min-h-[2.75rem] md:text-xs">
               {a.name}
             </p>
             <GameIcon
@@ -199,7 +199,7 @@ function BossMechanicsStrip({
               key={b.abilityId}
               className={`${cardShell} border-amber-800/40`}
             >
-              <p className="line-clamp-3 shrink-0 break-words text-center text-xs font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-[11px] md:text-sm">
+            <p className="line-clamp-2 min-h-[2.5rem] shrink-0 break-normal hyphens-auto px-1 text-center text-[10px] font-bold uppercase leading-snug tracking-tight text-slate-100 sm:min-h-[2.25rem] sm:text-[10px] md:min-h-[2.75rem] md:text-xs">
                 {b.name}
               </p>
               <GameIcon
@@ -238,7 +238,7 @@ function BossMechanicsStrip({
 }
 
 const GALLERY_NAV_BTN =
-  'pointer-events-auto absolute top-1/2 z-[1] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-slate-950/90 text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-md transition-[opacity,transform] active:scale-95 max-sm:h-10 max-sm:w-10 sm:h-12 sm:w-12';
+  'ui-state-frame ui-state-hover pointer-events-auto absolute top-1/2 z-[1] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-slate-950/90 text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-md transition-[opacity,transform] active:scale-95 max-sm:h-10 max-sm:w-10 sm:h-12 sm:w-12';
 
 export function DungeonSelector({ onSelect, level, completedDungeonIds }: DungeonSelectorProps) {
   const [queueDungeon, setQueueDungeon] = useState<Dungeon | null>(null);
@@ -353,21 +353,25 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between border-b border-slate-800 bg-slate-900/50 px-4 py-3 sm:px-8">
+      <div className="ui-frame-divider-bottom fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-slate-900/50 px-4 py-3 sm:px-8">
+        <div className="w-[3.5rem] sm:w-[4.25rem]" aria-hidden />
         <div>
-          <h1 className="text-xl font-black uppercase italic leading-none tracking-tighter text-white sm:text-2xl">
-            DUNGEON <span className="text-blue-500">FINDER</span>
+          <h1 className="ui-heading text-xl leading-none tracking-[0.08em] text-white sm:text-2xl">
+            DUNGEONS
           </h1>
+        </div>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-300 sm:text-[11px]">
+          Lvl <span className="font-black text-slate-100">{level}</span>
         </div>
       </div>
 
       <div className="mt-16 min-h-0 flex-1 bg-gradient-to-b from-slate-950 to-slate-900/30" />
 
       <div
-        className="fixed left-0 right-0 z-[45] flex min-h-0 flex-col border-t border-white/10 bg-slate-950/90 pb-3 pt-3 shadow-[0_-16px_48px_rgba(0,0,0,0.55)] backdrop-blur-md"
+        className="ui-frame-divider-top fixed left-0 right-0 z-[45] flex min-h-0 flex-col bg-slate-950/90 pb-3 pt-3 shadow-[0_-16px_48px_rgba(0,0,0,0.55)] backdrop-blur-md"
         style={{
           top: 'calc(4rem + env(safe-area-inset-top, 0px))',
-          bottom: 'max(11rem, calc(10.25rem + env(safe-area-inset-bottom, 0px)))',
+          bottom: 'max(4.75rem, calc(4rem + env(safe-area-inset-bottom, 0px)))',
         }}
       >
         <div className="relative flex min-h-0 flex-1 flex-col">
@@ -417,19 +421,33 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                 onClick={() => trySelect(dungeon, isLocked)}
                 className={`
                   ${CARD_SHELL}
+                  ui-state-frame
                   ${theme.borderLeft}
                   ${theme.viaTint}
                   ${theme.ring}
                   ${theme.cardShadow}
-                  ${isLocked ? 'cursor-default opacity-[0.45]' : `${theme.borderHover} cursor-pointer`}
+                  ${isLocked ? 'ui-state-disabled cursor-default' : `ui-state-hover ${theme.borderHover} cursor-pointer`}
                 `}
               >
                 <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden md:gap-4">
                   <div className="flex shrink-0 items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <h3 className="line-clamp-2 text-2xl font-black uppercase italic leading-[1.05] tracking-tighter text-white sm:text-2xl md:text-3xl">
-                        {dungeon.name.replace(/^The /i, '')}
-                      </h3>
+                      <div className="flex min-w-0 items-center gap-2">
+                        {dungeon.id === 'deadmines' ? (
+                          <GameIcon
+                            iconPath={dungeon.bossIcon}
+                            glow="spell"
+                            size="xs"
+                            title={dungeon.bossName}
+                            dimmed={isLocked}
+                            accentTint={theme.iconTint}
+                            className="shrink-0"
+                          />
+                        ) : null}
+                        <h3 className="ui-heading line-clamp-2 min-w-0 text-2xl leading-[1.05] tracking-[0.06em] text-white sm:text-2xl md:text-3xl">
+                          {dungeon.name.replace(/^The /i, '')}
+                        </h3>
+                      </div>
                       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0 text-xs font-black uppercase leading-snug sm:mt-0.5 sm:text-[11px] md:text-sm">
                         <span className="text-slate-500">Lv {dungeon.levelMin}–{dungeon.levelMax}</span>
                         {!isLocked ? (
@@ -512,7 +530,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                               accentTint={theme.iconTint}
                             />
                             <span
-                              className={`min-w-0 flex-1 truncate text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm md:text-base ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-300'}`}
+                              className={`min-w-0 flex-1 text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm md:text-base ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-300'}`}
                             >
                               {enemy.name}
                             </span>
@@ -528,7 +546,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                             accentTint={theme.iconTint}
                           />
                           <span
-                            className={`min-w-0 flex-1 truncate text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm md:text-base ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-200'}`}
+                            className={`min-w-0 flex-1 text-[15px] font-bold uppercase leading-snug tracking-tight sm:text-sm md:text-base ${isCompleted ? 'text-slate-500 line-through decoration-slate-500' : 'text-slate-200'}`}
                           >
                             {dungeon.bossName}
                           </span>
@@ -548,13 +566,13 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                 </div>
 
                 <div
-                  className={`mt-auto w-full shrink-0 rounded-lg py-4 text-center text-lg font-black uppercase tracking-wider sm:py-4 sm:text-base md:text-xl ${
+                  className={`mt-auto w-full shrink-0 rounded-md py-4 text-center text-lg font-semibold uppercase tracking-[0.12em] sm:py-4 sm:text-base md:text-xl ${
                     isLocked
                       ? 'border border-slate-800 bg-slate-950/50 text-slate-600'
-                      : theme.deploy
+                      : 'ui-button-primary border-amber-400/45 text-amber-50'
                   }`}
                 >
-                  {isLocked ? 'LOCKED' : 'FIND GROUP'}
+                  {isLocked ? 'LOCKED' : 'QUEUE'}
                 </div>
 
                 {isLocked ? <div className="pointer-events-none absolute inset-0 rounded-xl bg-slate-950/15" /> : null}

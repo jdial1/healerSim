@@ -5,6 +5,9 @@ import {
   readRoster,
   writeRoster,
   mergeRosterWithCharacter,
+  writeSuspendedRun,
+  clearSuspendedRun,
+  takeSuspendedRunForClass,
   type RosterV2,
 } from '../gameStorage.ts';
 import { hasPlayerBuff } from '../talentMechanics.ts';
@@ -32,7 +35,8 @@ export function useGameEngine() {
   const loadCharacter = useCallback(
     (cls: ClassType) => {
       const r = persistActiveSessionIfAny();
-      dispatch({ type: 'SET', state: gameStateForClass(cls, r.byClass[cls]) });
+      const suspended = takeSuspendedRunForClass(cls);
+      dispatch({ type: 'SET', state: suspended ?? gameStateForClass(cls, r.byClass[cls]) });
     },
     [persistActiveSessionIfAny],
   );
@@ -112,6 +116,15 @@ export function useGameEngine() {
     state.completedDungeonIds,
     state.activeActionBars,
   ]);
+
+  useEffect(() => {
+    if (!state.playerClass) return;
+    if (state.isCombatActive && state.currentDungeon && state.combatPhase === 'BOSS') {
+      writeSuspendedRun(state);
+      return;
+    }
+    clearSuspendedRun();
+  }, [state]);
 
   const actionBarHighlights = useMemo(
     () => ({
