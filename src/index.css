@@ -338,6 +338,13 @@
     filter: saturate(1.1) contrast(1.08);
     transform: scale(1.06);
   }
+  @media (min-aspect-ratio: 16 / 10) {
+    .ui-splash-art {
+      background-size: contain;
+      background-position: center 42%;
+      transform: scale(1);
+    }
+  }
   .ui-splash-blob {
     @apply absolute rounded-full blur-[100px] sm:blur-[120px];
   }

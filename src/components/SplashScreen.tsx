@@ -25,7 +25,7 @@ export function SplashScreen({
       className="ui-splash-root"
     >
       <div className="ui-splash-aurora" aria-hidden>
-        <div className="ui-splash-art" style={{ backgroundImage: 'url(/game_bg.png)' }} />
+        <div className="ui-splash-art" style={{ backgroundImage: 'url(https://i.imgur.com/0z2tbTQ.png)' }} />
         <div className="ui-splash-blob ui-splash-blob-1" />
         <div className="ui-splash-blob ui-splash-blob-2" />
         <div className="ui-splash-blob ui-splash-blob-3" />

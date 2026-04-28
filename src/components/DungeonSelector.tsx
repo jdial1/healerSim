@@ -569,7 +569,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                   className={`mt-auto w-full shrink-0 rounded-md py-4 text-center text-lg font-semibold uppercase tracking-[0.12em] sm:py-4 sm:text-base md:text-xl ${
                     isLocked
                       ? 'border border-slate-800 bg-slate-950/50 text-slate-600'
-                      : 'ui-button-primary border-amber-400/45 text-amber-50'
+                      : 'ui-state-frame ui-state-hover border-amber-400/45 bg-amber-700/70 text-amber-50'
                   }`}
                 >
                   {isLocked ? 'LOCKED' : 'QUEUE'}
