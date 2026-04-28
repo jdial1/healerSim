@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1200" height="475" alt="AEGIS gameplay banner" src="https://i.imgur.com/0z2tbTQ.png" />
+<img alt="AEGIS gameplay banner" src="https://i.imgur.com/0z2tbTQ.png" style="width: 100%; height: auto;" />
 </div>
 
 # AEGIS
