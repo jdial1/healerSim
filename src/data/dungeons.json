@@ -525,7 +525,7 @@
     "endless": true,
     "difficulty": 1,
     "levelMin": 25,
-    "levelMax": 60,
+    "levelMax": 25,
     "bossName": "???",
     "bossHealth": 5150,
     "bossIcon": "lorc/skull-crack",

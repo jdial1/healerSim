@@ -34,9 +34,9 @@ import { cloneTalentsForClass } from '../src/talents/index.ts';
 import type { ClassType, GameState, Spell, Talent } from '../src/types.ts';
 import { testPalette } from './testColors.ts';
 
-const TEST_LEVEL = 24;
+const TEST_LEVEL = 25;
 const PARTY_SIZE = 5;
-const OOM_LEVEL = 24;
+const OOM_LEVEL = 25;
 const ROI_LEVEL = 20;
 const MIN_GCD_TICKS = 10;
 
@@ -257,7 +257,7 @@ function runTimeToOomOverlap(): void {
 
 function runRotationalHpmOverlap(): void {
   console.log(`${'='.repeat(80)}`);
-  console.log('Rotational HPM (expected procs, Level 24, no talents)');
+  console.log('Rotational HPM (expected procs, Level 25, no talents)');
   console.log(`${'='.repeat(80)}`);
   const mult = spellHealingMultiplierFromProgress('PRIEST', TEST_LEVEL, []);
   const fh = SPELLS.flash_heal;

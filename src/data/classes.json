@@ -14,7 +14,10 @@
       "portraitGlow": "spell",
       "passiveTraitName": "Echo of Light",
       "passiveTraitDescription": "A portion of direct healing lingers on the target as a brief heal over time.",
-      "passiveTraitIcon": "wow/spell_holy_surgeoflight"
+      "passiveTraitIcon": "wow/spell_holy_surgeoflight",
+      "tutorial": {
+        "passiveDescription": "Echo of Light: Extra healing over time."
+      }
     },
     {
       "id": "DRUID",
@@ -30,7 +33,10 @@
       "portraitGlow": "nature",
       "passiveTraitName": "Omen of Clarity",
       "passiveTraitDescription": "HoT ticks can grant Clearcasting, making your next Regrowth or Healing Touch cost no mana.",
-      "passiveTraitIcon": "wow/spell_nature_focusedmind"
+      "passiveTraitIcon": "wow/spell_nature_focusedmind",
+      "tutorial": {
+        "passiveDescription": "Omen of Clarity: Your next cast is free!"
+      }
     },
     {
       "id": "PALADIN",
@@ -46,7 +52,10 @@
       "portraitGlow": "spell",
       "passiveTraitName": "Lightbringer's Resolve",
       "passiveTraitDescription": "Healing the tank splashes to the lowest-health ally. Taking environmental damage restores a sliver of mana and can grant Holy Power.",
-      "passiveTraitIcon": "wow/spell_holy_crusade"
+      "passiveTraitIcon": "wow/spell_holy_crusade",
+      "tutorial": {
+        "passiveDescription": "Passive bonus active. Keep allies stable."
+      }
     }
   ],
   "statCurves": {

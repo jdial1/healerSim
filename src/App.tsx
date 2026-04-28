@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef, Fragment, useMemo } from 'react';
 import { registerSW } from 'virtual:pwa-register';
 import { useGameEngine } from './hooks/useGameEngine.ts';
+import { useIntroTutorial } from './hooks/useIntroTutorial.ts';
 import {
   useKeyboardCombatKeys,
   type KeyboardCombatSnapshot,
@@ -30,6 +31,8 @@ import { DungeonOutcomeModal } from './components/DungeonOutcomeModal.tsx';
 import { spellHealingMultiplierFromProgress, effectivePrimaryStats } from './playerStats.ts';
 import type { PlayerCombatStats } from './types.ts';
 import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
+import { TutorialOverlay } from './components/TutorialOverlay.tsx';
+import { INTRO_TUTORIAL_DEBUFF_DATA_ID } from './tutorialConfig.ts';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Star, LogOut, Settings, ScrollText, Swords } from 'lucide-react';
 
@@ -48,18 +51,27 @@ export default function App() {
     castSpell,
     addXpNextLevel,
     unlockTalent,
+    decrementTalent,
     respecTalents,
     reorderActionBar,
     cooldowns,
     dungeonOutcome,
     dismissDungeonOutcome,
     actionBarHighlights,
+    setTutorialPaused,
+    completeIntroTutorial,
+    markTutorialStepCompleted,
   } = useGameEngine();
   const [targetId, setTargetId] = useState<string | null>(null);
+  const [castTutorialSignal, setCastTutorialSignal] = useState<{
+    id: string;
+    nonce: number;
+  } | null>(null);
+  const [reorderTutorialSignal, setReorderTutorialSignal] = useState(0);
   const [showRoster, setShowRoster] = useState(true);
   const [splashDismissed, setSplashDismissed] = useState(false);
   const [menuView, setMenuView] = useState<'dungeons' | 'talents' | 'character'>('dungeons');
-  const paladinUnlocked = maxLevelAcrossRoster(roster) >= 30;
+  const paladinUnlocked = maxLevelAcrossRoster(roster) >= 25;
   const [pwaNeedsRefresh, setPwaNeedsRefresh] = useState(false);
   const swUpdate = useRef<((reload?: boolean) => Promise<void>) | undefined>(undefined);
   const keyboardRef = useRef<KeyboardCombatSnapshot>({
@@ -79,18 +91,59 @@ export default function App() {
     });
   }, []);
 
+  const clearCastTutorialSignal = useCallback(() => {
+    setCastTutorialSignal(null);
+  }, []);
+
+  const castSpellWithTutorialSignal = useCallback(
+    (spellId: string, targetIdForSpell: string) => {
+      setCastTutorialSignal((prev) => ({
+        id: spellId,
+        nonce: (prev?.nonce ?? 0) + 1,
+      }));
+      castSpell(spellId, targetIdForSpell);
+    },
+    [castSpell],
+  );
+
   const handleCast = useCallback(
     (spellId: string) => {
       if (!state.currentDungeon) return;
       if (!targetId && state.party.length > 0) {
         const tank = state.party.find((u) => u.role === 'TANK');
-        if (tank) castSpell(spellId, tank.id);
+        if (tank) castSpellWithTutorialSignal(spellId, tank.id);
       } else if (targetId) {
-        castSpell(spellId, targetId);
+        castSpellWithTutorialSignal(spellId, targetId);
       }
     },
-    [state.currentDungeon, targetId, state.party, castSpell],
+    [state.currentDungeon, targetId, state.party, castSpellWithTutorialSignal],
   );
+
+  const reorderActionBarWithSignal = useCallback(
+    (from: number, to: number) => {
+      reorderActionBar(from, to);
+      setReorderTutorialSignal((v) => v + 1);
+    },
+    [reorderActionBar],
+  );
+
+  const { overlay: introTutorialOverlay, onTapContinue: introTutorialTapContinue, highlightTalentIdForTree } =
+    useIntroTutorial({
+      state,
+      actionBarHighlights,
+      targetId,
+      menuView,
+      showRoster,
+      castSpellIdSignal: castTutorialSignal,
+      clearCastSpellSignal: clearCastTutorialSignal,
+      setTutorialPaused,
+      completeIntroTutorial,
+      markTutorialStepCompleted,
+      reorderSignal: reorderTutorialSignal,
+    });
+
+  const introDebuffTutorialStep =
+    introTutorialOverlay.open && introTutorialOverlay.targetDataId === INTRO_TUTORIAL_DEBUFF_DATA_ID;
 
   useEffect(() => {
     if (!targetId) return;
@@ -166,7 +219,7 @@ export default function App() {
     currentDungeon: state.currentDungeon,
     activeActionBars: state.activeActionBars,
     targetId,
-    castSpell,
+    castSpell: castSpellWithTutorialSignal,
   };
   useKeyboardCombatKeys(keyboardRef, setTargetId);
 
@@ -193,7 +246,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [state.playerClass, addXpNextLevel]);
 
-  const showCombatUi = !!state.currentDungeon;
+  const showCombatUi = !!state.playerClass && !showRoster;
   const showGlobalMenuNav = state.playerClass && !showRoster && !state.currentDungeon;
   const goToCharacter = () => {
     setMenuView('character');
@@ -218,10 +271,12 @@ export default function App() {
             talents={state.talents}
             talentPoints={state.talentPoints}
             onUnlock={unlockTalent}
+            onDecrement={decrementTalent}
             onRespec={respecTalents}
             onClose={goToDungeons}
             playerLevel={state.level}
             playerClass={state.playerClass}
+            tutorialHighlightTalentId={highlightTalentIdForTree}
           />
         ) : null}
 
@@ -334,12 +389,15 @@ export default function App() {
             />
 
             <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-48 pb-36 sm:pt-52 sm:pb-40">
-               <div className="mt-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-1 self-center overflow-y-auto px-2 pb-2">
+               <div className="my-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-1 self-center overflow-y-auto px-2 pb-2">
                  <HealGrid
                   party={partyForHealGrid}
                   selectedId={targetId}
                   onTargetSelect={setTargetId}
                   floatingCombatTexts={state.floatingCombatTexts}
+                  syncIntroTutorialDebuffTip={introDebuffTutorialStep}
+                  debuffTipZIndex={introDebuffTutorialStep ? 10200 : 400}
+                  holdTutorialDebuffTip={introDebuffTutorialStep}
                 />
                </div>
             </main>
@@ -366,7 +424,8 @@ export default function App() {
           cooldowns={cooldowns}
           onCast={handleCast}
           allowReorder={!state.currentDungeon}
-          onReorderSlots={reorderActionBar}
+          onReorderSlots={reorderActionBarWithSignal}
+          hideResourcePanels={!state.currentDungeon}
         />
       ) : null}
 
@@ -379,20 +438,21 @@ export default function App() {
             <button
               type="button"
               onClick={goToCharacter}
-              className={`ui-state-frame flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+              className={`ui-state-frame flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-semibold tracking-[0.04em] transition-colors active:scale-[0.97] sm:text-sm ${
                 navTab === 'character'
                   ? 'ui-state-selected bg-amber-900/35 text-amber-100'
                   : 'ui-state-hover bg-slate-900/70 text-slate-200 hover:text-amber-200'
               }`}
               aria-current={navTab === 'character' ? 'page' : undefined}
             >
-              <ScrollText size={12} className="text-amber-300" />
+              <ScrollText size={16} strokeWidth={2.25} className="ui-nav-icon-flat shrink-0 text-amber-300" />
               Character
             </button>
             <button
               type="button"
               onClick={goToTalents}
-              className={`ui-state-frame relative flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 pr-3 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+              data-tutorial-id="nav-talents"
+              className={`ui-state-frame relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-semibold tracking-[0.04em] transition-colors active:scale-[0.97] sm:text-sm ${
                 navTab === 'talents'
                   ? 'ui-state-selected bg-amber-900/35 text-amber-100'
                   : state.talentPoints > 0
@@ -401,10 +461,10 @@ export default function App() {
               }`}
               aria-current={navTab === 'talents' ? 'page' : undefined}
             >
-              <Star size={12} className="text-amber-300" />
+              <Star size={16} strokeWidth={2.25} className="ui-nav-icon-flat shrink-0 text-amber-300" />
               Talents
               {state.talentPoints > 0 ? (
-                <span className="absolute right-1 top-1 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full border border-red-300/70 bg-red-600 px-1 font-mono text-[9px] font-black leading-none text-white shadow-[0_0_10px_rgba(239,68,68,0.6)]">
+                <span className="absolute -right-1 -top-1 inline-flex min-h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded-full border border-red-200/85 bg-red-600 px-1 font-mono text-[10px] font-black leading-none text-white shadow-[0_0_12px_rgba(239,68,68,0.65)] sm:text-[11px]">
                   {state.talentPoints}
                 </span>
               ) : null}
@@ -412,14 +472,14 @@ export default function App() {
             <button
               type="button"
               onClick={goToDungeons}
-              className={`ui-state-frame flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
+              className={`ui-state-frame flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-semibold tracking-[0.04em] transition-colors active:scale-[0.97] sm:text-sm ${
                 navTab === 'dungeons'
                   ? 'ui-state-selected bg-amber-900/35 text-amber-100'
                   : 'ui-state-hover bg-slate-900/70 text-slate-200 hover:text-amber-200'
               }`}
               aria-current={navTab === 'dungeons' ? 'page' : undefined}
             >
-              <Swords size={12} className="text-amber-300" />
+              <Swords size={16} strokeWidth={2.25} className="ui-nav-icon-flat shrink-0 text-amber-300" />
               Dungeons
             </button>
           </div>
@@ -469,6 +529,19 @@ export default function App() {
           v{__APP_VERSION__}
         </a>
       ) : null}
+
+      <TutorialOverlay
+        open={introTutorialOverlay.open}
+        targetDataId={introTutorialOverlay.targetDataId}
+        message={introTutorialOverlay.message}
+        showTapCatcher={introTutorialOverlay.showTapCatcher}
+        showResumeButton={introTutorialOverlay.showResumeButton}
+        anchorMessageBelowTarget={introDebuffTutorialStep}
+        tone={introTutorialOverlay.tone}
+        resumeLabel={introTutorialOverlay.resumeLabel}
+        ghostHand={introTutorialOverlay.ghostHand}
+        onTapContinue={introTutorialTapContinue}
+      />
     </div>
   );
 }

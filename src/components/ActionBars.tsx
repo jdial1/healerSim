@@ -26,9 +26,7 @@ function spellSlotButtonClass(
     spellsEnabled: boolean;
     reordering: boolean;
     draggingHere: boolean;
-    cooldown: number;
-    isLowMana: boolean;
-    noPotionCharges: boolean;
+    canCast: boolean;
   },
 ) {
   let extra = '';
@@ -39,9 +37,8 @@ function spellSlotButtonClass(
   }
   if (state.draggingHere) extra += ' opacity-30';
   if (state.spellsEnabled) {
-    if (state.cooldown > 0) extra += ' opacity-60';
-    else if (state.isLowMana || state.noPotionCharges) extra += ' opacity-45';
-    else extra += ' hover:-translate-y-1 hover:bg-slate-700 shadow-lg';
+    if (state.canCast) extra += ' hover:-translate-y-1 hover:bg-slate-700 shadow-lg';
+    else extra += ' cursor-not-allowed';
   }
   return `ui-spell-slot-base ${borderClass}${extra}`;
 }
@@ -55,7 +52,7 @@ function emptySpellSlotClass(reordering: boolean, draggingHere: boolean) {
 
 function spellBarIconClass(highlighted: boolean, canInteract: boolean) {
   let c = 'shrink-0';
-  if (highlighted) c += ' ui-state-selected ring-offset-1 ring-offset-slate-900';
+  if (highlighted) c += ' ring-2 ring-emerald-300/90 ring-offset-2 ring-offset-slate-900 shadow-[0_0_12px_rgba(110,231,183,0.5)]';
   if (canInteract) c += ' transition-transform group-hover:scale-105';
   return c;
 }
@@ -75,6 +72,7 @@ interface ActionBarsProps {
   onCast: (id: string) => void;
   allowReorder?: boolean;
   onReorderSlots?: (fromIndex: number, toIndex: number) => void;
+  hideResourcePanels?: boolean;
 }
 
 export function ActionBars({
@@ -84,6 +82,7 @@ export function ActionBars({
   onCast,
   allowReorder = false,
   onReorderSlots,
+  hideResourcePanels = false,
 }: ActionBarsProps) {
   const {
     xp,
@@ -108,6 +107,7 @@ export function ActionBars({
   const [tooltipHoverSpellId, setTooltipHoverSpellId] = useState<string | null>(null);
   const [draggingBarIndex, setDraggingBarIndex] = useState<number | null>(null);
   const [reorderHoverIndex, setReorderHoverIndex] = useState<number | null>(null);
+  const [castBlockShake, setCastBlockShake] = useState<Record<number, number>>({});
   const touchReorderFromRef = useRef<number | null>(null);
   const touchReorderPointerIdRef = useRef<number | null>(null);
   const touchReorderMovedRef = useRef(false);
@@ -264,7 +264,7 @@ export function ActionBars({
     <div ref={barRootRef} className="ui-action-bar-root">
       <div className="absolute inset-0 bg-slate-900" aria-hidden />
       <div className="ui-action-bar-stack">
-      {!spellsEnabled ? (
+      {!spellsEnabled && !hideResourcePanels ? (
         <div className="ui-xp-bar-wrap">
           <div
             className="ui-xp-bar-track"
@@ -298,7 +298,8 @@ export function ActionBars({
         </div>
       ) : null}
       <div className="ui-action-bar-column">
-        <div className="ui-mana-pool-panel">
+        {!hideResourcePanels ? (
+        <div className="ui-mana-pool-panel" data-tutorial-id="mana-pool">
         <motion.div
           className="ui-mana-pool-underlay"
           initial={false}
@@ -309,7 +310,7 @@ export function ActionBars({
         <div className="ui-mana-pool-row">
         <div className="flex min-w-0 flex-col gap-0 leading-tight">
           <span className="text-sm font-black uppercase tracking-wide text-slate-400">Mana Pool</span>
-          <span className="text-sm font-mono font-bold tracking-tight">
+          <span className="ui-numeric text-sm font-mono font-bold tracking-tight">
             {regenBuffActive ? (
               <>
                 <span className="text-sky-100">+{fmtRegen(totalRegenPerSec)}/s</span>
@@ -337,6 +338,8 @@ export function ActionBars({
         </span>
         </div>
         </div>
+        ) : null}
+      <div className="ui-spell-bar-tray">
       <div className="ui-spell-bar-row">
         {spellIds.map((id, index) => {
           const reordering = allowReorder && onReorderSlots;
@@ -405,6 +408,15 @@ export function ActionBars({
             Boolean(spell.limitedDungeonConsumable) && manaPotionChargesRemaining <= 0;
           const castBlocked = cooldown > 0 || isLowMana || noPotionCharges;
           const disabled = spellsEnabled && castBlocked;
+          const canCast = spellsEnabled && !castBlocked;
+          const showResourceBlockOverlay =
+            spellsEnabled &&
+            cooldown <= 0 &&
+            (isLowMana || noPotionCharges) &&
+            (spell.manaCost > 0 || Boolean(spell.limitedDungeonConsumable));
+          const cdDenom = Math.max(spell.cooldown, 1);
+          const cdCover = Math.min(1, cooldown / cdDenom);
+          const shakeGen = castBlockShake[index] ?? 0;
 
           const activateSlot = () => {
             if (performance.now() < suppressPreviewClickUntilRef.current) return;
@@ -412,7 +424,10 @@ export function ActionBars({
               setPreviewTooltipSpellId((prev) => (prev === id ? null : id));
               return;
             }
-            if (disabled) return;
+            if (disabled) {
+              setCastBlockShake((m) => ({ ...m, [index]: (m[index] ?? 0) + 1 }));
+              return;
+            }
             onCast(id);
           };
 
@@ -426,8 +441,10 @@ export function ActionBars({
                 setTooltipHoverSpellId((cur) => (cur === id ? null : cur));
               }}
             >
-              <div
+              <motion.div
+                key={`${index}-${shakeGen}`}
                 id={`spell-${id}`}
+                data-tutorial-id={`spell-${id}`}
                 role="button"
                 tabIndex={disabled ? -1 : 0}
                 aria-disabled={disabled || undefined}
@@ -477,23 +494,26 @@ export function ActionBars({
                   spellsEnabled,
                   reordering: !!reordering,
                   draggingHere: draggingBarIndex === index,
-                  cooldown,
-                  isLowMana,
-                  noPotionCharges,
-                })}${reorderDropRing}${disabled ? ' cursor-not-allowed' : spellsEnabled || !reordering ? ' cursor-pointer' : ''}`}
+                  canCast,
+                })}${reorderDropRing}${
+                  canCast || (!spellsEnabled && !reordering) ? ' cursor-pointer' : ''
+                }`}
+                initial={{ x: 0 }}
+                animate={{ x: shakeGen > 0 ? [0, -6, 6, -4, 4, 0] : 0 }}
+                transition={{
+                  duration: shakeGen > 0 ? 0.24 : 0.08,
+                  ease: [0.4, 0, 0.2, 1],
+                }}
               >
                 <GameIcon
                   iconPath={iconPath}
                   glow={glowForSpellId(id)}
                   size="lg"
                   title={displayName}
-                  dimmed={
-                    spellsEnabled &&
-                    (cooldown > 0 || isLowMana || noPotionCharges)
-                  }
+                  dimmed={spellsEnabled && cooldown > 0}
                   className={spellBarIconClass(
                     Boolean(actionBarHighlights[id]),
-                    spellsEnabled && cooldown <= 0 && !isLowMana && !noPotionCharges,
+                    canCast,
                   )}
                 />
                 
@@ -508,30 +528,39 @@ export function ActionBars({
                       {displayManaCost}
                   </div>
                 )}
+                {spell.manaCost > 0 && spellsEnabled && (
+                  <div
+                    className={`ui-spell-mana-cost ui-spell-mana-cost-combat${isLowMana ? ' ui-spell-mana-cost-blocked' : ''}`}
+                  >
+                    {displayManaCost}
+                  </div>
+                )}
                 {spell.limitedDungeonConsumable && spellsEnabled && (
                   <div className="ui-spell-potion-badge">
                     {manaPotionChargesRemaining}/{MANA_POTION_USES_PER_DUNGEON}
                   </div>
                 )}
 
-                {cooldown > 0 && (
+                {showResourceBlockOverlay ? <div className="ui-spell-oom-overlay" aria-hidden /> : null}
+
+                {cooldown > 0 ? (
                   <div className="ui-spell-cd-overlay">
-                    <motion.div 
-                        className="ui-spell-cd-sweep"
-                        initial={{ height: '100%' }}
-                        animate={{ height: `${(cooldown / spell.cooldown) * 100}%` }}
-                        transition={{ duration: 0.1 }}
+                    <div
+                      className="ui-spell-cd-radial"
+                      style={{
+                        background: `conic-gradient(from -90deg, rgb(2 6 23 / 0.92) ${cdCover * 360}deg, transparent 0deg)`,
+                      }}
                     />
                     <span className="ui-spell-cd-text">
                       {cooldown > 10 ? Math.ceil(cooldown / 10) : (cooldown / 10).toFixed(1)}
                     </span>
                   </div>
-                )}
+                ) : null}
 
                 <div className="ui-spell-slot-index ui-spell-slot-index-filled">
                    {index + 1}
                 </div>
-              </div>
+              </motion.div>
 
               <div
                 ref={(el) => {
@@ -564,6 +593,7 @@ export function ActionBars({
             </div>
           );
         })}
+      </div>
       </div>
       </div>
       </div>

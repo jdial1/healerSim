@@ -22,11 +22,6 @@ export function ClassPickList({
   showDescription = false,
 }: ClassPickListProps) {
   const rows = classUiRows();
-  const rowTapGlow = (cls: ClassType): string => {
-    if (cls === 'PRIEST') return '0 0 0 2px rgba(250, 204, 21, 0.85), 0 0 34px rgba(250, 204, 21, 0.55)';
-    if (cls === 'DRUID') return '0 0 0 2px rgba(34, 197, 94, 0.85), 0 0 34px rgba(34, 197, 94, 0.5)';
-    return '0 0 0 2px rgba(96, 165, 250, 0.75), 0 0 32px rgba(96, 165, 250, 0.48)';
-  };
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-6">
       <motion.div
@@ -39,7 +34,7 @@ export function ClassPickList({
           <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:text-xs">{subtitle}</p>
         ) : null}
       </motion.div>
-      <div className="grid w-full max-w-xl gap-4">
+      <div className="grid w-full max-w-xl gap-6">
         {rows.map((row) => {
           const locked = isRowLocked(row);
           const extra = subline?.(row);
@@ -52,11 +47,11 @@ export function ClassPickList({
                 if (!locked) onRowActivate(row.id);
               }}
               whileHover={!locked ? { x: 10, backgroundColor: '#1e293b' } : {}}
-              whileTap={!locked ? { scale: 1.05, boxShadow: rowTapGlow(row.id) } : {}}
-              className={`relative flex items-center gap-5 rounded-md border p-6 text-left transition-all sm:gap-6 sm:p-7 ${
+              whileTap={!locked ? { scale: 1.02, boxShadow: row.theme.tapShadow } : {}}
+              className={`relative flex items-center gap-6 rounded-md border border-slate-600/45 p-6 text-left transition-colors sm:gap-6 sm:p-8 ${
                 locked
-                  ? 'ui-panel ui-state-frame ui-state-disabled cursor-not-allowed bg-slate-900/50'
-                  : `ui-panel ui-state-frame ui-state-hover ${row.hoverBorderClass}`
+                  ? 'ui-panel ui-state-frame ui-state-disabled cursor-not-allowed border-slate-700/50 bg-slate-900/50'
+                  : `ui-panel ui-state-frame ui-state-hover hover:border-slate-500/60 ${row.theme.ribbon}`
               }`}
             >
               <div className="flex shrink-0 items-center gap-2.5 sm:gap-3">
@@ -76,8 +71,8 @@ export function ClassPickList({
                   />
                 </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h3 className={`ui-heading text-xl tracking-[0.05em] sm:text-2xl ${row.textColor}`}>
+              <div className="min-w-0 flex-1 self-center">
+                <h3 className="ui-heading text-xl leading-tight tracking-[0.05em] text-slate-100 sm:text-2xl">
                   {row.name}
                 </h3>
                 {showDescription ? (

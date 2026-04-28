@@ -26,11 +26,24 @@ function xpToAdvanceOneLevel(fromLevel: number): number {
 }
 
 function pickDungeonForLevel(level: number): Dungeon {
-  const inBand = DUNGEONS.filter((d) => level >= d.levelMin && level <= d.levelMax);
-  if (inBand.length > 0) return inBand.reduce((a, b) => (a.difficulty >= b.difficulty ? a : b));
-  const below = DUNGEONS.filter((d) => d.levelMax < level);
-  if (below.length > 0) return below.reduce((a, b) => (a.levelMax >= b.levelMax ? a : b));
-  return DUNGEONS.reduce((a, b) => (a.levelMax >= b.levelMax ? a : b));
+  const finite = DUNGEONS.filter((d) => !d.endless);
+  let bestFinite: Dungeon | null = null;
+  let bestFiniteXp = 0;
+  for (const d of finite) {
+    if (level < d.levelMin) continue;
+    const xp = computeDungeonXpGain(d, level);
+    if (xp > bestFiniteXp) {
+      bestFiniteXp = xp;
+      bestFinite = d;
+    }
+  }
+  const endless = DUNGEONS.find((d) => d.endless);
+  const endlessXp =
+    endless !== undefined && level >= endless.levelMin ? computeDungeonXpGain(endless, level) : 0;
+  if (endless !== undefined && endlessXp > bestFiniteXp) return endless;
+  if (bestFinite !== null && bestFiniteXp > 0) return bestFinite;
+  if (endless !== undefined) return endless;
+  return bestFinite ?? finite[0];
 }
 
 function expectedXpPerRun(playerLevel: number): number {
@@ -42,7 +55,7 @@ function expectedXpPerRun(playerLevel: number): number {
 }
 
 function secondsPerRun(): number {
-  return 3 * dungeonPaceTrashSec(PACE) + dungeonPaceBossSec(PACE);
+  return dungeonPaceTrashSec(PACE) + dungeonPaceBossSec(PACE);
 }
 
 function simulateRunsToTargetLevel(targetLevel: number): {

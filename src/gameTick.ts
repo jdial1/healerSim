@@ -418,26 +418,28 @@ function processPartyEnvironmentalTick(
   for (let idx = 0; idx < partyAfterBossAI.length; idx++) {
     const unit = partyAfterBossAI[idx];
     let damage = 0;
-    const chance = random();
-    const diff = state.currentDungeon?.difficulty || 1;
-    if (allowAmbientChip) {
-      if (unit.role === 'TANK' && chance < envDmg.tankProcChance)
-        damage = (random() * envDmg.tankDamageRandomMax + diff) * ambientBurst;
-      else if (chance < envDmg.nonTankProcChance)
-        damage = (random() * envDmg.nonTankDamageRandomMax + diff) * ambientBurst;
-    }
+    if (!state.isTutorialPaused) {
+      const chance = random();
+      const diff = state.currentDungeon?.difficulty || 1;
+      if (allowAmbientChip) {
+        if (unit.role === 'TANK' && chance < envDmg.tankProcChance)
+          damage = (random() * envDmg.tankDamageRandomMax + diff) * ambientBurst;
+        else if (chance < envDmg.nonTankProcChance)
+          damage = (random() * envDmg.nonTankDamageRandomMax + diff) * ambientBurst;
+      }
 
-    if (state.combatPhase === 'BOSS' && state.currentDungeon) {
-      damage *= bossDamageMultiplierForDifficulty(state.currentDungeon.difficulty);
-      damage *= bossPartyDamageMult;
+      if (state.combatPhase === 'BOSS' && state.currentDungeon) {
+        damage *= bossDamageMultiplierForDifficulty(state.currentDungeon.difficulty);
+        damage *= bossPartyDamageMult;
+      }
+      if (state.currentDungeon?.endless) {
+        damage *= endlessCycleMultiplier(state.endlessStacks);
+      }
+      if (state.currentDungeon) {
+        damage *= damageTakenMultiplierFromDungeonLevelGap(unit.level, state.currentDungeon.levelMax);
+      }
+      damage *= runDamageTakenMultiplier(state, { source: 'trash_tick' });
     }
-    if (state.currentDungeon?.endless) {
-      damage *= endlessCycleMultiplier(state.endlessStacks);
-    }
-    if (state.currentDungeon) {
-      damage *= damageTakenMultiplierFromDungeonLevelGap(unit.level, state.currentDungeon.levelMax);
-    }
-    damage *= runDamageTakenMultiplier(state, { source: 'trash_tick' });
 
     const tankHealthNow =
       tankIndex < 0

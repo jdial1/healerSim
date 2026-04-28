@@ -15,6 +15,8 @@ import {
   starterSpellsForClass,
 } from './playerStats.ts';
 
+export const PLAYER_MAX_LEVEL = 25;
+
 function nominalClearXpForDifficulty(difficulty: number): number {
   return Math.round(dungeonBaseXp(difficulty) * dungeonXpTierMultiplier(difficulty));
 }
@@ -27,9 +29,10 @@ function needXpToReachNextLevel(currentLevel: number): number {
 }
 
 export function totalXpToReachLevel(targetLevel: number): number {
-  if (targetLevel <= 1) return 0;
+  const cap = Math.min(Math.max(targetLevel, 1), PLAYER_MAX_LEVEL);
+  if (cap <= 1) return 0;
   let t = 0;
-  for (let L = 1; L < targetLevel; L += 1) {
+  for (let L = 1; L < cap; L += 1) {
     t += needXpToReachNextLevel(L);
   }
   return t;
@@ -40,6 +43,7 @@ export function levelFromTotalXp(xp: number): number {
   let level = 1;
   let total = 0;
   for (;;) {
+    if (level >= PLAYER_MAX_LEVEL) break;
     const need = needXpToReachNextLevel(level);
     if (total + need > xp) break;
     total += need;
@@ -51,6 +55,9 @@ export function levelFromTotalXp(xp: number): number {
 export function xpProgressWithinLevel(xp: number): { into: number; needed: number } {
   const level = levelFromTotalXp(xp);
   const start = totalXpToReachLevel(level);
+  if (level >= PLAYER_MAX_LEVEL) {
+    return { into: 1, needed: 1 };
+  }
   const needed = needXpToReachNextLevel(level);
   return { into: Math.max(0, xp - start), needed };
 }
@@ -89,6 +96,7 @@ export function levelsOverDungeonMax(dungeon: Dungeon, playerLevel: number): num
 const ROSTER_KEY = 'aegis.roster.v2';
 const LEGACY_SAVE_KEY = 'aegis.save.v1';
 const SUSPEND_KEY = 'aegis.suspend.v1';
+const TUTORIAL_PROGRESS_KEY = 'aegis.tutorial.v1';
 
 export type SavedShape = {
   v: 1;
@@ -97,6 +105,7 @@ export type SavedShape = {
   completedDungeonIds: string[];
   playerClass: ClassType | null;
   actionBarSpellIds?: string[];
+  introTutorialComplete?: boolean;
 };
 
 export type RosterV2 = {
@@ -196,6 +205,25 @@ function readSuspendedRun(): SuspendedRun | null {
 export function clearSuspendedRun(): void {
   if (typeof localStorage === 'undefined') return;
   localStorage.removeItem(SUSPEND_KEY);
+}
+
+export function readTutorialCompletedSteps(): string[] {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(TUTORIAL_PROGRESS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === 'string');
+  } catch {
+    return [];
+  }
+}
+
+export function writeTutorialCompletedSteps(steps: string[]): void {
+  if (typeof localStorage === 'undefined') return;
+  const deduped = [...new Set(steps)];
+  localStorage.setItem(TUTORIAL_PROGRESS_KEY, JSON.stringify(deduped));
 }
 
 export function takeSuspendedRunForClass(cls: ClassType): GameState | null {
@@ -361,6 +389,7 @@ export function patchFromSavedShape(shape: SavedShape): Partial<GameState> | nul
     activeActionBars,
     playerClass: cls,
     completedDungeonIds: Array.isArray(shape.completedDungeonIds) ? shape.completedDungeonIds : [],
+    introTutorialComplete: shape.introTutorialComplete === true,
   };
 }
 
@@ -377,6 +406,7 @@ export function serializeCharacter(state: GameState): SavedShape | null {
     completedDungeonIds: state.completedDungeonIds,
     playerClass: state.playerClass,
     actionBarSpellIds: state.activeActionBars,
+    introTutorialComplete: state.introTutorialComplete,
   };
 }
 

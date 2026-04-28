@@ -32,7 +32,7 @@
         "instant": 202
       },
       {
-        "maxLevel": 999,
+        "maxLevel": 25,
         "icon": "wow/inv_potion_76",
         "label": "Major",
         "instant": 303

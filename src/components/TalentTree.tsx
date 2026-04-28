@@ -6,14 +6,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, RotateCcw, X } from 'lucide-react';
-import { ClassType, Talent, type IconGlow } from '../types.ts';
+import { ClassType, Talent } from '../types.ts';
 import {
   effectiveTalentPointWeight,
   talentTreeGlowForClass,
+  transitivePrerequisiteTalentIds,
   unmetChainedPrerequisiteTalents,
   UNIQUE_STAT_LABELS,
 } from '../playerStats.ts';
 import { GameIcon } from './GameIcon.tsx';
+import { sentenceCaseBlock, sentenceCaseLabel } from '../gameUiText.ts';
 import type { ExclusiveSplitPair } from '../talentSplitPairs.ts';
 import {
   buildTalentTreeUiGraph,
@@ -28,10 +30,12 @@ interface TalentTreeProps {
   talents: Talent[];
   talentPoints: number;
   onUnlock: (talentId: string) => void;
+  onDecrement: (talentId: string) => void;
   onRespec: () => void;
   onClose: () => void;
   playerLevel: number;
   playerClass: ClassType;
+  tutorialHighlightTalentId?: string | null;
 }
 
 type TalentStatKey = keyof NonNullable<Talent['statBonus']>;
@@ -173,14 +177,30 @@ function learnBlockedReason(talent: Talent, allTalents: Talent[], talentPoints: 
   return null;
 }
 
+function canLearnTalent(talent: Talent, allTalents: Talent[], talentPoints: number, playerLevel: number): boolean {
+  return learnBlockedReason(talent, allTalents, talentPoints, playerLevel) === null;
+}
+
+function canRemoveTalentPoint(talent: Talent, allTalents: Talent[]): boolean {
+  if (talent.points <= 0) return false;
+  return !allTalents.some(
+    (candidate) =>
+      candidate.points > 0 &&
+      candidate.id !== talent.id &&
+      transitivePrerequisiteTalentIds(allTalents, candidate).includes(talent.id),
+  );
+}
+
 export function TalentTree({
   talents,
   talentPoints,
   onUnlock,
+  onDecrement,
   onRespec,
   onClose,
   playerLevel,
   playerClass,
+  tutorialHighlightTalentId,
 }: TalentTreeProps) {
   const [selectedTalentId, setSelectedTalentId] = useState<string | null>(null);
   const [statHighlightKey, setStatHighlightKey] = useState<TalentStatKey | null>(null);
@@ -243,6 +263,16 @@ export function TalentTree({
     setStatHighlightKey((prev) => (prev === key ? null : key));
   };
 
+  const onTalentNodePress = (talent: Talent) => {
+    setSelectedTalentId(talent.id);
+    if (!canLearnTalent(talent, talents, talentPoints, playerLevel)) return;
+    onUnlock(talent.id);
+  };
+
+  const canSelectedTalentLearn =
+    !!selectedTalent && canLearnTalent(selectedTalent, talents, talentPoints, playerLevel);
+  const canSelectedTalentRemove = !!selectedTalent && canRemoveTalentPoint(selectedTalent, talents);
+
   const PAN_DRAG_THRESHOLD = 10;
 
   const startTreePan = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -296,12 +326,15 @@ export function TalentTree({
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-slate-950">
-      <div className="ui-frame-divider-bottom flex w-full items-center justify-between bg-slate-900 p-4">
-        <div>
-          <h2 className="ui-heading text-xl tracking-[0.08em] text-white">Talents</h2>
-          <div className="text-[10px] font-semibold tracking-[0.16em] text-amber-300">POINTS AVAILABLE: {talentPoints}</div>
+      <div className="ui-frame-divider-bottom ui-app-header bg-slate-900 px-3 py-3 sm:px-4 sm:py-3.5">
+        <div className="ui-app-header-slot" aria-hidden />
+        <div className="ui-app-header-title">
+          <h2 className="ui-heading text-lg tracking-[0.08em] text-white sm:text-xl">Talents</h2>
+          <div className="mt-1 text-xs font-semibold tabular-nums tracking-[0.06em] text-slate-400 sm:text-sm">
+            Points: <span className="font-black text-amber-200">{talentPoints}</span>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="ui-app-header-slot-end flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
@@ -313,16 +346,16 @@ export function TalentTree({
               setConfirmRespec(true);
             }}
             disabled={!hasSpentTalents}
-            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-black uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600 disabled:hover:border-slate-800 ${
+            className={`flex min-h-11 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-black uppercase tracking-widest transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-900 disabled:text-slate-600 disabled:hover:border-slate-800 sm:px-3 ${
               confirmRespec
                 ? 'ui-state-frame ui-state-selected bg-red-600 text-white hover:bg-red-500'
-                : 'ui-state-frame ui-state-hover bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-amber-100'
+                : 'ui-state-frame ui-state-hover border-slate-500/55 bg-slate-800 text-slate-100 hover:border-amber-400/45 hover:bg-slate-700 hover:text-amber-50'
             }`}
           >
             <RotateCcw size={16} className="shrink-0" />
             {confirmRespec ? 'Confirm' : 'Respec'}
           </button>
-          <button type="button" onClick={onClose} className="ui-close-button">
+          <button type="button" onClick={onClose} className="ui-close-button" aria-label="Close">
             <X size={20} />
           </button>
         </div>
@@ -330,8 +363,8 @@ export function TalentTree({
 
       <div className="flex-1 overflow-y-auto bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] bg-fixed p-4">
         <div className="mx-auto w-full max-w-2xl">
-          <div className="mb-2 flex min-h-[2rem] flex-wrap items-center justify-center gap-1.5">
-            <span className="w-full text-center text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+          <div className="mb-3 flex min-h-[2rem] flex-wrap items-center justify-center gap-2">
+            <span className="w-full text-center text-xs font-black tracking-[0.08em] text-slate-200 sm:text-sm">
               Core Masteries
             </span>
             {statPills.map((key) => {
@@ -345,14 +378,16 @@ export function TalentTree({
                   key={key}
                   type="button"
                   onClick={() => toggleStatHighlight(key)}
-                  className={`flex min-h-[2.5rem] min-w-[4.25rem] flex-col items-center justify-center rounded-full border px-2 py-1.5 text-[9px] font-black uppercase tracking-wide transition-colors sm:min-w-[4.5rem] sm:px-2.5 sm:text-[10px] ${
+                  className={`flex min-h-[3.35rem] min-w-[5.75rem] flex-col items-center justify-center gap-1 rounded-full border px-3.5 py-2.5 text-xs font-black tracking-[0.03em] transition-colors sm:min-h-[3.6rem] sm:min-w-[6.25rem] sm:px-4 sm:py-3 sm:text-sm ${
                     sel
-                      ? 'ui-state-frame ui-state-selected bg-emerald-600 text-white'
-                      : 'ui-state-frame ui-state-hover bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      ? 'ui-state-frame ui-state-selected bg-amber-900/35 text-amber-50'
+                      : 'ui-state-frame ui-state-hover bg-slate-800 text-slate-200 hover:bg-slate-700'
                   }`}
                 >
-                  <span>{pillLabel}</span>
-                  <span className={`text-[9px] leading-none sm:text-[10px] ${sel ? 'text-emerald-100' : 'text-emerald-300'}`}>
+                  <span className="leading-tight">{pillLabel}</span>
+                  <span
+                    className={`text-xs font-mono leading-none tabular-nums sm:text-sm ${sel ? 'text-amber-100' : 'text-slate-400'}`}
+                  >
                     +{total}
                     {suffix}
                   </span>
@@ -421,14 +456,14 @@ export function TalentTree({
                 ? 'ui-state-frame ui-state-selected bg-slate-800'
                 : acc
                   ? 'ui-state-frame ui-state-hover bg-slate-800 hover:bg-slate-700'
-                  : 'ui-state-frame ui-state-disabled bg-slate-950 grayscale';
+                  : 'ui-state-frame ui-state-disabled border-slate-500/50 bg-slate-800/90 grayscale';
               return (
                 <button
                   key={side.id}
                   data-talent-node="true"
                   type="button"
-                  onClick={() => setSelectedTalentId(side.id)}
-                  className={`relative flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center py-0.5 transition-all ${base} ${
+                  onClick={() => onTalentNodePress(side)}
+                  className={`relative flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center py-0.5 transition-all active:scale-[0.96] ${base} ${
                     sel ? 'z-[1] ui-state-selected' : ''
                   }`}
                 >
@@ -439,13 +474,13 @@ export function TalentTree({
                     title={side.name}
                     dimmed={!pts}
                     imageFit="cover"
-                    className={`h-full w-full min-h-0 min-w-0 rounded-none p-0 ${!acc ? 'grayscale opacity-50' : ''}`}
+                    className={`h-full w-full min-h-0 min-w-0 rounded-sm p-0 ${!acc ? 'grayscale opacity-[0.68]' : ''}`}
                   />
-                  <div className="ui-frame absolute bottom-0.5 right-0.5 rounded bg-slate-900 px-0.5 text-[9px] font-bold leading-none text-white sm:text-[10px]">
+                  <div className="ui-frame absolute bottom-0.5 right-0.5 rounded border border-slate-600/80 bg-slate-950/95 px-1 py-0.5 text-[11px] font-bold leading-none text-white sm:text-xs">
                     {side.points}/{side.maxPoints}
                   </div>
                   {!acc ? (
-                    <Lock size={10} className="absolute left-0.5 top-0.5 text-slate-500 sm:left-1 sm:top-1" />
+                    <Lock size={14} strokeWidth={2.5} className="absolute left-0.5 top-0.5 text-slate-300 drop-shadow sm:left-1 sm:top-1" />
                   ) : null}
                 </button>
               );
@@ -494,16 +529,19 @@ export function TalentTree({
               >
                 <button
                   data-talent-node="true"
+                  data-tutorial-id={
+                    tutorialHighlightTalentId === talent.id ? 'tutorial-first-talent' : undefined
+                  }
                   type="button"
-                  onClick={() => setSelectedTalentId(talent.id)}
+                  onClick={() => onTalentNodePress(talent)}
                   className={`
-                    relative flex h-12 w-12 items-center justify-center rounded-md border transition-all sm:h-16 sm:w-16
+                    relative flex h-12 min-h-11 w-12 min-w-11 items-center justify-center rounded-md border transition-all active:scale-[0.96] sm:h-16 sm:w-16
                     ${
                       hasPoints
                         ? 'ui-state-frame ui-state-selected bg-slate-800'
                         : accessible
                           ? 'ui-state-frame ui-state-hover bg-slate-800'
-                          : 'ui-state-frame ui-state-disabled bg-slate-900 grayscale'
+                          : 'ui-state-frame ui-state-disabled border-slate-500/50 bg-slate-800/90 grayscale'
                     }
                     ${isSelected ? 'scale-110 ui-state-selected ring-offset-2 ring-offset-slate-950' : ''}
                     ${statMatch ? 'ui-state-selected ring-offset-2 ring-offset-slate-950' : ''}
@@ -516,12 +554,14 @@ export function TalentTree({
                     title={talent.name}
                     dimmed={!hasPoints}
                     imageFit="cover"
-                    className={`h-full w-full min-h-0 min-w-0 rounded-none p-0 ${!accessible ? 'grayscale opacity-50' : ''}`}
+                    className={`h-full w-full min-h-0 min-w-0 rounded-sm p-0 ${!accessible ? 'grayscale opacity-[0.68]' : ''}`}
                   />
-                  <div className="ui-frame absolute -bottom-2 -right-2 rounded bg-slate-900 px-1 text-[10px] font-bold text-white">
+                  <div className="ui-frame absolute -bottom-2 -right-2 rounded-md border border-slate-600/80 bg-slate-950/95 px-1.5 py-0.5 text-xs font-bold text-white sm:text-sm">
                     {talent.points}/{talent.maxPoints}
                   </div>
-                  {!accessible ? <Lock size={12} className="absolute left-1 top-1 text-slate-500" /> : null}
+                  {!accessible ? (
+                    <Lock size={16} strokeWidth={2.5} className="absolute left-1 top-1 text-slate-200 drop-shadow" />
+                  ) : null}
                 </button>
               </div>
             );
@@ -531,7 +571,7 @@ export function TalentTree({
         </div>
       </div>
 
-      <div className="ui-frame-divider-top h-48 shrink-0 overflow-y-auto bg-slate-900 p-4">
+      <div className="ui-frame-divider-top h-52 shrink-0 overflow-y-auto bg-slate-900 p-4">
         <AnimatePresence mode="wait">
           {selectedTalent ? (
             <motion.div key={selectedTalent.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -545,51 +585,58 @@ export function TalentTree({
                 />
                 <div className="min-w-0 flex-1">
                   <h3 className="ui-heading min-w-0 text-lg tracking-[0.06em] text-white">
-                    {selectedTalent.name}
+                    {sentenceCaseLabel(selectedTalent.name)}
                   </h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onUnlock(selectedTalent.id)}
-                  disabled={
-                    selectedTalent.points >= selectedTalent.maxPoints || selectedLearnReason !== null
-                  }
-                  className="ui-button-primary ui-state-frame ui-state-hover min-h-[40px] shrink-0 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-50 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 sm:min-h-0"
-                >
-                  {selectedTalent.points >= selectedTalent.maxPoints ? (
-                    'MAXED'
-                  ) : selectedLearnReason ? (
-                    'BLOCKED'
-                  ) : (
-                    'LEARN'
-                  )}
-                </button>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onDecrement(selectedTalent.id)}
+                    disabled={!canSelectedTalentRemove}
+                    className="ui-state-frame ui-state-hover flex h-8 w-8 items-center justify-center rounded-md border border-slate-500/70 bg-slate-800 text-base font-black leading-none text-slate-100 disabled:ui-state-disabled disabled:border-slate-700 disabled:bg-slate-900 disabled:text-slate-600"
+                    aria-label="Remove talent point"
+                  >
+                    -
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUnlock(selectedTalent.id)}
+                    disabled={!canSelectedTalentLearn}
+                    className="ui-state-frame ui-state-hover flex h-8 w-8 items-center justify-center rounded-md border border-slate-500/70 bg-slate-800 text-base font-black leading-none text-slate-100 disabled:ui-state-disabled disabled:border-slate-700 disabled:bg-slate-900 disabled:text-slate-600"
+                    aria-label="Add talent point"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-              <p className="mt-1 text-sm italic text-slate-400">
+              <div className="ui-body mt-1 text-sm text-slate-300">
                 {selectedTalent.maxPoints > 1 ? (
-                  <span className="mt-1 block space-y-1 not-italic">
+                  <span className="mt-1 block space-y-1">
                     {Array.from({ length: selectedTalent.maxPoints }, (_, i) => i + 1).map((rank) => {
                       const isCurrentRank = rank === selectedTalent.points && selectedTalent.points > 0;
                       return (
                         <span
                           key={`${selectedTalent.id}-rank-${rank}`}
-                          className={`block rounded px-2 py-1 text-xs ${
+                          className={`block rounded px-2 py-1.5 text-xs leading-snug ${
                             isCurrentRank
-                              ? 'bg-amber-950/60 text-amber-100 ring-1 ring-inset ring-amber-300/70'
-                              : 'bg-slate-900/55 text-slate-500'
+                              ? 'bg-amber-950/45 text-slate-100 ring-1 ring-inset ring-amber-400/45'
+                              : 'bg-slate-900/75 text-slate-300'
                           }`}
                         >
                           <span className="block whitespace-pre-line">
-                            Rank {rank}: {rankDescriptionForTalent(selectedTalent, rank, pairIndexByTalentId)}
+                            Rank {rank}:{' '}
+                            {sentenceCaseBlock(
+                              rankDescriptionForTalent(selectedTalent, rank, pairIndexByTalentId),
+                            )}
                           </span>
                         </span>
                       );
                     })}
                   </span>
                 ) : (
-                  detailDescription(selectedTalent, pairIndexByTalentId)
+                  sentenceCaseBlock(detailDescription(selectedTalent, pairIndexByTalentId))
                 )}
-              </p>
+              </div>
               {selectedLearnReason &&
               selectedTalent.points < selectedTalent.maxPoints ? (
                 <div className="ui-frame mt-2 rounded-md bg-amber-950/25 px-2 py-1.5 text-[10px] font-semibold leading-snug text-amber-200/95 sm:text-[11px]">
@@ -600,7 +647,7 @@ export function TalentTree({
           ) : (
             <div
               key="talent-detail-empty"
-              className="flex h-full items-center justify-center text-xs font-bold uppercase tracking-widest text-slate-600"
+              className="flex h-full items-center justify-center px-4 text-center text-xs font-medium text-slate-500"
             >
               Select a talent to view details
             </div>

@@ -3,7 +3,9 @@ import { GameState, ClassType, Dungeon, DungeonPace } from '../types.ts';
 import { TICK_RATE } from '../constants.ts';
 import {
   readRoster,
+  readTutorialCompletedSteps,
   writeRoster,
+  writeTutorialCompletedSteps,
   mergeRosterWithCharacter,
   writeSuspendedRun,
   clearSuspendedRun,
@@ -14,8 +16,14 @@ import { hasPlayerBuff } from '../talentMechanics.ts';
 import { gameReducer, emptyGameBase, gameStateForClass } from '../gameEngineReducer.ts';
 
 export function useGameEngine() {
-  const [state, dispatch] = useReducer(gameReducer, undefined, emptyGameBase);
+  const initialTutorialSteps = useRef<string[]>(readTutorialCompletedSteps()).current;
+  const [state, dispatch] = useReducer(
+    gameReducer,
+    undefined,
+    () => ({ ...emptyGameBase(), tutorialCompletedSteps: initialTutorialSteps }),
+  );
   const [roster, setRoster] = useState<RosterV2>(() => readRoster());
+  const tutorialStepsRef = useRef<string[]>(initialTutorialSteps);
   const stateRef = useRef(state);
   stateRef.current = state;
   const rosterRef = useRef(roster);
@@ -36,7 +44,11 @@ export function useGameEngine() {
     (cls: ClassType) => {
       const r = persistActiveSessionIfAny();
       const suspended = takeSuspendedRunForClass(cls);
-      dispatch({ type: 'SET', state: suspended ?? gameStateForClass(cls, r.byClass[cls]) });
+      const next = suspended ?? gameStateForClass(cls, r.byClass[cls]);
+      dispatch({
+        type: 'SET',
+        state: { ...next, tutorialCompletedSteps: tutorialStepsRef.current },
+      });
     },
     [persistActiveSessionIfAny],
   );
@@ -44,14 +56,23 @@ export function useGameEngine() {
   const startNewClass = useCallback(
     (cls: ClassType) => {
       persistActiveSessionIfAny();
-      dispatch({ type: 'SET', state: gameStateForClass(cls, undefined) });
+      dispatch({
+        type: 'SET',
+        state: {
+          ...gameStateForClass(cls, undefined),
+          tutorialCompletedSteps: tutorialStepsRef.current,
+        },
+      });
     },
     [persistActiveSessionIfAny],
   );
 
   const returnToRoster = useCallback(() => {
     persistActiveSessionIfAny();
-    dispatch({ type: 'SET', state: emptyGameBase() });
+    dispatch({
+      type: 'SET',
+      state: { ...emptyGameBase(), tutorialCompletedSteps: tutorialStepsRef.current },
+    });
   }, [persistActiveSessionIfAny]);
 
   const reorderActionBar = useCallback((from: number, to: number) => {
@@ -74,6 +95,10 @@ export function useGameEngine() {
     dispatch({ type: 'UNLOCK_TALENT', talentId });
   }, []);
 
+  const decrementTalent = useCallback((talentId: string) => {
+    dispatch({ type: 'DECREMENT_TALENT', talentId });
+  }, []);
+
   const respecTalents = useCallback(() => {
     dispatch({ type: 'RESPEC_TALENTS' });
   }, []);
@@ -92,12 +117,24 @@ export function useGameEngine() {
   }, []);
 
   useEffect(() => {
-    if (!state.isCombatActive) return;
+    if (!state.isCombatActive || state.isTutorialPaused) return;
     const interval = setInterval(() => {
       dispatch({ type: 'TICK', random: Math.random, now: Date.now() });
     }, TICK_RATE);
     return () => clearInterval(interval);
-  }, [state.isCombatActive]);
+  }, [state.isCombatActive, state.isTutorialPaused]);
+
+  const setTutorialPaused = useCallback((value: boolean) => {
+    dispatch({ type: 'SET_TUTORIAL_PAUSED', value });
+  }, []);
+
+  const completeIntroTutorial = useCallback(() => {
+    dispatch({ type: 'COMPLETE_INTRO_TUTORIAL' });
+  }, []);
+
+  const markTutorialStepCompleted = useCallback((stepId: string) => {
+    dispatch({ type: 'MARK_TUTORIAL_STEP_COMPLETED', stepId });
+  }, []);
 
   useEffect(() => {
     if (!state.playerClass) return;
@@ -126,9 +163,16 @@ export function useGameEngine() {
     clearSuspendedRun();
   }, [state]);
 
+  useEffect(() => {
+    tutorialStepsRef.current = state.tutorialCompletedSteps;
+    writeTutorialCompletedSteps(state.tutorialCompletedSteps);
+  }, [state.tutorialCompletedSteps]);
+
   const actionBarHighlights = useMemo(
     () => ({
       greater_heal: hasPlayerBuff(state.playerCombatBuffs, 'surge_of_light'),
+      regrowth: hasPlayerBuff(state.playerCombatBuffs, 'omen_clearcasting'),
+      healing_touch: hasPlayerBuff(state.playerCombatBuffs, 'omen_clearcasting'),
     }),
     [state.playerCombatBuffs],
   );
@@ -144,11 +188,15 @@ export function useGameEngine() {
     castSpell,
     addXpNextLevel,
     unlockTalent,
+    decrementTalent,
     respecTalents,
     reorderActionBar,
     cooldowns: state.spellCooldowns,
     dungeonOutcome: state.dungeonOutcome,
     dismissDungeonOutcome,
     actionBarHighlights,
+    setTutorialPaused,
+    completeIntroTutorial,
+    markTutorialStepCompleted,
   };
 }

@@ -21,6 +21,7 @@ import { GameIcon } from './GameIcon.tsx';
 
 import { BOSS_BUFF_ICON_TINT, glowForBossSelfBuff } from '../gameIcons.ts';
 import { TRASH_PACK_COUNT, endlessCycleMultiplier } from '../constants.ts';
+import { useGhostBarPercent } from '../useGhostBarPercent.ts';
 
 const TRASH_PACKS = TRASH_PACK_COUNT;
 
@@ -154,6 +155,7 @@ export function GameHUD({
   const bossBuffTipRef = useRef<HTMLDivElement>(null);
 
   const enemyPercent = enemyMaxHealth > 0 ? (enemyHealth / enemyMaxHealth) * 100 : 0;
+  const { ghostPercent, ghostEaseDuration } = useGhostBarPercent(enemyPercent);
 
   const pullsCleared = TRASH_PACKS - trashPullsRemaining;
 
@@ -165,7 +167,7 @@ export function GameHUD({
 
   const enemyBarFill = bossActive
     ? 'bg-gradient-to-r from-[#2b0f0f] via-[#4a1d1a] to-[#6a2c1e]'
-    : 'bg-gradient-to-r from-[#1a1713] via-[#352019] to-[#5a3022]';
+    : 'bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#334155]';
 
   const displayBossName = bossName || 'FINAL BOSS';
 
@@ -228,12 +230,16 @@ export function GameHUD({
           {bossActive ? (
 
             <div className="flex w-full flex-col items-center gap-2 sm:gap-2.5">
-
-              <span className="shrink-0 rounded-sm bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white sm:text-[9px]">
-
-                BOSS
-
-              </span>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <span className="shrink-0 rounded-sm bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white sm:text-[9px]">
+                  BOSS
+                </span>
+                {endlessStacks !== undefined ? (
+                  <span className="ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 sm:text-[9px]">
+                    Endless x{endlessCycleMultiplier(endlessStacks).toFixed(2)}
+                  </span>
+                ) : null}
+              </div>
 
               <h1 className="ui-heading w-full max-w-full text-balance text-center text-2xl leading-[1.05] tracking-[0.06em] text-white sm:text-3xl md:text-4xl lg:text-5xl">
 
@@ -250,7 +256,7 @@ export function GameHUD({
               <span className="shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white sm:text-[8px]">
                 BATTLE PROGRESS
               </span>
-              <span className="text-xs font-black uppercase tracking-tight text-slate-300 sm:text-[10px]">
+              <span className="text-xs font-black uppercase tracking-tight text-slate-300 tabular-nums sm:text-[10px]">
                 {trashPullsRemaining} pack{trashPullsRemaining === 1 ? '' : 's'} left
               </span>
 
@@ -258,14 +264,12 @@ export function GameHUD({
 
           )}
 
-          {endlessStacks !== undefined ? (
+          {endlessStacks !== undefined && !bossActive ? (
 
             <div className="mt-1.5 flex justify-center sm:mt-2">
 
-              <span className="ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 sm:text-[9px]">
-
+              <span className="ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 tabular-nums sm:text-[9px]">
                 Endless ×{endlessCycleMultiplier(endlessStacks).toFixed(2)}
-
               </span>
 
             </div>
@@ -276,43 +280,45 @@ export function GameHUD({
 
 
 
-        <div className="ui-frame-divider-top mx-auto flex w-full max-w-6xl items-center justify-evenly pt-2 sm:pt-2.5">
-
-          {Array.from({ length: TRASH_PACKS }, (_, i) => (
-
-            <Fragment key={i}>
-
-              <TrashPackSkull defeated={pullsCleared > i} />
-
-            </Fragment>
-
-          ))}
-
-          <BossSkull bossActive={bossActive} />
-
-        </div>
+        {!bossActive ? (
+          <div className="ui-frame-divider-top mx-auto flex w-full max-w-6xl items-center justify-evenly pt-2 sm:pt-2.5">
+            {Array.from({ length: TRASH_PACKS }, (_, i) => (
+              <Fragment key={i}>
+                <TrashPackSkull defeated={pullsCleared > i} />
+              </Fragment>
+            ))}
+            <BossSkull bossActive={bossActive} />
+          </div>
+        ) : null}
 
 
 
         <div className="mx-auto w-full max-w-6xl">
 
-          <div className={`ui-frame relative ${enemyBarHeightClass} w-full overflow-hidden rounded-md bg-slate-900 shadow-inner`}>
+          <div className={`ui-enemy-target-frame ${enemyBarHeightClass} w-full`}>
 
             <motion.div
-
-              className={`absolute inset-y-0 left-0 rounded-none ${enemyBarFill}`}
-
+              className="ui-enemy-hp-ghost"
               initial={false}
-
-              animate={{ width: `${enemyPercent}%` }}
-
-              transition={{ type: 'tween', duration: 0.2 }}
-
+              animate={{ width: `${ghostPercent}%` }}
+              transition={{
+                duration: ghostEaseDuration,
+                ease: ghostEaseDuration > 0 ? [0.4, 0, 0.2, 1] : 'linear',
+              }}
             />
+
+            <motion.div
+              className={`ui-enemy-hp-fill ${enemyBarFill}`}
+              initial={false}
+              animate={{ width: `${enemyPercent}%` }}
+              transition={{ duration: 0 }}
+            />
+
+            <div className="ui-enemy-hp-sheen" aria-hidden />
 
             <div
 
-              className={`relative z-10 flex h-full items-center px-3 sm:px-4 ${bossBarRowClass}`}
+              className={`relative z-10 flex h-full items-center px-4 sm:px-4 ${bossBarRowClass}`}
 
             >
 
@@ -332,7 +338,7 @@ export function GameHUD({
                         key={b.id}
                         type="button"
                         data-boss-buff-hit
-                        className="ui-state-frame ui-state-hover relative touch-manipulation rounded-md sm:p-0.5"
+                        className="ui-state-frame ui-state-hover relative inline-flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-md active:scale-95 sm:p-0.5"
                         aria-label={`${b.name}, show details`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -378,8 +384,12 @@ export function GameHUD({
               ) : null}
 
               {!bossActive ? (
-                <span className="min-w-0 text-sm font-semibold uppercase tracking-[0.08em] text-slate-100 sm:text-base">
-                  TARGET: {trashEnemyName}
+                <span className="ui-state-frame min-w-0 max-w-[min(100%,14rem)] truncate rounded-md bg-slate-950/80 px-3 py-1.5 text-left text-xs font-bold uppercase tracking-[0.14em] text-slate-100 ring-1 ring-red-950/50 sm:max-w-[min(100%,18rem)] sm:text-sm">
+                  <span className="font-black text-red-300/95">Target</span>
+                  <span className="mx-1.5 font-light text-slate-500" aria-hidden>
+                    ·
+                  </span>
+                  <span className="normal-case tracking-normal text-slate-50">{trashEnemyName}</span>
                 </span>
               ) : null}
 

@@ -120,7 +120,7 @@ export function prereqConnectionStroke(
   const parent = byId.get(conn.parentId);
   const child = byId.get(conn.childId);
   if (!parent || !child) {
-    return { stroke: '#1e293b', strokeWidth: '2', strokeDasharray: '4' };
+    return { stroke: '#64748b', strokeWidth: '2.5', strokeDasharray: '5 4' };
   }
 
   const parentPairIdx = pairIndexByTalentId.get(parent.id);
@@ -163,7 +163,7 @@ export function prereqConnectionStroke(
     };
   }
 
-  return { stroke: '#334155', strokeWidth: '2', strokeDasharray, className: 'opacity-55' };
+  return { stroke: '#94a3b8', strokeWidth: '2.5', strokeDasharray, className: 'opacity-75' };
 }
 
 export function talentInExclusiveSplit(

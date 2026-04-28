@@ -7,6 +7,7 @@ import {
   trashMaxHealthForDungeon,
 } from './constants.ts';
 import { buildEndlessWaveDungeon, endlessBossPool, getEndlessTemplate } from './dungeons/index.ts';
+import { INTRO_TUTORIAL_DUNGEON_ID } from './tutorialConfig.ts';
 import { cloneTalentsForClass } from './talents/index.ts';
 import {
   patchFromSavedShape,
@@ -18,6 +19,7 @@ import {
 } from './gameStorage.ts';
 import {
   talentChainedPrereqsSatisfied,
+  transitivePrerequisiteTalentIds,
   CLASS_PROGRESSION,
   CAPSTONE_PLAYER_BUFF_IDS,
 } from './playerStats.ts';
@@ -34,9 +36,13 @@ export type GameAction =
   | { type: 'ABANDON_DUNGEON' }
   | { type: 'START_DUNGEON'; dungeon: Dungeon; pace: DungeonPace; random?: () => number }
   | { type: 'UNLOCK_TALENT'; talentId: string }
+  | { type: 'DECREMENT_TALENT'; talentId: string }
   | { type: 'RESPEC_TALENTS' }
   | { type: 'CAST_SPELL'; spellId: string; targetId: string; critRoll: number }
-  | { type: 'ADD_XP_NEXT_LEVEL' };
+  | { type: 'ADD_XP_NEXT_LEVEL' }
+  | { type: 'SET_TUTORIAL_PAUSED'; value: boolean }
+  | { type: 'COMPLETE_INTRO_TUTORIAL' }
+  | { type: 'MARK_TUTORIAL_STEP_COMPLETED'; stepId: string };
 
 function tickSpellCooldowns(state: GameState): GameState {
   const prev = state.spellCooldowns;
@@ -59,9 +65,23 @@ function tickSpellCooldowns(state: GameState): GameState {
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'TICK':
+      if (state.isTutorialPaused) {
+        return tickSpellCooldowns(state);
+      }
       return tickSpellCooldowns(
         advanceCombatTick(state, action.random, action.now, action.dpsMultiplier),
       );
+    case 'SET_TUTORIAL_PAUSED':
+      return { ...state, isTutorialPaused: action.value };
+    case 'COMPLETE_INTRO_TUTORIAL':
+      return { ...state, introTutorialComplete: true, isTutorialPaused: false };
+    case 'MARK_TUTORIAL_STEP_COMPLETED': {
+      if (state.tutorialCompletedSteps.includes(action.stepId)) return state;
+      return {
+        ...state,
+        tutorialCompletedSteps: [...state.tutorialCompletedSteps, action.stepId],
+      };
+    }
     case 'SET':
       return action.state;
     case 'REORDER_ACTION_BAR': {
@@ -81,6 +101,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         currentDungeon: null,
         isCombatActive: false,
+        isTutorialPaused: false,
         dungeonProgress: 0,
         manaPotionsUsedThisDungeon: 0,
         bossSelfBuffs: [],
@@ -114,6 +135,21 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         endlessStacks = 0;
       }
       const trashHp = trashMaxHealthForDungeon(dungeon);
+      const introTutorialRun =
+        dungeon.id === INTRO_TUTORIAL_DUNGEON_ID &&
+        !state.introTutorialComplete &&
+        !state.tutorialCompletedSteps.includes('intro_core') &&
+        !!state.playerClass;
+      let party = generateRandomParty(state.level, state.playerClass);
+      let isTutorialPaused = false;
+      if (introTutorialRun) {
+        isTutorialPaused = true;
+        party = party.map((u) =>
+          u.id === '1'
+            ? { ...u, health: Math.max(1, Math.floor(u.maxHealth * 0.34)) }
+            : u,
+        );
+      }
       return {
         ...state,
         currentDungeon: dungeon,
@@ -124,7 +160,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         enemyHealth: trashHp,
         enemyMaxHealth: trashHp,
         isCombatActive: true,
-        party: generateRandomParty(state.level, state.playerClass),
+        isTutorialPaused,
+        party,
         mana: state.maxMana,
         manaPotionsUsedThisDungeon: 0,
         bossSelfBuffs: [],
@@ -146,6 +183,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case 'UNLOCK_TALENT':
       return reduceUnlockTalent(state, action.talentId);
+    case 'DECREMENT_TALENT':
+      return reduceDecrementTalent(state, action.talentId);
     case 'RESPEC_TALENTS':
       return reduceRespecTalents(state);
     case 'CAST_SPELL':
@@ -248,6 +287,42 @@ function reduceRespecTalents(state: GameState): GameState {
   };
 }
 
+function reduceDecrementTalent(state: GameState, talentId: string): GameState {
+  const talent = state.talents.find((t) => t.id === talentId);
+  if (!talent || talent.points <= 0) return state;
+  const blockedByDependent = state.talents.some(
+    (candidate) =>
+      candidate.points > 0 &&
+      candidate.id !== talentId &&
+      transitivePrerequisiteTalentIds(state.talents, candidate).includes(talentId),
+  );
+  if (blockedByDependent) return state;
+
+  const newTalents = state.talents.map((t) =>
+    t.id === talentId ? { ...t, points: Math.max(0, t.points - 1) } : t,
+  );
+  const meta = computeMetaFromProgress(state.xp, state.playerClass, newTalents);
+  const activeActionBars = reconcileActionBarOrder(state.activeActionBars, meta.activeActionBars);
+  let next: GameState = {
+    ...state,
+    ...meta,
+    activeActionBars,
+    mana: Math.min(meta.maxMana, state.mana),
+  };
+  if (state.playerClass) {
+    const capProg = CLASS_PROGRESSION[state.playerClass];
+    const capstonePoints = newTalents.find((t) => t.mechanicId === capProg.capstoneMechanicId)?.points ?? 0;
+    if (capstonePoints <= 0) {
+      next = {
+        ...next,
+        capstoneForm: null,
+        playerCombatBuffs: withBuffRemoved(next.playerCombatBuffs, capProg.capstonePlayerBuffId),
+      };
+    }
+  }
+  return next;
+}
+
 function reduceCastSpell(
   state: GameState,
   spellId: string,
@@ -317,6 +392,9 @@ export function emptyGameBase(): GameState {
     dungeonRunHealEffective: 0,
     dungeonRunHealOverheal: 0,
     dungeonRunManaSpentHealing: 0,
+    isTutorialPaused: false,
+    introTutorialComplete: false,
+    tutorialCompletedSteps: [],
   };
 }
 
@@ -346,6 +424,9 @@ function applyProgressPatchToBase(base: GameState, patch: Partial<GameState>): G
     dungeonRunHealEffective: patch.dungeonRunHealEffective ?? base.dungeonRunHealEffective,
     dungeonRunHealOverheal: patch.dungeonRunHealOverheal ?? base.dungeonRunHealOverheal,
     dungeonRunManaSpentHealing: patch.dungeonRunManaSpentHealing ?? base.dungeonRunManaSpentHealing,
+    isTutorialPaused: patch.isTutorialPaused ?? false,
+    introTutorialComplete: patch.introTutorialComplete ?? base.introTutorialComplete,
+    tutorialCompletedSteps: patch.tutorialCompletedSteps ?? base.tutorialCompletedSteps,
   };
 }
 
@@ -366,6 +447,9 @@ export function gameStateForClass(cls: ClassType, saved: RosterV2['byClass'][Cla
       holyPower: 0,
       beaconTargetId: '1',
       dungeonOutcome: null,
+      isTutorialPaused: false,
+      introTutorialComplete: false,
+      tutorialCompletedSteps: [],
     };
   }
   const normalized = { ...saved, playerClass: cls, v: 1 as const };

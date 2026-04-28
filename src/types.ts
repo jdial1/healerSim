@@ -303,4 +303,7 @@ export interface GameState {
   dungeonRunHealEffective: number;
   dungeonRunHealOverheal: number;
   dungeonRunManaSpentHealing: number;
+  isTutorialPaused: boolean;
+  introTutorialComplete: boolean;
+  tutorialCompletedSteps: string[];
 }

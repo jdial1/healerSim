@@ -510,7 +510,7 @@
     "description": "Avenging Wrath: for 20s, gold aura on your character and Tower of Radiance grants double Holy Power.",
     "points": 0,
     "maxPoints": 1,
-    "levelReq": 40,
+    "levelReq": 25,
     "cost": 1,
     "icon": "wow/spell_holy_avenginewrath",
     "gridX": 2,

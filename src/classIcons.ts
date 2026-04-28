@@ -1,15 +1,10 @@
 import type { ClassType } from './types.ts';
+import { classTheme } from './classTheme.ts';
 
 const CLASS_ICON_FILE: Record<ClassType, string> = {
   PRIEST: 'priest',
   DRUID: 'druid',
   PALADIN: 'paladin',
-};
-
-const CLASS_ICON_BORDER_CLASS: Record<ClassType, string> = {
-  PRIEST: 'border-yellow-400',
-  DRUID: 'border-emerald-400',
-  PALADIN: 'border-pink-400',
 };
 
 const CLASS_ICON_TRANSFORM_CLASS: Record<ClassType, string> = {
@@ -25,7 +20,7 @@ export function classIconUrl(cls: ClassType): string {
 }
 
 export function classIconBorderClass(cls: ClassType): string {
-  return CLASS_ICON_BORDER_CLASS[cls];
+  return classTheme(cls).iconFrame;
 }
 
 export function classIconTransformClass(cls: ClassType): string {

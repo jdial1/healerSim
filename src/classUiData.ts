@@ -1,5 +1,6 @@
 import classesData from './data/classes.json';
 import type { ClassType } from './types.ts';
+import { classTheme, type ClassTheme } from './classTheme.ts';
 
 export type ClassUiRow = {
   id: ClassType;
@@ -17,6 +18,7 @@ export type ClassUiRow = {
   passiveTraitName: string;
   passiveTraitDescription: string;
   passiveTraitIcon: string;
+  theme: ClassTheme;
 };
 
 export function classUiRows(): ClassUiRow[] {
@@ -42,6 +44,7 @@ export function classUiRows(): ClassUiRow[] {
       passiveTraitName: ext.passiveTraitName ?? '',
       passiveTraitDescription: ext.passiveTraitDescription ?? '',
       passiveTraitIcon: ext.passiveTraitIcon ?? 'wow/spell_holy_sealofwisdom',
+      theme: classTheme(row.id as ClassType),
     };
   });
 }

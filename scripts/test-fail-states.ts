@@ -6,6 +6,7 @@ import {
   computeDungeonFailureXpGain,
   computeDungeonXpGain,
   levelFromTotalXp,
+  PLAYER_MAX_LEVEL,
   totalXpToReachLevel,
 } from '../src/gameStorage.ts';
 import type { Dungeon } from '../src/types.ts';
@@ -64,13 +65,15 @@ export function runFailStatesTest(): void {
     const gain = xpForBossAttempt(d, L, wipe);
     minFailXp = Math.min(minFailXp, xpForBossAttempt(d, L, true));
     xp += gain;
-    if (L >= 24) break;
+    if (L >= PLAYER_MAX_LEVEL) break;
   }
 
   const finalLevel = levelFromTotalXp(xp);
   const xpInto = xp - totalXpToReachLevel(finalLevel);
   const needNext =
-    finalLevel < 24 ? totalXpToReachLevel(finalLevel + 1) - totalXpToReachLevel(finalLevel) : 0;
+    finalLevel < PLAYER_MAX_LEVEL
+      ? totalXpToReachLevel(finalLevel + 1) - totalXpToReachLevel(finalLevel)
+      : 0;
   const stuck = stuckCounter >= STUCK_WINDOW;
   const stuckCol = stuck ? T.red : T.green;
   const lvlCol = finalLevel >= 20 ? T.green : finalLevel >= 10 ? T.yellow : T.red;

@@ -8,6 +8,7 @@ import { levelFromTotalXp, type RosterV2 } from '../gameStorage.ts';
 import { ClassPickList } from './ClassPickList.tsx';
 import type { ClassUiRow } from '../classUiData.ts';
 import { GameIcon } from './GameIcon.tsx';
+import { sentenceCaseLabel } from '../gameUiText.ts';
 
 interface CharacterRosterProps {
   roster: RosterV2;
@@ -39,14 +40,17 @@ export function CharacterRoster({ roster, paladinUnlocked, onContinue, onCreate 
         const passive = (
           <span className="flex items-center gap-2">
             <GameIcon iconPath={row.passiveTraitIcon} glow="spell" size="xs" />
-            <span className="text-[11px] font-bold leading-tight text-slate-400">{row.passiveTraitName}</span>
+            <span className="text-[11px] font-semibold leading-tight text-slate-300">
+              {sentenceCaseLabel(row.passiveTraitName)}
+            </span>
           </span>
         );
         if (hasSave) {
           return (
             <div className="space-y-1.5">
-              <div className="font-semibold uppercase tracking-[0.08em] text-slate-300">
-                Lvl <span className="font-bold text-white">{level}</span>
+              <div className="font-semibold tracking-[0.04em] text-slate-400">
+                <span className="tabular-nums">Lvl&nbsp;</span>
+                <span className="font-bold tabular-nums text-slate-100">{level}</span>
               </div>
               {passive}
             </div>

@@ -7,6 +7,7 @@ import type { ClassType } from '../types.ts';
 import type { ClassUiRow } from '../classUiData.ts';
 import { ClassPickList } from './ClassPickList.tsx';
 import { GameIcon } from './GameIcon.tsx';
+import { sentenceCaseLabel } from '../gameUiText.ts';
 
 interface ClassSelectorProps {
   onSelect: (cls: ClassType) => void;
@@ -30,7 +31,7 @@ export function ClassSelector({ onSelect }: ClassSelectorProps) {
             <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
               Class trait
             </span>
-            <span className="text-xs font-bold text-slate-300">{row.passiveTraitName}</span>
+            <span className="text-xs font-semibold text-slate-200">{sentenceCaseLabel(row.passiveTraitName)}</span>
           </span>
         </span>
       )}

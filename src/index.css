@@ -15,10 +15,17 @@
     --ui-radius-panel: 0.5rem;
     --ui-radius-inner: 0.375rem;
     --ui-pad-inline: 0.5rem;
+    --ui-space-1: 0.25rem;
+    --ui-space-2: 0.5rem;
+    --ui-space-3: 0.75rem;
+    --ui-space-4: 1rem;
+    --ui-space-6: 1.5rem;
     --ui-border: 1px;
     --ui-border-active: 2px;
     --ui-focus-ring: rgba(252, 211, 77, 0.72);
     --ui-focus-glow: rgba(251, 191, 36, 0.3);
+    --ui-ease-modal: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --ui-ease-snappy: cubic-bezier(0.4, 0, 0.2, 1);
     --ui-state-border-default: rgba(100, 116, 139, 0.55);
     --ui-state-border-hover: rgba(148, 163, 184, 0.82);
     --ui-state-border-selected: rgba(251, 191, 36, 0.84);
@@ -28,6 +35,10 @@
 
   body {
     font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings:
+      "tnum" 1,
+      "lnum" 1;
     background: var(--ui-bg);
     color: rgb(226 232 240);
   }
@@ -35,8 +46,18 @@
 
 @layer components {
   .ui-heading {
-    @apply font-semibold uppercase tracking-[0.08em] text-slate-100;
+    @apply font-semibold uppercase tracking-[0.05em] text-slate-100;
     font-family: "Cinzel", ui-serif, Georgia, serif;
+  }
+  .ui-body {
+    @apply normal-case font-normal text-slate-300;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+  .ui-numeric {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings:
+      "tnum" 1,
+      "lnum" 1;
   }
   .ui-panel {
     @apply border shadow-[0_14px_40px_rgba(2,6,23,0.48)];
@@ -55,17 +76,26 @@
       0 0 0 1px rgba(120, 53, 15, 0.22);
   }
   .ui-close-button {
-    @apply rounded-full border p-2 text-slate-200 transition-colors hover:text-white;
+    @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border p-0 text-slate-200;
     border-color: rgba(148, 163, 184, 0.45);
     background: rgba(15, 23, 42, 0.88);
+    transition:
+      border-color 180ms var(--ui-ease-snappy),
+      background-color 180ms var(--ui-ease-snappy),
+      color 180ms var(--ui-ease-snappy),
+      transform 120ms var(--ui-ease-snappy);
+  }
+  .ui-close-button:active {
+    transform: scale(0.95);
   }
   .ui-state-frame {
     border: 1px solid var(--ui-state-border-default);
     transition:
-      border-color 150ms ease,
-      box-shadow 150ms ease,
-      background-color 150ms ease,
-      opacity 150ms ease;
+      border-color 180ms var(--ui-ease-snappy),
+      box-shadow 180ms var(--ui-ease-snappy),
+      background-color 180ms var(--ui-ease-snappy),
+      opacity 180ms var(--ui-ease-snappy),
+      transform 120ms var(--ui-ease-snappy);
   }
   .ui-state-frame:disabled {
     border-color: var(--ui-state-border-disabled);
@@ -77,8 +107,9 @@
   .ui-state-selected {
     border-color: var(--ui-state-border-selected);
     box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
       0 0 0 1px var(--ui-state-ring-selected),
-      0 0 12px rgba(251, 191, 36, 0.28);
+      0 0 14px rgba(251, 191, 36, 0.24);
   }
   .ui-state-disabled {
     border-color: var(--ui-state-border-disabled);
@@ -99,15 +130,50 @@
   .ui-close-button:hover {
     border-color: rgba(251, 191, 36, 0.55);
     background: rgba(30, 41, 59, 0.95);
+    color: rgb(255 255 255);
   }
   .ui-button-primary:hover {
     border-color: rgba(252, 211, 77, 0.72);
   }
+  .ui-button-secondary {
+    @apply rounded-md border px-4 py-2.5 text-sm font-semibold uppercase tracking-[0.1em] text-slate-100 transition-colors;
+    border-color: rgba(148, 163, 184, 0.55);
+    background: rgba(30, 41, 59, 0.92);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .ui-button-secondary:hover {
+    border-color: rgba(251, 191, 36, 0.45);
+    background: rgba(51, 65, 85, 0.95);
+    color: rgb(254 243 199);
+  }
+  .ui-button-tertiary {
+    @apply rounded-md border border-transparent px-3 py-2 text-sm font-semibold text-slate-300 transition-colors;
+    background: transparent;
+  }
+  .ui-button-tertiary:hover {
+    color: rgb(254 243 199);
+    background: rgba(30, 41, 59, 0.65);
+  }
+  .ui-app-header {
+    @apply flex w-full items-center justify-between gap-3;
+  }
+  .ui-app-header-slot {
+    @apply flex min-w-[2.75rem] shrink-0 items-center justify-start sm:min-w-[3.25rem];
+  }
+  .ui-app-header-slot-end {
+    @apply flex min-w-[2.75rem] shrink-0 items-center justify-end sm:min-w-[3.25rem];
+  }
+  .ui-app-header-title {
+    @apply min-w-0 flex-1 text-center;
+  }
+  .ui-nav-icon-flat {
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45)) drop-shadow(0 0 1px rgb(148 163 184 / 0.35));
+  }
   .ui-action-bar-root {
-    @apply fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,0.5)];
+    @apply fixed bottom-3 left-0 right-0 z-50 border-t border-slate-800 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,0.5)];
   }
   .ui-action-bar-stack {
-    @apply relative z-10 flex flex-col items-center gap-1.5 px-3 py-2 sm:gap-2 sm:px-4 sm:py-2.5;
+    @apply relative z-10 flex flex-col items-center gap-1.5 px-2 py-2 sm:gap-2 sm:px-4 sm:py-2.5;
   }
   .ui-xp-bar-wrap {
     @apply relative w-full max-w-2xl px-0.5;
@@ -159,48 +225,83 @@
   .ui-mana-pool-readout-max {
     @apply ml-0.5 text-base font-normal text-slate-400 opacity-90 sm:text-lg;
   }
+  .ui-spell-bar-tray {
+    @apply relative z-10 mx-auto w-full max-w-2xl rounded-t-xl border border-slate-700/70 border-b-0 bg-gradient-to-b from-slate-900/95 to-slate-950 px-3 pt-2 pb-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_-8px_24px_rgba(0,0,0,0.35)] sm:px-4 sm:pt-2.5 sm:pb-1.5;
+  }
   .ui-spell-bar-row {
-    @apply relative z-10 flex justify-center gap-2 sm:gap-2.5;
+    @apply relative flex justify-center gap-1.5 sm:gap-2.5;
   }
   .ui-action-bar-column {
     @apply relative flex w-full flex-col items-center gap-1.5;
   }
   .ui-spell-slot-drop-target {
-    outline: 1px dashed rgb(71 85 105);
+    outline: 2px dashed rgba(148, 163, 184, 0.55);
     outline-offset: 2px;
+    background: rgba(15, 23, 42, 0.55);
   }
   .ui-spell-slot-base {
-    @apply relative flex h-[4.75rem] w-[4.75rem] flex-col items-center justify-center gap-0.5 border bg-slate-800 px-1 transition-all active:scale-95 sm:h-[5rem] sm:w-[5rem];
+    @apply relative flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 border-2 bg-slate-800 px-1 sm:h-[5.25rem] sm:w-[5.25rem];
     border-radius: var(--ui-radius-panel);
-    border-width: var(--ui-border);
-    border-color: var(--ui-stroke);
+    border-color: rgba(100, 116, 139, 0.65);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition:
+      border-color 180ms var(--ui-ease-snappy),
+      background-color 180ms var(--ui-ease-snappy),
+      box-shadow 180ms var(--ui-ease-snappy),
+      transform 120ms var(--ui-ease-snappy);
+  }
+  .ui-spell-slot-base:active {
+    transform: scale(0.95);
   }
   .ui-spell-slot-empty {
-    @apply border-slate-700 bg-slate-900/40;
+    @apply border-slate-600 bg-slate-950/55;
+    background-image: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.85) 100%);
   }
   .ui-spell-slot-index {
-    @apply absolute left-1 top-0.5 rounded bg-slate-900/50 px-1 font-mono text-xs font-black text-slate-600;
+    @apply absolute left-1 top-0.5 min-w-[1.35rem] rounded border border-slate-500/70 bg-slate-950/92 px-1 py-0.5 text-center text-sm font-black tabular-nums text-slate-100;
+    font-family: "Cinzel", ui-serif, Georgia, serif;
   }
   .ui-spell-slot-index-filled {
-    @apply text-slate-500;
+    @apply text-slate-200;
   }
   .ui-spell-name-label {
-    @apply max-w-[4.5rem] px-1 text-center text-[10px] font-black uppercase leading-tight tracking-tight text-slate-100 sm:text-xs;
+    @apply max-w-[4.25rem] px-1 text-center text-xs font-black leading-tight tracking-tight text-slate-100 sm:max-w-[4.75rem] sm:text-sm;
   }
   .ui-spell-mana-cost {
-    @apply absolute right-1 top-1 font-mono text-xs font-bold text-slate-500;
+    @apply absolute right-1 top-1 font-mono text-xs font-bold tabular-nums text-slate-500;
+  }
+  .ui-spell-mana-cost-combat {
+    @apply bottom-1 top-auto text-[11px] sm:text-xs;
+  }
+  .ui-spell-mana-cost-blocked {
+    @apply font-black text-red-400 drop-shadow-[0_0_6px_rgba(0,0,0,0.9)];
   }
   .ui-spell-potion-badge {
     @apply absolute bottom-1 right-1 rounded bg-slate-900/80 px-1 font-mono text-[10px] font-black tabular-nums text-blue-300;
   }
   .ui-spell-cd-overlay {
-    @apply absolute inset-0 flex items-center justify-center overflow-hidden bg-slate-950/80;
+    @apply absolute inset-0 flex items-center justify-center overflow-hidden rounded-[inherit] bg-slate-950/78;
   }
-  .ui-spell-cd-sweep {
-    @apply absolute inset-x-0 bottom-0 bg-blue-500/20;
+  .ui-spell-cd-radial {
+    @apply pointer-events-none absolute inset-0 rounded-[inherit];
   }
   .ui-spell-cd-text {
-    @apply relative z-10 text-2xl font-black italic text-white drop-shadow-[0_0_5px_rgba(0,0,0,1)];
+    @apply relative z-10 text-2xl font-black not-italic tabular-nums tracking-tight text-white drop-shadow-[0_1px_0_rgba(0,0,0,1),0_0_8px_rgba(0,0,0,1)];
+  }
+  .ui-spell-oom-overlay {
+    @apply pointer-events-none absolute inset-0 rounded-[inherit];
+    background: linear-gradient(
+      180deg,
+      rgba(30, 58, 138, 0.72) 0%,
+      rgba(15, 23, 42, 0.88) 100%
+    );
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.22);
+  }
+  .ui-spell-oom-overlay::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0 rounded-[inherit];
+    background: rgba(15, 23, 42, 0.35);
+    mix-blend-mode: saturation;
   }
   .ui-spell-tooltip {
     @apply pointer-events-none absolute bottom-full left-1/2 z-[200] mb-3 flex w-[min(20rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] items-start gap-1.5 shadow-2xl transition-opacity sm:gap-2;
@@ -209,7 +310,7 @@
     @apply shrink-0 ring-1 ring-white/10;
   }
   .ui-spell-tooltip-body {
-    @apply min-w-0 flex-1 break-words border border-slate-600/90 bg-slate-950 px-2.5 py-2;
+    @apply min-w-0 flex-1 break-words rounded-md border border-slate-600/90 bg-slate-950 px-2.5 py-2;
   }
   .ui-spell-tooltip-title {
     @apply mb-1 flex min-w-0 items-baseline justify-between gap-2 border-b border-slate-800 pb-1;
@@ -224,7 +325,8 @@
     @apply text-sm font-bold tabular-nums text-white;
   }
   .ui-spell-tooltip-desc {
-    @apply whitespace-pre-line text-sm font-medium leading-snug text-amber-100;
+    @apply normal-case whitespace-pre-line text-sm font-normal leading-snug text-slate-200;
+    font-variant-numeric: tabular-nums lining-nums;
   }
   .ui-spell-tooltip-arrow {
     @apply absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950;
@@ -242,7 +344,9 @@
     @apply relative z-0 w-full overflow-visible;
   }
   .ui-heal-grid-row {
-    @apply relative flex h-20 w-full bg-slate-900 overflow-hidden transition-all duration-150 text-left;
+    @apply relative flex h-[4.95rem] w-full min-h-[4.95rem] overflow-hidden rounded-md bg-slate-900 text-left transition-all sm:h-[5.4rem];
+    transition-duration: 150ms;
+    transition-timing-function: var(--ui-ease-snappy);
   }
   .ui-heal-grid-fct-root {
     @apply pointer-events-none absolute bottom-[72%] left-1/2 z-[25] flex max-w-[min(100%,14rem)] -translate-x-1/2 justify-center gap-1.5;
@@ -265,6 +369,16 @@
   .ui-heal-grid-shield-fill {
     @apply h-full bg-gradient-to-r from-sky-600 via-sky-400 to-cyan-300 opacity-95 shadow-[0_0_10px_rgba(56,189,248,0.25)];
   }
+  .ui-heal-grid-hp-ghost {
+    @apply pointer-events-none absolute bottom-0 left-0 right-0 z-0 opacity-95;
+    background: linear-gradient(
+      90deg,
+      rgba(254, 243, 199, 0.92) 0%,
+      rgba(251, 146, 60, 0.88) 45%,
+      rgba(248, 113, 113, 0.82) 100%
+    );
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
   .ui-heal-grid-hp-fill {
     @apply pointer-events-none absolute bottom-0 left-0 right-0 z-[1] opacity-90;
     box-shadow:
@@ -279,19 +393,36 @@
       linear-gradient(0deg, rgba(2, 6, 23, 0.22) 0%, rgba(2, 6, 23, 0) 40%);
   }
   .ui-heal-grid-content {
-    @apply pointer-events-none relative z-10 flex w-full items-center justify-between p-2.5 sm:p-3;
+    @apply pointer-events-none relative z-10 grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 pb-1.5 pt-2.5;
   }
   .ui-heal-grid-name {
-    @apply truncate text-base font-semibold uppercase leading-none tracking-[0.06em] text-white sm:text-lg;
+    @apply truncate text-base font-semibold leading-tight tracking-tight text-white sm:text-lg;
+    text-shadow:
+      0 1px 2px rgb(0 0 0 / 0.75),
+      0 0 12px rgb(0 0 0 / 0.45);
   }
   .ui-heal-grid-meta {
-    @apply mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-300/90 sm:text-[10px];
+    @apply mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium tracking-wide text-slate-200 sm:text-[10px];
+    text-shadow:
+      0 1px 2px rgb(0 0 0 / 0.72),
+      0 0 10px rgb(0 0 0 / 0.4);
+  }
+  .ui-heal-grid-hp-readout {
+    @apply min-w-[6.5ch] shrink-0 text-right font-mono text-xl font-black tabular-nums leading-none tracking-tight text-white sm:text-2xl;
+    text-shadow:
+      0 1px 2px rgb(0 0 0 / 0.8),
+      0 -1px 1px rgb(0 0 0 / 0.55),
+      1px 0 1px rgb(0 0 0 / 0.55),
+      -1px 0 1px rgb(0 0 0 / 0.55);
+  }
+  .ui-heal-grid-hp-readout-low {
+    @apply animate-pulse text-red-200;
   }
   .ui-heal-grid-level-pill {
-    @apply rounded border border-slate-700/80 bg-slate-950/60 px-1 font-mono text-slate-300;
+    @apply rounded border border-slate-500/70 bg-slate-950/75 px-1.5 font-mono text-slate-100 tabular-nums;
   }
   .ui-heal-grid-buff-row {
-    @apply mt-1.5 flex flex-wrap items-end gap-2 sm:gap-1.5;
+    @apply mt-1 flex -translate-y-0.5 flex-wrap items-end gap-2 sm:gap-1.5;
   }
   .ui-heal-grid-fallen {
     @apply border border-red-500/30 bg-red-600/20 px-1 text-[10px] font-black uppercase tracking-widest text-red-400 sm:text-[8px];
@@ -319,6 +450,23 @@
   }
   .ui-debuff-countdown {
     @apply absolute inset-0 flex items-center justify-center rounded-md bg-slate-950/90 px-0.5 text-[10px] font-black text-orange-400 sm:text-[7px];
+  }
+  .ui-enemy-target-frame {
+    @apply relative overflow-hidden rounded-md border border-slate-600/75 border-l-[4px] border-l-red-800/90 bg-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.35)];
+  }
+  .ui-enemy-hp-ghost {
+    @apply pointer-events-none absolute inset-y-0 left-0 z-0 rounded-none opacity-95;
+    background: linear-gradient(
+      90deg,
+      rgba(254, 243, 199, 0.9) 0%,
+      rgba(251, 146, 60, 0.85) 50%,
+      rgba(251, 113, 133, 0.82) 100%
+    );
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+  .ui-enemy-hp-sheen {
+    @apply pointer-events-none absolute inset-0 z-[2];
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 35%);
   }
   .ui-mana-regen-overlay {
     @apply absolute inset-0 flex items-center justify-center bg-slate-950/90 px-0.5 text-[10px] font-black text-blue-300 sm:text-[7px];
@@ -447,11 +595,11 @@
     animation-delay: -30s;
   }
   .ui-splash-subtitle {
-    @apply mt-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200/90 sm:text-xs;
+    @apply mt-3 text-center text-[11px] font-semibold uppercase tracking-[0.11em] text-slate-100 sm:text-xs;
     font-family: "Cinzel", ui-serif, Georgia, serif;
   }
   .ui-splash-cta {
-    @apply flex items-center rounded-md border px-7 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-amber-50 transition-all;
+    @apply flex items-center rounded-md border px-7 py-3 text-sm font-semibold tracking-[0.04em] text-amber-50 transition-all;
     border-color: rgba(251, 191, 36, 0.58);
     background: linear-gradient(180deg, rgba(251, 191, 36, 0.88) 0%, rgba(180, 83, 9, 0.88) 100%);
     box-shadow:
@@ -463,7 +611,7 @@
     @apply inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-600/65 bg-slate-900/55 text-slate-300/90 backdrop-blur-md transition-colors hover:border-slate-400 hover:text-slate-100;
   }
   .ui-splash-meta {
-    @apply text-[11px] font-semibold tracking-[0.08em] text-slate-500;
+    @apply text-[11px] font-semibold tracking-[0.08em] text-slate-300;
   }
 }
 

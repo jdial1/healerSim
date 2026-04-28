@@ -130,7 +130,7 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
         initial={{ opacity: 0, scale: 0.96, y: 6 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 4 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+        transition={{ duration: 0.48, ease: [0.175, 0.885, 0.32, 1.275] }}
         className="ui-panel relative w-full max-w-sm p-5 ring-1 ring-inset ring-slate-500/40"
         style={
           borderFlash
@@ -141,7 +141,7 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
         }
         onClick={(e) => e.stopPropagation()}
       >
-        <button type="button" onClick={onClose} className="ui-close-button absolute right-2.5 top-2.5 z-10 p-1" aria-label="Close">
+        <button type="button" onClick={onClose} className="ui-close-button absolute right-2 top-2 z-10" aria-label="Close">
           <X size={14} strokeWidth={2.5} aria-hidden />
         </button>
 
@@ -193,7 +193,7 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
               transition={{ duration: 0.2 }}
               className="mt-5 space-y-2"
             >
-              <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              <p className="text-center text-xs font-bold uppercase tracking-widest text-slate-400">
                 Dungeon pace
               </p>
               <div className="grid grid-cols-3 gap-2">
@@ -202,16 +202,22 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
                     key={pace}
                     type="button"
                     onClick={() => onConfirmEnter(dungeon, pace)}
-                    className={`flex flex-col items-center gap-1 rounded-lg px-1.5 py-2.5 text-center transition-colors ${pace === 'normal' ? selected : ring}`}
+                    className={`flex flex-col items-center gap-1.5 rounded-lg px-1.5 py-2.5 text-center transition-colors ${pace === 'normal' ? selected : ring}`}
                   >
-                    <GameIcon iconPath={iconPath} glow="spell" size="sm" imageFit="cover" />
-                    <span className={`text-[11px] font-black uppercase leading-tight tracking-tight ${labelClass}`}>
+                    <GameIcon
+                      iconPath={iconPath}
+                      glow="spell"
+                      size="sm"
+                      imageFit="cover"
+                      className="[filter:drop-shadow(0_2px_4px_rgb(0_0_0_/_0.5))]"
+                    />
+                    <span className={`text-xs font-black uppercase leading-tight tracking-tight sm:text-sm ${labelClass}`}>
                       {label}
                     </span>
-                    <span className={`font-mono text-[9px] font-bold tabular-nums leading-none ${subClass}`}>
+                    <span className={`font-mono text-[11px] font-bold tabular-nums leading-none sm:text-xs ${subClass}`}>
                       {trashSec}s / {bossSec}s
                     </span>
-                    <span className={`font-mono text-[9px] font-bold tabular-nums leading-none ${subClass}`}>
+                    <span className={`font-mono text-[11px] font-bold tabular-nums leading-none sm:text-xs ${subClass}`}>
                       ×{dungeonPaceXpMultiplier(pace)} XP
                     </span>
                   </button>
@@ -223,12 +229,18 @@ export function DungeonQueueModal({ dungeon, onClose, onConfirmEnter }: DungeonQ
               key="waiting"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-5 text-center text-xs font-bold uppercase tracking-widest text-slate-500"
+              className="mt-5 text-center text-sm font-bold uppercase tracking-widest text-slate-400"
             >
               Looking for group…
             </motion.p>
           )}
         </AnimatePresence>
+
+        <div className="mt-6 border-t border-slate-600/40 pt-4">
+          <button type="button" onClick={onClose} className="ui-button-tertiary w-full text-center text-sm font-semibold uppercase tracking-wide text-slate-400 hover:text-slate-200">
+            Back to dungeons
+          </button>
+        </div>
       </motion.div>
     </motion.div>
   );

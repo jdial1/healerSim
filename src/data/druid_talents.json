@@ -548,7 +548,7 @@
     "description": "The ground around you flowers: passively heal all living allies a small amount each combat tick for 20s. While active, your HoTs tick faster. Visual bloom on your character.",
     "points": 0,
     "maxPoints": 1,
-    "levelReq": 40,
+    "levelReq": 25,
     "cost": 1,
     "icon": "wow/spell_nature_giftofthewild",
     "gridX": 2,

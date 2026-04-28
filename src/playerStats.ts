@@ -50,6 +50,15 @@ export interface ClassProgressionRow {
 
 export const CLASS_PROGRESSION = classesData.progression as Record<ClassType, ClassProgressionRow>;
 
+export interface ClassTutorialCopy {
+  passiveDescription: string;
+}
+
+type SelectorTutorialRow = {
+  id: ClassType;
+  tutorial?: ClassTutorialCopy;
+};
+
 export const CAPSTONE_PLAYER_BUFF_IDS = Array.from(
   new Set(Object.values(CLASS_PROGRESSION).map((p) => p.capstonePlayerBuffId)),
 );
@@ -107,6 +116,14 @@ export function classPortraitForPlayer(cls: ClassType): { portraitIcon: string; 
   const g = row.portraitGlow;
   if (g !== 'spell' && g !== 'nature' && g !== 'debuff') throw new Error(`Invalid portraitGlow for ${cls}`);
   return { portraitIcon: row.portraitIcon as string, portraitGlow: g };
+}
+
+export function classTutorialCopy(cls: ClassType): ClassTutorialCopy {
+  const row = (classesData.selector as SelectorTutorialRow[]).find((r) => r.id === cls);
+  if (!row?.tutorial) {
+    return { passiveDescription: 'Passive effect active. Keep healing.' };
+  }
+  return row.tutorial;
 }
 
 export function talentTreeGlowForClass(cls: ClassType): IconGlow {

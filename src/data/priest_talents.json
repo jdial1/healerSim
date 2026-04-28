@@ -545,7 +545,7 @@
     "description": "Archangel: for 15s, your direct heals echo to the whole party and consume active party shields to empower those echoes. Wings manifest on your bar.",
     "points": 0,
     "maxPoints": 1,
-    "levelReq": 40,
+    "levelReq": 25,
     "cost": 1,
     "icon": "wow/spell_holy_guardianspirit",
     "gridX": 2,

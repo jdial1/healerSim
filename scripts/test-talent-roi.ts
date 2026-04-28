@@ -38,14 +38,14 @@ export function runTalentRoiTest(): void {
   const h = talentsHeal5();
   const c = talentsCrit5();
   const L10 = 10;
-  const L24 = 24;
+  const capLevel = 25;
   const barH = realisticBarHpsForClass('PRIEST', L10, h);
   const barC = realisticBarHpsForClass('PRIEST', L10, c);
   const hpsDeltaPct = barH > 0 ? ((barH - barC) / barC) * 100 : 0;
   const proxyClear = hpsDeltaPct;
   const seed = 0xdecafbad;
-  const oomH = simulateSecondsToOom('PRIEST', L24, h, ['flash_heal', 'renew'], seed, null);
-  const oomC = simulateSecondsToOom('PRIEST', L24, c, ['flash_heal', 'renew'], seed, null);
+  const oomH = simulateSecondsToOom('PRIEST', capLevel, h, ['flash_heal', 'renew'], seed, null);
+  const oomC = simulateSecondsToOom('PRIEST', capLevel, c, ['flash_heal', 'renew'], seed, null);
   const sustainCritVsHeal = pctMoreManaSustain(oomC, oomH);
 
   const lineHps =
@@ -54,7 +54,7 @@ export function runTalentRoiTest(): void {
       : `${T.yellow}+Crit bar HPS edge ${Math.abs(proxyClear).toFixed(1)}% vs +Healing at L${L10}${T.r}`;
   const lineOom =
     sustainCritVsHeal >= 0
-      ? `${T.green}+Crit OOM sustain +${sustainCritVsHeal.toFixed(1)}% vs +Healing at L${L24}${T.r} (${oomC.toFixed(0)}s vs ${oomH.toFixed(0)}s)`
+      ? `${T.green}+Crit OOM sustain +${sustainCritVsHeal.toFixed(1)}% vs +Healing at L${capLevel}${T.r} (${oomC.toFixed(0)}s vs ${oomH.toFixed(0)}s)`
       : `${T.cyan}+Healing OOM longer by ${Math.abs(sustainCritVsHeal).toFixed(1)}%${T.r} (${oomH.toFixed(0)}s vs ${oomC.toFixed(0)}s)`;
 
   console.log(
@@ -62,7 +62,7 @@ export function runTalentRoiTest(): void {
   );
   console.log(`  ${T.dim}L${L10} sustain bar (realistic HPS proxy):${T.r} heal ${T.yellow}${barH.toFixed(1)}${T.r} vs crit ${T.yellow}${barC.toFixed(1)}${T.r}`);
   console.log(`  ${lineHps}`);
-  console.log(`  ${T.dim}L${L24} OOM (Flash/Renew sim, same seed):${T.r} ${lineOom}`);
+  console.log(`  ${T.dim}L${capLevel} OOM (Flash/Renew sim, same seed):${T.r} ${lineOom}`);
   const hpsEdge = Math.abs(proxyClear);
   const oomEdgeSec = Math.abs(oomC - oomH);
   const parity =

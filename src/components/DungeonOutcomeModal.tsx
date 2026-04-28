@@ -140,10 +140,10 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
         aria-labelledby="dungeon-outcome-title"
         initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        transition={{ duration: 0.48, ease: [0.175, 0.885, 0.32, 1.275] }}
         className="ui-frame relative max-h-[90vh] w-full max-w-md overflow-x-hidden overflow-y-auto rounded-lg bg-[#070d1a] shadow-[0_0_60px_rgba(0,0,0,0.65)]"
       >
-        <button type="button" onClick={onDismiss} className="ui-close-button absolute right-2 top-2 z-10 p-1.5" aria-label="Close">
+        <button type="button" onClick={onDismiss} className="ui-close-button absolute right-2 top-2 z-10" aria-label="Close">
           <X size={14} />
         </button>
 
@@ -172,11 +172,11 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
                 id="dungeon-outcome-title"
                 className="ui-heading mt-0.5 text-lg leading-tight tracking-[0.06em] text-white sm:text-xl"
               >
-                {outcome.dungeonName}
+                {outcome.levelUp ? 'LEVEL UP' : outcome.dungeonName}
               </h2>
               {isSuccess ? (
                 <p className="mt-1 text-[11px] font-bold text-slate-400 sm:text-xs">
-                  {levelUpOnly ? 'Experience threshold reached.' : `${outcome.bossName} has fallen.`}
+                  {outcome.levelUp ? `${outcome.dungeonName} complete.` : `${outcome.bossName} has fallen.`}
                 </p>
               ) : (
                 <p className="mt-1 text-[11px] font-bold leading-snug text-slate-400 sm:text-xs">
@@ -195,11 +195,14 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
         <div className="px-4 py-5 sm:px-5 sm:py-5">
           {isSuccess ? (
             <div className="flex flex-col items-center gap-4">
-              <span className="ui-frame rounded-lg bg-slate-950/90 px-5 py-3 text-xl font-black uppercase tracking-[0.16em] text-sky-200 shadow-[0_0_16px_rgba(56,189,248,0.14)] sm:px-7 sm:py-3.5 sm:text-2xl">
+              <span className={`ui-frame rounded-lg bg-slate-950/90 px-5 py-3 font-black tracking-[0.1em] shadow-[0_0_16px_rgba(56,189,248,0.14)] sm:px-7 sm:py-3.5 ${outcome.levelUp ? 'text-lg text-sky-100 sm:text-xl' : 'text-xl text-sky-200 sm:text-2xl'}`}>
                 +{outcome.xpGained} XP
               </span>
               {outcome.levelUp ? (
-                <span className="ui-frame rounded bg-amber-950/40 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-amber-300 sm:text-sm">
+                <span
+                  role="status"
+                  className="inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/25 sm:text-sm"
+                >
                   Level up
                 </span>
               ) : null}
@@ -210,7 +213,10 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
                 +{outcome.xpGained} XP
               </span>
               {outcome.levelUp ? (
-                <span className="ui-frame rounded bg-amber-950/40 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-amber-300 sm:text-sm">
+                <span
+                  role="status"
+                  className="inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/25 sm:text-sm"
+                >
                   Level up
                 </span>
               ) : null}
@@ -219,7 +225,7 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
 
           {showRewards ? (
             <div className="ui-frame mt-5 w-full rounded-md bg-amber-950/20 px-3 py-3.5 sm:mt-5">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-500/90">
+              <p className="text-[10px] font-semibold tracking-[0.08em] text-slate-400">
                 Rewards unlocked
               </p>
               <ul className="mt-2 flex flex-col gap-2">
@@ -337,11 +343,7 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
             </div>
           ) : null}
 
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="ui-state-frame ui-state-hover mt-6 w-full rounded-md bg-slate-800 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-slate-700 active:scale-[0.99] sm:mt-6"
-          >
+          <button type="button" onClick={onDismiss} className="ui-button-primary ui-state-frame ui-state-hover mt-6 w-full py-3 text-sm font-semibold uppercase tracking-[0.1em] active:scale-[0.99] sm:mt-6">
             Continue
           </button>
         </div>

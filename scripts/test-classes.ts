@@ -7,7 +7,7 @@ import type { ClassType, Talent } from '../src/types.ts';
 import { testPalette } from './testColors.ts';
 
 const CLASSES: ClassType[] = ['PRIEST', 'DRUID', 'PALADIN'];
-const LEVELS = [1, 10, 20, 24];
+const LEVELS = [1, 10, 20, 25];
 
 const C = testPalette();
 

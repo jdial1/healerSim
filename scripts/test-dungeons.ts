@@ -38,6 +38,8 @@ import { testPalette, useTestAnsi } from './testColors.ts';
 
 const RUNS_PER_DUNGEON = 15;
 
+const DUNGEONS_PHASE_TEST = DUNGEONS.filter((d) => !d.endless);
+
 const PACES: DungeonPace[] = ['fast', 'normal', 'slow'];
 
 const PACE_TARGET_SEC: Record<DungeonPace, { trash: number; boss: number }> = {
@@ -130,8 +132,13 @@ interface RunResult {
   totalSec: number;
 }
 
+function maxTicksForDungeonPaceSim(pace: DungeonPace): number {
+  const targetSec = dungeonPaceTrashSec(pace) + dungeonPaceBossSec(pace);
+  return Math.ceil(targetSec * TICKS_PER_SECOND * 1.5) + 400;
+}
+
 async function runSimulation(dungeon: Dungeon, pace: DungeonPace): Promise<RunResult> {
-  let state: GameState = gameStateForClass('PRIEST', undefined);
+  let state: GameState = { ...gameStateForClass('PRIEST', undefined), introTutorialComplete: true };
   const noTalents = state.talents.map((t) => ({ ...t, points: 0 }));
   const meta = computeMetaFromProgress(state.xp, 'PRIEST', noTalents);
   state = {
@@ -150,8 +157,9 @@ async function runSimulation(dungeon: Dungeon, pace: DungeonPace): Promise<RunRe
   let trashTicks = 0;
   let bossTicks = 0;
   let safetyLimit = 0;
+  const maxTicks = maxTicksForDungeonPaceSim(pace);
 
-  while (state.isCombatActive && safetyLimit < 100000) {
+  while (state.isCombatActive && safetyLimit < maxTicks) {
     safetyLimit++;
 
     const currentPhase = state.combatPhase;
@@ -376,7 +384,7 @@ function printBossVsHealerHpsOverlap(): void {
   );
   console.log(`${'='.repeat(70)}`);
   const emptyTalents: Talent[] = [];
-  for (const dungeon of DUNGEONS) {
+  for (const dungeon of DUNGEONS_PHASE_TEST) {
     const profile = bossCombatProfileForDungeon(dungeon);
     if (
       profile.attackTemplates.length === 0 &&
@@ -417,7 +425,7 @@ function printOneshotSpikeOverlap(): void {
   );
   console.log(`${'='.repeat(70)}`);
   const dpsHp = (lv: number) => allyMaxHealthForRoleAndLevel('DPS', lv);
-  for (const dungeon of DUNGEONS) {
+  for (const dungeon of DUNGEONS_PHASE_TEST) {
     const profile = bossCombatProfileForDungeon(dungeon);
     if (profile.attackTemplates.length === 0) continue;
     const partyMult = maxSelfBuffPartyDamageMult(profile);
@@ -448,7 +456,7 @@ function fmtMarginSigned(m: number): string {
 function printBossVsHealerHpsCondensed(): void {
   const emptyTalents: Talent[] = [];
   const parts: string[] = [];
-  for (const dungeon of DUNGEONS) {
+  for (const dungeon of DUNGEONS_PHASE_TEST) {
     const profile = bossCombatProfileForDungeon(dungeon);
     if (
       profile.attackTemplates.length === 0 &&
@@ -477,7 +485,7 @@ function printBossVsHealerHpsCondensed(): void {
 function printOneshotSpikeCondensed(): void {
   const dpsHp = (lv: number) => allyMaxHealthForRoleAndLevel('DPS', lv);
   const bits: string[] = [];
-  for (const dungeon of DUNGEONS) {
+  for (const dungeon of DUNGEONS_PHASE_TEST) {
     const profile = bossCombatProfileForDungeon(dungeon);
     if (profile.attackTemplates.length === 0) continue;
     const partyMult = maxSelfBuffPartyDamageMult(profile);
@@ -518,7 +526,7 @@ export async function runDungeonTest(options: { condensed?: boolean } = {}): Pro
   }
 
   const results: Record<string, Record<DungeonPace, RunResult[]>> = {};
-  for (const dungeon of DUNGEONS) {
+  for (const dungeon of DUNGEONS_PHASE_TEST) {
     results[dungeon.id] = { fast: [], normal: [], slow: [] };
   }
 
@@ -532,7 +540,7 @@ export async function runDungeonTest(options: { condensed?: boolean } = {}): Pro
       console.log(`${'='.repeat(70)}`);
     }
 
-    for (const dungeon of DUNGEONS) {
+    for (const dungeon of DUNGEONS_PHASE_TEST) {
       if (!condensed) process.stdout.write(`  ${dungeon.name} … `);
       for (let i = 0; i < RUNS_PER_DUNGEON; i++) {
         const run = await runSimulation(dungeon, pace);
@@ -559,7 +567,7 @@ export async function runDungeonTest(options: { condensed?: boolean } = {}): Pro
       const tTrash = expectedTrashTotalSec(pace);
       const tBoss = expectedBossSec(pace);
       const tTotal = expectedTotalSec(pace);
-      for (const dungeon of DUNGEONS) {
+      for (const dungeon of DUNGEONS_PHASE_TEST) {
         const s = summarizeRuns(results[dungeon.id][pace]);
         const sig = `${COLOR.dim}${s.trashStd.toFixed(3)}|${s.bossStd.toFixed(3)}|${s.totalStd.toFixed(3)}${COLOR.r}`;
         console.log(
@@ -586,7 +594,7 @@ export async function runDungeonTest(options: { condensed?: boolean } = {}): Pro
     const tTrash = expectedTrashTotalSec(pace);
     const tBoss = expectedBossSec(pace);
     const tTotal = expectedTotalSec(pace);
-    for (const dungeon of DUNGEONS) {
+    for (const dungeon of DUNGEONS_PHASE_TEST) {
       const s = summarizeRuns(results[dungeon.id][pace]);
       console.log(
         `${pace.padEnd(8)} | ${dungeon.name.padEnd(22)} | ` +
