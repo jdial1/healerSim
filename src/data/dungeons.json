@@ -383,7 +383,7 @@
           "abilityId": "thaurissan_dominate",
           "name": "Hand of Thaurissan",
           "icon": "lorc/hand-clench",
-          "damage": 45,
+          "damage": 78,
           "targeting": "single_random"
         }
       ]
@@ -448,7 +448,7 @@
           "abilityId": "rivendare_death_coil",
           "name": "Death Coil",
           "icon": "delapouite/dead-head",
-          "damage": 55,
+          "damage": 77,
           "targeting": "single_random"
         }
       ]
@@ -513,8 +513,54 @@
           "abilityId": "gandling_shadow_bolt",
           "name": "Shadow Volley",
           "icon": "lorc/lightning-glow",
-          "damage": 40,
+          "damage": 74,
           "targeting": "all_living"
+        }
+      ]
+    }
+  },
+  {
+    "id": "endless",
+    "name": "Endless",
+    "endless": true,
+    "difficulty": 1,
+    "levelMin": 25,
+    "levelMax": 60,
+    "bossName": "???",
+    "bossHealth": 5150,
+    "bossIcon": "lorc/skull-crack",
+    "cardIcon": "lorc/crossed-swords",
+    "cardTheme": {
+      "borderLeft": "border-l-fuchsia-600",
+      "viaTint": "via-fuchsia-950/45",
+      "ring": "ring-fuchsia-900/35",
+      "cardShadow": "shadow-[0_20px_50px_-12px_rgba(192,38,211,0.35)]",
+      "borderHover": "hover:border-fuchsia-400",
+      "deploy": "bg-fuchsia-700 text-fuchsia-50",
+      "iconTint": "rgba(232,121,249,0.55)"
+    },
+    "enemies": [
+      {
+        "name": "Spiteful Shade",
+        "icon": "lorc/shadow-follower"
+      },
+      {
+        "name": "Endless Thrall",
+        "icon": "delapouite/horned-reptile"
+      },
+      {
+        "name": "Twisted Echo",
+        "icon": "lorc/swallow"
+      }
+    ],
+    "bossCombat": {
+      "attackTemplates": [
+        {
+          "abilityId": "endless_placeholder",
+          "name": "Surge",
+          "icon": "lorc/lightning-bow",
+          "damage": 10,
+          "targeting": "single_random"
         }
       ]
     }

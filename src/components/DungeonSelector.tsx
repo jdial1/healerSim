@@ -15,6 +15,7 @@ import { bossCombatProfileForDungeon, TICKS_PER_SECOND } from '../constants.ts';
 import { DUNGEONS } from '../dungeons/index.ts';
 import { type BossDebuffTargeting, type Dungeon, type DungeonPace } from '../types.ts';
 import { computeDungeonXpGain, levelsOverDungeonMax } from '../gameStorage.ts';
+import { BALANCE } from '../balance.ts';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { GameIcon } from './GameIcon.tsx';
 import { DungeonQueueModal } from './DungeonQueueModal.tsx';
@@ -434,7 +435,11 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                         {!isLocked ? (
                           <>
                             <span className="text-slate-700">•</span>
-                            {showReducedXp ? (
+                            {dungeon.endless ? (
+                              <span className="tabular-nums tracking-tight text-fuchsia-300/90">
+                                ×{BALANCE.endless.scalingPerCycle} / wave · boss XP {Math.round(BALANCE.endless.bossKillXpFraction * 100)}%
+                              </span>
+                            ) : showReducedXp ? (
                               <span className="tabular-nums tracking-tight">
                                 <span className="text-slate-500 line-through decoration-slate-500">+{nominalClearXp}</span>
                                 <span className="ml-1.5 text-amber-400">+{clearXp} XP</span>

@@ -4,6 +4,9 @@ import { gameReducer, gameStateForClass } from '../src/gameEngineReducer.ts';
 import { DUNGEONS } from '../src/dungeons/index.ts';
 import { TICK_RATE, dungeonPaceDpsMultiplier, generateRandomParty } from '../src/constants.ts';
 import { computeMetaFromProgress, totalXpToReachLevel } from '../src/gameStorage.ts';
+import { CLASS_PROGRESSION } from '../src/playerStats.ts';
+import { hasPlayerBuff, upsertPlayerBuff } from '../src/talentMechanics.ts';
+import { playerCombatAuraTicks } from '../src/auraConfig.ts';
 import type { ClassType, Dungeon, GameState, Unit } from '../src/types.ts';
 import { testPalette } from './testColors.ts';
 
@@ -17,6 +20,37 @@ const MAX_COMBAT_TICKS = 120_000;
 const SEEDS_PER_DUNGEON = 4;
 const PACE = 'normal' as const;
 const HEALER_CLASS: ClassType = 'PRIEST';
+const CRISIS_HP_FRAC = 0.5;
+
+function minLivingAllyHpFraction(party: Unit[]): number | null {
+  let min = 1;
+  let any = false;
+  for (const u of party) {
+    if (u.role === 'HEALER') continue;
+    if (u.health <= 0 || u.maxHealth <= 0) continue;
+    any = true;
+    min = Math.min(min, u.health / u.maxHealth);
+  }
+  return any ? min : null;
+}
+
+function tryActivateArchangelCrisis(state: GameState): GameState {
+  if (state.playerClass !== 'PRIEST') return state;
+  const frac = minLivingAllyHpFraction(state.party);
+  if (frac === null || frac >= CRISIS_HP_FRAC) return state;
+  if (hasPlayerBuff(state.playerCombatBuffs, 'archangel')) return state;
+  const cap = CLASS_PROGRESSION.PRIEST;
+  return {
+    ...state,
+    capstoneForm: cap.capstoneForm,
+    playerCombatBuffs: upsertPlayerBuff(
+      state.playerCombatBuffs,
+      cap.capstonePlayerBuffId,
+      playerCombatAuraTicks(cap.capstonePlayerBuffId),
+      1,
+    ),
+  };
+}
 
 function mulberry32(a: number): () => number {
   return () => {
@@ -77,6 +111,7 @@ function runDelayedHealDungeonOnce(dungeon: Dungeon, seed: number): 'success' | 
       now: seed + ticks,
       dpsMultiplier: dungeonPaceDpsMultiplier(PACE),
     });
+    state = tryActivateArchangelCrisis(state);
 
     const t = state.combatElapsedTicks;
     if (pending !== null && t >= pending.at) {
@@ -106,7 +141,7 @@ function runDelayedHealDungeonOnce(dungeon: Dungeon, seed: number): 'success' | 
 
 export function runHealingStressTest(): void {
   console.log(
-    `${T.dim}Delayed heal bot:${T.r} ally ${T.cyan}<80% max HP${T.r} ${T.dim}→${T.r} wait ${T.yellow}${REACTION_MS}ms${T.r} ${T.dim}+${T.r} ${T.yellow}${(CAST_TICKS * TICK_RATE) / 1000}s${T.r} cast ${T.dim}→${T.r} Flash Heal. ${T.dim}PRIEST, ${PACE} pace.${T.r}`,
+    `${T.dim}Delayed heal bot:${T.r} ally ${T.cyan}<80% max HP${T.r} ${T.dim}→${T.r} wait ${T.yellow}${REACTION_MS}ms${T.r} ${T.dim}+${T.r} ${T.yellow}${(CAST_TICKS * TICK_RATE) / 1000}s${T.r} cast ${T.dim}→${T.r} Flash Heal. ${T.dim}Archangel if any ally ${T.cyan}<${Math.round(CRISIS_HP_FRAC * 100)}%${T.r}${T.dim}. PRIEST, ${PACE} pace.${T.r}`,
   );
   const stressDungeons = DUNGEONS.filter((d) => d.difficulty >= 6);
   const list = stressDungeons.length > 0 ? stressDungeons : DUNGEONS.slice(-2);

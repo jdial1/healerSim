@@ -2,7 +2,7 @@ import { GameState, PlayerCombatBuff, Spell, Unit } from './types.ts';
 import { MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
 import { manaPotionInstantMana, manaPotionOverTimeTotal } from './manaPotionIcon.ts';
 import { spellHasTag } from './constants.ts';
-import { effectiveUniqueStatRating } from './playerStats.ts';
+import { calculateSpellRank, effectiveUniqueStatRating, getRankHealMultiplier } from './playerStats.ts';
 import {
   talentRanks,
   hasPlayerBuff,
@@ -51,6 +51,8 @@ import {
   runOnHealLand,
   trySpecialHealCast,
 } from './combatPipeline.ts';
+import { diffPartyCombatFloats, mergeFloatingCombatForTick } from './floatingCombatText.ts';
+import { healEffectiveAndOverheal } from './healMath.ts';
 
 export type CastRuntime = {
   scheduleCooldown: (p: {
@@ -103,6 +105,7 @@ type StandardReady = {
   arch: boolean;
   paladinEmergencyHasteBonus: number;
   pbuffsBaseline: PlayerCombatBuff[];
+  rankHealMult: number;
 };
 
 export type ReadyCast = SwiftmendReady | ManaPotionReady | StandardReady;
@@ -200,6 +203,9 @@ function validateStandardHeal(s: GameState, input: CastInput, common: CommonVali
   ) {
     pbuffsBaseline = withBuffRemoved(pbuffsBaseline, PLAYER_BUFF_OMEN_CLEARCASTING);
   }
+  const rankHealMult = s.playerClass
+    ? getRankHealMultiplier(calculateSpellRank(spellId, s.playerClass, s.level))
+    : 1;
   return {
     kind: 'standard',
     spell,
@@ -216,6 +222,7 @@ function validateStandardHeal(s: GameState, input: CastInput, common: CommonVali
     arch,
     paladinEmergencyHasteBonus,
     pbuffsBaseline,
+    rankHealMult,
   };
 }
 
@@ -319,8 +326,11 @@ function applyManaPotionCast(s: GameState, ready: ManaPotionReady, rt: CastRunti
   };
 }
 
-function patchPartyStandardDirectAndHot(s: GameState, ready: StandardReady): { newParty: Unit[] } {
-  const { spell, spellId, targetId, healMultB, critH, tMod, arch, eff } = ready;
+function patchPartyStandardDirectAndHot(
+  s: GameState,
+  ready: StandardReady,
+): { newParty: Unit[]; healEff: number; healOh: number } {
+  const { spell, spellId, targetId, healMultB, critH, tMod, arch, eff, rankHealMult } = ready;
   const hTickScale = eff.hasteTickScale;
   const archShieldBonus = archangelEchoShieldBonusFraction(s, spellId, spell);
   const archEchoTargets = arch
@@ -331,16 +341,20 @@ function patchPartyStandardDirectAndHot(s: GameState, ready: StandardReady): { n
   const graceRanks = talentRanks(s.talents, 'priest_grace');
   const shieldTicksDefault = BALANCE.combat.shared.shieldDefaultTicks;
   let newParty2 = s.party.map((u) => ({ ...u, buffs: u.buffs.map((b) => ({ ...b })) }));
+  let patchHealEff = 0;
+  let patchHealOh = 0;
   const healOne = (u: Unit) => {
     if (u.health <= 0) return u;
     const syn = directHealSynergyMultiplier(u, spellId);
     const gr = graceHealMultiplierOnTarget(u, graceRanks);
     const healAmp = runCastDirectHealMultipliers(s, spell, spellId);
     const rad = s.playerClass === 'PALADIN' ? paladinRadianceHealMultiplier(s, u) : 1;
-    const directAmt = spell.healing * healMultB * critH * tMod * syn * gr * healAmp * rad;
+    const directAmt = spell.healing * rankHealMult * healMultB * critH * tMod * syn * gr * healAmp * rad;
     const room = Math.max(0, u.maxHealth - u.health);
     const applied = Math.min(room, directAmt);
     const overheal = Math.max(0, directAmt - applied);
+    patchHealEff += applied;
+    patchHealOh += overheal;
     let shieldAdd = 0;
     if (s.playerClass === 'PRIEST' && overheal > 0) {
       const rating = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
@@ -356,10 +370,15 @@ function patchPartyStandardDirectAndHot(s: GameState, ready: StandardReady): { n
   const addHot = (u: Unit) => {
     if (u.health <= 0) return u;
     if (spell.type !== 'HOT' && !spell.hotDuration) return u;
-    const tHot = (spell.hotHealingPerTick || 0) * healMultB * critH;
-    return applyPandemicHotToUnit(u, spell, tHot, { hasteTickScale: hTickScale });
+    const tHot = (spell.hotHealingPerTick || 0) * rankHealMult * healMultB * critH;
+    const bloomBurst =
+      spell.id === 'lifebloom' ? Math.max(0, spell.healing * rankHealMult) : undefined;
+    return applyPandemicHotToUnit(u, spell, tHot, {
+      hasteTickScale: hTickScale,
+      bloomBurstHeal: bloomBurst,
+    });
   };
-  const directBase = spell.healing * healMultB * critH * tMod;
+  const directBase = spell.healing * rankHealMult * healMultB * critH * tMod;
   if (spell.type === 'AOE') {
     newParty2 = newParty2.map((u) => (u.health > 0 ? addHot(healOne(u)) : u));
   } else {
@@ -380,11 +399,14 @@ function patchPartyStandardDirectAndHot(s: GameState, ready: StandardReady): { n
             }
           }
           if (bestId) {
-            newParty2 = newParty2.map((ally) =>
-              ally.id !== bestId
-                ? ally
-                : { ...ally, health: Math.min(ally.maxHealth, ally.health + directBase * awSplashFraction) },
-            );
+            const splashRaw = directBase * awSplashFraction;
+            newParty2 = newParty2.map((ally) => {
+              if (ally.id !== bestId) return ally;
+              const { eff: se, oh: soh } = healEffectiveAndOverheal(ally.health, ally.maxHealth, splashRaw);
+              patchHealEff += se;
+              patchHealOh += soh;
+              return { ...ally, health: Math.min(ally.maxHealth, ally.health + splashRaw) };
+            });
           }
         }
         return healed;
@@ -392,7 +414,17 @@ function patchPartyStandardDirectAndHot(s: GameState, ready: StandardReady): { n
       if (arch && !archangelSkipsSpell(spellId) && isDirectHealSpell(spell, spellId) && u.health > 0) {
         const healed = healOne(u);
         if (archEchoBonusPerTarget <= 0) return healed;
-        return { ...healed, health: Math.min(healed.maxHealth, healed.health + archEchoBonusPerTarget) };
+        const { eff: ae, oh: aoh } = healEffectiveAndOverheal(
+          healed.health,
+          healed.maxHealth,
+          archEchoBonusPerTarget,
+        );
+        patchHealEff += ae;
+        patchHealOh += aoh;
+        return {
+          ...healed,
+          health: Math.min(healed.maxHealth, healed.health + archEchoBonusPerTarget),
+        };
       }
       return u;
     });
@@ -400,7 +432,7 @@ function patchPartyStandardDirectAndHot(s: GameState, ready: StandardReady): { n
   if (arch && archShieldBonus > 0) {
     newParty2 = newParty2.map((u) => ({ ...u, shield: 0, shieldTicksRemaining: 0 }));
   }
-  return { newParty: newParty2 };
+  return { newParty: newParty2, healEff: patchHealEff, healOh: patchHealOh };
 }
 
 function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRuntime): GameState {
@@ -436,7 +468,11 @@ function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRunti
     healMultB: ready.healMultB * (isDirectHealSpell(spell, spellId) ? weaveDirectMult : weaveHotMult),
     pbuffsBaseline: castBuffs,
   };
-  const { newParty: partyAfterDirectHot } = patchPartyStandardDirectAndHot(s, readyWithWeave);
+  const {
+    newParty: partyAfterDirectHot,
+    healEff: patchEff,
+    healOh: patchOh,
+  } = patchPartyStandardDirectAndHot(s, readyWithWeave);
   const landCtx = {
     spell,
     spellId,
@@ -446,6 +482,7 @@ function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRunti
     critH: ready.critH,
     tMod: ready.tMod,
     isCrit: isCritH,
+    rankHealMult: ready.rankHealMult,
   };
   let postHeal = runOnHealLand(s, landCtx, partyAfterDirectHot, castBuffs);
   let newParty2 = postHeal.party;
@@ -512,6 +549,10 @@ function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRunti
     needMana > 0 && !(surgeFree && isPriestSurgeFinisher(spellId));
   pbuffs = upsertSpiritRegenLockoutIfSpentMana(pbuffs, spentManaForSpiritRegen);
   pbuffs = applyPowerInfusionCastsAfterCooldown(pbuffs, nPi);
+  const fctDrafts = diffPartyCombatFloats(s.party, newParty2, isCritH);
+  const healEffCast = patchEff + postHeal.healEff;
+  const healOhCast = patchOh + postHeal.healOh;
+  const manaSpentHeal = isHealSpell(spell, spellId) ? Math.max(0, s.mana - mOut) : 0;
   return {
     ...s,
     party: newParty2,
@@ -519,5 +560,13 @@ function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRunti
     playerCombatBuffs: pbuffs,
     holyPower: hp2,
     enemyHealth: s.enemyHealth,
+    floatingCombatTexts: mergeFloatingCombatForTick(
+      s.floatingCombatTexts,
+      s.combatElapsedTicks,
+      fctDrafts,
+    ),
+    dungeonRunHealEffective: s.dungeonRunHealEffective + healEffCast,
+    dungeonRunHealOverheal: s.dungeonRunHealOverheal + healOhCast,
+    dungeonRunManaSpentHealing: s.dungeonRunManaSpentHealing + manaSpentHeal,
   };
 }

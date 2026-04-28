@@ -6,6 +6,7 @@ import {
   Spell,
   Unit,
 } from './types.ts';
+import { diffPartyCombatFloats, mergeFloatingCombatForTick } from './floatingCombatText.ts';
 import {
   talentRanks,
   isHealSpell,
@@ -21,6 +22,7 @@ import {
   hasHotOnUnit,
 } from './talentMechanics.ts';
 import { rollCritAgainstEffective } from './effectivePlayerCombat.ts';
+import { calculateSpellRank, getRankHealMultiplier } from './playerStats.ts';
 import { oneHotTickDoubleRoll, resolveSwiftmend } from './combatHelper.ts';
 import { BALANCE } from './balance.ts';
 import {
@@ -80,6 +82,7 @@ export type HealLandContext = {
   critH: number;
   tMod: number;
   isCrit: boolean;
+  rankHealMult: number;
 };
 
 export type CritContext = HealLandContext;
@@ -91,6 +94,8 @@ export type DamageTakenContext = {
 export type PostHealAccumulator = {
   party: Unit[];
   playerCombatBuffs: PlayerCombatBuff[];
+  healEff: number;
+  healOh: number;
 };
 
 export type HealManaCostContext = {
@@ -206,7 +211,16 @@ export function trySpecialHealCast(s: GameState, ctx: SpecialHealCastContext): G
   );
   const critMod0 = isCrit0 ? 1.5 : 1.0;
   const healMult0 = ctx.eff.healingFromProgress;
-  const { party: pr, applied } = resolveSwiftmend(s, s.playerClass, ctx.targetId, healMult0, critMod0, ctx.spell);
+  const rankHealMult = getRankHealMultiplier(calculateSpellRank(ctx.spellId, s.playerClass, s.level));
+  const { party: pr, applied, eff: smEff, oh: smOh } = resolveSwiftmend(
+    s,
+    s.playerClass,
+    ctx.targetId,
+    healMult0,
+    critMod0,
+    ctx.spell,
+    rankHealMult,
+  );
   if (!applied) return null;
   let m0 = s.mana - ctx.needMana;
   let pbSm = s.playerCombatBuffs;
@@ -217,7 +231,18 @@ export function trySpecialHealCast(s: GameState, ctx: SpecialHealCastContext): G
   const nPiSm = ctx.runCooldown(ctx.spell.cooldown, piSm);
   pbSm = upsertSpiritRegenLockoutIfSpentMana(pbSm, ctx.needMana > 0);
   pbSm = applyPowerInfusionCastsAfterCooldown(pbSm, nPiSm);
-  return { ...s, party: pr, mana: m0, playerCombatBuffs: pbSm };
+  const fctDrafts = diffPartyCombatFloats(s.party, pr, isCrit0);
+  const manaSpent = Math.max(0, s.mana - m0);
+  return {
+    ...s,
+    party: pr,
+    mana: m0,
+    playerCombatBuffs: pbSm,
+    floatingCombatTexts: mergeFloatingCombatForTick(s.floatingCombatTexts, s.combatElapsedTicks, fctDrafts),
+    dungeonRunHealEffective: s.dungeonRunHealEffective + smEff,
+    dungeonRunHealOverheal: s.dungeonRunHealOverheal + smOh,
+    dungeonRunManaSpentHealing: s.dungeonRunManaSpentHealing + manaSpent,
+  };
 }
 
 export function runOnHealLand(
@@ -226,7 +251,12 @@ export function runOnHealLand(
   partyAfterDirect: Unit[],
   playerCombatBuffs: PlayerCombatBuff[],
 ): PostHealAccumulator {
-  let acc: PostHealAccumulator = { party: partyAfterDirect, playerCombatBuffs };
+  let acc: PostHealAccumulator = {
+    party: partyAfterDirect,
+    playerCombatBuffs,
+    healEff: 0,
+    healOh: 0,
+  };
 
   if (ctx.isCrit && talentRanks(s.talents, 'divine_aegis') > 0) {
     acc = {
@@ -236,25 +266,41 @@ export function runOnHealLand(
   }
 
   if (s.playerClass && talentRanks(s.talents, 'binding_heal') > 0) {
+    const bindR = applyBindingHealSelf(
+      s,
+      acc.party,
+      ctx.targetId,
+      ctx.spell,
+      ctx.healMultB,
+      ctx.critH,
+      ctx.tMod,
+      ctx.rankHealMult,
+    );
     acc = {
       ...acc,
-      party: applyBindingHealSelf(s, acc.party, ctx.targetId, ctx.spell, ctx.healMultB, ctx.critH, ctx.tMod),
+      party: bindR.party,
+      healEff: acc.healEff + bindR.eff,
+      healOh: acc.healOh + bindR.oh,
     };
   }
 
   if (talentRanks(s.talents, 'beacon_of_light') > 0) {
+    const bcR = applyBeaconEcho(
+      s,
+      acc.party,
+      ctx.targetId,
+      ctx.spell,
+      ctx.spellId,
+      ctx.healMultB,
+      ctx.critH,
+      ctx.tMod,
+      ctx.rankHealMult,
+    );
     acc = {
       ...acc,
-      party: applyBeaconEcho(
-        s,
-        acc.party,
-        ctx.targetId,
-        ctx.spell,
-        ctx.spellId,
-        ctx.healMultB,
-        ctx.critH,
-        ctx.tMod,
-      ),
+      party: bcR.party,
+      healEff: acc.healEff + bcR.eff,
+      healOh: acc.healOh + bcR.oh,
     };
   }
 
@@ -270,6 +316,7 @@ export function runOnHealLand(
         ctx.healMultB,
         ctx.critH,
         ctx.tMod,
+        ctx.rankHealMult,
       ),
     };
   }
@@ -325,16 +372,19 @@ export function runOnHealLand(
     };
   }
   if (s.playerClass === 'PALADIN') {
+    const lbR = applyLightbringerResolveSplash(
+      s,
+      ctx.partyBeforeCast,
+      acc.party,
+      ctx.spell,
+      ctx.spellId,
+      ctx.targetId,
+    );
     acc = {
       ...acc,
-      party: applyLightbringerResolveSplash(
-        s,
-        ctx.partyBeforeCast,
-        acc.party,
-        ctx.spell,
-        ctx.spellId,
-        ctx.targetId,
-      ),
+      party: lbR.party,
+      healEff: acc.healEff + lbR.eff,
+      healOh: acc.healOh + lbR.oh,
     };
   }
 
@@ -369,6 +419,10 @@ export function runPaladinAvengingWrathSplashFraction(s: GameState): number {
   return paladinAvengingWrathSplashFraction(s);
 }
 
-export function runOnShieldTransition(s: GameState, partyBefore: Unit[], partyAfter: Unit[]): Unit[] {
+export function runOnShieldTransition(
+  s: GameState,
+  partyBefore: Unit[],
+  partyAfter: Unit[],
+): { party: Unit[]; eff: number; oh: number } {
   return applyAegisBurstsFromShieldTransitions(s, partyBefore, partyAfter);
 }

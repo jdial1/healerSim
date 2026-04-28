@@ -142,6 +142,7 @@ export default function App() {
         state.level,
         state.talents,
       ),
+      unlockedSpells: state.unlockedSpells,
       actionBarHighlights,
     };
   }, [
@@ -151,6 +152,7 @@ export default function App() {
     state.maxMana,
     state.currentDungeon,
     state.level,
+    state.unlockedSpells,
     state.manaPotionsUsedThisDungeon,
     state.talents,
     manaRegenTicksForUi,
@@ -213,7 +215,9 @@ export default function App() {
         {showRoster || !state.playerClass ? (
           <AnimatePresence mode="wait">
             {!splashDismissed ? (
-              <SplashScreen key="splash" onEnter={() => setSplashDismissed(true)} />
+              <Fragment key="splash">
+                <SplashScreen onEnter={() => setSplashDismissed(true)} />
+              </Fragment>
             ) : (
               <motion.div
                 key="character-roster"
@@ -323,11 +327,17 @@ export default function App() {
                 state.currentDungeon.enemies[TRASH_PACK_COUNT - state.trashPullsRemaining]?.name ?? ''
               }
               bossSelfBuffs={state.combatPhase === 'BOSS' ? state.bossSelfBuffs : []}
+              endlessStacks={state.currentDungeon.endless ? state.endlessStacks : undefined}
             />
 
             <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-48 pb-36 sm:pt-52 sm:pb-40">
                <div className="mt-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-1 self-center overflow-y-auto px-2 pb-2">
-                 <HealGrid party={partyForHealGrid} selectedId={targetId} onTargetSelect={setTargetId} />
+                 <HealGrid
+                  party={partyForHealGrid}
+                  selectedId={targetId}
+                  onTargetSelect={setTargetId}
+                  floatingCombatTexts={state.floatingCombatTexts}
+                />
                </div>
             </main>
           </motion.div>

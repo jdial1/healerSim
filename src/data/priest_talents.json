@@ -225,7 +225,7 @@
   {
     "id": "p_r2c3",
     "name": "Harsh Confession",
-    "description": "Flash Heal has 10% chance to make your next Greater Heal free and unimpeded by cooldown feel.",
+    "description": "Flash Heal has 16% chance to make your next Greater Heal free and unimpeded by cooldown feel.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 9,
@@ -241,7 +241,7 @@
   {
     "id": "p_r2c4",
     "name": "Path of the Moon",
-    "description": "Path of the Moon: direct heals return 1% max mana. Exclusive with Path of the Sun.",
+    "description": "Path of the Moon: direct heals return 1.75% max mana. Exclusive with Path of the Sun.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 9,

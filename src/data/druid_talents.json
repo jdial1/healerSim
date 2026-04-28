@@ -17,7 +17,7 @@
   {
     "id": "d_r0c1",
     "name": "Mana Focus I",
-    "description": "Max mana 45 per point. Max rank: +135 mana total from this talent.",
+    "description": "Max mana 12 per point. Max rank: +36 mana total from this talent.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -26,7 +26,7 @@
     "gridX": 1,
     "gridY": 0,
     "statBonus": {
-      "manaPool": 20
+      "manaPool": 12
     }
   },
   {
@@ -96,7 +96,7 @@
   {
     "id": "d_r1c1",
     "name": "Mana Focus III",
-    "description": "Max mana 60 per point. Max rank: +120 mana total from this talent.",
+    "description": "Max mana 14 per point. Max rank: +28 mana total from this talent.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -108,7 +108,7 @@
       "d_r0c1"
     ],
     "statBonus": {
-      "manaPool": 30
+      "manaPool": 14
     }
   },
   {
@@ -362,7 +362,7 @@
   {
     "id": "d_r4c0",
     "name": "Mana Focus IV",
-    "description": "Max mana 100. Max rank: +100 mana total from this talent.",
+    "description": "Max mana 35. Max rank: +35 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -374,7 +374,7 @@
       "d_r3c0"
     ],
     "statBonus": {
-      "manaPool": 50
+      "manaPool": 35
     }
   },
   {
@@ -432,7 +432,7 @@
   {
     "id": "d_r4c4",
     "name": "Critical and Mana Focus",
-    "description": "Crit 4% and mana +80. Max rank: +4% crit chance, +80 mana total from this talent.",
+    "description": "Crit 4% and mana +45. Max rank: +4% crit chance, +45 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -445,7 +445,7 @@
     ],
     "statBonus": {
       "critChance": 2,
-      "manaPool": 80
+      "manaPool": 45
     }
   },
   {
@@ -507,7 +507,7 @@
   {
     "id": "d_r5c3",
     "name": "Haste and Mana Focus",
-    "description": "Sustained HoT upkeep rewards smoother throughput. Haste 5% and max mana 100. Max rank: +5% haste, +100 mana total from this talent.",
+    "description": "Sustained HoT upkeep rewards smoother throughput. Haste 5% and max mana 54. Max rank: +5% haste, +54 mana total from this talent.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -520,7 +520,7 @@
     ],
     "statBonus": {
       "haste": 2.5,
-      "manaPool": 100
+      "manaPool": 54
     }
   },
   {

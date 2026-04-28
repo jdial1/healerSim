@@ -6,12 +6,14 @@ import {
   generateRandomParty,
   trashMaxHealthForDungeon,
 } from './constants.ts';
+import { buildEndlessWaveDungeon, endlessBossPool, getEndlessTemplate } from './dungeons/index.ts';
 import { cloneTalentsForClass } from './talents/index.ts';
 import {
   patchFromSavedShape,
   computeMetaFromProgress,
   reconcileActionBarOrder,
   xpProgressWithinLevel,
+  levelUpRewardSummary,
   type RosterV2,
 } from './gameStorage.ts';
 import {
@@ -30,7 +32,7 @@ export type GameAction =
   | { type: 'REORDER_ACTION_BAR'; from: number; to: number }
   | { type: 'DISMISS_DUNGEON_OUTCOME' }
   | { type: 'ABANDON_DUNGEON' }
-  | { type: 'START_DUNGEON'; dungeon: Dungeon; pace: DungeonPace }
+  | { type: 'START_DUNGEON'; dungeon: Dungeon; pace: DungeonPace; random?: () => number }
   | { type: 'UNLOCK_TALENT'; talentId: string }
   | { type: 'RESPEC_TALENTS' }
   | { type: 'CAST_SPELL'; spellId: string; targetId: string; critRoll: number }
@@ -92,10 +94,25 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         spellCooldowns: {},
         dungeonPace: null,
         combatElapsedTicks: 0,
+        floatingCombatTexts: [],
+        endlessStacks: 0,
+        dungeonRunHealEffective: 0,
+        dungeonRunHealOverheal: 0,
+        dungeonRunManaSpentHealing: 0,
       };
     case 'START_DUNGEON': {
-      const dungeon = action.dungeon;
+      if (action.dungeon.endless && state.level < action.dungeon.levelMin) return state;
       const pace = action.pace;
+      const rnd = action.random ?? (() => Math.random());
+      let dungeon = action.dungeon;
+      let endlessStacks = 0;
+      if (dungeon.endless) {
+        const template = getEndlessTemplate();
+        const pool = endlessBossPool(state.level);
+        const source = pool[Math.floor(rnd() * pool.length)];
+        dungeon = buildEndlessWaveDungeon(template, source, 0);
+        endlessStacks = 0;
+      }
       const trashHp = trashMaxHealthForDungeon(dungeon);
       return {
         ...state,
@@ -120,6 +137,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         bossMechanicOrdinal: 0,
         spellCooldowns: {},
         combatElapsedTicks: 0,
+        floatingCombatTexts: [],
+        endlessStacks,
+        dungeonRunHealEffective: 0,
+        dungeonRunHealOverheal: 0,
+        dungeonRunManaSpentHealing: 0,
       };
     }
     case 'UNLOCK_TALENT':
@@ -139,12 +161,30 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         meta.level > state.level
           ? generateRandomParty(meta.level, state.playerClass)
           : state.party;
+      const leveled = meta.level > state.level;
+      const rewards = leveled
+        ? levelUpRewardSummary(state.playerClass, state.talents, state.level, meta.level)
+        : { upgradedSpellIds: [] as string[], upgradedPotion: false };
       return {
         ...state,
         ...meta,
         activeActionBars,
         mana: Math.min(meta.maxMana, state.mana),
         party,
+        dungeonOutcome: leveled
+          ? {
+              kind: 'success',
+              successFlavor: 'level_up',
+              dungeonName: `Level ${meta.level}`,
+              bossName: '',
+              xpGained: delta,
+              levelUp: true,
+              levelAfter: meta.level,
+              playerClass: state.playerClass,
+              upgradedSpellIds: rewards.upgradedSpellIds,
+              upgradedPotion: rewards.upgradedPotion,
+            }
+          : state.dungeonOutcome,
       };
     }
     default:
@@ -272,6 +312,11 @@ export function emptyGameBase(): GameState {
     dungeonOutcome: null,
     spellCooldowns: {},
     combatElapsedTicks: 0,
+    floatingCombatTexts: [],
+    endlessStacks: 0,
+    dungeonRunHealEffective: 0,
+    dungeonRunHealOverheal: 0,
+    dungeonRunManaSpentHealing: 0,
   };
 }
 
@@ -296,6 +341,11 @@ function applyProgressPatchToBase(base: GameState, patch: Partial<GameState>): G
     dungeonOutcome: null,
     spellCooldowns: patch.spellCooldowns ?? base.spellCooldowns,
     combatElapsedTicks: patch.combatElapsedTicks ?? base.combatElapsedTicks,
+    floatingCombatTexts: patch.floatingCombatTexts ?? base.floatingCombatTexts,
+    endlessStacks: patch.endlessStacks ?? base.endlessStacks,
+    dungeonRunHealEffective: patch.dungeonRunHealEffective ?? base.dungeonRunHealEffective,
+    dungeonRunHealOverheal: patch.dungeonRunHealOverheal ?? base.dungeonRunHealOverheal,
+    dungeonRunManaSpentHealing: patch.dungeonRunManaSpentHealing ?? base.dungeonRunManaSpentHealing,
   };
 }
 

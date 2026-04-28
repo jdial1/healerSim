@@ -15,6 +15,9 @@ import {
   talentHastePctFromTalents,
   effectiveUniqueStatRating,
   MANA_PER_INTELLECT,
+  calculateSpellRank,
+  getRankHealMultiplier,
+  getRankCostMultiplier,
 } from '../src/playerStats.ts';
 import { BALANCE } from '../src/balance.ts';
 import { totalXpToReachLevel, computeMetaFromProgress } from '../src/gameStorage.ts';
@@ -54,10 +57,17 @@ const OOM_ROTATIONS: Record<ClassType, { label: string; spells: string[] }> = {
 
 const S = testPalette();
 
-function calculateTotalHealing(spell: Spell, multiplier: number): number {
-  const direct = spell.healing * multiplier;
+function rankedSpellManaCost(spellId: string, cls: ClassType, level: number, baseMana: number): number {
+  const rank = calculateSpellRank(spellId, cls, level);
+  return Math.round(baseMana * getRankCostMultiplier(rank));
+}
+
+function calculateTotalHealing(spell: Spell, multiplier: number, cls: ClassType, level: number): number {
+  const rank = calculateSpellRank(spell.id, cls, level);
+  const rankM = getRankHealMultiplier(rank);
+  const direct = spell.healing * multiplier * rankM;
   const hotTicks = spell.hotDuration ?? 0;
-  const hotHeal = (spell.hotHealingPerTick ?? 0) * hotTicks * multiplier;
+  const hotHeal = (spell.hotHealingPerTick ?? 0) * hotTicks * multiplier * rankM;
 
   let total = direct + hotHeal;
 
@@ -203,17 +213,19 @@ function runSpellTest(): void {
 
     const classSpells = spellIds.map((id) => SPELLS[id]).filter(Boolean) as Spell[];
 
+    const cls = className as ClassType;
     for (const spell of classSpells) {
       if (spell.id === 'mana_potion') continue;
 
-      const totalHeal = calculateTotalHealing(spell, multiplier);
-      const hpm = spell.manaCost > 0 ? totalHeal / spell.manaCost : 0;
+      const totalHeal = calculateTotalHealing(spell, multiplier, cls, TEST_LEVEL);
+      const actualCost = rankedSpellManaCost(spell.id, cls, TEST_LEVEL, spell.manaCost);
+      const hpm = actualCost > 0 ? totalHeal / actualCost : 0;
       const hpc = totalHeal;
 
       console.log(
         `${spell.name.padEnd(18)} | ` +
           `${spell.type.padEnd(8)} | ` +
-          `${spell.manaCost.toString().padEnd(5)} | ` +
+          `${actualCost.toString().padEnd(5)} | ` +
           `${Math.round(totalHeal).toString().padEnd(8)} | ` +
           `${hpm.toFixed(2).padEnd(6)} | ` +
           `${Math.round(hpc)}`,
@@ -252,16 +264,20 @@ function runRotationalHpmOverlap(): void {
   const gh = SPELLS.greater_heal;
   const surgeRanks = 3;
   const pSurge = Math.min(1, BALANCE.combat.priest.surgeOfLightProcChancePerRank * surgeRanks);
-  const hFlash = fh.healing * mult * 1.15;
-  const hGh = gh.healing * mult * 1.15;
-  const rotHeal = (hFlash + pSurge * hGh) / 18;
+  const rankFh = calculateSpellRank('flash_heal', 'PRIEST', TEST_LEVEL);
+  const rankGh = calculateSpellRank('greater_heal', 'PRIEST', TEST_LEVEL);
+  const costFh = rankedSpellManaCost('flash_heal', 'PRIEST', TEST_LEVEL, fh.manaCost);
+  const hFlash = fh.healing * mult * 1.15 * getRankHealMultiplier(rankFh);
+  const hGh = gh.healing * mult * 1.15 * getRankHealMultiplier(rankGh);
+  const rotHeal = (hFlash + pSurge * hGh) / costFh;
   console.log(
-    `Priest Flash→Surge→GH chain (EV, ${surgeRanks} Surge ranks): rotational HPM ~${rotHeal.toFixed(2)} (raw Flash HPM ~${((hFlash) / fh.manaCost).toFixed(2)})`,
+    `Priest Flash→Surge→GH chain (EV, ${surgeRanks} Surge ranks): rotational HPM ~${rotHeal.toFixed(2)} (raw Flash HPM ~${(hFlash / costFh).toFixed(2)})`,
   );
 
   const rg = SPELLS.regrowth;
-  const baseTotal = calculateTotalHealing(rg, mult);
-  const rawHpm = baseTotal / rg.manaCost;
+  const baseTotal = calculateTotalHealing(rg, mult, 'DRUID', TEST_LEVEL);
+  const costRg = rankedSpellManaCost(rg.id, 'DRUID', TEST_LEVEL, rg.manaCost);
+  const rawHpm = costRg > 0 ? baseTotal / costRg : 0;
   const rating = effectiveUniqueStatRating('DRUID', TEST_LEVEL, []);
   const pTick = Math.min(
     BALANCE.combat.druid.passiveOmenProcChanceCap,
@@ -271,9 +287,10 @@ function runRotationalHpmOverlap(): void {
   const pAny = 1 - Math.pow(1 - pTick, nTicks);
   const omenManaFactor = Math.max(0.35, 1 - pAny * 0.85);
   const critPct = talentCritChancePctFromTalents([]);
-  const directPortion = rg.healing * mult * 1.15;
+  const rankRg = calculateSpellRank(rg.id, 'DRUID', TEST_LEVEL);
+  const directPortion = rg.healing * mult * 1.15 * getRankHealMultiplier(rankRg);
   const lsExtra = critPct * (BALANCE.combat.druid.livingSeedPoolFraction * directPortion);
-  const adjHpm = (baseTotal + lsExtra) / (rg.manaCost * omenManaFactor);
+  const adjHpm = (baseTotal + lsExtra) / (costRg * omenManaFactor);
   console.log(
     `Druid Regrowth: raw HPM ~${rawHpm.toFixed(2)}  |  adjusted (Omen EV mana + Living Seed EV) ~${adjHpm.toFixed(2)}`,
   );
@@ -296,6 +313,8 @@ function runStatRoiOverlap(): void {
   const talents = cloneTalentsForClass('PRIEST').map((t) => ({ ...t, points: 0 }));
   const mult = spellHealingMultiplierFromProgress('PRIEST', ROI_LEVEL, talents);
   const flash = SPELLS.flash_heal;
+  const rankFlashPriest = calculateSpellRank(flash.id, 'PRIEST', ROI_LEVEL);
+  const flashRankM = getRankHealMultiplier(rankFlashPriest);
   const baseRating = effectiveUniqueStatRating('PRIEST', ROI_LEVEL, talents);
   const baseIntMana = computedMaxMana('PRIEST', ROI_LEVEL, talents);
   const intMana = maxManaWithIntellectBonus('PRIEST', ROI_LEVEL, talents, 10);
@@ -306,7 +325,7 @@ function runStatRoiOverlap(): void {
   const maxHp = 300;
   const rng = mulberry32(99);
   for (let i = 0; i < 100; i++) {
-    const heal = flash.healing * mult * 1.15;
+    const heal = flash.healing * mult * 1.15 * flashRankM;
     const room = Math.max(0, maxHp - tgtHp);
     const toFlesh = Math.min(room, heal);
     const oh = Math.max(0, heal - room);
@@ -322,7 +341,7 @@ function runStatRoiOverlap(): void {
   const rng2 = mulberry32(99);
   const ratingU = baseRating + 10;
   for (let i = 0; i < 100; i++) {
-    const heal = flash.healing * mult * 1.15;
+    const heal = flash.healing * mult * 1.15 * flashRankM;
     const room = Math.max(0, maxHp - tgtHp);
     const toFlesh = Math.min(room, heal);
     const oh = Math.max(0, heal - room);
@@ -345,10 +364,11 @@ function runStatRoiOverlap(): void {
   const pTalents = cloneTalentsForClass('PALADIN').map((t) => ({ ...t, points: 0 }));
   const pMult = spellHealingMultiplierFromProgress('PALADIN', ROI_LEVEL, pTalents);
   const hf = SPELLS.flash_heal;
+  const rankFlashPalRoi = calculateSpellRank(hf.id, 'PALADIN', ROI_LEVEL);
   const baseR = effectiveUniqueStatRating('PALADIN', ROI_LEVEL, pTalents);
   const maxH = 300;
   const curH = 90;
-  const perCast = hf.healing * pMult * 1.15;
+  const perCast = hf.healing * pMult * 1.15 * getRankHealMultiplier(rankFlashPalRoi);
   const sumBase = perCast * radianceMultAt(1 - curH / maxH, baseR) * 100;
   const sumRad = perCast * radianceMultAt(1 - curH / maxH, baseR + 10) * 100;
   console.log(
@@ -361,12 +381,14 @@ export function runSpellTestCondensed(): void {
   const maxHpmByClass: Record<string, number> = {};
   for (const [className, spellIds] of Object.entries(CLASS_MAP)) {
     const multiplier = spellHealingMultiplierFromProgress(className as ClassType, TEST_LEVEL, []);
+    const cls = className as ClassType;
     let maxH = 0;
     for (const sid of spellIds) {
       const spell = SPELLS[sid];
       if (!spell || spell.id === 'mana_potion') continue;
-      const totalHeal = calculateTotalHealing(spell, multiplier);
-      const hpm = spell.manaCost > 0 ? totalHeal / spell.manaCost : 0;
+      const totalHeal = calculateTotalHealing(spell, multiplier, cls, TEST_LEVEL);
+      const actualCost = rankedSpellManaCost(spell.id, cls, TEST_LEVEL, spell.manaCost);
+      const hpm = actualCost > 0 ? totalHeal / actualCost : 0;
       maxH = Math.max(maxH, hpm);
     }
     maxHpmByClass[className] = maxH;
@@ -378,6 +400,7 @@ export function runSpellTestCondensed(): void {
   );
   for (const [className, spellIds] of Object.entries(CLASS_MAP)) {
     const multiplier = spellHealingMultiplierFromProgress(className as ClassType, TEST_LEVEL, []);
+    const cls = className as ClassType;
     out.push(
       `${S.cyan}${className}${S.r} ${S.dim}mult=${S.r}x${S.yellow}${multiplier.toFixed(2)}${S.r}`,
     );
@@ -385,14 +408,15 @@ export function runSpellTestCondensed(): void {
     for (const sid of spellIds) {
       const spell = SPELLS[sid];
       if (!spell || spell.id === 'mana_potion') continue;
-      const totalHeal = calculateTotalHealing(spell, multiplier);
-      const hpm = spell.manaCost > 0 ? totalHeal / spell.manaCost : 0;
+      const totalHeal = calculateTotalHealing(spell, multiplier, cls, TEST_LEVEL);
+      const actualCost = rankedSpellManaCost(spell.id, cls, TEST_LEVEL, spell.manaCost);
+      const hpm = actualCost > 0 ? totalHeal / actualCost : 0;
       const hpmStr =
         maxH > 0 && hpm >= maxH
           ? `${S.green}hpm${hpm.toFixed(2)}${S.r}`
           : `${S.yellow}hpm${hpm.toFixed(2)}${S.r}`;
       out.push(
-        `${S.dim}${sid}${S.r}|${spell.type}|m${spell.manaCost}|h${Math.round(totalHeal)}|${hpmStr}|hpc${Math.round(totalHeal)}`,
+        `${S.dim}${sid}${S.r}|${spell.type}|m${actualCost}|h${Math.round(totalHeal)}|${hpmStr}|hpc${Math.round(totalHeal)}`,
       );
     }
   }
@@ -413,15 +437,19 @@ export function runSpellTestCondensed(): void {
   const gh = SPELLS.greater_heal;
   const surgeRanks = 3;
   const pSurge = Math.min(1, BALANCE.combat.priest.surgeOfLightProcChancePerRank * surgeRanks);
-  const hFlash = fh.healing * mult * 1.15;
-  const hGh = gh.healing * mult * 1.15;
-  const rotHeal = (hFlash + pSurge * hGh) / 18;
+  const rankFhC = calculateSpellRank('flash_heal', 'PRIEST', TEST_LEVEL);
+  const rankGhC = calculateSpellRank('greater_heal', 'PRIEST', TEST_LEVEL);
+  const costFhC = rankedSpellManaCost('flash_heal', 'PRIEST', TEST_LEVEL, fh.manaCost);
+  const hFlash = fh.healing * mult * 1.15 * getRankHealMultiplier(rankFhC);
+  const hGh = gh.healing * mult * 1.15 * getRankHealMultiplier(rankGhC);
+  const rotHeal = (hFlash + pSurge * hGh) / costFhC;
   out.push(
-    `${S.dim}rot_priest_flash_surge_gh${S.r} evHpm~${S.green}${rotHeal.toFixed(2)}${S.r} flashHpm~${S.yellow}${(hFlash / fh.manaCost).toFixed(2)}${S.r}`,
+    `${S.dim}rot_priest_flash_surge_gh${S.r} evHpm~${S.green}${rotHeal.toFixed(2)}${S.r} flashHpm~${S.yellow}${(hFlash / costFhC).toFixed(2)}${S.r}`,
   );
   const rg = SPELLS.regrowth;
-  const baseTotal = calculateTotalHealing(rg, mult);
-  const rawHpm = baseTotal / rg.manaCost;
+  const baseTotal = calculateTotalHealing(rg, mult, 'DRUID', TEST_LEVEL);
+  const costRgC = rankedSpellManaCost(rg.id, 'DRUID', TEST_LEVEL, rg.manaCost);
+  const rawHpm = costRgC > 0 ? baseTotal / costRgC : 0;
   const rating = effectiveUniqueStatRating('DRUID', TEST_LEVEL, []);
   const pTick = Math.min(
     BALANCE.combat.druid.passiveOmenProcChanceCap,
@@ -431,9 +459,10 @@ export function runSpellTestCondensed(): void {
   const pAny = 1 - Math.pow(1 - pTick, nTicks);
   const omenManaFactor = Math.max(0.35, 1 - pAny * 0.85);
   const critPct = talentCritChancePctFromTalents([]);
-  const directPortion = rg.healing * mult * 1.15;
+  const rankRgC = calculateSpellRank(rg.id, 'DRUID', TEST_LEVEL);
+  const directPortion = rg.healing * mult * 1.15 * getRankHealMultiplier(rankRgC);
   const lsExtra = critPct * (BALANCE.combat.druid.livingSeedPoolFraction * directPortion);
-  const adjHpm = (baseTotal + lsExtra) / (rg.manaCost * omenManaFactor);
+  const adjHpm = (baseTotal + lsExtra) / (costRgC * omenManaFactor);
   out.push(
     `${S.dim}rot_druid_regrowth${S.r} rawHpm~${S.yellow}${rawHpm.toFixed(2)}${S.r} adj~${S.green}${adjHpm.toFixed(2)}${S.r}`,
   );
@@ -441,6 +470,8 @@ export function runSpellTestCondensed(): void {
   const talents = cloneTalentsForClass('PRIEST').map((t) => ({ ...t, points: 0 }));
   const multRoi = spellHealingMultiplierFromProgress('PRIEST', ROI_LEVEL, talents);
   const flash = SPELLS.flash_heal;
+  const rankFlashPriestRoiC = calculateSpellRank(flash.id, 'PRIEST', ROI_LEVEL);
+  const flashRankMC = getRankHealMultiplier(rankFlashPriestRoiC);
   const baseRating = effectiveUniqueStatRating('PRIEST', ROI_LEVEL, talents);
   const baseIntMana = computedMaxMana('PRIEST', ROI_LEVEL, talents);
   const intMana = maxManaWithIntellectBonus('PRIEST', ROI_LEVEL, talents, 10);
@@ -450,7 +481,7 @@ export function runSpellTestCondensed(): void {
   const maxHp = 300;
   const rng = mulberry32(99);
   for (let i = 0; i < 100; i++) {
-    const heal = flash.healing * multRoi * 1.15;
+    const heal = flash.healing * multRoi * 1.15 * flashRankMC;
     const room = Math.max(0, maxHp - tgtHp);
     const toFlesh = Math.min(room, heal);
     const oh = Math.max(0, heal - room);
@@ -465,7 +496,7 @@ export function runSpellTestCondensed(): void {
   const rng2 = mulberry32(99);
   const ratingU = baseRating + 10;
   for (let i = 0; i < 100; i++) {
-    const heal = flash.healing * multRoi * 1.15;
+    const heal = flash.healing * multRoi * 1.15 * flashRankMC;
     const room = Math.max(0, maxHp - tgtHp);
     const toFlesh = Math.min(room, heal);
     const oh = Math.max(0, heal - room);
@@ -482,10 +513,11 @@ export function runSpellTestCondensed(): void {
   const pTalents = cloneTalentsForClass('PALADIN').map((t) => ({ ...t, points: 0 }));
   const pMult = spellHealingMultiplierFromProgress('PALADIN', ROI_LEVEL, pTalents);
   const hf = SPELLS.flash_heal;
+  const rankFlashPalCond = calculateSpellRank(hf.id, 'PALADIN', ROI_LEVEL);
   const baseR = effectiveUniqueStatRating('PALADIN', ROI_LEVEL, pTalents);
   const maxH = 300;
   const curH = 90;
-  const perCast = hf.healing * pMult * 1.15;
+  const perCast = hf.healing * pMult * 1.15 * getRankHealMultiplier(rankFlashPalCond);
   const sumBase = perCast * radianceMultAt(1 - curH / maxH, baseR) * 100;
   const sumRad = perCast * radianceMultAt(1 - curH / maxH, baseR + 10) * 100;
   out.push(

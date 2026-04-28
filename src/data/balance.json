@@ -1,6 +1,10 @@
 {
   "boss": {
-    "damageMultiplierPerDifficultyStep": 1.05
+    "damageMultiplierPerDifficultyStep": 1.08
+  },
+  "endless": {
+    "scalingPerCycle": 1.07,
+    "bossKillXpFraction": 0.22
   },
   "partyDamageFromDungeonLevelGap": {
     "multiplierPerPartyLevelOverDungeonMax": 0.62
@@ -43,17 +47,17 @@
       "dispellableCurseCleanseProcPerRank": 0.08
     },
     "priest": {
-      "divinityOverhealToShieldPerRating": 0.0035,
+      "divinityOverhealToShieldPerRating": 0.0045,
       "divinityAegisMultBonusPerRating": 0.004,
       "passiveEchoOfLightHealFraction": 0.08,
       "passiveEchoOfLightDurationTicks": 50,
-      "pathMoonMaxManaReturnPerRank": 0.01,
+      "pathMoonMaxManaReturnPerRank": 0.0175,
       "meditativeManaReturnPerRankPerTick": 0.003,
-      "divineAegisShieldFractionPerRank": 0.2,
+      "divineAegisShieldFractionPerRank": 0.3,
       "luminousAegisMultiplierPerRank": 0.1,
       "bindingHealSelfFraction": 0.06,
       "bindingHealMaxRanksForCap": 2,
-      "surgeOfLightProcChancePerRank": 0.1,
+      "surgeOfLightProcChancePerRank": 0.16,
       "gleamingProclamationFlashHealCritBonusPct": 2,
       "shieldMaintenanceHastePerRank": 2.5,
       "selfShieldDamageReductionPerRank": 0.03,
@@ -61,6 +65,7 @@
       "aegisBurstHealPerAbsorbPerRank": 0.15
     },
     "paladin": {
+      "illuminationManaRefundFraction": 1.06,
       "radianceHealMultPerMissingHealthPerRating": 0.0035,
       "radianceHealMultBonusCap": 0.3,
       "passiveLightbringerSplashFraction": 0.2,

@@ -7,6 +7,15 @@ import type { MechanicId } from './mechanicsRegistry.ts';
 
 export type ClassType = 'DRUID' | 'PRIEST' | 'PALADIN';
 
+export type FloatingCombatTextEntry = {
+  id: string;
+  unitId: string;
+  amount: number;
+  kind: 'heal' | 'absorb';
+  crit: boolean;
+  expiresAtCombatTick: number;
+};
+
 export type IconGlow = 'spell' | 'nature' | 'debuff';
 
 export type SpellType = 'DIRECT' | 'HOT' | 'SHIELD' | 'AOE';
@@ -196,17 +205,31 @@ export interface Dungeon {
   cardTheme: DungeonCardTheme;
   enemies: DungeonEnemy[];
   bossCombat?: BossCombatOverrides;
+  endless?: boolean;
 }
 
 export type DungeonFailureReason = 'PARTY_WIPE' | 'HEALER_DOWN';
 
+export interface DungeonRunPostStats {
+  totalHealing: number;
+  hps: number;
+  overhealPct: number;
+  hpm: number;
+}
+
 export type DungeonRunOutcome =
   | {
       kind: 'success';
+      successFlavor?: 'dungeon' | 'level_up';
       dungeonName: string;
       bossName: string;
       xpGained: number;
       levelUp: boolean;
+      levelAfter: number;
+      playerClass: ClassType | null;
+      upgradedSpellIds: string[];
+      upgradedPotion: boolean;
+      postStats?: DungeonRunPostStats;
     }
   | {
       kind: 'failure';
@@ -214,6 +237,12 @@ export type DungeonRunOutcome =
       reason: DungeonFailureReason;
       xpGained: number;
       levelUp: boolean;
+      levelAfter: number;
+      playerClass: ClassType | null;
+      upgradedSpellIds: string[];
+      upgradedPotion: boolean;
+      endlessWavesCleared?: number;
+      postStats?: DungeonRunPostStats;
     };
 
 export type CombatPhase = 'TRASH' | 'BOSS';
@@ -233,6 +262,7 @@ export interface PlayerCombatStats {
   spellsEnabled: boolean;
   manaPotionChargesRemaining: number;
   spellHealingMultiplier: number;
+  unlockedSpells: string[];
   actionBarHighlights: Record<string, boolean>;
 }
 
@@ -268,4 +298,9 @@ export interface GameState {
   dungeonOutcome: DungeonRunOutcome | null;
   spellCooldowns: Record<string, number>;
   combatElapsedTicks: number;
+  floatingCombatTexts: FloatingCombatTextEntry[];
+  endlessStacks: number;
+  dungeonRunHealEffective: number;
+  dungeonRunHealOverheal: number;
+  dungeonRunManaSpentHealing: number;
 }

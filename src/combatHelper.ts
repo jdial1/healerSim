@@ -2,6 +2,7 @@ import { Buff, ClassType, GameState, Unit, Spell } from './types.ts';
 import { findConsumableHotIndex } from './talentMechanics.ts';
 import { directHealSynergyMultiplierFromIds, nextManaForSpellWithHooks } from './combatHooks.ts';
 import { BALANCE } from './balance.ts';
+import { healEffectiveAndOverheal } from './healMath.ts';
 
 export const T_SPIRIT_AMP = 10 * 10;
 
@@ -78,21 +79,24 @@ export function resolveSwiftmend(
   healMult: number,
   critMod: number,
   spell: Spell,
-): { party: Unit[]; applied: boolean } {
-  if (classType !== 'DRUID') return { party: s.party, applied: false };
+  rankHealMult: number,
+): { party: Unit[]; applied: boolean; eff: number; oh: number } {
+  if (classType !== 'DRUID') return { party: s.party, applied: false, eff: 0, oh: 0 };
   const p = s.party.map((u) => ({ ...u, buffs: [...u.buffs] }));
   const idx = p.findIndex((u) => u.id === targetId);
-  if (idx < 0) return { party: s.party, applied: false };
+  if (idx < 0) return { party: s.party, applied: false, eff: 0, oh: 0 };
   const u = p[idx];
-  if (u.health <= 0) return { party: s.party, applied: false };
+  if (u.health <= 0) return { party: s.party, applied: false, eff: 0, oh: 0 };
   const hotIdx = findConsumableHotIndex(u, 'DRUID');
   if (hotIdx < 0) {
-    return { party: s.party, applied: false };
+    return { party: s.party, applied: false, eff: 0, oh: 0 };
   }
+  const raw = spell.healing * rankHealMult * healMult * critMod;
+  const { eff, oh } = healEffectiveAndOverheal(u.health, u.maxHealth, raw);
   u.buffs = u.buffs.filter((_, j) => j !== hotIdx);
-  const h = Math.min(u.maxHealth, u.health + spell.healing * healMult * critMod);
+  const h = Math.min(u.maxHealth, u.health + raw);
   p[idx] = { ...u, health: h };
-  return { party: p, applied: true };
+  return { party: p, applied: true, eff, oh };
 }
 
 export function oneHotTickDoubleRoll(photosynthPoints: number): boolean {

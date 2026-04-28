@@ -7,8 +7,13 @@ import { ClassType, Dungeon, GameState, Talent } from './types.ts';
 import { PRIEST_TALENTS, DRUID_TALENTS, PALADIN_TALENTS } from './talents/index.ts';
 import { dungeonBaseXp, dungeonXpTierMultiplier, TRASH_PACK_COUNT } from './constants.ts';
 import balanceData from './data/balance.json';
-import { computedMaxMana } from './playerStats.ts';
-import { classSpellOrder, starterSpellsForClass } from './playerStats.ts';
+import {
+  classSpellOrder,
+  computedMaxMana,
+  getPotionUpgradeAtLevel,
+  getSpellUpgradeAtLevel,
+  starterSpellsForClass,
+} from './playerStats.ts';
 
 function nominalClearXpForDifficulty(difficulty: number): number {
   return Math.round(dungeonBaseXp(difficulty) * dungeonXpTierMultiplier(difficulty));
@@ -216,6 +221,28 @@ export function buildSpellLoadout(
   ];
   const unlockedSpells = ['mana_potion', ...merged].filter((x, i, a) => a.indexOf(x) === i);
   return { unlockedSpells, activeActionBars };
+}
+
+export function levelUpRewardSummary(
+  cls: ClassType | null,
+  talents: Talent[],
+  previousLevel: number,
+  newLevel: number,
+): { upgradedSpellIds: string[]; upgradedPotion: boolean } {
+  if (!cls || newLevel <= previousLevel) {
+    return { upgradedSpellIds: [], upgradedPotion: false };
+  }
+  const { unlockedSpells } = buildSpellLoadout(cls, talents);
+  const unlockedSet = new Set(unlockedSpells);
+  const spellAcc = new Set<string>();
+  let upgradedPotion = false;
+  for (let l = previousLevel + 1; l <= newLevel; l += 1) {
+    if (getPotionUpgradeAtLevel(l)) upgradedPotion = true;
+    for (const id of getSpellUpgradeAtLevel(cls, l)) {
+      if (unlockedSet.has(id)) spellAcc.add(id);
+    }
+  }
+  return { upgradedSpellIds: [...spellAcc], upgradedPotion };
 }
 
 export function mergeSavedTalentRanks(ranks: Record<string, number> | undefined, cls: ClassType | null): Talent[] {

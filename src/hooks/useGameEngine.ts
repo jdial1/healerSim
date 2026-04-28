@@ -63,7 +63,7 @@ export function useGameEngine() {
   }, []);
 
   const startDungeon = useCallback((dungeon: Dungeon, pace: DungeonPace) => {
-    dispatch({ type: 'START_DUNGEON', dungeon, pace });
+    dispatch({ type: 'START_DUNGEON', dungeon, pace, random: Math.random });
   }, []);
 
   const unlockTalent = useCallback((talentId: string) => {

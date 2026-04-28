@@ -17,6 +17,8 @@ import {
 import { computeMetaFromProgress } from '../src/gameStorage.ts';
 import {
   allyMaxHealthForRoleAndLevel,
+  calculateSpellRank,
+  getRankHealMultiplier,
   spellHealingMultiplierFromProgress,
   talentCritChancePctFromTalents,
   talentHastePctFromTalents,
@@ -255,9 +257,10 @@ function totalHealPerCast(spellId: string, cls: ClassType, level: number, talent
   const syn = synergyDirectMult(spellId);
   const critPct = talentCritChancePctFromTalents(talents);
   const critM = 1 + (critPct / 100) * 0.5;
-  const direct = sp.healing * mult * syn * critM;
+  const rankM = getRankHealMultiplier(calculateSpellRank(spellId, cls, level));
+  const direct = sp.healing * mult * syn * critM * rankM;
   const hotTicks = sp.hotDuration ?? 0;
-  const hotHeal = (sp.hotHealingPerTick ?? 0) * hotTicks * mult * critM;
+  const hotHeal = (sp.hotHealingPerTick ?? 0) * hotTicks * mult * critM * rankM;
   let total = direct + hotHeal;
   if (sp.type === 'AOE') total *= 5;
   return total;

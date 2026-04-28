@@ -101,7 +101,13 @@
     @apply min-w-0 flex-1 break-words border border-slate-600/90 bg-slate-950 px-2.5 py-2;
   }
   .ui-spell-tooltip-title {
-    @apply mb-1 border-b border-slate-800 pb-1 text-sm font-black uppercase italic text-white;
+    @apply mb-1 flex min-w-0 items-baseline justify-between gap-2 border-b border-slate-800 pb-1;
+  }
+  .ui-spell-tooltip-title-text {
+    @apply min-w-0 flex-1 text-sm font-black uppercase italic leading-tight text-white;
+  }
+  .ui-spell-tooltip-rank {
+    @apply shrink-0 text-right text-[10px] font-black uppercase tracking-widest text-sky-400;
   }
   .ui-spell-tooltip-mana {
     @apply text-sm font-bold tabular-nums text-white;
@@ -112,11 +118,35 @@
   .ui-spell-tooltip-arrow {
     @apply absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950;
   }
+  .ui-spell-tooltip-arrow-up {
+    @apply pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 border-8 border-transparent border-b-slate-950;
+  }
+  .ui-debuff-tooltip-wrap {
+    @apply pointer-events-none flex w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] items-start gap-1.5 shadow-2xl sm:gap-2;
+  }
   .ui-heal-grid-root {
-    @apply mx-auto flex w-full max-w-xl flex-col gap-2 overflow-y-auto p-1 sm:gap-1.5 sm:p-2;
+    @apply mx-auto flex w-full max-w-xl flex-col gap-2 overflow-y-auto overflow-x-visible p-1 sm:gap-1.5 sm:p-2;
+  }
+  .ui-heal-grid-row-wrap {
+    @apply relative z-0 w-full overflow-visible;
   }
   .ui-heal-grid-row {
     @apply relative flex h-20 w-full bg-slate-900 overflow-hidden transition-all duration-150 text-left;
+  }
+  .ui-heal-grid-fct-root {
+    @apply pointer-events-none absolute bottom-[72%] left-1/2 z-[25] flex max-w-[min(100%,14rem)] -translate-x-1/2 justify-center gap-1.5;
+  }
+  .ui-heal-grid-fct-heal {
+    @apply font-mono text-base font-black tabular-nums tracking-tight text-emerald-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85),0_0_10px_rgba(52,211,153,0.55)] sm:text-lg;
+  }
+  .ui-heal-grid-fct-crit {
+    @apply text-xl font-extrabold text-emerald-100 sm:text-2xl;
+    text-shadow:
+      0 0 14px rgba(52, 211, 153, 0.85),
+      0 2px 4px rgba(0, 0, 0, 0.9);
+  }
+  .ui-heal-grid-fct-absorb {
+    @apply font-mono text-sm font-black tabular-nums tracking-tight text-sky-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85),0_0_8px_rgba(56,189,248,0.5)] sm:text-base;
   }
   .ui-heal-grid-shield-track {
     @apply pointer-events-none absolute left-0 right-0 top-0 z-[2] h-1.5 bg-slate-950/90;

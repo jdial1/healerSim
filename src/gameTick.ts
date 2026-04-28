@@ -10,9 +10,11 @@ import {
   Dungeon,
   Talent,
   DungeonFailureReason,
+  DungeonRunPostStats,
 } from './types.ts';
 import {
   TRASH_PACK_COUNT,
+  TICKS_PER_SECOND,
   manaRegenAmountPerTick,
   bossDamageMultiplierForDifficulty,
   damageTakenMultiplierFromDungeonLevelGap,
@@ -21,7 +23,9 @@ import {
   generateRandomParty,
   dungeonPaceDpsMultiplier,
   dungeonPaceXpMultiplier,
+  endlessCycleMultiplier,
 } from './constants.ts';
+import { buildEndlessWaveDungeon, endlessBossPool, getEndlessTemplate } from './dungeons/index.ts';
 import {
   applyDamageThroughShield,
   talentRanks,
@@ -52,10 +56,34 @@ import {
 } from './combatPipeline.ts';
 import { rollOmenOfClarityOnHotTick } from './combatHooks.ts';
 import { BALANCE } from './balance.ts';
-import { computeMetaFromProgress, computeDungeonXpGain, computeDungeonFailureXpGain } from './gameStorage.ts';
+import {
+  appendFloatingCombatDrafts,
+  diffPartyCombatFloats,
+  pruneFloatingCombatTexts,
+} from './floatingCombatText.ts';
+import { healEffectiveAndOverheal } from './healMath.ts';
+import {
+  computeMetaFromProgress,
+  computeDungeonXpGain,
+  computeDungeonFailureXpGain,
+  levelUpRewardSummary,
+} from './gameStorage.ts';
 import { generateCombatUid } from './combatUid.ts';
 
 export type TickRandom = () => number;
+
+function dungeonPostStatsFromState(state: GameState): DungeonRunPostStats {
+  const sec = Math.max(0.001, state.combatElapsedTicks / TICKS_PER_SECOND);
+  const eff = state.dungeonRunHealEffective;
+  const oh = state.dungeonRunHealOverheal;
+  const raw = eff + oh;
+  return {
+    totalHealing: eff,
+    hps: eff / sec,
+    overhealPct: raw > 0 ? (100 * oh) / raw : 0,
+    hpm: state.dungeonRunManaSpentHealing > 0 ? eff / state.dungeonRunManaSpentHealing : 0,
+  };
+}
 
 function randomIntInclusive(min: number, max: number, random: TickRandom): number {
   return Math.floor(random() * (max - min + 1)) + min;
@@ -198,6 +226,7 @@ function applyBossAttackTemplate(
   const tankDead = !tank || tank.health <= 0;
   const baseMult =
     bossDamageMultiplierForDifficulty(dungeon.difficulty) *
+    (dungeon.endless ? endlessCycleMultiplier(state.endlessStacks) : 1) *
     partyDamageMult *
     runDamageTakenMultiplier(state, { source: 'boss_attack' });
   const natRank = talentRanks(talents, 'natural_perfection');
@@ -327,11 +356,16 @@ export function advanceBossSpikeSimTick(
   const vit1 = (tankAfter?.health ?? 0) + (tankAfter?.shield ?? 0);
   const tankDamageThisTick = Math.max(0, vit0 - vit1);
   const bossBuffsNext = tickBossDisplayedBuffSurfaces(st.combatPhase, boss.bossSelfBuffs);
+  let spikeFloats = pruneFloatingCombatTexts(state.floatingCombatTexts, combatElapsedTicks);
+  spikeFloats = appendFloatingCombatDrafts(spikeFloats, combatElapsedTicks, afterEnv.fctDrafts);
   return {
     state: {
       ...merged,
       party: afterEnv.party,
       bossSelfBuffs: bossBuffsNext,
+      floatingCombatTexts: spikeFloats,
+      dungeonRunHealEffective: st.dungeonRunHealEffective + afterEnv.tickHealEff,
+      dungeonRunHealOverheal: st.dungeonRunHealOverheal + afterEnv.tickHealOh,
     },
     tankDamageThisTick,
   };
@@ -350,6 +384,9 @@ function processPartyEnvironmentalTick(
   envPlayerCombatBuffs: GameState['playerCombatBuffs'];
   paladinResolveMana: number;
   paladinResolveHolyPower: number;
+  fctDrafts: Array<{ unitId: string; amount: number; kind: 'heal' | 'absorb'; crit: boolean }>;
+  envHealEff: number;
+  envHealOh: number;
 } {
   const bossPartyDamageMult =
     state.combatPhase === 'BOSS' && bossSelfBuffsForPartyDamageMult.length > 0
@@ -363,6 +400,14 @@ function processPartyEnvironmentalTick(
   let envPlayerCombatBuffs = state.playerCombatBuffs;
   let paladinResolveMana = 0;
   let paladinResolveHolyPower = 0;
+  let envHealEff = 0;
+  let envHealOh = 0;
+  const hotTickFloatDrafts: Array<{
+    unitId: string;
+    amount: number;
+    kind: 'heal' | 'absorb';
+    crit: boolean;
+  }> = [];
   const natRank = talentRanks(state.talents, 'natural_perfection');
   const PAL = BALANCE.combat.paladin;
   const envDmg = BALANCE.environmentalDamage;
@@ -385,6 +430,9 @@ function processPartyEnvironmentalTick(
     if (state.combatPhase === 'BOSS' && state.currentDungeon) {
       damage *= bossDamageMultiplierForDifficulty(state.currentDungeon.difficulty);
       damage *= bossPartyDamageMult;
+    }
+    if (state.currentDungeon?.endless) {
+      damage *= endlessCycleMultiplier(state.endlessStacks);
     }
     if (state.currentDungeon) {
       damage *= damageTakenMultiplierFromDungeonLevelGap(unit.level, state.currentDungeon.levelMax);
@@ -423,7 +471,11 @@ function processPartyEnvironmentalTick(
     liveSeed = vit.livingSeedPool;
     if (vit.naturalPerfectionTick) nextNat = Math.min(5, nextNat + 1);
     if (state.playerClass === 'DRUID' && unit.role === 'HEALER' && vit.tookHealthDamage > 0) {
-      currentHealth = Math.min(unit.maxHealth, currentHealth + runDruidBarkskinSelfHealOnDamage(state, vit.tookHealthDamage));
+      const rawBk = runDruidBarkskinSelfHealOnDamage(state, vit.tookHealthDamage);
+      const bk = healEffectiveAndOverheal(currentHealth, unit.maxHealth, rawBk);
+      envHealEff += bk.eff;
+      envHealOh += bk.oh;
+      currentHealth = Math.min(unit.maxHealth, currentHealth + rawBk);
     }
     if (state.playerClass === 'PALADIN' && unit.role === 'HEALER' && vit.tookHealthDamage > 0) {
       paladinResolveMana += vit.tookHealthDamage * PAL.passiveLightbringerEnvDamageManaPerHp;
@@ -438,11 +490,16 @@ function processPartyEnvironmentalTick(
     const activeDebuffs: PartyDebuff[] = [];
     unit.debuffs.forEach((d) => {
       if (d.remainingTicks > 0) {
-        currentHealth = Math.max(0, currentHealth - d.damagePerTick * dotLevelMult);
+        let dot = d.damagePerTick * dotLevelMult;
+        if (state.currentDungeon?.endless) {
+          dot *= endlessCycleMultiplier(state.endlessStacks);
+        }
+        currentHealth = Math.max(0, currentHealth - dot);
         activeDebuffs.push({ ...d, remainingTicks: d.remainingTicks - 1 });
       }
     });
 
+    const hpBeforeBuffTick = currentHealth;
     const activeBuffs: Buff[] = [];
     unit.buffs.forEach((buff) => {
       if (buff.remainingTicks <= 0) return;
@@ -466,6 +523,9 @@ function processPartyEnvironmentalTick(
         };
         const tickAmt = runHotTickAmount(tickCtx);
         if (currentHealth > 0) {
+          const ht = healEffectiveAndOverheal(currentHealth, unit.maxHealth, tickAmt);
+          envHealEff += ht.eff;
+          envHealOh += ht.oh;
           currentHealth = Math.min(unit.maxHealth, currentHealth + tickAmt);
         }
         manaFromHotTicks += runHotTickManaReturn({
@@ -482,6 +542,9 @@ function processPartyEnvironmentalTick(
       }
       rem -= 1;
       if (rem <= 0 && buff.bloomBurstHeal && currentHealth > 0) {
+        const bl = healEffectiveAndOverheal(currentHealth, unit.maxHealth, buff.bloomBurstHeal);
+        envHealEff += bl.eff;
+        envHealOh += bl.oh;
         currentHealth = Math.min(unit.maxHealth, currentHealth + buff.bloomBurstHeal);
       }
       if (rem > 0) {
@@ -492,6 +555,16 @@ function processPartyEnvironmentalTick(
         });
       }
     });
+
+    const buffHealGain = currentHealth - hpBeforeBuffTick;
+    if (buffHealGain > 0) {
+      hotTickFloatDrafts.push({
+        unitId: unit.id,
+        amount: buffHealGain,
+        kind: 'heal',
+        crit: false,
+      });
+    }
 
     if (curShield > 0 && curShieldTicks > 0) {
       curShieldTicks -= 1;
@@ -518,6 +591,9 @@ function processPartyEnvironmentalTick(
     envPlayerCombatBuffs,
     paladinResolveMana,
     paladinResolveHolyPower,
+    fctDrafts: hotTickFloatDrafts,
+    envHealEff,
+    envHealOh,
   };
 }
 
@@ -542,6 +618,9 @@ function resolvePartyAfterEnvironmentalDamage(
   envPlayerCombatBuffs: GameState['playerCombatBuffs'];
   paladinResolveMana: number;
   paladinResolveHolyPower: number;
+  fctDrafts: Array<{ unitId: string; amount: number; kind: 'heal' | 'absorb'; crit: boolean }>;
+  tickHealEff: number;
+  tickHealOh: number;
 } {
   const dmg = processPartyEnvironmentalTick(
     stateWithBoss,
@@ -553,7 +632,9 @@ function resolvePartyAfterEnvironmentalDamage(
       naturalPerfectionStacksFrom(stateBeforeBossMerge.playerCombatBuffs) + boss.naturalPerfectionAdd,
     ),
   );
-  const newParty = runOnShieldTransition(stateBeforeBossMerge, boss.party, dmg.party);
+  const shieldOut = runOnShieldTransition(stateBeforeBossMerge, boss.party, dmg.party);
+  const newParty = shieldOut.party;
+  const transitionDrafts = diffPartyCombatFloats(dmg.party, newParty, false);
   return {
     party: newParty,
     naturalPerfectionStacks: dmg.naturalPerfectionStacks,
@@ -561,6 +642,9 @@ function resolvePartyAfterEnvironmentalDamage(
     envPlayerCombatBuffs: dmg.envPlayerCombatBuffs,
     paladinResolveMana: dmg.paladinResolveMana,
     paladinResolveHolyPower: dmg.paladinResolveHolyPower,
+    fctDrafts: [...dmg.fctDrafts, ...transitionDrafts],
+    tickHealEff: dmg.envHealEff + shieldOut.eff,
+    tickHealOh: dmg.envHealOh + shieldOut.oh,
   };
 }
 
@@ -591,6 +675,9 @@ type PlayerSystemsAfterDamage = {
   internalCooldowns: Record<string, number>;
   capstoneForm: GameState['capstoneForm'];
   holyPower: number;
+  fctDrafts: Array<{ unitId: string; amount: number; kind: 'heal' | 'absorb'; crit: boolean }>;
+  natureGraceEff: number;
+  natureGraceOh: number;
 };
 
 function resolvePlayerSystemsAfterEnvironmentalDamage(
@@ -627,6 +714,12 @@ function resolvePlayerSystemsAfterEnvironmentalDamage(
   let pComb = tickPlayerBuffs(envPlayerCombatBuffs);
   const nextHolyPower = Math.min(3, state.holyPower + paladinResolveHolyPower);
   let newParty = partyAfterEnv;
+  let graceFloatDrafts: Array<{
+    unitId: string;
+    amount: number;
+    kind: 'heal' | 'absorb';
+    crit: boolean;
+  }> = [];
   const healerB = newParty.find((u) => u.role === 'HEALER');
   if (
     state.playerClass &&
@@ -639,15 +732,23 @@ function resolvePlayerSystemsAfterEnvironmentalDamage(
     pComb = upsertPlayerBuff(pComb, 'spirit_of_redemption_amp', T_SPIRIT_AMP, 1);
     nextIcd = { ...nextIcd, spirit_redemption: ICD_SPIRIT_REDEMPTION };
   }
+  let natureGraceEff = 0;
+  let natureGraceOh = 0;
   if (
     state.capstoneForm === 'druid_natures_grace' &&
     hasPlayerBuff(state.playerCombatBuffs, 'natures_grace_aura') &&
     state.playerClass
   ) {
+    const beforeGrace = newParty;
     const ngh = 0.4 * state.level;
-    newParty = newParty.map((u) =>
-      u.health > 0 ? { ...u, health: Math.min(u.maxHealth, u.health + ngh) } : u,
-    );
+    newParty = newParty.map((u) => {
+      if (u.health <= 0) return u;
+      const ng = healEffectiveAndOverheal(u.health, u.maxHealth, ngh);
+      natureGraceEff += ng.eff;
+      natureGraceOh += ng.oh;
+      return { ...u, health: Math.min(u.maxHealth, u.health + ngh) };
+    });
+    graceFloatDrafts = diffPartyCombatFloats(beforeGrace, newParty, false);
   }
   pComb = upsertNaturalPerfectionStacks(pComb, dmgNaturalPerfectionStacks);
   const nextForm = capstoneFormAfterBuffTick(state.capstoneForm, pComb);
@@ -658,6 +759,9 @@ function resolvePlayerSystemsAfterEnvironmentalDamage(
     internalCooldowns: nextIcd,
     capstoneForm: nextForm,
     holyPower: nextHolyPower,
+    fctDrafts: graceFloatDrafts,
+    natureGraceEff,
+    natureGraceOh,
   };
 }
 
@@ -680,6 +784,9 @@ function resolveCombatFailureFromTick(state: GameState, newParty: Unit[]): GameS
     const newXp = state.xp + xpGained;
     const meta = computeMetaFromProgress(newXp, state.playerClass, state.talents);
     const isLevelUp = meta.level > state.level;
+    const rewards = isLevelUp
+      ? levelUpRewardSummary(state.playerClass, state.talents, state.level, meta.level)
+      : { upgradedSpellIds: [] as string[], upgradedPotion: false };
     return {
       ...state,
       party:
@@ -697,12 +804,20 @@ function resolveCombatFailureFromTick(state: GameState, newParty: Unit[]): GameS
       bossMechanicCountdownTicks: 0,
       bossMechanicOrdinal: 0,
       spellCooldowns: {},
+      floatingCombatTexts: [],
+      endlessStacks: 0,
       dungeonOutcome: {
         kind: 'failure',
         dungeonName: d.name,
         reason,
         xpGained,
         levelUp: isLevelUp,
+        levelAfter: meta.level,
+        playerClass: state.playerClass,
+        upgradedSpellIds: rewards.upgradedSpellIds,
+        upgradedPotion: rewards.upgradedPotion,
+        endlessWavesCleared: d.endless ? state.endlessStacks : undefined,
+        postStats: dungeonPostStatsFromState(state),
       },
     };
   }
@@ -717,6 +832,8 @@ function resolveCombatFailureFromTick(state: GameState, newParty: Unit[]): GameS
     bossMechanicCountdownTicks: 0,
     bossMechanicOrdinal: 0,
     spellCooldowns: {},
+    floatingCombatTexts: [],
+    endlessStacks: 0,
     dungeonOutcome: null,
   };
 }
@@ -774,6 +891,56 @@ function resolveOngoingCombatAfterPartyAlive(
       }
     } else {
       const d = state.currentDungeon;
+      if (d?.endless) {
+        const nextStacks = state.endlessStacks + 1;
+        const pool = endlessBossPool(state.level);
+        const source = pool[Math.floor(random() * pool.length)];
+        const nextDungeon = buildEndlessWaveDungeon(getEndlessTemplate(), source, nextStacks);
+        const waveXp = Math.round(
+          computeDungeonXpGain(source, state.level) *
+            BALANCE.endless.bossKillXpFraction *
+            dungeonPaceXpMultiplier(state.dungeonPace!),
+        );
+        const newXp = state.xp + waveXp;
+        const meta = computeMetaFromProgress(newXp, state.playerClass, state.talents);
+        const leveled = meta.level > state.level;
+        const nextParty =
+          leveled && state.playerClass
+            ? generateRandomParty(meta.level, state.playerClass)
+            : newParty;
+        const trashHpNext = trashMaxHealthForDungeon(nextDungeon);
+        const profNext = bossCombatProfileForDungeon(nextDungeon);
+        const mechCdNext = randomIntInclusive(
+          profNext.mechanicIntervalTicksMin,
+          profNext.mechanicIntervalTicksMax,
+          random,
+        );
+        const tickMana = Math.min(meta.maxMana, newMana);
+        return finalizeTickState(
+          {
+            ...state,
+            ...meta,
+            mana: tickMana,
+            party: nextParty,
+            currentDungeon: nextDungeon,
+            endlessStacks: nextStacks,
+            combatPhase: 'TRASH',
+            trashPullsRemaining: TRASH_PACK_COUNT,
+            enemyHealth: trashHpNext,
+            enemyMaxHealth: trashHpNext,
+            dungeonProgress: 0,
+            bossSelfBuffs: [],
+            bossMechanicCountdownTicks: mechCdNext,
+            bossMechanicOrdinal: 0,
+            isCombatActive: true,
+            playerCombatBuffs: pComb,
+            capstoneForm: nextForm,
+            internalCooldowns: nextIcd,
+            holyPower: sys.holyPower,
+          },
+          tickMana,
+        );
+      }
       const xpGained = d
         ? Math.round(
             computeDungeonXpGain(d, state.level) * dungeonPaceXpMultiplier(state.dungeonPace!),
@@ -782,9 +949,12 @@ function resolveOngoingCombatAfterPartyAlive(
       const newXp = state.xp + xpGained;
       const meta = computeMetaFromProgress(newXp, state.playerClass, state.talents);
       const isLevelUp = meta.level > state.level;
+      const rewards = isLevelUp
+        ? levelUpRewardSummary(state.playerClass, state.talents, state.level, meta.level)
+        : { upgradedSpellIds: [] as string[], upgradedPotion: false };
       const dungeonId = d?.id ?? '';
       const completedDungeonIds =
-        dungeonId && !state.completedDungeonIds.includes(dungeonId)
+        dungeonId && d && !d.endless && !state.completedDungeonIds.includes(dungeonId)
           ? [...state.completedDungeonIds, dungeonId]
           : state.completedDungeonIds;
       return {
@@ -805,6 +975,8 @@ function resolveOngoingCombatAfterPartyAlive(
         maxMana: meta.maxMana,
         mana: Math.min(meta.maxMana, state.mana),
         party: state.playerClass !== null ? generateRandomParty(meta.level, state.playerClass) : state.party,
+        floatingCombatTexts: [],
+        endlessStacks: 0,
         dungeonOutcome: d
           ? {
               kind: 'success',
@@ -812,6 +984,11 @@ function resolveOngoingCombatAfterPartyAlive(
               bossName: d.bossName,
               xpGained,
               levelUp: isLevelUp,
+              levelAfter: meta.level,
+              playerClass: state.playerClass,
+              upgradedSpellIds: rewards.upgradedSpellIds,
+              upgradedPotion: rewards.upgradedPotion,
+              postStats: dungeonPostStatsFromState(state),
             }
           : null,
       };
@@ -847,6 +1024,7 @@ export function advanceCombatTick(
   if (!state.isCombatActive) return state;
 
   const combatElapsedTicks = state.combatElapsedTicks + 1;
+  let floats = pruneFloatingCombatTexts(state.floatingCombatTexts, combatElapsedTicks);
   const st = { ...state, combatElapsedTicks };
 
   const dpsPaceMultiplier =
@@ -865,10 +1043,19 @@ export function advanceCombatTick(
     envPlayerCombatBuffs,
     paladinResolveMana,
     paladinResolveHolyPower,
+    fctDrafts: envFctDrafts,
+    tickHealEff,
+    tickHealOh,
   } = resolvePartyAfterEnvironmentalDamage(st, stateWithBoss, boss, random);
+  floats = appendFloatingCombatDrafts(floats, combatElapsedTicks, envFctDrafts);
   const bossBuffsNext = tickBossDisplayedBuffSurfaces(st.combatPhase, boss.bossSelfBuffs);
+  let stAcc: GameState = {
+    ...st,
+    dungeonRunHealEffective: st.dungeonRunHealEffective + tickHealEff,
+    dungeonRunHealOverheal: st.dungeonRunHealOverheal + tickHealOh,
+  };
   const sys = resolvePlayerSystemsAfterEnvironmentalDamage(
-    st,
+    stAcc,
     partyAfterEnv,
     naturalPerfectionStacks,
     manaReturnFromHotTicks,
@@ -876,9 +1063,18 @@ export function advanceCombatTick(
     paladinResolveMana,
     paladinResolveHolyPower,
   );
-  const fail = resolveCombatFailureFromTick(st, sys.party);
-  if (fail) return fail;
-  return resolveOngoingCombatAfterPartyAlive(st, sys, boss, bossBuffsNext, random, dpsPaceMultiplier);
+  floats = appendFloatingCombatDrafts(floats, combatElapsedTicks, sys.fctDrafts);
+  stAcc = {
+    ...stAcc,
+    dungeonRunHealEffective: stAcc.dungeonRunHealEffective + sys.natureGraceEff,
+    dungeonRunHealOverheal: stAcc.dungeonRunHealOverheal + sys.natureGraceOh,
+  };
+  const fail = resolveCombatFailureFromTick(stAcc, sys.party);
+  if (fail) return { ...fail, floatingCombatTexts: [] };
+  return {
+    ...resolveOngoingCombatAfterPartyAlive(stAcc, sys, boss, bossBuffsNext, random, dpsPaceMultiplier),
+    floatingCombatTexts: floats,
+  };
 }
 
 function finalizeTickState(s: GameState, newMana: number): GameState {

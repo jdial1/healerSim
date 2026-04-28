@@ -1,10 +1,44 @@
+import type { ClassType } from './types.ts';
 import { Spell } from './types.ts';
 import { manaPotionInstantMana, manaPotionOverTimeTotal } from './manaPotionIcon.ts';
+import {
+  calculateSpellRank,
+  classSpellOrder,
+  getRankCostMultiplier,
+  getRankHealMultiplier,
+} from './playerStats.ts';
 
-export function spellEffectTooltipText(
-  spell: Spell,
-  ctx: { spellHealingMultiplier: number; spirit: number; playerLevel?: number },
-): string {
+export type SpellEffectTooltipContext = {
+  spellHealingMultiplier: number;
+  spirit: number;
+  playerLevel?: number;
+  playerClass?: ClassType | null;
+  unlockedSpells?: string[];
+};
+
+function rankHealMultForSpell(spellId: string, ctx: SpellEffectTooltipContext): number {
+  if (!ctx.playerClass || ctx.playerLevel === undefined) return 1;
+  if (!classSpellOrder(ctx.playerClass).includes(spellId)) return 1;
+  return getRankHealMultiplier(calculateSpellRank(spellId, ctx.playerClass, ctx.playerLevel));
+}
+
+export function spellTooltipRankLabel(spell: Spell, ctx: SpellEffectTooltipContext): string | null {
+  if (!ctx.playerClass || ctx.playerLevel === undefined) return null;
+  if (!classSpellOrder(ctx.playerClass).includes(spell.id)) return null;
+  if (ctx.unlockedSpells !== undefined && !ctx.unlockedSpells.includes(spell.id)) return null;
+  return `Rank ${calculateSpellRank(spell.id, ctx.playerClass, ctx.playerLevel)}`;
+}
+
+export function spellDisplayManaCost(spell: Spell, ctx: SpellEffectTooltipContext): number {
+  if (spell.manaCost <= 0) return spell.manaCost;
+  if (!ctx.playerClass || ctx.playerLevel === undefined) return spell.manaCost;
+  if (ctx.unlockedSpells !== undefined && !ctx.unlockedSpells.includes(spell.id)) return spell.manaCost;
+  if (!classSpellOrder(ctx.playerClass).includes(spell.id)) return spell.manaCost;
+  const rank = calculateSpellRank(spell.id, ctx.playerClass, ctx.playerLevel);
+  return Math.round(spell.manaCost * getRankCostMultiplier(rank));
+}
+
+export function spellEffectTooltipText(spell: Spell, ctx: SpellEffectTooltipContext): string {
   if (spell.staticEffectDescription) return spell.staticEffectDescription;
 
   if (spell.id === 'mana_potion' && ctx.playerLevel !== undefined) {
@@ -17,13 +51,14 @@ export function spellEffectTooltipText(
     );
   }
 
+  const rm = rankHealMultForSpell(spell.id, ctx);
   const effDirect =
-    spell.healing > 0 ? Math.round(spell.healing * ctx.spellHealingMultiplier) : 0;
+    spell.healing > 0 ? Math.round(spell.healing * rm * ctx.spellHealingMultiplier) : 0;
   const hotTicks = spell.hotDuration ?? 0;
   const hotPerTick = spell.hotHealingPerTick ?? 0;
   const hasHot = hotTicks > 0 && hotPerTick > 0;
   const effHotTotal = hasHot
-    ? Math.round(hotPerTick * hotTicks * ctx.spellHealingMultiplier * 10) / 10
+    ? Math.round(hotPerTick * hotTicks * rm * ctx.spellHealingMultiplier * 10) / 10
     : 0;
   const durSec = hotTicks / 10;
   const fmtHeal = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));

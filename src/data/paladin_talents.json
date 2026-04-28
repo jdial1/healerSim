@@ -97,7 +97,7 @@
   {
     "id": "h_r1c1",
     "name": "Illumination",
-    "description": "Your direct-heal critical strikes refund 100% of that spell's mana cost.",
+    "description": "Your direct-heal critical strikes refund that spell's mana cost plus a small bonus.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 5,

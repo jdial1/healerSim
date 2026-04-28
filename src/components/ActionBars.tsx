@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { SPELLS, getManaRegenPerSecond, MANA_POTION_USES_PER_DUNGEON } from '../constants.ts';
 import { PlayerCombatStats } from '../types.ts';
-import { spellEffectTooltipText } from '../spellTooltip.ts';
+import { spellDisplayManaCost, spellEffectTooltipText, spellTooltipRankLabel } from '../spellTooltip.ts';
 import { xpProgressWithinLevel } from '../gameStorage.ts';
 import { motion } from 'motion/react';
 import { glowForSpellId } from '../gameIcons.ts';
@@ -96,6 +96,7 @@ export function ActionBars({
     manaPotionChargesRemaining,
     manaPotionDripPerSec,
     spellHealingMultiplier,
+    unlockedSpells,
     actionBarHighlights,
     playerClass,
     level,
@@ -388,9 +389,18 @@ export function ActionBars({
 
           const iconPath = id === 'mana_potion' ? manaPotionIconPath(level) : spell.icon;
           const displayName = id === 'mana_potion' ? manaPotionDisplayName(level) : spell.name;
+          const tipCtx = {
+            spellHealingMultiplier,
+            spirit,
+            playerLevel: level,
+            playerClass,
+            unlockedSpells,
+          };
+          const rankLbl = spellTooltipRankLabel(spell, tipCtx);
+          const displayManaCost = spellDisplayManaCost(spell, tipCtx);
 
           const cooldown = cooldowns[id] || 0;
-          const isLowMana = mana < spell.manaCost;
+          const isLowMana = spell.manaCost > 0 && mana < displayManaCost;
           const noPotionCharges =
             Boolean(spell.limitedDungeonConsumable) && manaPotionChargesRemaining <= 0;
           const castBlocked = cooldown > 0 || isLowMana || noPotionCharges;
@@ -493,7 +503,7 @@ export function ActionBars({
 
                 {spell.manaCost > 0 && (
                   <div className="ui-spell-mana-cost">
-                      {spell.manaCost}
+                      {displayManaCost}
                   </div>
                 )}
                 {spell.limitedDungeonConsumable && spellsEnabled && (
@@ -537,15 +547,14 @@ export function ActionBars({
                 />
                 <div className="ui-spell-tooltip-body">
                   <div className="ui-spell-tooltip-title">
-                    {displayName}
+                    <span className="ui-spell-tooltip-title-text">{displayName}</span>
+                    {rankLbl ? <span className="ui-spell-tooltip-rank">{rankLbl}</span> : null}
                   </div>
                   {spell.manaCost > 0 ? (
-                    <div className="ui-spell-tooltip-mana">{spell.manaCost} Mana</div>
+                    <div className="ui-spell-tooltip-mana">{displayManaCost} Mana</div>
                   ) : null}
-                  <div
-                    className={`ui-spell-tooltip-desc${spell.manaCost > 0 ? ' mt-1.5' : ''}`}
-                  >
-                    {spellEffectTooltipText(spell, { spellHealingMultiplier, spirit, playerLevel: level })}
+                  <div className={`ui-spell-tooltip-desc${spell.manaCost > 0 ? ' mt-1.5' : ''}`}>
+                    {spellEffectTooltipText(spell, tipCtx)}
                   </div>
                 </div>
                 <div className="ui-spell-tooltip-arrow" aria-hidden />

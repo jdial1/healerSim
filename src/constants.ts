@@ -35,6 +35,10 @@ export function bossDamageMultiplierForDifficulty(difficulty: number): number {
   );
 }
 
+export function endlessCycleMultiplier(stacks: number): number {
+  return Math.pow(balanceData.endless.scalingPerCycle, Math.max(0, stacks));
+}
+
 export function damageTakenMultiplierFromDungeonLevelGap(
   partyMemberLevel: number,
   dungeonLevelMax: number,

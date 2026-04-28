@@ -17,7 +17,13 @@ import type { HealManaCostContext, ManaAfterHealContext } from './combatHookRegi
 import { generateCombatUid } from './combatUid.ts';
 import { mapEntityById } from './mapEntityById.ts';
 import { BALANCE } from './balance.ts';
-import { effectiveTalentPointWeight, effectiveUniqueStatRating } from './playerStats.ts';
+import {
+  calculateSpellRank,
+  effectiveTalentPointWeight,
+  effectiveUniqueStatRating,
+  getRankCostMultiplier,
+} from './playerStats.ts';
+import { healEffectiveAndOverheal } from './healMath.ts';
 
 export { GRACE_SOURCE_ID };
 export const PLAYER_BUFF_OMEN_CLEARCASTING = 'omen_clearcasting';
@@ -98,8 +104,12 @@ export function runHealManaCost(
   const v0 = healManaCostDruidClearcasting(s, ctx);
   if (v0 !== undefined) return v0;
   const v2 = healManaCostTreeOfLife(s, ctx);
-  if (v2 !== undefined) return v2;
-  return spell.manaCost;
+  const base = v2 !== undefined ? v2 : spell.manaCost;
+  if (base > 0) {
+    const rank = calculateSpellRank(spellId, classType, s.level);
+    return Math.round(base * getRankCostMultiplier(rank));
+  }
+  return base;
 }
 
 export function runManaAfterHealCast(
@@ -136,7 +146,7 @@ export function manaAfterHealPaladinIllumination(
     isDirectHealSpellId(ctx.spell, ctx.spellId) &&
     talentRanks(s.talents, 'illumination') > 0
   ) {
-    return Math.min(s.maxMana, mOut + ctx.needMana);
+    return Math.min(s.maxMana, mOut + ctx.needMana * PALADIN.illuminationManaRefundFraction);
   }
   return mOut;
 }
@@ -362,22 +372,31 @@ export function applyBindingHealSelf(
   healMultB: number,
   critH: number,
   tMod: number,
-): Unit[] {
-  if (!s.playerClass || talentRanks(s.talents, 'binding_heal') <= 0) return newParty;
+  rankHealMult: number,
+): { party: Unit[]; eff: number; oh: number } {
+  if (!s.playerClass || talentRanks(s.talents, 'binding_heal') <= 0) {
+    return { party: newParty, eff: 0, oh: 0 };
+  }
   const healerW = newParty.find((x) => x.id === HEALER_UNIT_ID);
   const thp = s.party.find((x) => x.id === targetId);
   const bind =
     spell.healing *
+    rankHealMult *
     healMultB *
     critH *
     tMod *
     PRIEST.bindingHealSelfFraction *
     Math.min(PRIEST.bindingHealMaxRanksForCap, talentRanks(s.talents, 'binding_heal'));
-  if (!healerW || !thp || thp.id === healerW.id) return newParty;
-  return mapEntityById(newParty, HEALER_UNIT_ID, (u) => ({
-    ...u,
-    health: Math.min(u.maxHealth, u.health + bind),
-  }));
+  if (!healerW || !thp || thp.id === healerW.id) return { party: newParty, eff: 0, oh: 0 };
+  const { eff, oh } = healEffectiveAndOverheal(healerW.health, healerW.maxHealth, bind);
+  return {
+    party: mapEntityById(newParty, HEALER_UNIT_ID, (u) => ({
+      ...u,
+      health: Math.min(u.maxHealth, u.health + bind),
+    })),
+    eff,
+    oh,
+  };
 }
 
 export function beaconEchoMultiplier(s: GameState): number {
@@ -397,14 +416,22 @@ export function applyBeaconEcho(
   healMultB: number,
   critH: number,
   tMod: number,
-): Unit[] {
-  if (talentRanks(s.talents, 'beacon_of_light') <= 0) return newParty;
+  rankHealMult: number,
+): { party: Unit[]; eff: number; oh: number } {
+  if (talentRanks(s.talents, 'beacon_of_light') <= 0) return { party: newParty, eff: 0, oh: 0 };
   const tankId = s.beaconTargetId;
-  if (targetId === tankId || spell.type === 'AOE') return newParty;
-  const amount = spell.healing * healMultB * critH * tMod * beaconEchoMultiplier(s);
-  return mapEntityById(newParty, tankId, (u) =>
-    u.health > 0 ? { ...u, health: Math.min(u.maxHealth, u.health + amount) } : u,
-  );
+  if (targetId === tankId || spell.type === 'AOE') return { party: newParty, eff: 0, oh: 0 };
+  const amount = spell.healing * rankHealMult * healMultB * critH * tMod * beaconEchoMultiplier(s);
+  const tank = newParty.find((u) => u.id === tankId);
+  if (!tank || tank.health <= 0) return { party: newParty, eff: 0, oh: 0 };
+  const { eff, oh } = healEffectiveAndOverheal(tank.health, tank.maxHealth, amount);
+  return {
+    party: mapEntityById(newParty, tankId, (u) =>
+      u.health > 0 ? { ...u, health: Math.min(u.maxHealth, u.health + amount) } : u,
+    ),
+    eff,
+    oh,
+  };
 }
 
 export function applyLivingSeed(
@@ -416,6 +443,7 @@ export function applyLivingSeed(
   healMultB: number,
   critH: number,
   tMod: number,
+  rankHealMult: number,
 ): Unit[] {
   if (!isCritH || talentRanks(s.talents, 'living_seed') <= 0) {
     return newParty;
@@ -424,7 +452,7 @@ export function applyLivingSeed(
   if (talentRanks(s.talents, 'living_seed') > 0 && talentRanks(s.talents, 'natural_perfection') > 0) {
     pct += DRUID.livingSeedNaturalPerfectionBonusFraction;
   }
-  const am = spell.healing * healMultB * critH * tMod * pct;
+  const am = spell.healing * rankHealMult * healMultB * critH * tMod * pct;
   return mapEntityById(newParty, targetId, (x) => ({ ...x, livingSeedPool: am }));
 }
 
@@ -582,10 +610,10 @@ export function applyAegisBurstSplash(
   shieldedUnitId: string,
   shieldBefore: number,
   shieldAfter: number,
-): Unit[] {
-  if (shieldAfter > 0 || shieldBefore <= 0) return party;
+): { party: Unit[]; eff: number; oh: number } {
+  if (shieldAfter > 0 || shieldBefore <= 0) return { party, eff: 0, oh: 0 };
   const splash = aegisBurstHealFromAbsorb(s, shieldBefore - shieldAfter);
-  if (splash <= 0) return party;
+  if (splash <= 0) return { party, eff: 0, oh: 0 };
   let bestId: string | null = null;
   let bestPct = 2;
   for (const u of party) {
@@ -596,24 +624,40 @@ export function applyAegisBurstSplash(
       bestId = u.id;
     }
   }
-  if (!bestId) return party;
-  return mapEntityById(party, bestId, (u) => ({
-    ...u,
-    health: Math.min(u.maxHealth, u.health + splash),
-  }));
+  if (!bestId) return { party, eff: 0, oh: 0 };
+  const tgt = party.find((u) => u.id === bestId);
+  if (!tgt) return { party, eff: 0, oh: 0 };
+  const { eff, oh } = healEffectiveAndOverheal(tgt.health, tgt.maxHealth, splash);
+  return {
+    party: mapEntityById(party, bestId, (u) => ({
+      ...u,
+      health: Math.min(u.maxHealth, u.health + splash),
+    })),
+    eff,
+    oh,
+  };
 }
 
-export function applyAegisBurstsFromShieldTransitions(s: GameState, before: Unit[], after: Unit[]): Unit[] {
+export function applyAegisBurstsFromShieldTransitions(
+  s: GameState,
+  before: Unit[],
+  after: Unit[],
+): { party: Unit[]; eff: number; oh: number } {
   let p = after.map((u) => ({ ...u }));
+  let effAcc = 0;
+  let ohAcc = 0;
   for (let i = 0; i < before.length; i++) {
     const bu = before[i];
     const au = after[i];
     if (!bu || !au || bu.id !== au.id) continue;
     if (bu.shield > 0 && au.shield <= 0) {
-      p = applyAegisBurstSplash(s, p, au.id, bu.shield, au.shield);
+      const r = applyAegisBurstSplash(s, p, au.id, bu.shield, au.shield);
+      p = r.party;
+      effAcc += r.eff;
+      ohAcc += r.oh;
     }
   }
-  return p;
+  return { party: p, eff: effAcc, oh: ohAcc };
 }
 
 export const DRUID_HARMONY_HOT_BUFF = 'druid_harmony_for_hot';
@@ -674,18 +718,18 @@ export function applyLightbringerResolveSplash(
   spell: Spell,
   spellId: string,
   targetId: string,
-): Unit[] {
+): { party: Unit[]; eff: number; oh: number } {
   if (s.playerClass !== 'PALADIN' || spellId === 'mana_potion' || !isDirectHealSpell(spell, spellId)) {
-    return party;
+    return { party, eff: 0, oh: 0 };
   }
-  if (spell.type === 'AOE') return party;
+  if (spell.type === 'AOE') return { party, eff: 0, oh: 0 };
   const tank = party.find((u) => u.role === 'TANK' && u.health > 0);
-  if (!tank || targetId !== tank.id) return party;
+  if (!tank || targetId !== tank.id) return { party, eff: 0, oh: 0 };
   const beforeT = partyBefore.find((u) => u.id === tank.id);
   const afterT = party.find((u) => u.id === tank.id);
-  if (!beforeT || !afterT) return party;
+  if (!beforeT || !afterT) return { party, eff: 0, oh: 0 };
   const healed = afterT.health - beforeT.health;
-  if (healed <= 0) return party;
+  if (healed <= 0) return { party, eff: 0, oh: 0 };
   const splash = healed * PALADIN.passiveLightbringerSplashFraction;
   let bestId: string | null = null;
   let bestPct = 2;
@@ -697,11 +741,18 @@ export function applyLightbringerResolveSplash(
       bestId = u.id;
     }
   }
-  if (!bestId) return party;
-  return mapEntityById(party, bestId, (u) => ({
-    ...u,
-    health: Math.min(u.maxHealth, u.health + splash),
-  }));
+  if (!bestId) return { party, eff: 0, oh: 0 };
+  const splashTgt = party.find((u) => u.id === bestId);
+  if (!splashTgt) return { party, eff: 0, oh: 0 };
+  const { eff, oh } = healEffectiveAndOverheal(splashTgt.health, splashTgt.maxHealth, splash);
+  return {
+    party: mapEntityById(party, bestId, (u) => ({
+      ...u,
+      health: Math.min(u.maxHealth, u.health + splash),
+    })),
+    eff,
+    oh,
+  };
 }
 
 export function paladinRadianceHealMultiplier(s: GameState, unit: Unit): number {

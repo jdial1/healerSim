@@ -54,6 +54,41 @@ export const CAPSTONE_PLAYER_BUFF_IDS = Array.from(
   new Set(Object.values(CLASS_PROGRESSION).map((p) => p.capstonePlayerBuffId)),
 );
 
+export const RANK_HEAL_MULT = 1.15;
+export const RANK_COST_MULT = 1.1;
+
+export function getRankHealMultiplier(rank: number): number {
+  return Math.pow(RANK_HEAL_MULT, Math.max(0, rank - 1));
+}
+
+export function getRankCostMultiplier(rank: number): number {
+  return Math.pow(RANK_COST_MULT, Math.max(0, rank - 1));
+}
+
+export function calculateSpellRank(spellId: string, cls: ClassType, level: number): number {
+  const order = CLASS_PROGRESSION[cls].spellOrder;
+  const idx = order.indexOf(spellId);
+  if (idx === -1) return 1;
+  const slot = idx % 3;
+  const firstUpgradeLevel = 2 + slot;
+  if (level < firstUpgradeLevel) return 1;
+  return 2 + Math.floor((level - firstUpgradeLevel) / 3);
+}
+
+export function getSpellUpgradeAtLevel(cls: ClassType, level: number): string[] {
+  if (level < 2) return [];
+  const order = CLASS_PROGRESSION[cls].spellOrder;
+  const slot = (level - 2) % 3;
+  const out: string[] = [];
+  if (order[slot]) out.push(order[slot]!);
+  if (order[slot + 3]) out.push(order[slot + 3]!);
+  return out;
+}
+
+export function getPotionUpgradeAtLevel(level: number): boolean {
+  return level > 0 && level % 5 === 0;
+}
+
 export function classSpellOrder(cls: ClassType): string[] {
   return CLASS_PROGRESSION[cls].spellOrder;
 }
