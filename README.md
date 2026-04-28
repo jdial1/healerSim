@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1200" height="475" alt="AEGIS gameplay banner" src="public/game_bg.png" />
+<img width="1200" height="475" alt="AEGIS gameplay banner" src="https://raw.githubusercontent.com/jdial1/healerSim/main/public/game_bg.png" />
 </div>
 
 # AEGIS
