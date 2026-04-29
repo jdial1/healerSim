@@ -96,9 +96,15 @@ export function spellEffectTooltipText(spell: Spell, ctx: SpellEffectTooltipCont
   return sentences.join('\n');
 }
 
-function numberTokens(text: string): string[] {
-  const matches = text.match(/\d+(?:\.\d+)?/g);
-  return matches ?? [];
+export function injectNumericLevelUpMarkers(previousBody: string, nextBody: string): string {
+  const previousNumbers = previousBody.match(/\d+(?:\.\d+)?/g) ?? [];
+  let idx = 0;
+  return nextBody.replace(/\d+(?:\.\d+)?/g, (currentNum) => {
+    const previousNum = previousNumbers[idx];
+    idx += 1;
+    if (!previousNum || previousNum === currentNum) return currentNum;
+    return `[[${previousNum}|${currentNum}]]`;
+  });
 }
 
 export function spellEffectTooltipTextWithPreviousValues(
@@ -108,12 +114,5 @@ export function spellEffectTooltipTextWithPreviousValues(
 ): string {
   const previous = spellEffectTooltipText(spell, previousCtx);
   const current = spellEffectTooltipText(spell, currentCtx);
-  const previousNumbers = numberTokens(previous);
-  let idx = 0;
-  return current.replace(/\d+(?:\.\d+)?/g, (currentNum) => {
-    const previousNum = previousNumbers[idx];
-    idx += 1;
-    if (!previousNum || previousNum === currentNum) return currentNum;
-    return `[[${previousNum}|${currentNum}]]`;
-  });
+  return injectNumericLevelUpMarkers(previous, current);
 }

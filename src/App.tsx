@@ -32,7 +32,8 @@ import { spellHealingMultiplierFromProgress, effectivePrimaryStats } from './pla
 import type { PlayerCombatStats } from './types.ts';
 import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
 import { TutorialOverlay } from './components/TutorialOverlay.tsx';
-import { INTRO_TUTORIAL_DEBUFF_DATA_ID } from './tutorialConfig.ts';
+import { INTRO_TUTORIAL_DEBUFF_DATA_ID, TUTORIAL_STEP_NAV_PRIMER } from './tutorialConfig.ts';
+import { NavPrimerModal } from './components/NavPrimerModal.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Star, LogOut, Settings, ScrollText, Swords } from 'lucide-react';
 
@@ -259,6 +260,18 @@ export default function App() {
   };
   const navTab = menuView;
 
+  const showNavPrimerModal =
+    !showRoster &&
+    !!state.playerClass &&
+    !state.currentDungeon &&
+    !state.introTutorialComplete &&
+    !state.tutorialCompletedSteps.includes('intro_core') &&
+    !state.tutorialCompletedSteps.includes(TUTORIAL_STEP_NAV_PRIMER);
+
+  const dismissNavPrimerModal = useCallback(() => {
+    markTutorialStepCompleted(TUTORIAL_STEP_NAV_PRIMER);
+  }, [markTutorialStepCompleted]);
+
   return (
     <div
       className={`bg-slate-950 font-sans selection:bg-amber-500 selection:text-slate-950 ${
@@ -389,7 +402,7 @@ export default function App() {
             />
 
             <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-48 pb-36 sm:pt-52 sm:pb-40">
-               <div className="my-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-1 self-center overflow-y-auto px-2 pb-2">
+               <div className="flex min-h-0 flex-1 w-full max-w-xl flex-col items-center gap-1 self-center overflow-y-auto px-2 pb-2">
                  <HealGrid
                   party={partyForHealGrid}
                   selectedId={targetId}
@@ -438,6 +451,7 @@ export default function App() {
             <button
               type="button"
               onClick={goToCharacter}
+              data-tutorial-id="nav-character"
               className={`ui-state-frame flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-semibold tracking-[0.04em] transition-colors active:scale-[0.97] sm:text-sm ${
                 navTab === 'character'
                   ? 'ui-state-selected bg-amber-900/35 text-amber-100'
@@ -472,6 +486,7 @@ export default function App() {
             <button
               type="button"
               onClick={goToDungeons}
+              data-tutorial-id="nav-dungeons"
               className={`ui-state-frame flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-semibold tracking-[0.04em] transition-colors active:scale-[0.97] sm:text-sm ${
                 navTab === 'dungeons'
                   ? 'ui-state-selected bg-amber-900/35 text-amber-100'
@@ -493,6 +508,8 @@ export default function App() {
           </Fragment>
         ) : null}
       </AnimatePresence>
+
+      {showNavPrimerModal ? <NavPrimerModal onDismiss={dismissNavPrimerModal} /> : null}
 
       {pwaNeedsRefresh ? (
         <div

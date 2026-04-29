@@ -54,7 +54,7 @@ function centeredChildIndex(el: HTMLDivElement): number {
 }
 
 const CARD_SHELL =
-  'relative flex h-full max-h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 pt-4 pb-4 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:pt-5 sm:pb-5 md:px-7 md:pt-6 md:pb-6 max-sm:px-6 max-sm:pt-3.5 max-sm:pb-3.5';
+  'relative flex h-full max-h-full min-h-0 w-[min(88vw,22rem)] shrink-0 snap-center flex-col rounded-xl border border-slate-800/90 bg-gradient-to-br from-slate-950 to-slate-900 px-5 pt-6 pb-6 text-left ring-1 ring-inset sm:w-[min(24rem,40vw)] sm:px-6 sm:pt-7 sm:pb-7 md:px-7 md:pt-8 md:pb-8 max-sm:px-6';
 
 const CAROUSEL_SCROLL =
   'flex min-h-0 flex-1 cursor-grab snap-x snap-mandatory flex-nowrap items-start gap-4 overflow-x-auto overflow-y-clip overscroll-x-contain px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] select-none active:cursor-grabbing sm:gap-5 sm:px-6 [&::-webkit-scrollbar]:hidden';
@@ -374,8 +374,8 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
       <div
         className="fixed left-0 right-0 z-[45] flex min-h-0 flex-col bg-slate-950/90 pb-5 pt-3 shadow-[0_-16px_48px_rgba(0,0,0,0.55)] backdrop-blur-md"
         style={{
-          top: 'calc(2rem + env(safe-area-inset-top, 0px))',
-          bottom: 'max(5.5rem, calc(4.75rem + env(safe-area-inset-bottom, 0px)))',
+          top: 'calc(3rem + env(safe-area-inset-top, 0px))',
+          bottom: 'max(8rem, calc(3rem + env(safe-area-inset-bottom, 0px)))',
         }}
       >
         <div className="relative flex min-h-0 flex-1 flex-col">

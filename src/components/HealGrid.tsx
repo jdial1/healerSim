@@ -426,21 +426,17 @@ function HealGridUnitRow(props: HealGridUnitRowProps) {
             <div className="ui-heal-grid-hp-sheen" aria-hidden />
 
             <div className="ui-heal-grid-content">
-              <div className="flex min-w-0 flex-col">
-                <div className="ui-heal-grid-name">{unit.name}</div>
-                <div className="ui-heal-grid-meta">
-                  <span>{unitRoleLabel(unit.role)}</span>
-                  <span className="ui-heal-grid-level-pill">
-                    Lv {unit.level}
+              <div className="ui-heal-grid-name">{unit.name}</div>
+              <div className="ui-heal-grid-meta">
+                <span>{unitRoleLabel(unit.role)}</span>
+                <span className="ui-heal-grid-level-pill">Lv {unit.level}</span>
+                {unit.shield > 0 ? (
+                  <span className="ui-numeric font-mono text-sky-200">
+                    +{Math.round(unit.shield)} absorb
                   </span>
-                  {unit.shield > 0 ? (
-                    <span className="ui-numeric font-mono text-sky-200">
-                      +{Math.round(unit.shield)} absorb
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="ui-heal-grid-buff-row">
+                ) : null}
+              </div>
+              <div className="ui-heal-grid-buff-row">
                   {unit.buffs.map((buff) => {
                     if (buff.isManaRegenBuff) {
                       return (
@@ -535,9 +531,7 @@ function HealGridUnitRow(props: HealGridUnitRowProps) {
                     );
                   })}
                   {isDead && <span className="ui-heal-grid-fallen">FALLEN</span>}
-                </div>
               </div>
-
               <div className={healGridHpReadoutClass(healthPercent, isDead)}>
                 {hpCur}/{hpMax}
               </div>

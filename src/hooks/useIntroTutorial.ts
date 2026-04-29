@@ -11,8 +11,10 @@ import {
   TUTORIAL_STEP_MANA_POTION,
   TUTORIAL_STEP_PASSIVE,
   TUTORIAL_STEP_REORDER,
+  TUTORIAL_STEP_NAV_PRIMER,
   introTutorialPrimaryHealSpellId,
   pickTutorialFirstTalentId,
+  totalSpentTalentPoints,
   tutorialAoeSpellId,
   tutorialPassiveTrigger,
 } from '../tutorialConfig.ts';
@@ -80,6 +82,7 @@ export function useIntroTutorial({
   const [coreStep, setCoreStep] = useState(0);
   const [activeMasteryStep, setActiveMasteryStep] = useState<null | 'passive' | 'potion' | 'aoe' | 'reorder'>(null);
   const talentBaselineRef = useRef<number | null>(null);
+  const talentSpentBaselineRef = useRef<number | null>(null);
   const prevOutcomeRef = useRef(state.dungeonOutcome);
   const prevHadDungeonRef = useRef(!!state.currentDungeon);
   const potionBaselineRef = useRef<number | null>(null);
@@ -145,20 +148,37 @@ export function useIntroTutorial({
     if (prev?.kind === 'success' && prev.dungeonName === INTRO_TUTORIAL_SUCCESS_DUNGEON_NAME && state.dungeonOutcome === null) {
       setCoreStep(6);
       talentBaselineRef.current = state.talentPoints;
+      talentSpentBaselineRef.current = totalSpentTalentPoints(state.talents);
     }
-  }, [coreEnabledBase, coreStep, state.dungeonOutcome, state.talentPoints]);
+  }, [coreEnabledBase, coreStep, state.dungeonOutcome, state.talentPoints, state.talents]);
 
   useEffect(() => {
     if (!coreEnabledBase) return;
     if (coreStep !== 6) return;
     if (state.currentDungeon) return;
-    if (menuView === 'talents' && state.talentPoints < (talentBaselineRef.current ?? state.talentPoints + 1)) {
-      completeIntroTutorial();
-      markTutorialStepCompleted('intro_core');
-      setCoreStep(0);
-      talentBaselineRef.current = null;
-    }
-  }, [coreEnabledBase, coreStep, menuView, state.currentDungeon, state.talentPoints, completeIntroTutorial, markTutorialStepCompleted]);
+    const bankBaseline = talentBaselineRef.current;
+    const spentBaseline = talentSpentBaselineRef.current;
+    if (bankBaseline === null || spentBaseline === null) return;
+    const spentNow = totalSpentTalentPoints(state.talents);
+    const bankDropped = state.talentPoints < bankBaseline;
+    const spentIncreased = spentNow > spentBaseline;
+    const noBankToSpend = bankBaseline <= 0 && state.talentPoints <= 0;
+    if (!bankDropped && !spentIncreased && !noBankToSpend) return;
+    completeIntroTutorial();
+    markTutorialStepCompleted('intro_core');
+    markTutorialStepCompleted(TUTORIAL_STEP_NAV_PRIMER);
+    setCoreStep(0);
+    talentBaselineRef.current = null;
+    talentSpentBaselineRef.current = null;
+  }, [
+    coreEnabledBase,
+    coreStep,
+    state.currentDungeon,
+    state.talentPoints,
+    state.talents,
+    completeIntroTutorial,
+    markTutorialStepCompleted,
+  ]);
 
   useEffect(() => {
     if (hasMasteryOpen || !state.introTutorialComplete || !state.playerClass || showRoster || !state.currentDungeon) return;

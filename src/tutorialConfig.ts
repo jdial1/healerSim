@@ -10,6 +10,7 @@ export const TUTORIAL_STEP_PASSIVE = 'passive_trait_tip';
 export const TUTORIAL_STEP_MANA_POTION = 'mana_potion_tip';
 export const TUTORIAL_STEP_AOE = 'aoe_heal_tip';
 export const TUTORIAL_STEP_REORDER = 'reorder_tip';
+export const TUTORIAL_STEP_NAV_PRIMER = 'nav_primer';
 
 const HEAL_SPELL_BY_CLASS: Record<ClassType, string> = {
   PRIEST: 'flash_heal',
@@ -39,6 +40,10 @@ export function tutorialAoeSpellId(cls: ClassType): string {
 
 export function tutorialPassiveTrigger(cls: ClassType): { kind: 'buff' | 'highlight'; key: string } | null {
   return PASSIVE_TRIGGER_BY_CLASS[cls];
+}
+
+export function totalSpentTalentPoints(talents: Talent[]): number {
+  return talents.reduce((acc, t) => acc + t.points * t.cost, 0);
 }
 
 export function pickTutorialFirstTalentId(

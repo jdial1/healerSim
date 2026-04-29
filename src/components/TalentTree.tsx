@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, RotateCcw, X } from 'lucide-react';
 import { ClassType, Talent } from '../types.ts';
@@ -19,12 +19,12 @@ import { sentenceCaseBlock, sentenceCaseLabel } from '../gameUiText.ts';
 import type { ExclusiveSplitPair } from '../talentSplitPairs.ts';
 import {
   buildTalentTreeUiGraph,
-  pairHasAnyPoints,
   prereqConnectionStroke,
   TALENT_GRID_COLS,
   TALENT_GRID_ROWS,
   talentInExclusiveSplit,
 } from '../talentTreeUiGraph.ts';
+import { injectNumericLevelUpMarkers } from '../spellTooltip.ts';
 
 interface TalentTreeProps {
   talents: Talent[];
@@ -37,6 +37,11 @@ interface TalentTreeProps {
   playerClass: ClassType;
   tutorialHighlightTalentId?: string | null;
 }
+
+const TALENT_DETAIL_STEPPER_BASE =
+  'ui-state-frame ui-state-hover flex items-center justify-center rounded-md border border-slate-500/70 bg-slate-800 font-black leading-none text-slate-100 disabled:ui-state-disabled disabled:border-slate-700 disabled:bg-slate-900 disabled:text-slate-600';
+
+const TALENT_DETAIL_STEPPER_TOOLTIP = `${TALENT_DETAIL_STEPPER_BASE} h-8 w-8 text-base`;
 
 type TalentStatKey = keyof NonNullable<Talent['statBonus']>;
 
@@ -146,21 +151,85 @@ function rankDescriptionFromStatBonus(talent: Talent, rank: number): string | nu
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
-function rankDescriptionForTalent(
+function rankCoreDescription(
   talent: Talent,
   rank: number,
   pairIndexByTalentId: Map<string, number>,
 ): string {
   const statLine = rankDescriptionFromStatBonus(talent, rank);
-  const baseLine = statLine ?? scalePerPointValues(rankDescriptionBase(talent, pairIndexByTalentId), rank);
-  if (rank === talent.maxPoints && talent.maxRankBonusDescription) {
-    const normalizedMaxBonus = scalePerPointValues(
-      talent.maxRankBonusDescription.replace(/^If maxed,\s*/i, '').trim(),
-      rank,
-    );
-    return `${baseLine}\n${normalizedMaxBonus}`.trim();
+  return statLine ?? scalePerPointValues(rankDescriptionBase(talent, pairIndexByTalentId), rank);
+}
+
+function rankMaxBonusLine(talent: Talent, rank: number): string | null {
+  if (rank !== talent.maxPoints || !talent.maxRankBonusDescription) return null;
+  return scalePerPointValues(
+    talent.maxRankBonusDescription.replace(/^If maxed,\s*/i, '').trim(),
+    rank,
+  );
+}
+
+function rankDescriptionForTalent(
+  talent: Talent,
+  rank: number,
+  pairIndexByTalentId: Map<string, number>,
+): string {
+  const core = rankCoreDescription(talent, rank, pairIndexByTalentId);
+  const extra = rankMaxBonusLine(talent, rank);
+  if (extra) return `${core}\n${extra}`.trim();
+  return core;
+}
+
+function talentLevelUpMarkedText(
+  talent: Talent,
+  currentRank: number,
+  nextRank: number,
+  pairIndexByTalentId: Map<string, number>,
+): string {
+  const prevCore = sentenceCaseBlock(rankCoreDescription(talent, currentRank, pairIndexByTalentId));
+  const nextCore = sentenceCaseBlock(rankCoreDescription(talent, nextRank, pairIndexByTalentId));
+  let out = injectNumericLevelUpMarkers(prevCore, nextCore);
+  const nextMax = rankMaxBonusLine(talent, nextRank);
+  if (nextMax) {
+    out = `${out}\n${sentenceCaseBlock(nextMax)}`;
   }
-  return baseLine;
+  return out;
+}
+
+function renderTalentLevelUpBody(text: string): ReactNode {
+  const lines = text.split('\n');
+  return lines.map((line, lineIdx) => {
+    const parts: ReactNode[] = [];
+    const tokenRe = /\[\[(\d+(?:\.\d+)?)\|(\d+(?:\.\d+)?)\]\]/g;
+    let cursor = 0;
+    let m = tokenRe.exec(line);
+    let key = 0;
+    while (m) {
+      if (m.index > cursor) {
+        parts.push(<span key={`t-${lineIdx}-${key++}`}>{line.slice(cursor, m.index)}</span>);
+      }
+      const oldValue = Number(m[1]);
+      const newValue = Number(m[2]);
+      const nextClass =
+        newValue > oldValue ? 'text-emerald-300' : newValue < oldValue ? 'text-rose-300' : 'text-slate-200';
+      parts.push(
+        <span key={`d-${lineIdx}-${key++}`} className="inline-flex items-center gap-1">
+          <span className="text-slate-100">{m[1]}</span>
+          <span className="text-amber-300">→</span>
+          <span className={nextClass}>{m[2]}</span>
+        </span>,
+      );
+      cursor = m.index + m[0].length;
+      m = tokenRe.exec(line);
+    }
+    if (cursor < line.length) {
+      parts.push(<span key={`t-${lineIdx}-${key++}`}>{line.slice(cursor)}</span>);
+    }
+    return (
+      <span key={`line-${lineIdx}`} className="block">
+        {parts}
+      </span>
+    );
+  });
 }
 
 function learnBlockedReason(talent: Talent, allTalents: Talent[], talentPoints: number, playerLevel: number): string | null {
@@ -265,8 +334,6 @@ export function TalentTree({
 
   const onTalentNodePress = (talent: Talent) => {
     setSelectedTalentId(talent.id);
-    if (!canLearnTalent(talent, talents, talentPoints, playerLevel)) return;
-    onUnlock(talent.id);
   };
 
   const canSelectedTalentLearn =
@@ -322,6 +389,48 @@ export function TalentTree({
     event.preventDefault();
     event.stopPropagation();
     suppressNextTalentClickRef.current = false;
+  };
+
+  const talentCornerSteppers = (talent: Talent, visible: boolean, placement: 'grid' | 'split') => {
+    if (!visible) return null;
+    const canRm = canRemoveTalentPoint(talent, talents);
+    const canAdd = canLearnTalent(talent, talents, talentPoints, playerLevel);
+    const stop = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    const stepperClass =
+      placement === 'split'
+        ? `${TALENT_DETAIL_STEPPER_BASE} h-5 w-5 text-[10px] sm:h-6 sm:w-6 sm:text-xs`
+        : `${TALENT_DETAIL_STEPPER_BASE} h-6 w-6 text-xs sm:h-8 sm:w-8 sm:text-base`;
+    return (
+      <>
+        <button
+          type="button"
+          aria-label="Remove talent point"
+          disabled={!canRm}
+          onClick={(e) => {
+            stop(e);
+            if (canRm) onDecrement(talent.id);
+          }}
+          className={`absolute left-0 top-0 z-[3] -translate-x-1/2 -translate-y-1/2 ${stepperClass}`}
+        >
+          -
+        </button>
+        <button
+          type="button"
+          aria-label="Add talent point"
+          disabled={!canAdd}
+          onClick={(e) => {
+            stop(e);
+            if (canAdd) onUnlock(talent.id);
+          }}
+          className={`absolute right-0 top-0 z-[3] translate-x-1/2 -translate-y-1/2 ${stepperClass}`}
+        >
+          +
+        </button>
+      </>
+    );
   };
 
   return (
@@ -396,7 +505,7 @@ export function TalentTree({
             })}
           </div>
         <div
-          className="relative overflow-hidden rounded-md"
+          className="relative overflow-visible rounded-md"
           onPointerDown={startTreePan}
           onPointerMove={moveTreePan}
           onPointerUp={endTreePan}
@@ -458,31 +567,39 @@ export function TalentTree({
                   ? 'ui-state-frame ui-state-hover bg-slate-800 hover:bg-slate-700'
                   : 'ui-state-frame ui-state-disabled border-slate-500/50 bg-slate-800/90 grayscale';
               return (
-                <button
+                <div
                   key={side.id}
-                  data-talent-node="true"
-                  type="button"
-                  onClick={() => onTalentNodePress(side)}
-                  className={`relative flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center py-0.5 transition-all active:scale-[0.96] ${base} ${
-                    sel ? 'z-[1] ui-state-selected' : ''
-                  }`}
+                  className={`relative min-h-0 min-w-0 flex-1 ${sel ? 'z-[20]' : ''}`}
                 >
-                  <GameIcon
-                    iconPath={side.icon}
-                    glow={talentGlow}
-                    size="sm"
-                    title={side.name}
-                    dimmed={!pts}
-                    imageFit="cover"
-                    className={`h-full w-full min-h-0 min-w-0 rounded-sm p-0 ${!acc ? 'grayscale opacity-[0.68]' : ''}`}
-                  />
-                  <div className="ui-frame absolute bottom-0.5 right-0.5 rounded border border-slate-600/80 bg-slate-950/95 px-1 py-0.5 text-[11px] font-bold leading-none text-white sm:text-xs">
-                    {side.points}/{side.maxPoints}
-                  </div>
-                  {!acc ? (
-                    <Lock size={14} strokeWidth={2.5} className="absolute left-0.5 top-0.5 text-slate-300 drop-shadow sm:left-1 sm:top-1" />
-                  ) : null}
-                </button>
+                  <button
+                    data-talent-node="true"
+                    data-tutorial-id={
+                      tutorialHighlightTalentId === side.id ? 'tutorial-first-talent' : undefined
+                    }
+                    type="button"
+                    onClick={() => onTalentNodePress(side)}
+                    className={`relative flex h-full min-h-11 w-full min-w-0 flex-col items-center justify-center py-0.5 transition-all active:scale-[0.96] ${base} ${
+                      sel ? 'z-[1] ui-state-selected' : ''
+                    }`}
+                  >
+                    <GameIcon
+                      iconPath={side.icon}
+                      glow={talentGlow}
+                      size="sm"
+                      title={side.name}
+                      dimmed={!pts}
+                      imageFit="cover"
+                      className={`h-full w-full min-h-0 min-w-0 rounded-sm p-0 ${!acc ? 'grayscale opacity-[0.68]' : ''}`}
+                    />
+                    <div className="ui-frame absolute bottom-0.5 right-0.5 rounded border border-slate-600/80 bg-slate-950/95 px-1 py-0.5 text-[11px] font-bold leading-none text-white sm:text-xs">
+                      {side.points}/{side.maxPoints}
+                    </div>
+                    {!acc ? (
+                      <Lock size={14} strokeWidth={2.5} className="absolute left-0.5 top-0.5 text-slate-300 drop-shadow sm:left-1 sm:top-1" />
+                    ) : null}
+                  </button>
+                  {talentCornerSteppers(side, sel, 'split')}
+                </div>
               );
             };
 
@@ -497,7 +614,7 @@ export function TalentTree({
                 }}
               >
                 <div
-                  className={`flex h-12 w-full max-w-[6.75rem] flex-row overflow-hidden rounded-md border border-slate-600 bg-slate-950 shadow-sm transition-transform sm:h-16 sm:max-w-[8.75rem] ${
+                  className={`flex h-12 w-full max-w-[6.75rem] flex-row overflow-visible rounded-md border border-slate-600 bg-slate-950 shadow-sm transition-transform sm:h-16 sm:max-w-[8.75rem] ${
                     isSelected ? 'scale-110 ui-state-selected ring-offset-2 ring-offset-slate-950' : ''
                   } ${pairStatMatch ? 'ui-state-selected ring-offset-2 ring-offset-slate-950' : ''}`}
                 >
@@ -527,14 +644,17 @@ export function TalentTree({
                 className={`relative z-10 flex flex-col items-center justify-center ${statDim ? 'opacity-[0.38]' : ''}`}
                 style={{ gridColumnStart: gridX + 1, gridRowStart: gridY + 1 }}
               >
-                <button
-                  data-talent-node="true"
-                  data-tutorial-id={
-                    tutorialHighlightTalentId === talent.id ? 'tutorial-first-talent' : undefined
-                  }
-                  type="button"
-                  onClick={() => onTalentNodePress(talent)}
-                  className={`
+                <div
+                  className={`relative w-fit ${isSelected ? 'z-[20] scale-110' : ''}`}
+                >
+                  <button
+                    data-talent-node="true"
+                    data-tutorial-id={
+                      tutorialHighlightTalentId === talent.id ? 'tutorial-first-talent' : undefined
+                    }
+                    type="button"
+                    onClick={() => onTalentNodePress(talent)}
+                    className={`
                     relative flex h-12 min-h-11 w-12 min-w-11 items-center justify-center rounded-md border transition-all active:scale-[0.96] sm:h-16 sm:w-16
                     ${
                       hasPoints
@@ -543,26 +663,28 @@ export function TalentTree({
                           ? 'ui-state-frame ui-state-hover bg-slate-800'
                           : 'ui-state-frame ui-state-disabled border-slate-500/50 bg-slate-800/90 grayscale'
                     }
-                    ${isSelected ? 'scale-110 ui-state-selected ring-offset-2 ring-offset-slate-950' : ''}
+                    ${isSelected ? 'ui-state-selected ring-offset-2 ring-offset-slate-950' : ''}
                     ${statMatch ? 'ui-state-selected ring-offset-2 ring-offset-slate-950' : ''}
                   `}
-                >
-                  <GameIcon
-                    iconPath={talent.icon}
-                    glow={talentGlow}
-                    size="sm"
-                    title={talent.name}
-                    dimmed={!hasPoints}
-                    imageFit="cover"
-                    className={`h-full w-full min-h-0 min-w-0 rounded-sm p-0 ${!accessible ? 'grayscale opacity-[0.68]' : ''}`}
-                  />
-                  <div className="ui-frame absolute -bottom-2 -right-2 rounded-md border border-slate-600/80 bg-slate-950/95 px-1.5 py-0.5 text-xs font-bold text-white sm:text-sm">
-                    {talent.points}/{talent.maxPoints}
-                  </div>
-                  {!accessible ? (
-                    <Lock size={16} strokeWidth={2.5} className="absolute left-1 top-1 text-slate-200 drop-shadow" />
-                  ) : null}
-                </button>
+                  >
+                    <GameIcon
+                      iconPath={talent.icon}
+                      glow={talentGlow}
+                      size="sm"
+                      title={talent.name}
+                      dimmed={!hasPoints}
+                      imageFit="cover"
+                      className={`h-full w-full min-h-0 min-w-0 rounded-sm p-0 ${!accessible ? 'grayscale opacity-[0.68]' : ''}`}
+                    />
+                    <div className="ui-frame absolute -bottom-2 -right-2 rounded-md border border-slate-600/80 bg-slate-950/95 px-1.5 py-0.5 text-xs font-bold text-white sm:text-sm">
+                      {talent.points}/{talent.maxPoints}
+                    </div>
+                    {!accessible ? (
+                      <Lock size={16} strokeWidth={2.5} className="absolute left-1 top-1 text-slate-200 drop-shadow" />
+                    ) : null}
+                  </button>
+                  {talentCornerSteppers(talent, isSelected, 'grid')}
+                </div>
               </div>
             );
           })}
@@ -571,11 +693,29 @@ export function TalentTree({
         </div>
       </div>
 
-      <div className="ui-frame-divider-top h-52 shrink-0 overflow-y-auto bg-slate-900 p-4">
+      <div className="relative z-[5] shrink-0">
+        <AnimatePresence>
+          {selectedLearnReason &&
+          selectedTalent &&
+          selectedTalent.points < selectedTalent.maxPoints ? (
+            <motion.div
+              key={`${selectedTalent.id}-learn-block`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              role="status"
+              className="absolute inset-x-3 bottom-full z-[6] mb-2 rounded-lg border border-red-500/70 bg-slate-950 px-3 py-2.5 text-center text-xs font-semibold leading-snug text-amber-50 shadow-[0_4px_24px_rgba(0,0,0,0.5)] sm:inset-x-4 sm:text-sm"
+            >
+              {selectedLearnReason}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        <div className="ui-frame-divider-top h-[10.725rem] overflow-y-auto bg-slate-900 px-3 py-2.5 sm:px-4 sm:py-3">
         <AnimatePresence mode="wait">
           {selectedTalent ? (
             <motion.div key={selectedTalent.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <GameIcon
                   iconPath={selectedTalent.icon}
                   glow={talentGlow}
@@ -584,16 +724,28 @@ export function TalentTree({
                   dimmed={selectedTalent.points === 0}
                 />
                 <div className="min-w-0 flex-1">
-                  <h3 className="ui-heading min-w-0 text-lg tracking-[0.06em] text-white">
-                    {sentenceCaseLabel(selectedTalent.name)}
-                  </h3>
+                  <div className="mb-0.5 flex min-w-0 items-baseline justify-between gap-2 border-b border-slate-800 pb-0.5">
+                    <h3 className="ui-heading min-w-0 flex-1 text-sm font-black uppercase italic leading-tight tracking-tight text-white">
+                      {selectedTalent.name}
+                    </h3>
+                    {selectedTalent.maxPoints > 1 ? (
+                      <span className="shrink-0 text-right text-[10px] font-black uppercase tracking-widest text-sky-400">
+                        Rank{' '}
+                        {selectedTalent.points >= selectedTalent.maxPoints
+                          ? selectedTalent.maxPoints
+                          : selectedTalent.points > 0
+                            ? selectedTalent.points + 1
+                            : 1}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-1.5 self-start pt-0.5">
                   <button
                     type="button"
                     onClick={() => onDecrement(selectedTalent.id)}
                     disabled={!canSelectedTalentRemove}
-                    className="ui-state-frame ui-state-hover flex h-8 w-8 items-center justify-center rounded-md border border-slate-500/70 bg-slate-800 text-base font-black leading-none text-slate-100 disabled:ui-state-disabled disabled:border-slate-700 disabled:bg-slate-900 disabled:text-slate-600"
+                    className={TALENT_DETAIL_STEPPER_TOOLTIP}
                     aria-label="Remove talent point"
                   >
                     -
@@ -602,47 +754,47 @@ export function TalentTree({
                     type="button"
                     onClick={() => onUnlock(selectedTalent.id)}
                     disabled={!canSelectedTalentLearn}
-                    className="ui-state-frame ui-state-hover flex h-8 w-8 items-center justify-center rounded-md border border-slate-500/70 bg-slate-800 text-base font-black leading-none text-slate-100 disabled:ui-state-disabled disabled:border-slate-700 disabled:bg-slate-900 disabled:text-slate-600"
+                    className={TALENT_DETAIL_STEPPER_TOOLTIP}
                     aria-label="Add talent point"
                   >
                     +
                   </button>
                 </div>
               </div>
-              <div className="ui-body mt-1 text-sm text-slate-300">
+              <div className="ui-body mt-0.5 text-base font-semibold leading-normal tracking-tight text-slate-100 sm:text-lg">
                 {selectedTalent.maxPoints > 1 ? (
-                  <span className="mt-1 block space-y-1">
-                    {Array.from({ length: selectedTalent.maxPoints }, (_, i) => i + 1).map((rank) => {
-                      const isCurrentRank = rank === selectedTalent.points && selectedTalent.points > 0;
-                      return (
-                        <span
-                          key={`${selectedTalent.id}-rank-${rank}`}
-                          className={`block rounded px-2 py-1.5 text-xs leading-snug ${
-                            isCurrentRank
-                              ? 'bg-amber-950/45 text-slate-100 ring-1 ring-inset ring-amber-400/45'
-                              : 'bg-slate-900/75 text-slate-300'
-                          }`}
-                        >
-                          <span className="block whitespace-pre-line">
-                            Rank {rank}:{' '}
-                            {sentenceCaseBlock(
-                              rankDescriptionForTalent(selectedTalent, rank, pairIndexByTalentId),
-                            )}
-                          </span>
-                        </span>
-                      );
-                    })}
-                  </span>
+                  selectedTalent.points >= selectedTalent.maxPoints ? (
+                    <div className="whitespace-pre-line">
+                      {sentenceCaseBlock(
+                        rankDescriptionForTalent(
+                          selectedTalent,
+                          selectedTalent.maxPoints,
+                          pairIndexByTalentId,
+                        ),
+                      )}
+                    </div>
+                  ) : selectedTalent.points === 0 ? (
+                    <div className="whitespace-pre-line">
+                      {sentenceCaseBlock(
+                        rankDescriptionForTalent(selectedTalent, 1, pairIndexByTalentId),
+                      )}
+                    </div>
+                  ) : (
+                    <div className="normal-case tabular-nums">
+                      {renderTalentLevelUpBody(
+                        talentLevelUpMarkedText(
+                          selectedTalent,
+                          selectedTalent.points,
+                          selectedTalent.points + 1,
+                          pairIndexByTalentId,
+                        ),
+                      )}
+                    </div>
+                  )
                 ) : (
                   sentenceCaseBlock(detailDescription(selectedTalent, pairIndexByTalentId))
                 )}
               </div>
-              {selectedLearnReason &&
-              selectedTalent.points < selectedTalent.maxPoints ? (
-                <div className="ui-frame mt-2 rounded-md bg-amber-950/25 px-2 py-1.5 text-[10px] font-semibold leading-snug text-amber-200/95 sm:text-[11px]">
-                  {selectedLearnReason}
-                </div>
-              ) : null}
             </motion.div>
           ) : (
             <div
@@ -653,6 +805,7 @@ export function TalentTree({
             </div>
           )}
         </AnimatePresence>
+        </div>
       </div>
     </div>
   );
