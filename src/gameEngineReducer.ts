@@ -29,7 +29,7 @@ import { advanceCombatTick, type TickRandom } from './gameTick.ts';
 import { tryApplySpellCast, type CastRuntime } from './spellCastPipeline.ts';
 
 export type GameAction =
-  | { type: 'TICK'; random: TickRandom; now: number; dpsMultiplier?: number }
+  | { type: 'TICK'; random: TickRandom; now: number; dpsMultiplier?: number; ticksToProcess?: number }
   | { type: 'SET'; state: GameState }
   | { type: 'REORDER_ACTION_BAR'; from: number; to: number }
   | { type: 'DISMISS_DUNGEON_OUTCOME' }
@@ -64,13 +64,23 @@ function tickSpellCooldowns(state: GameState): GameState {
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
-    case 'TICK':
-      if (state.isTutorialPaused) {
-        return tickSpellCooldowns(state);
+    case 'TICK': {
+      let nextState = state;
+      const ticks = action.ticksToProcess ?? 1;
+      
+      for (let i = 0; i < ticks; i++) {
+        if (nextState.isTutorialPaused) {
+          nextState = tickSpellCooldowns(nextState);
+        } else {
+          nextState = tickSpellCooldowns(
+            advanceCombatTick(nextState, action.random, action.now, action.dpsMultiplier)
+          );
+        }
+        // Stop processing extra catch-up ticks if combat finishes during the loop
+        if (!nextState.isCombatActive) break;
       }
-      return tickSpellCooldowns(
-        advanceCombatTick(state, action.random, action.now, action.dpsMultiplier),
-      );
+      return nextState;
+    }
     case 'SET_TUTORIAL_PAUSED':
       return { ...state, isTutorialPaused: action.value };
     case 'COMPLETE_INTRO_TUTORIAL':

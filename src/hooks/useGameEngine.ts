@@ -118,9 +118,29 @@ export function useGameEngine() {
 
   useEffect(() => {
     if (!state.isCombatActive || state.isTutorialPaused) return;
+
+    // Track exact time when the interval (combat) starts/unpauses
+    let lastTickTime = Date.now();
+
     const interval = setInterval(() => {
-      dispatch({ type: 'TICK', random: Math.random, now: Date.now() });
-    }, TICK_RATE);
+      const now = Date.now();
+      const deltaMs = now - lastTickTime;
+      let ticksToProcess = Math.floor(deltaMs / TICK_RATE);
+
+      if (ticksToProcess > 0) {
+        // Anti-freeze: Cap catch-up to 10 seconds (100 ticks) max if tabbed out
+        if (ticksToProcess > 100) {
+          ticksToProcess = 100;
+          lastTickTime = now; // Drop the lost time gracefully
+        } else {
+          // Advance the clock exactly by the consumed ticks to keep fractional remainders
+          lastTickTime += ticksToProcess * TICK_RATE;
+        }
+
+        dispatch({ type: 'TICK', random: Math.random, now, ticksToProcess });
+      }
+    }, TICK_RATE / 2); // Run the polling loop twice as fast (50ms) for smoother frame catching
+
     return () => clearInterval(interval);
   }, [state.isCombatActive, state.isTutorialPaused]);
 
