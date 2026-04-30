@@ -232,9 +232,6 @@ export function GameHUD({
 
             <div className="flex w-full flex-col items-center gap-2 sm:gap-2.5">
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <span className="shrink-0 rounded-sm bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white sm:text-[9px]">
-                  BOSS
-                </span>
                 {endlessStacks !== undefined ? (
                   <span className="ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 sm:text-[9px]">
                     Endless x{endlessCycleMultiplier(endlessStacks).toFixed(2)}
@@ -254,11 +251,20 @@ export function GameHUD({
 
             <div className="flex flex-wrap items-center gap-2">
 
-              <span className="shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white sm:text-[8px]">
-                BATTLE PROGRESS
-              </span>
               <span className="text-xs font-black uppercase tracking-tight text-slate-300 tabular-nums sm:text-[10px]">
-                {trashPullsRemaining} pack{trashPullsRemaining === 1 ? '' : 's'} left
+
+
+                
+        {!bossActive ? (
+          <div className="mx-auto flex w-full items-center justify-evenly">
+            {Array.from({ length: TRASH_PACKS }, (_, i) => (
+              <Fragment key={i}>
+                <TrashPackSkull defeated={pullsCleared > i} />
+              </Fragment>
+            ))}
+            <BossSkull bossActive={bossActive} />
+          </div>
+        ) : null}
               </span>
 
             </div>
@@ -281,16 +287,6 @@ export function GameHUD({
 
 
 
-        {!bossActive ? (
-          <div className="ui-frame-divider-top mx-auto flex w-full max-w-6xl items-center justify-evenly pt-2 sm:pt-2.5">
-            {Array.from({ length: TRASH_PACKS }, (_, i) => (
-              <Fragment key={i}>
-                <TrashPackSkull defeated={pullsCleared > i} />
-              </Fragment>
-            ))}
-            <BossSkull bossActive={bossActive} />
-          </div>
-        ) : null}
 
 
 
