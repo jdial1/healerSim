@@ -15,7 +15,7 @@ import {
   starterSpellsForClass,
 } from './playerStats.ts';
 
-export const PLAYER_MAX_LEVEL = 25;
+export const PLAYER_MAX_LEVEL = 55;
 
 function nominalClearXpForDifficulty(difficulty: number): number {
   return Math.round(dungeonBaseXp(difficulty) * dungeonXpTierMultiplier(difficulty));

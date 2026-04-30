@@ -401,8 +401,8 @@ export default function App() {
               endlessStacks={state.currentDungeon.endless ? state.endlessStacks : undefined}
             />
 
-            <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-48 pb-36 sm:pt-52 sm:pb-40">
-               <div className="flex min-h-0 flex-1 w-full max-w-xl flex-col items-center gap-1 self-center overflow-y-auto px-2 pb-2">
+            <main className="flex min-h-0 flex-1 flex-col overflow-hidden pt-45 pb-45 sm:pt-45 sm:pb-45">
+               <div className="flex min-h-0 flex-1 w-full max-w-xl flex-col items-top gap-0 self-center overflow-y-auto px-1 pb-1">
                  <HealGrid
                   party={partyForHealGrid}
                   selectedId={targetId}

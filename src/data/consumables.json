@@ -32,10 +32,22 @@
         "instant": 202
       },
       {
-        "maxLevel": 25,
-        "icon": "wow/inv_potion_76",
+        "maxLevel": 34,
+        "icon": "wow/inv_potion_75",
         "label": "Major",
-        "instant": 303
+        "instant": 350
+      },
+      {
+        "maxLevel": 44,
+        "icon": "wow/inv_potion_78",
+        "label": "Combat",
+        "instant": 550
+      },
+      {
+        "maxLevel": 55,
+        "icon": "wow/inv_potion_88",
+        "label": "Pure",
+        "instant": 850
       }
     ]
   }

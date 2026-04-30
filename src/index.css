@@ -338,13 +338,13 @@
     @apply pointer-events-none flex w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] items-start gap-1.5 shadow-2xl sm:gap-2;
   }
   .ui-heal-grid-root {
-    @apply mx-auto flex w-full max-w-xl flex-col gap-3 overflow-y-auto overflow-x-visible p-1 sm:gap-2.5 sm:p-2;
+    @apply mx-auto flex w-full max-w-xl flex-col gap-1 overflow-y-auto overflow-x-visible p-2 sm:gap-1 sm:p-1;
   }
   .ui-heal-grid-row-wrap {
     @apply relative z-0 w-full overflow-visible;
   }
   .ui-heal-grid-row {
-    @apply relative flex h-[4.95rem] w-full min-h-[4.95rem] overflow-hidden rounded-md bg-slate-900 text-left transition-all sm:h-[5.4rem];
+    @apply relative flex h-[5rem] w-full min-h-[5rem] overflow-hidden rounded-md bg-slate-900 text-left transition-all sm:h-[3rem];
     transition-duration: 150ms;
     transition-timing-function: var(--ui-ease-snappy);
   }
