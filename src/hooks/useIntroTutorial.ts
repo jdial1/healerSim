@@ -223,6 +223,7 @@ export function useIntroTutorial({
     if (hasMasteryOpen || !state.introTutorialComplete || showRoster || !state.currentDungeon) return;
     if (completedSteps.includes(TUTORIAL_STEP_AOE)) return;
     if (!aoeSpellId) return;
+    if (!state.activeActionBars.includes(aoeSpellId)) return;
     if (livingPartyBelowThreshold(state, 0.6) >= 3) {
       setActiveMasteryStep('aoe');
       setTutorialPaused(true);
