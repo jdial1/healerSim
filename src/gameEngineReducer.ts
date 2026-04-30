@@ -120,6 +120,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         dungeonRunHealEffective: 0,
         dungeonRunHealOverheal: 0,
         dungeonRunManaSpentHealing: 0,
+        diagnostics: null,
       };
     case 'START_DUNGEON': {
       if (action.dungeon.endless && state.level < action.dungeon.levelMin) return state;
@@ -150,6 +151,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             : u,
         );
       }
+      const now = Date.now();
       return {
         ...state,
         currentDungeon: dungeon,
@@ -179,6 +181,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         dungeonRunHealEffective: 0,
         dungeonRunHealOverheal: 0,
         dungeonRunManaSpentHealing: 0,
+        diagnostics: {
+          runStartTimeMs: now,
+          lastPhaseStartTimeMs: now,
+          lastPhaseStartTick: 0,
+          events: [],
+        },
       };
     }
     case 'UNLOCK_TALENT':
@@ -395,6 +403,7 @@ export function emptyGameBase(): GameState {
     isTutorialPaused: false,
     introTutorialComplete: false,
     tutorialCompletedSteps: [],
+    diagnostics: null,
   };
 }
 
@@ -427,6 +436,7 @@ function applyProgressPatchToBase(base: GameState, patch: Partial<GameState>): G
     isTutorialPaused: patch.isTutorialPaused ?? false,
     introTutorialComplete: patch.introTutorialComplete ?? base.introTutorialComplete,
     tutorialCompletedSteps: patch.tutorialCompletedSteps ?? base.tutorialCompletedSteps,
+    diagnostics: null,
   };
 }
 

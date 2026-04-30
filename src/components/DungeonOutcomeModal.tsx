@@ -1,6 +1,6 @@
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
-import { Skull, Trophy, X } from 'lucide-react';
+import { Skull, Trophy, X, Copy, Check } from 'lucide-react';
 import { DungeonRunOutcome, DungeonFailureReason } from '../types.ts';
 import { SPELLS } from '../constants.ts';
 import {
@@ -51,6 +51,19 @@ interface DungeonOutcomeModalProps {
 export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalProps) {
   const isSuccess = outcome.kind === 'success';
   const levelUpOnly = isSuccess && outcome.successFlavor === 'level_up';
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLogs = () => {
+    if (!outcome.diagnostics) return;
+    const text = JSON.stringify(outcome.diagnostics, null, 2);
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch((e) => {
+      console.error("Clipboard write failed", e);
+    });
+  };
+
   const cls = outcome.playerClass;
   const order = cls ? classSpellOrder(cls) : [];
   const spellRewardIds = [...outcome.upgradedSpellIds].sort((a, b) => {
@@ -311,9 +324,21 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
 
           {postStats ? (
             <div className="ui-frame mt-5 w-full rounded-md bg-slate-950/70 px-3 py-3 sm:mt-5 sm:px-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                Run statistics
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                  Run statistics
+                </p>
+                {outcome.diagnostics ? (
+                  <button
+                    type="button"
+                    onClick={handleCopyLogs}
+                    className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-200"
+                  >
+                    {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    {copied ? <span className="text-emerald-400">Copied</span> : 'Copy Logs'}
+                  </button>
+                ) : null}
+              </div>
               <dl className="mt-2.5 space-y-2.5 text-left">
                 <div className="ui-frame-divider-bottom flex items-baseline justify-between gap-3 pb-2">
                   <dt className="text-[11px] font-semibold text-slate-400">Total healing</dt>

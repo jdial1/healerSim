@@ -338,18 +338,18 @@
     @apply pointer-events-none flex w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] items-start gap-1.5 shadow-2xl sm:gap-2;
   }
   .ui-heal-grid-root {
-    @apply mx-auto flex w-full max-w-xl flex-col gap-1 overflow-y-auto overflow-x-visible p-2 sm:gap-1 sm:p-1;
+    @apply mx-auto flex w-full max-w-xl flex-col justify-center gap-1.5 overflow-visible p-1 sm:p-2 h-full min-h-0;
   }
   .ui-heal-grid-row-wrap {
-    @apply relative z-0 w-full overflow-visible;
+    @apply relative z-0 w-full overflow-visible flex flex-1 min-h-[3.5rem] max-h-[5.5rem];
   }
   .ui-heal-grid-row {
-    @apply relative flex h-[5rem] w-full min-h-[5rem] overflow-hidden rounded-md bg-slate-900 text-left transition-all sm:h-[3rem];
+    @apply relative flex w-full h-full overflow-hidden rounded-md bg-slate-900 text-left transition-all;
     transition-duration: 150ms;
     transition-timing-function: var(--ui-ease-snappy);
   }
   .ui-heal-grid-fct-root {
-    @apply pointer-events-none absolute bottom-[72%] left-1/2 z-[25] flex max-w-[min(100%,14rem)] -translate-x-1/2 justify-center gap-1.5;
+    @apply pointer-events-none absolute bottom-[60%] left-1/2 z-[25] flex max-w-[min(100%,14rem)] -translate-x-1/2 justify-center gap-1.5;
   }
   .ui-heal-grid-fct-heal {
     @apply font-mono text-base font-black tabular-nums tracking-tight text-emerald-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85),0_0_10px_rgba(52,211,153,0.55)] sm:text-lg;
@@ -393,36 +393,36 @@
       linear-gradient(0deg, rgba(2, 6, 23, 0.22) 0%, rgba(2, 6, 23, 0) 40%);
   }
   .ui-heal-grid-content {
-    @apply pointer-events-none relative z-10 grid w-full gap-x-3 gap-y-1 px-4 pb-2 pt-2.5;
+    @apply pointer-events-none relative z-10 grid w-full px-3 py-1 sm:px-4 sm:py-1.5 gap-x-2 gap-y-0.5;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto 1fr;
     grid-template-areas:
       'name meta'
       'buffs hp';
-    align-items: start;
+    align-items: center;
+    height: 100%;
   }
   .ui-heal-grid-name {
     grid-area: name;
-    @apply min-w-0 truncate text-base font-semibold leading-tight tracking-tight text-white sm:text-lg;
+    @apply min-w-0 truncate text-[0.95rem] sm:text-[1.05rem] font-semibold leading-tight tracking-tight text-white;
     text-shadow:
       0 1px 2px rgb(0 0 0 / 0.75),
       0 0 12px rgb(0 0 0 / 0.45);
   }
   .ui-heal-grid-meta {
     grid-area: meta;
-    @apply flex max-w-[min(100%,12rem)] flex-wrap items-center justify-end gap-x-2 gap-y-0.5 self-start justify-self-end text-right text-[11px] font-medium tracking-wide text-slate-200 sm:text-[10px];
+    @apply flex max-w-[min(100%,12rem)] flex-wrap items-center justify-end gap-x-2 gap-y-0.5 self-center justify-self-end text-right text-[11px] font-medium tracking-wide text-slate-200 sm:text-[10px];
     text-shadow:
       0 1px 2px rgb(0 0 0 / 0.72),
       0 0 10px rgb(0 0 0 / 0.4);
   }
   .ui-heal-grid-hp-readout {
     grid-area: hp;
-    @apply min-w-[6.5ch] shrink-0 self-end justify-self-end text-right font-mono text-xl font-black tabular-nums leading-none tracking-tight text-white sm:text-2xl;
+    @apply min-w-[6.5ch] shrink-0 self-center justify-self-end text-right font-mono text-lg sm:text-xl font-black tabular-nums leading-none tracking-tight text-white;
     text-shadow:
       0 1px 2px rgb(0 0 0 / 0.8),
       0 -1px 1px rgb(0 0 0 / 0.55),
-      1px 0 1px rgb(0 0 0 / 0.55),
-      -1px 0 1px rgb(0 0 0 / 0.55);
+      0 0 14px rgb(0 0 0 / 0.35);
   }
   .ui-heal-grid-hp-readout-low {
     @apply animate-pulse text-red-200;
@@ -432,7 +432,7 @@
   }
   .ui-heal-grid-buff-row {
     grid-area: buffs;
-    @apply flex -translate-y-1.5 flex-wrap items-end gap-2 self-end sm:gap-1.5 sm:-translate-y-2;
+    @apply flex flex-wrap items-center gap-1.5 self-center;
   }
   .ui-heal-grid-fallen {
     @apply border border-red-500/30 bg-red-600/20 px-1 text-[10px] font-black uppercase tracking-widest text-red-400 sm:text-[8px];

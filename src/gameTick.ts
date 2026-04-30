@@ -767,7 +767,11 @@ function resolvePlayerSystemsAfterEnvironmentalDamage(
   };
 }
 
-function resolveCombatFailureFromTick(state: GameState, newParty: Unit[]): GameState | null {
+function resolveCombatFailureFromTick(
+  state: GameState,
+  newParty: Unit[],
+  now: number,
+): GameState | null {
   if (
     !newParty.every((u) => u.health <= 0) &&
     newParty.find((u) => u.role === 'HEALER')?.health !== 0
@@ -789,6 +793,25 @@ function resolveCombatFailureFromTick(state: GameState, newParty: Unit[]): GameS
     const rewards = isLevelUp
       ? levelUpRewardSummary(state.playerClass, state.talents, state.level, meta.level)
       : { upgradedSpellIds: [] as string[], upgradedPotion: false };
+    let nextDiag = state.diagnostics;
+    if (nextDiag) {
+      const ticksTaken = state.combatElapsedTicks - nextDiag.lastPhaseStartTick;
+      const msTaken = Math.max(0, now - nextDiag.lastPhaseStartTimeMs);
+      const name = state.combatPhase === 'BOSS' ? (state.currentDungeon?.bossName ?? 'Boss') : `Trash ${TRASH_PACK_COUNT - state.trashPullsRemaining + 1}`;
+      nextDiag = {
+        ...nextDiag,
+        events: [
+          ...nextDiag.events,
+          { phase: state.combatPhase, name, ticksElapsed: ticksTaken, realMsElapsed: msTaken, expectedMs: ticksTaken * (1000 / TICKS_PER_SECOND) }
+        ],
+        totalRealMs: now - nextDiag.runStartTimeMs,
+        totalExpectedMs: state.combatElapsedTicks * (1000 / TICKS_PER_SECOND),
+      };
+      try {
+        nextDiag.userAgent = navigator.userAgent;
+      } catch (e) {}
+    }
+
     return {
       ...state,
       party:
@@ -820,24 +843,26 @@ function resolveCombatFailureFromTick(state: GameState, newParty: Unit[]): GameS
         upgradedPotion: rewards.upgradedPotion,
         endlessWavesCleared: d.endless ? state.endlessStacks : undefined,
         postStats: dungeonPostStatsFromState(state),
+        diagnostics: nextDiag ?? undefined,
       },
     };
   }
-  return {
-    ...state,
-    party: newParty,
-    isCombatActive: false,
-    currentDungeon: null,
-    dungeonPace: null,
-    playerCombatBuffs: [],
-    bossSelfBuffs: [],
-    bossMechanicCountdownTicks: 0,
-    bossMechanicOrdinal: 0,
-    spellCooldowns: {},
-    floatingCombatTexts: [],
-    endlessStacks: 0,
-    dungeonOutcome: null,
-  };
+    return {
+      ...state,
+      party: newParty,
+      isCombatActive: false,
+      currentDungeon: null,
+      dungeonPace: null,
+      playerCombatBuffs: [],
+      bossSelfBuffs: [],
+      bossMechanicCountdownTicks: 0,
+      bossMechanicOrdinal: 0,
+      spellCooldowns: {},
+      floatingCombatTexts: [],
+      endlessStacks: 0,
+      dungeonOutcome: null,
+      diagnostics: null,
+    };
 }
 
 function resolveOngoingCombatAfterPartyAlive(
@@ -847,6 +872,7 @@ function resolveOngoingCombatAfterPartyAlive(
   bossBuffsNext: BossSelfBuff[],
   random: TickRandom,
   dpsPaceMultiplier: number,
+  now: number,
 ): GameState {
   const newParty = sys.party;
   const newMana = sys.newMana;
@@ -869,7 +895,24 @@ function resolveOngoingCombatAfterPartyAlive(
   const trashHp =
     state.currentDungeon !== null ? Math.max(1, trashMaxHealthForDungeon(state.currentDungeon)) : 1;
 
+  let nextDiag = state.diagnostics;
+
   if (currentEnemyHealth <= 0) {
+    if (nextDiag) {
+      const ticksTaken = state.combatElapsedTicks - nextDiag.lastPhaseStartTick;
+      const msTaken = Math.max(0, now - nextDiag.lastPhaseStartTimeMs);
+      const name = state.combatPhase === 'BOSS' ? (state.currentDungeon?.bossName ?? 'Boss') : `Trash ${TRASH_PACK_COUNT - state.trashPullsRemaining + 1}`;
+      nextDiag = {
+        ...nextDiag,
+        lastPhaseStartTimeMs: now,
+        lastPhaseStartTick: state.combatElapsedTicks,
+        events: [
+          ...nextDiag.events,
+          { phase: state.combatPhase, name, ticksElapsed: ticksTaken, realMsElapsed: msTaken, expectedMs: ticksTaken * (1000 / TICKS_PER_SECOND) }
+        ],
+      };
+    }
+
     if (state.combatPhase === 'TRASH') {
       newTrashPulls -= 1;
       if (newTrashPulls > 0) {
@@ -959,6 +1002,14 @@ function resolveOngoingCombatAfterPartyAlive(
         dungeonId && d && !d.endless && !state.completedDungeonIds.includes(dungeonId)
           ? [...state.completedDungeonIds, dungeonId]
           : state.completedDungeonIds;
+      if (nextDiag) {
+        nextDiag.totalRealMs = now - nextDiag.runStartTimeMs;
+        nextDiag.totalExpectedMs = state.combatElapsedTicks * (1000 / TICKS_PER_SECOND);
+        try {
+          nextDiag.userAgent = navigator.userAgent;
+        } catch (e) {}
+      }
+
       return {
         ...state,
         xp: newXp,
@@ -991,6 +1042,7 @@ function resolveOngoingCombatAfterPartyAlive(
               upgradedSpellIds: rewards.upgradedSpellIds,
               upgradedPotion: rewards.upgradedPotion,
               postStats: dungeonPostStatsFromState(state),
+              diagnostics: nextDiag ?? undefined,
             }
           : null,
       };
@@ -1012,6 +1064,7 @@ function resolveOngoingCombatAfterPartyAlive(
       bossMechanicCountdownTicks: mechCd,
       bossMechanicOrdinal: mechOrdinal,
       holyPower: sys.holyPower,
+      diagnostics: nextDiag,
     },
     newMana,
   );
@@ -1071,10 +1124,10 @@ export function advanceCombatTick(
     dungeonRunHealEffective: stAcc.dungeonRunHealEffective + sys.natureGraceEff,
     dungeonRunHealOverheal: stAcc.dungeonRunHealOverheal + sys.natureGraceOh,
   };
-  const fail = resolveCombatFailureFromTick(stAcc, sys.party);
+  const fail = resolveCombatFailureFromTick(stAcc, sys.party, now);
   if (fail) return { ...fail, floatingCombatTexts: [] };
   return {
-    ...resolveOngoingCombatAfterPartyAlive(stAcc, sys, boss, bossBuffsNext, random, dpsPaceMultiplier),
+    ...resolveOngoingCombatAfterPartyAlive(stAcc, sys, boss, bossBuffsNext, random, dpsPaceMultiplier, now),
     floatingCombatTexts: floats,
   };
 }

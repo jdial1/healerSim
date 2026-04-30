@@ -461,15 +461,12 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
                             </span>
                           ) : showReducedXp ? (
                             <span className="flex max-w-full flex-col gap-0.5 normal-case">
-                              <span className="text-[11px] font-semibold text-slate-300 sm:text-xs">
-                                Overleveled — reduced clear XP
-                              </span>
                               <span className="tabular-nums tracking-tight text-amber-200">
-                                <span className="text-slate-400 line-through decoration-slate-500">+{nominalClearXp}</span>
+                                <span className="text-slate-400 line-through decoration-slate-500">+{nominalClearXp} </span>
                                 <span className="mx-1 text-slate-500" aria-hidden>
                                   →
                                 </span>
-                                <span>+{clearXp} XP</span>
+                                <span>+{clearXp} reduced XP</span>
                               </span>
                             </span>
                           ) : (

@@ -217,6 +217,24 @@ export interface DungeonRunPostStats {
   hpm: number;
 }
 
+export interface DiagnosticEvent {
+  phase: string;
+  name: string;
+  ticksElapsed: number;
+  realMsElapsed: number;
+  expectedMs: number;
+}
+
+export interface DungeonDiagnostics {
+  runStartTimeMs: number;
+  lastPhaseStartTimeMs: number;
+  lastPhaseStartTick: number;
+  events: DiagnosticEvent[];
+  totalRealMs?: number;
+  totalExpectedMs?: number;
+  userAgent?: string;
+}
+
 export type DungeonRunOutcome =
   | {
       kind: 'success';
@@ -230,6 +248,7 @@ export type DungeonRunOutcome =
       upgradedSpellIds: string[];
       upgradedPotion: boolean;
       postStats?: DungeonRunPostStats;
+      diagnostics?: DungeonDiagnostics;
     }
   | {
       kind: 'failure';
@@ -242,8 +261,9 @@ export type DungeonRunOutcome =
       upgradedSpellIds: string[];
       upgradedPotion: boolean;
       endlessWavesCleared?: number;
-      postStats?: DungeonRunPostStats;
-    };
+       postStats?: DungeonRunPostStats;
+       diagnostics?: DungeonDiagnostics;
+     };
 
 export type CombatPhase = 'TRASH' | 'BOSS';
 
@@ -306,4 +326,5 @@ export interface GameState {
   isTutorialPaused: boolean;
   introTutorialComplete: boolean;
   tutorialCompletedSteps: string[];
+  diagnostics: DungeonDiagnostics | null;
 }
