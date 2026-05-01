@@ -8,15 +8,21 @@ export const EMPTY_SHIELD = {
   shieldTicksRemaining: 0,
 } as const;
 
-export const UNIT_STATUS_DEFAULTS: Pick<
+/**
+ * Returns new default status values for a Unit.
+ * Using a factory function ensures that each unit gets its own unique array instances for buffs and debuffs.
+ */
+export function getUnitStatusDefaults(): Pick<
   Unit,
   'buffs' | 'debuffs' | 'shield' | 'shieldTicksRemaining' | 'livingSeedPool'
-> = {
-  buffs: [],
-  debuffs: [],
-  ...EMPTY_SHIELD,
-  livingSeedPool: 0,
-};
+> {
+  return {
+    buffs: [],
+    debuffs: [],
+    ...EMPTY_SHIELD,
+    livingSeedPool: 0,
+  };
+}
 
 /**
  * Creates a base Unit with provided properties and default status values.
@@ -25,7 +31,7 @@ export function createBaseUnit(
   props: Pick<Unit, 'id' | 'name' | 'role' | 'level' | 'maxHealth' | 'health'> & Partial<Unit>,
 ): Unit {
   return {
-    ...UNIT_STATUS_DEFAULTS,
+    ...getUnitStatusDefaults(),
     ...props,
   };
 }
@@ -36,6 +42,6 @@ export function createBaseUnit(
 export function resetUnitStatus(unit: Unit): Unit {
   return {
     ...unit,
-    ...UNIT_STATUS_DEFAULTS,
+    ...getUnitStatusDefaults(),
   };
 }
