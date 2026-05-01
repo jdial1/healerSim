@@ -150,13 +150,9 @@ async function downloadWowIcon(icon) {
   return false;
 }
 
-async function downloadGameIcon(author, icon) {
-  const dir = path.join(publicRoot, 'icons', 'game-icons', author);
-  await mkdir(dir, { recursive: true });
-  const outPath = path.join(dir, `${icon}.png`);
-  if (await exists(outPath)) return true;
-
+function resolveGameIconUrls(author, icon) {
   const slugCandidates = [`${author}/${icon}`, ...(gameIconAliases.get(`${author}/${icon}`) ?? [])];
+  const urls = [];
   const attempted = new Set();
 
   for (const slug of slugCandidates) {
@@ -165,26 +161,39 @@ async function downloadGameIcon(author, icon) {
 
     const authorCandidates = [baseAuthor];
     if (swappableAuthors.has(baseAuthor)) {
-      if (baseAuthor !== 'lorc') authorCandidates.push('lorc');
-      if (baseAuthor !== 'delapouite') authorCandidates.push('delapouite');
-      if (baseAuthor !== 'skoll') authorCandidates.push('skoll');
-      if (baseAuthor !== 'willdabeast') authorCandidates.push('willdabeast');
-      if (baseAuthor !== 'darkzaitzev') authorCandidates.push('darkzaitzev');
+      for (const sw of swappableAuthors) {
+        if (sw !== baseAuthor) authorCandidates.push(sw);
+      }
     }
 
     for (const candidateAuthor of authorCandidates) {
       const attemptKey = `${candidateAuthor}/${baseIcon}`;
       if (attempted.has(attemptKey)) continue;
       attempted.add(attemptKey);
+
       for (const palette of gameIconPalettes) {
-        const data = await fetchBuffer(`${gameIconsBase}/${palette}/1x1/${candidateAuthor}/${baseIcon}.png`);
-        if (!data) continue;
-        await mkdir(path.dirname(outPath), { recursive: true });
-        await writeFile(outPath, data);
-        return true;
+        urls.push(`${gameIconsBase}/${palette}/1x1/${candidateAuthor}/${baseIcon}.png`);
       }
     }
   }
+  return urls;
+}
+
+async function downloadGameIcon(author, icon) {
+  const dir = path.join(publicRoot, 'icons', 'game-icons', author);
+  const outPath = path.join(dir, `${icon}.png`);
+  if (await exists(outPath)) return true;
+
+  const urls = resolveGameIconUrls(author, icon);
+  for (const url of urls) {
+    const data = await fetchBuffer(url);
+    if (data) {
+      await mkdir(path.dirname(outPath), { recursive: true });
+      await writeFile(outPath, data);
+      return true;
+    }
+  }
+
   return false;
 }
 

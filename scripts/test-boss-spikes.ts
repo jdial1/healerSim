@@ -85,25 +85,32 @@ function partyFixedDungeonLevel(level: number, cls: ClassType): GameState['party
   });
 }
 
-function buildBossSpikeState(dungeon: Dungeon, episodeIndex: number): GameState {
-  const allyLevel = dungeon.levelMax;
-  const talents = cloneTalentsForClass('PRIEST');
-  const xp = totalXpToReachLevel(allyLevel);
-  const meta = computeMetaFromProgress(xp, 'PRIEST', talents);
-  const party = beefParty(partyFixedDungeonLevel(allyLevel, 'PRIEST'));
-  const prof = bossCombatProfileForDungeon(dungeon);
-  const rng = mulberry32(episodeIndex * 0x9e3779b9 ^ dungeon.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
-  const mechCd = randomIntInclusive(
-    prof.mechanicIntervalTicksMin,
-    prof.mechanicIntervalTicksMax,
-    rng,
+function getBossSpikeSeed(dungeon: Dungeon, episodeIndex: number): number {
+  return (
+    (episodeIndex * 0x9e3779b9) ^
+    dungeon.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
   );
+}
+
+function prepareBossSpikePlayer(level: number, playerClass: ClassType) {
+  const talents = cloneTalentsForClass(playerClass);
+  const xp = totalXpToReachLevel(level);
+  const meta = computeMetaFromProgress(xp, playerClass, talents);
+  const party = beefParty(partyFixedDungeonLevel(level, playerClass));
+  return { talents, meta, party, playerClass };
+}
+
+function assembleBossSpikeState(
+  dungeon: Dungeon,
+  player: ReturnType<typeof prepareBossSpikePlayer>,
+  mechCd: number,
+): GameState {
   const base = emptyGameBase();
   return {
     ...base,
-    ...meta,
-    playerClass: 'PRIEST',
-    talents,
+    ...player.meta,
+    playerClass: player.playerClass,
+    talents: player.talents,
     isCombatActive: true,
     combatPhase: 'BOSS',
     currentDungeon: dungeon,
@@ -112,7 +119,7 @@ function buildBossSpikeState(dungeon: Dungeon, episodeIndex: number): GameState 
     enemyHealth: dungeon.bossHealth,
     enemyMaxHealth: dungeon.bossHealth,
     dungeonProgress: 75,
-    party,
+    party: player.party,
     bossSelfBuffs: [],
     bossMechanicCountdownTicks: mechCd,
     bossMechanicOrdinal: 0,
@@ -124,6 +131,19 @@ function buildBossSpikeState(dungeon: Dungeon, episodeIndex: number): GameState 
     dungeonOutcome: null,
     spellCooldowns: {},
   };
+}
+
+function buildBossSpikeState(dungeon: Dungeon, episodeIndex: number): GameState {
+  const player = prepareBossSpikePlayer(dungeon.levelMax, 'PRIEST');
+  const prof = bossCombatProfileForDungeon(dungeon);
+  const rng = mulberry32(getBossSpikeSeed(dungeon, episodeIndex));
+  const mechCd = randomIntInclusive(
+    prof.mechanicIntervalTicksMin,
+    prof.mechanicIntervalTicksMax,
+    rng,
+  );
+
+  return assembleBossSpikeState(dungeon, player, mechCd);
 }
 
 function lineForSpike(
