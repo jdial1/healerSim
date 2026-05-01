@@ -1,9 +1,5 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
 
-import type { MechanicId } from './mechanicsRegistry.ts';
+import type { MechanicId } from './data/index.ts';
 
 export type ClassType = 'DRUID' | 'PRIEST' | 'PALADIN';
 

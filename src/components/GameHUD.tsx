@@ -1,11 +1,3 @@
-/**
-
- * @license
-
- * SPDX-License-Identifier: Apache-2.0
-
- */
-
 
 
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -22,8 +14,6 @@ import { GameIcon } from './GameIcon.tsx';
 import { BOSS_BUFF_ICON_TINT, glowForBossSelfBuff } from '../gameIcons.ts';
 import { TRASH_PACK_COUNT, endlessCycleMultiplier } from '../constants.ts';
 import { useGhostBarPercent } from '../useGhostBarPercent.ts';
-import { useTooltipPositioning } from '../hooks/useTooltipPositioning.ts';
-
 const TRASH_PACKS = TRASH_PACK_COUNT;
 
 function fmtBossBuffNumber(n: number): string {

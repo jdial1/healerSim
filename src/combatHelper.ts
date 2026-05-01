@@ -1,24 +1,53 @@
-import { Buff, ClassType, GameState, Unit, Spell } from './types.ts';
+import { Buff, ClassType, GameState, Unit, Spell, PartyDebuff } from './types.ts';
 import { findConsumableHotIndex } from './talentMechanics.ts';
-import { directHealSynergyMultiplierFromIds, nextManaForSpellWithHooks } from './combatHooks.ts';
-import { BALANCE } from './balance.ts';
+import { runHealManaCost } from './combatHookRegistry.ts';
+import { BALANCE, SPELLS } from './data/index.ts';
+import { spellHasTag } from './constants.ts';
 import { healEffectiveAndOverheal } from './healMath.ts';
 
 export const T_SPIRIT_AMP = 10 * 10;
-
 export const SHIELD_DEFAULT_TICKS = BALANCE.combat.shared.shieldDefaultTicks;
-
 const SHARED = BALANCE.combat.shared;
 const DRUID = BALANCE.combat.druid;
 
+/**
+ * SHARED UTILITY: pandemic calculation for HoTs
+ */
 function hotPandemicCapMult(spell: Spell): number {
   return spell.balance?.hotPandemicDurationCapMult ?? SHARED.hotPandemicDurationCapMultDefault;
+}
+
+/**
+ * SHARED UTILITY: helper for synergy bonuses
+ * Moved from deleted combatHooks.ts
+ */
+export function directHealSynergyMultiplierFromIds(unit: Unit, spellId: string): number {
+  if (!spellHasTag(spellId, 'synergy-direct')) return 1;
+  if (!unit.buffs.some((b) => spellHasTag(b.sourceSpellId, 'synergy-primer-source'))) return 1;
+  const sp = SPELLS[spellId];
+  return sp?.balance?.directHealSynergyMultiplier ?? SHARED.directHealSynergyMultiplierDefault;
+}
+
+/**
+ * SHARED UTILITY: Debuff stripping
+ * Moved from deleted combatHooks.ts
+ */
+export function stripOneDispellableDebuff(debuffs: PartyDebuff[]): PartyDebuff[] {
+  for (let i = debuffs.length - 1; i >= 0; i--) {
+    if (debuffs[i].dispellable) {
+      return debuffs.filter((_, j) => j !== i);
+    }
+  }
+  return debuffs;
 }
 
 export function directHealSynergyMultiplier(unit: Unit, spellId: string): number {
   return directHealSynergyMultiplierFromIds(unit, spellId);
 }
 
+/**
+ * UNIT MUTATOR: Applies a HoT while respecting the Pandemic window
+ */
 export function applyPandemicHotToUnit(
   unit: Unit,
   spell: Spell,
@@ -29,16 +58,19 @@ export function applyPandemicHotToUnit(
   if (baseTicks <= 0) return unit;
   const capTicks = Math.max(baseTicks, Math.floor(baseTicks * hotPandemicCapMult(spell)));
   const existingIdx = unit.buffs.findIndex((b) => b.sourceSpellId === spell.id);
+  
   let carried = 0;
   let kept = unit.buffs;
   if (existingIdx >= 0) {
     carried = unit.buffs[existingIdx].remainingTicks;
     kept = unit.buffs.filter((_, i) => i !== existingIdx);
   }
+
   const combined = Math.min(carried + baseTicks, capTicks);
   const scale = opts?.hasteTickScale ?? 1;
   const bloom =
     opts?.bloomBurstHeal ?? (spell.id === 'lifebloom' ? Math.max(0, spell.healing) : undefined);
+
   const buff: Buff = {
     id: spell.id,
     name: spell.name,
@@ -52,9 +84,13 @@ export function applyPandemicHotToUnit(
     bloomBurstHeal: bloom && bloom > 0 ? bloom : undefined,
     rendersAsHoTRing: true,
   };
+
   return { ...unit, buffs: [...kept, buff] };
 }
 
+/**
+ * DELEGATOR: Calculates final mana cost using class hooks
+ */
 export function nextManaForSpell(
   s: GameState,
   classType: ClassType,
@@ -62,16 +98,22 @@ export function nextManaForSpell(
   spellId: string,
   surgeFree: boolean,
 ): number {
-  return nextManaForSpellWithHooks(s, classType, spell, spellId, surgeFree);
+  return runHealManaCost(s, classType, spell, spellId, surgeFree);
 }
 
+/**
+ * SHARED LOGIC: swiftmend eligibility check
+ */
 export function swiftmendCanApply(s: GameState, targetId: string): boolean {
   if (s.playerClass !== 'DRUID') return false;
   const u = s.party.find((x) => x.id === targetId);
   if (!u || u.health <= 0) return false;
-  return findConsumableHotIndex(u, 'DRUID') >= 0;
+  return findConsumableHotIndex(u) >= 0;
 }
 
+/**
+ * SHARED LOGIC: swiftmend resolution
+ */
 export function resolveSwiftmend(
   s: GameState,
   classType: ClassType,
@@ -87,15 +129,20 @@ export function resolveSwiftmend(
   if (idx < 0) return { party: s.party, applied: false, eff: 0, oh: 0 };
   const u = p[idx];
   if (u.health <= 0) return { party: s.party, applied: false, eff: 0, oh: 0 };
-  const hotIdx = findConsumableHotIndex(u, 'DRUID');
+  
+  const hotIdx = findConsumableHotIndex(u);
   if (hotIdx < 0) {
     return { party: s.party, applied: false, eff: 0, oh: 0 };
   }
+
   const raw = spell.healing * rankHealMult * healMult * critMod;
   const { eff, oh } = healEffectiveAndOverheal(u.health, u.maxHealth, raw);
+  
+  // Consume the HoT
   u.buffs = u.buffs.filter((_, j) => j !== hotIdx);
   const h = Math.min(u.maxHealth, u.health + raw);
   p[idx] = { ...u, health: h };
+  
   return { party: p, applied: true, eff, oh };
 }
 

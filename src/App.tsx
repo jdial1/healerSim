@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState, useEffect, useCallback, useRef, Fragment, useMemo } from 'react';
 import { registerSW } from 'virtual:pwa-register';
 import { useGameEngine } from './hooks/useGameEngine.ts';

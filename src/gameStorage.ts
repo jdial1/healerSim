@@ -1,12 +1,7 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { ClassType, Dungeon, GameState, Talent } from './types.ts';
-import { PRIEST_TALENTS, DRUID_TALENTS, PALADIN_TALENTS } from './talents/index.ts';
+import { ClassRegistry } from './classes/index.ts';
 import { dungeonBaseXp, dungeonXpTierMultiplier, TRASH_PACK_COUNT } from './constants.ts';
-import balanceData from './data/balance.json';
+import { BALANCE as balanceData } from './data/index.ts';
 import {
   classSpellOrder,
   computedMaxMana,
@@ -270,9 +265,7 @@ export function reconcileActionBarOrder(prev: string[], defaultBar: string[]): s
 }
 
 function talentTreeTemplate(cls: ClassType): Talent[] {
-  if (cls === 'PRIEST') return PRIEST_TALENTS;
-  if (cls === 'DRUID') return DRUID_TALENTS;
-  return PALADIN_TALENTS;
+  return ClassRegistry.getTalents(cls) || [];
 }
 
 export function buildSpellLoadout(

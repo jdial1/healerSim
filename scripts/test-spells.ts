@@ -19,20 +19,21 @@ import {
   getRankHealMultiplier,
   getRankCostMultiplier,
 } from '../src/playerStats.ts';
-import { BALANCE } from '../src/balance.ts';
+import { BALANCE } from '../src/data/index.ts';
 import { totalXpToReachLevel, computeMetaFromProgress } from '../src/gameStorage.ts';
 import { emptyGameBase } from '../src/gameEngineReducer.ts';
 import {
-  resolveManaAfterHealCast,
-  nextManaForSpellWithHooks,
-  priestDivinityOverhealAbsorb,
-} from '../src/combatHooks.ts';
-import { priestMentalFortitudeMaxRankCombatManaPerTick } from '../src/talentMechanics.ts';
+  runHealManaCost,
+  runManaReturnMechanics,
+  runManaAfterHealCast
+} from '../src/combatHookRegistry.ts';
+import { runGeneralManaReturnMechanics } from '../src/talentMechanics.ts';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cloneTalentsForClass } from '../src/talents/index.ts';
 import type { ClassType, GameState, Spell, Talent } from '../src/types.ts';
 import { testPalette } from './testColors.ts';
+import { priestDivinityOverhealAbsorb } from '@/src/classes/priest/hooks.ts';
 
 const TEST_LEVEL = 25;
 const PARTY_SIZE = 5;
@@ -147,7 +148,7 @@ export function simulateSecondsToOom(
     ticks += 1;
     mana = Math.min(
       maxMana,
-      mana + manaRegenAmountPerTick(lockout, spirit) + priestMentalFortitudeMaxRankCombatManaPerTick(cls, maxMana, talents, lockout),
+      mana + manaRegenAmountPerTick(lockout, spirit) + runGeneralManaReturnMechanics(maxMana, talents, lockout)
     );
     lockout = Math.max(0, lockout - 1);
     gcd = Math.max(0, gcd - 1);
@@ -164,11 +165,10 @@ export function simulateSecondsToOom(
       if (!sp) continue;
       if ((cds[sid] ?? 0) > 0) continue;
       const sNow = { ...sBase, mana };
-      const needMana = nextManaForSpellWithHooks(sNow, cls, sp, sid, false);
+      const needMana = runHealManaCost(sNow, cls, sp, sid, false);
       if (mana < needMana) continue;
       const crit = rng() * 100 < talentCritChancePctFromTalents(talents);
-      const post = resolveManaAfterHealCast(sNow, sp, sid, needMana, false, crit, '2');
-      mana = post;
+      mana = runManaAfterHealCast(sNow, sp, sid, needMana, false, crit, '2', mana - needMana);
       if (needMana > 0) lockout = MANA_SPIRIT_REGEN_LOCKOUT_TICKS;
       const cdTicks = Math.max(MIN_GCD_TICKS, Math.round(sp.cooldown * (1 - haste / 100)));
       if (sp.cooldown > 0) cds[sid] = cdTicks;
@@ -181,7 +181,7 @@ export function simulateSecondsToOom(
         ...priority.map((sid) => {
           const sp = SPELLS[sid];
           if (!sp) return 999999;
-          return nextManaForSpellWithHooks({ ...sBase, mana }, cls, sp, sid, false);
+          return runHealManaCost({ ...sBase, mana }, cls, sp, sid, false);
         }),
       );
       if (lockout === 0 && mana < minNeed) break;

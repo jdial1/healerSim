@@ -24,7 +24,7 @@ import {
   talentHastePctFromTalents,
 } from '../src/playerStats.ts';
 import { runDamageTakenMultiplier } from '../src/combatHookRegistry.ts';
-import { BALANCE } from '../src/balance.ts';
+import { BALANCE } from '../src/data/index.ts';
 import type {
   BossCombatProfile,
   ClassType,

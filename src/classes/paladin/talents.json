@@ -2,7 +2,7 @@
   {
     "id": "h_r0c0",
     "name": "Critical and Mana Focus I",
-    "description": "Crit 1.2% per point. Mana sustain favors critical heals. Max rank: +3.6% crit chance, +75 mana total from this talent.",
+    "description": "Crit 1.2% per point. Mana sustain favors critical heals.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -18,7 +18,7 @@
   {
     "id": "h_r0c1",
     "name": "Haste Focus I",
-    "description": "Haste 2% per point. Max rank: +4% haste total from this talent.",
+    "description": "Haste 2% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -33,7 +33,7 @@
   {
     "id": "h_r0c2",
     "name": "Healing Focus I",
-    "description": "Healing 3% per point. Max rank: +6% healing total from this talent.",
+    "description": "Healing 3% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -48,7 +48,7 @@
   {
     "id": "h_r0c3",
     "name": "Critical Focus I",
-    "description": "Crit 1.5% per point. Max rank: +3% crit chance total from this talent.",
+    "description": "Crit 1.5% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -63,7 +63,7 @@
   {
     "id": "h_r0c4",
     "name": "Judicator's Precision",
-    "description": "Increases max mana by 30 per point to support sustained casting windows. Max rank: +60 mana total from this talent.",
+    "description": "Increases max mana by 30 per point to support sustained casting windows.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -78,7 +78,7 @@
   {
     "id": "h_r1c0",
     "name": "Critical and Mana Focus II",
-    "description": "Crit 2% and max mana 40 per point. Max rank: +4% crit chance, +80 mana total from this talent.",
+    "description": "Crit 2% and max mana 40 per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -129,7 +129,7 @@
   {
     "id": "h_r1c3",
     "name": "Healing Focus II",
-    "description": "Healing 3% per point. Max rank: +6% healing total from this talent.",
+    "description": "Healing 3% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -147,7 +147,7 @@
   {
     "id": "h_r2c0",
     "name": "Haste Focus II",
-    "description": "Haste 2.5% per point. Max rank: +5% haste total from this talent.",
+    "description": "Haste 2.5% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
@@ -216,7 +216,7 @@
   {
     "id": "h_r3c0",
     "name": "Healing Focus III",
-    "description": "Healing 4% per point. Max rank: +4% healing total from this talent.",
+    "description": "Healing 4% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
@@ -254,7 +254,7 @@
   {
     "id": "h_r3c2",
     "name": "Critical and Healing Focus I",
-    "description": "Crit 2% and healing 2% per point. Max rank: +4% crit chance, +4% healing total from this talent.",
+    "description": "Crit 2% and healing 2% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 13,
@@ -314,7 +314,7 @@
   {
     "id": "h_r4c0",
     "name": "Critical and Mana Focus III",
-    "description": "Crit 3% and max mana 80. Also gain bonus crit healing targets below 40% health. Max rank: +3% crit chance, +80 mana total from this talent.",
+    "description": "Crit 3% and max mana 80. Also gain bonus crit healing targets below 40% health.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -333,7 +333,7 @@
   {
     "id": "h_r4c1",
     "name": "Healing Focus IV",
-    "description": "Healing 5% per point. Max rank: +5% healing total from this talent.",
+    "description": "Healing 5% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -351,7 +351,7 @@
   {
     "id": "h_r4c2",
     "name": "Haste and Healing Focus I",
-    "description": "Haste 4% and healing 3%. Max rank: +4% haste, +3% healing total from this talent.",
+    "description": "Haste 4% and healing 3%.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -370,7 +370,7 @@
   {
     "id": "h_r4c3",
     "name": "Healing and Critical Focus I",
-    "description": "Healing 4% and crit 2%. Max rank: +4% healing, +2% crit chance total from this talent.",
+    "description": "Healing 4% and crit 2%.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -411,7 +411,7 @@
   {
     "id": "h_r5c0",
     "name": "Haste and Critical Focus",
-    "description": "Haste 5% and crit 3%. Max rank: +5% haste, +3% crit chance total from this talent.",
+    "description": "Haste 5% and crit 3%.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -430,7 +430,7 @@
   {
     "id": "h_r5c1",
     "name": "Healing and Critical Focus II",
-    "description": "Healing 5% and crit 2%. Max rank: +5% healing, +2% crit chance total from this talent.",
+    "description": "Healing 5% and crit 2%.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -449,7 +449,7 @@
   {
     "id": "h_r5c2",
     "name": "Healing and Haste Focus",
-    "description": "Healing 3% and haste 4%. Max rank: +3% healing, +4% haste total from this talent.",
+    "description": "Healing 3% and haste 4%.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -468,7 +468,7 @@
   {
     "id": "h_r5c3",
     "name": "Critical and Healing Focus II",
-    "description": "Crit 3% and healing 3%. Max rank: +3% crit chance, +3% healing total from this talent.",
+    "description": "Crit 3% and healing 3%.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -487,7 +487,7 @@
   {
     "id": "h_r5c4",
     "name": "Haste and Healing Focus II",
-    "description": "Haste 3% and healing 3%. Light of Dawn consumes 3 Holy Power to reset its cooldown, and your critical heals can generate Holy Power. Max rank: +3% haste, +3% healing total from this talent.",
+    "description": "Haste 3% and healing 3%. Light of Dawn consumes 3 Holy Power to reset its cooldown, and your critical heals can generate Holy Power.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,

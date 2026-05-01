@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import {
   Fragment,
   useEffect,
@@ -131,42 +126,46 @@ function HealGridFloatingLayer({ entries }: { entries: FloatingCombatTextEntry[]
 }
 
 function healthTierClasses(percent: number) {
+  // BASE TEXTURE: Applies a top gloss (white inset) and bottom shadow (black inset) 
+  // to mimic the classic WoW "UI-StatusBar" texture.
+  const baseTexture = 'bg-gradient-to-b shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),inset_0_-2px_4px_rgba(0,0,0,0.4)]';
+
+  // CRITICAL (Under 25%) - Deep vibrant red, pulsing to indicate danger
   if (percent < 25) {
     return {
-      fill: 'bg-gradient-to-r from-red-950 via-red-900 to-red-800',
-      edge: 'border-l-red-900',
+      fill: `${baseTexture} from-red-400 via-red-600 to-red-800 animate-pulse`,
+      edge: 'border-r-red-300 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]', 
     };
   }
+  
+  // LOW (Under 50%) - Vibrant warning orange
   if (percent < 50) {
     return {
-      fill: 'bg-gradient-to-r from-amber-950 via-amber-900 to-amber-800',
-      edge: 'border-l-amber-900',
+      fill: `${baseTexture} from-orange-300 via-orange-500 to-orange-700`,
+      edge: 'border-r-orange-200 drop-shadow-[0_0_5px_rgba(249,115,22,0.5)]',
     };
   }
+  
+  // MEDIUM (Under 75%) - Yellow/Gold
   if (percent < 75) {
     return {
-      fill: 'bg-gradient-to-r from-lime-950 via-emerald-900 to-emerald-800',
-      edge: 'border-l-emerald-900',
+      fill: `${baseTexture} from-yellow-200 via-yellow-400 to-yellow-600`,
+      edge: 'border-r-yellow-100',
     };
   }
+  
+  // HIGH (75% and above) - Classic bright "Healthy" WoW Green
   return {
-    fill: 'bg-gradient-to-r from-emerald-950 via-emerald-800 to-emerald-700',
-    edge: 'border-l-emerald-800',
+    fill: `${baseTexture} from-green-300 via-green-500 to-green-700`,
+    edge: 'border-r-green-200',
   };
 }
-
 function healGridRowClass(isSelected: boolean, isDead: boolean, edgeClass: string) {
   const border = isSelected
     ? 'z-10 scale-[1.02] border-l-[5px] brightness-110 ui-state-selected'
     : `ui-state-frame border-l-4 ${edgeClass}`;
   const dead = isDead ? 'cursor-not-allowed ui-state-disabled shadow-inner' : 'ui-state-hover';
   return `ui-heal-grid-row group ${border} ${dead}`;
-}
-
-function healGridHpReadoutClass(percent: number, isDead: boolean) {
-  const base = 'ui-heal-grid-hp-readout';
-  if (percent < 25 && !isDead) return `${base} ui-heal-grid-hp-readout-low`;
-  return base;
 }
 
 export function HealGrid({
@@ -395,35 +394,41 @@ function HealGridUnitRow(props: HealGridUnitRowProps) {
         transition={{ duration: 0.34, ease: 'easeOut' }}
         whileTap={isDead ? undefined : { scale: 0.98 }}
       >
-            {unit.shield > 0 ? (
-              <div className="ui-heal-grid-shield-track">
-                <motion.div
-                  className="ui-heal-grid-shield-fill"
-                  initial={false}
-                  animate={{ width: `${shieldWedge}%` }}
-                  transition={{ type: 'tween', duration: 0.2 }}
-                  style={{ originX: 0 }}
-                />
+            <div className="relative w-full h-6 bg-zinc-900 border-2 border-zinc-950 rounded-sm overflow-hidden shadow-lg">
+              {unit.shield > 0 ? (
+                <div className="ui-heal-grid-shield-track absolute inset-0">
+                  <motion.div
+                    className="ui-heal-grid-shield-fill h-full"
+                    initial={false}
+                    animate={{ width: `${shieldWedge}%` }}
+                    transition={{ type: 'tween', duration: 0.2 }}
+                    style={{ originX: 0 }}
+                  />
+                </div>
+              ) : null}
+              <div className="absolute inset-0 bg-red-950/20" />
+              <motion.div
+                className={`absolute top-0 left-0 h-full transition-all duration-300 ease-out border-r-[1px] ${tierFill} ${tierEdge}`}
+                initial={false}
+                animate={{ width: `${ghostPercent}%` }}
+                transition={{
+                  duration: ghostEaseDuration,
+                  ease: ghostEaseDuration > 0 ? [0.4, 0, 0.2, 1] : 'linear',
+                }}
+                style={{ originX: 0 }}
+              />
+              <motion.div
+                className={`absolute top-0 left-0 h-full transition-all duration-300 ease-out border-r-[1px] ${tierFill} ${tierEdge}`}
+                initial={false}
+                animate={{ width: `${healthPercent}%` }}
+                transition={{ duration: 0 }}
+                style={{ originX: 0 }}
+              />
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%270 0 200 200%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27noise%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.65%27 numOctaves=%273%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23noise)%27 opacity=%270.08%27/%3E%3C/svg%3E')] mix-blend-overlay pointer-events-none" />
+              <div className="absolute inset-0 flex items-center justify-center font-bold text-white text-xs drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
+                {hpCur}/{hpMax}
               </div>
-            ) : null}
-            <motion.div
-              className={`ui-heal-grid-hp-ghost ${hpBarTop}`}
-              initial={false}
-              animate={{ width: `${ghostPercent}%` }}
-              transition={{
-                duration: ghostEaseDuration,
-                ease: ghostEaseDuration > 0 ? [0.4, 0, 0.2, 1] : 'linear',
-              }}
-              style={{ originX: 0 }}
-            />
-            <motion.div
-              className={`ui-heal-grid-hp-fill ${hpBarTop} ${tierFill}`}
-              initial={false}
-              animate={{ width: `${healthPercent}%` }}
-              transition={{ duration: 0 }}
-              style={{ originX: 0 }}
-            />
-            <div className="ui-heal-grid-hp-sheen" aria-hidden />
+            </div>
 
             <div className="ui-heal-grid-content">
               <div className="ui-heal-grid-name">{unit.name}</div>
@@ -531,9 +536,6 @@ function HealGridUnitRow(props: HealGridUnitRowProps) {
                     );
                   })}
                   {isDead && <span className="ui-heal-grid-fallen">FALLEN</span>}
-              </div>
-              <div className={healGridHpReadoutClass(healthPercent, isDead)}>
-                {hpCur}/{hpMax}
               </div>
             </div>
 

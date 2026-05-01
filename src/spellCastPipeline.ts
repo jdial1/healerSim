@@ -30,29 +30,21 @@ import {
   directHealSynergyMultiplier,
   swiftmendCanApply,
 } from './combatHelper.ts';
-import { BALANCE } from './balance.ts';
-import {
-  archangelEchoShieldBonusFraction,
-  archangelSkipsSpell,
-  graceHealMultiplierOnTarget,
-  isPriestSurgeFinisher,
-  paladinRadianceHealMultiplier,
-  priestDivinityOverhealAbsorb,
-  resolveManaAfterHealCast,
-  PLAYER_BUFF_OMEN_CLEARCASTING,
-} from './combatHooks.ts';
+import { BALANCE } from './constants.ts';
 import {
   runCastDirectHealMultipliers,
   runCritBonusForHealRoll,
-  runPaladinAvengingWrathSplashFraction,
-  runPaladinEmergencyHasteBonusForTarget,
   runOnCrit,
   runOnHealCast,
   runOnHealLand,
   trySpecialHealCast,
-} from './combatPipeline.ts';
+  runEmergencyHasteBonus,
+  runManaAfterHealCast,
+} from './combatHookRegistry.ts';
 import { diffPartyCombatFloats, mergeFloatingCombatForTick } from './floatingCombatText.ts';
 import { healEffectiveAndOverheal } from './healMath.ts';
+import { archangelEchoShieldBonusFraction, archangelSkipsSpell, graceHealMultiplierOnTarget, isPriestSurgeFinisher, PLAYER_BUFF_OMEN_CLEARCASTING, priestDivinityOverhealAbsorb } from './classes/priest/hooks.ts';
+import { paladinAvengingWrathSplashFraction, paladinRadianceHealMultiplier } from './classes/paladin/hooks.ts';
 
 export type CastRuntime = {
   scheduleCooldown: (p: {
@@ -191,7 +183,7 @@ function validateStandardHeal(s: GameState, input: CastInput, common: CommonVali
   const tower2 = s.holyPower >= 3 && isDirectHealSpell(spell, spellId);
   const tMod = tower2 ? 2 : 1;
   const arch = s.capstoneForm === 'priest_archangel' && hasPlayerBuff(s.playerCombatBuffs, 'archangel');
-  const paladinEmergencyHasteBonus = runPaladinEmergencyHasteBonusForTarget(s, targetId);
+  const paladinEmergencyHasteBonus = runEmergencyHasteBonus(s, targetId);
   let pbuffsBaseline = s.playerCombatBuffs;
   if (surgeFree) {
     pbuffsBaseline = withBuffRemoved(pbuffsBaseline, 'surge_of_light');
@@ -337,7 +329,7 @@ function patchPartyStandardDirectAndHot(
     ? s.party.filter((u) => u.health > 0 && u.id !== targetId).length
     : 0;
   const archEchoBonusPerTarget = archEchoTargets > 0 ? archShieldBonus / archEchoTargets : 0;
-  const awSplashFraction = runPaladinAvengingWrathSplashFraction(s);
+  const awSplashFraction = paladinAvengingWrathSplashFraction(s);
   const graceRanks = talentRanks(s.talents, 'priest_grace');
   const shieldTicksDefault = BALANCE.combat.shared.shieldDefaultTicks;
   let newParty2 = s.party.map((u) => ({ ...u, buffs: u.buffs.map((b) => ({ ...b })) }));
@@ -511,7 +503,7 @@ function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRunti
       ),
     }));
   }
-  let mOut = resolveManaAfterHealCast(s, spell, spellId, needMana, surgeFree, isCritH, targetId);
+  let mOut = runManaAfterHealCast(s, spell, spellId, needMana, surgeFree, isCritH, targetId, s.mana - needMana);
   const rawCooldownTicks =
     s.playerClass === 'PALADIN' &&
     spellId === 'light_of_dawn' &&

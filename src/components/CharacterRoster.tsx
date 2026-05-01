@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import type { ClassType } from '../types.ts';
 import { levelFromTotalXp, type RosterV2 } from '../gameStorage.ts';
 import { ClassPickList } from './ClassPickList.tsx';

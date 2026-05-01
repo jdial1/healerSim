@@ -1,8 +1,7 @@
 import { CapstoneFormId, ClassType, IconGlow, Talent } from './types.ts';
-import classesData from './data/classes.json';
+import { ClassRegistry } from './classes/index.ts';
 import npcPoolsData from './data/npc_pools.json';
-import type { MechanicId } from './mechanicsRegistry.ts';
-import { BALANCE } from './balance.ts';
+import { BALANCE, type MechanicId } from './data/index.ts';
 
 const PS = BALANCE.playerStats;
 
@@ -38,7 +37,36 @@ export const UNIQUE_STAT_DESCRIPTIONS: Record<ClassType, string> = {
     'Increases healing on injured targets—the lower their health, the larger the bonus, up to a cap. Higher Radiance raises how much missing health amplifies your heals.',
 };
 
-export const CLASS_STAT_CURVE = classesData.statCurves as Record<ClassType, ClassStatCurve>;
+function getClassJson(cls: ClassType) {
+  return ClassRegistry.getMetadata(cls);
+}
+
+export const CLASS_STAT_CURVE: Record<ClassType, ClassStatCurve> = {
+  PRIEST: getClassJson('PRIEST')?.statCurves || {
+    baseIntellect: 30,
+    baseSpirit: 20,
+    intellectPerLevel: 3.5,
+    spiritPerLevel: 1.5,
+    baseUniqueStat: 8,
+    uniqueStatPerLevel: 0.55,
+  },
+  DRUID: getClassJson('DRUID')?.statCurves || {
+    baseIntellect: 32,
+    baseSpirit: 25,
+    intellectPerLevel: 2.5,
+    spiritPerLevel: 1.8,
+    baseUniqueStat: 10,
+    uniqueStatPerLevel: 0.65,
+  },
+  PALADIN: getClassJson('PALADIN')?.statCurves || {
+    baseIntellect: 35,
+    baseSpirit: 18,
+    intellectPerLevel: 3.5,
+    spiritPerLevel: 1.5,
+    baseUniqueStat: 7,
+    uniqueStatPerLevel: 0.5,
+  },
+};
 
 export interface ClassProgressionRow {
   starterSpells: string[];
@@ -48,15 +76,34 @@ export interface ClassProgressionRow {
   capstonePlayerBuffId: string;
 }
 
-export const CLASS_PROGRESSION = classesData.progression as Record<ClassType, ClassProgressionRow>;
+const defaultProgression: Record<ClassType, ClassProgressionRow> = {
+  PRIEST: {
+    starterSpells: ['flash_heal', 'renew'],
+    spellOrder: ['flash_heal', 'renew', 'greater_heal', 'circle_of_healing'],
+    capstoneForm: 'priest_archangel' as CapstoneFormId,
+    capstoneMechanicId: 'capstone_archangel',
+    capstonePlayerBuffId: 'archangel',
+  },
+  DRUID: {
+    starterSpells: ['rejuvenation', 'regrowth'],
+    spellOrder: ['rejuvenation', 'regrowth', 'healing_touch', 'lifebloom', 'swiftmend', 'wild_growth'],
+    capstoneForm: 'druid_natures_grace' as CapstoneFormId,
+    capstoneMechanicId: 'capstone_natures_grace',
+    capstonePlayerBuffId: 'natures_grace_aura',
+  },
+  PALADIN: {
+    starterSpells: ['flash_heal'],
+    spellOrder: ['flash_heal', 'holy_light', 'light_of_dawn'],
+    capstoneForm: 'paladin_avenging_wrath' as CapstoneFormId,
+    capstoneMechanicId: 'capstone_avenging_wrath',
+    capstonePlayerBuffId: 'avenging_wrath_aura',
+  },
+};
 
-export interface ClassTutorialCopy {
-  passiveDescription: string;
-}
-
-type SelectorTutorialRow = {
-  id: ClassType;
-  tutorial?: ClassTutorialCopy;
+export const CLASS_PROGRESSION: Record<ClassType, ClassProgressionRow> = {
+  PRIEST: getClassJson('PRIEST')?.progression as ClassProgressionRow ?? defaultProgression.PRIEST,
+  DRUID: getClassJson('DRUID')?.progression as ClassProgressionRow ?? defaultProgression.DRUID,
+  PALADIN: getClassJson('PALADIN')?.progression as ClassProgressionRow ?? defaultProgression.PALADIN,
 };
 
 export const CAPSTONE_PLAYER_BUFF_IDS = Array.from(
@@ -111,15 +158,15 @@ export function capstoneForClass(cls: ClassType): CapstoneFormId {
 }
 
 export function classPortraitForPlayer(cls: ClassType): { portraitIcon: string; portraitGlow: IconGlow } {
-  const row = classesData.selector.find((r) => r.id === cls);
-  if (!row) throw new Error(`Unknown class ${cls}`);
+  const row = getClassJson(cls);
+  if (!row) return { portraitIcon: 'lorc/angel-outfit', portraitGlow: 'spell' };
   const g = row.portraitGlow;
-  if (g !== 'spell' && g !== 'nature' && g !== 'debuff') throw new Error(`Invalid portraitGlow for ${cls}`);
-  return { portraitIcon: row.portraitIcon as string, portraitGlow: g };
+  if (g !== 'spell' && g !== 'nature' && g !== 'debuff') return { portraitIcon: row.portraitIcon, portraitGlow: 'spell' };
+  return { portraitIcon: row.portraitIcon, portraitGlow: g };
 }
 
-export function classTutorialCopy(cls: ClassType): ClassTutorialCopy {
-  const row = (classesData.selector as SelectorTutorialRow[]).find((r) => r.id === cls);
+export function classTutorialCopy(cls: ClassType): { passiveDescription: string } {
+  const row = getClassJson(cls);
   if (!row?.tutorial) {
     return { passiveDescription: 'Passive effect active. Keep healing.' };
   }
@@ -294,13 +341,7 @@ export function buildPlayerStatBreakdown(
   const critChancePct = tStats.critChancePct;
   const hastePct = tStats.hastePct;
   const bonusHealing = Math.round(100 * (healingEffectMultiplier - 1));
-  const sel = classesData.selector.find((r) => r.id === cls) as
-    | {
-        passiveTraitName?: string;
-        passiveTraitDescription?: string;
-        passiveTraitIcon?: string;
-      }
-    | undefined;
+  const classJson = getClassJson(cls);
   const uniqueStatRating = Math.round(effectiveUniqueStatRating(cls, level, talents) * 10) / 10;
   return {
     intellect,
@@ -322,9 +363,9 @@ export function buildPlayerStatBreakdown(
     uniqueStatLabel: UNIQUE_STAT_LABELS[cls],
     uniqueStatRating,
     uniqueStatDescription: UNIQUE_STAT_DESCRIPTIONS[cls],
-    passiveTraitName: sel?.passiveTraitName ?? '',
-    passiveTraitDescription: sel?.passiveTraitDescription ?? '',
-    passiveTraitIcon: sel?.passiveTraitIcon ?? 'wow/spell_holy_sealofwisdom',
+    passiveTraitName: classJson?.passiveTraitName ?? '',
+    passiveTraitDescription: classJson?.passiveTraitDescription ?? '',
+    passiveTraitIcon: classJson?.passiveTraitIcon ?? 'wow/spell_holy_sealofwisdom',
   };
 }
 

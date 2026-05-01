@@ -1,0 +1,57 @@
+{
+  "flash_heal": {
+    "id": "flash_heal",
+    "name": "Flash Heal",
+    "type": "DIRECT",
+    "manaCost": 18,
+    "healing": 70,
+    "cooldown": 0,
+    "icon": "wow/spell_holy_flashheal",
+    "color": "bg-yellow-400",
+    "actionBarBorderClass": "border-sky-400",
+    "glowType": "spell",
+    "tags": [
+      "synergy-direct"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    }
+  },
+  "holy_light": {
+    "id": "holy_light",
+    "name": "Holy Light",
+    "type": "DIRECT",
+    "manaCost": 34,
+    "healing": 175,
+    "cooldown": 45,
+    "icon": "wow/spell_holy_holybolt",
+    "color": "bg-amber-200",
+    "actionBarBorderClass": "border-amber-200",
+    "glowType": "spell",
+    "tags": [
+      "tree-of-life-big-direct",
+      "synergy-direct"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    }
+  },
+  "light_of_dawn": {
+    "id": "light_of_dawn",
+    "name": "Light of Dawn",
+    "type": "AOE",
+    "manaCost": 42,
+    "healing": 12,
+    "hotDuration": 65,
+    "hotHealingPerTick": 1.25,
+    "cooldown": 95,
+    "icon": "wow/spell_holy_holyprotection",
+    "color": "bg-amber-400",
+    "actionBarBorderClass": "border-amber-400",
+    "glowType": "spell",
+    "tags": [
+      "archangel-skip",
+      "synergy-primer-source"
+    ]
+  }
+}

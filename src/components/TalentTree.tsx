@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, RotateCcw, X } from 'lucide-react';
@@ -120,7 +115,6 @@ function rankDescriptionBase(
   pairIndexByTalentId: Map<string, number>,
 ): string {
   return detailDescription(talent, pairIndexByTalentId)
-    .replace(/\s*Max rank:[^.]+\.?/gi, '')
     .trim();
 }
 

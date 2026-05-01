@@ -1,0 +1,42 @@
+{
+  "id": "DRUID",
+  "name": "Resto Druid",
+  "description": "Nature-based healing over time (HoTs). Keep the party blooming.",
+  "iconKey": "leaf",
+  "color": "bg-green-600",
+  "textColor": "text-emerald-300",
+  "hoverBorderClass": "hover:border-emerald-400",
+  "locked": false,
+  "portraitUrl": "",
+  "portraitIcon": "druid",
+  "portraitGlow": "nature",
+  "passiveTraitName": "Omen of Clarity",
+  "passiveTraitDescription": "HoT ticks can grant Clearcasting, making your next Regrowth or Healing Touch cost no mana.",
+  "passiveTraitIcon": "wow/spell_nature_focusedmind",
+  "uiTransform": "-rotate-[22deg] -scale-x-100",
+  "tutorial": {
+    "passiveDescription": "Omen of Clarity: Your next cast is free!"
+  },
+  "statCurves": {
+    "baseIntellect": 32,
+    "baseSpirit": 25,
+    "intellectPerLevel": 2.5,
+    "spiritPerLevel": 1.8,
+    "baseUniqueStat": 10,
+    "uniqueStatPerLevel": 0.65
+  },
+  "progression": {
+    "starterSpells": ["rejuvenation", "regrowth"],
+    "spellOrder": [
+      "rejuvenation",
+      "regrowth",
+      "healing_touch",
+      "lifebloom",
+      "swiftmend",
+      "wild_growth"
+    ],
+    "capstoneForm": "druid_natures_grace",
+    "capstoneMechanicId": "capstone_natures_grace",
+    "capstonePlayerBuffId": "natures_grace_aura"
+  }
+}

@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import {
   useState,
   useEffect,
@@ -129,7 +124,6 @@ export function ActionBars({
   const handleTouchReorderPointerDown = useCallback(
     (index: number, e: ReactPointerEvent<HTMLDivElement>) => {
       if (!allowReorder || !onReorderSlots) return;
-      if (!isTouchLikePointer(e.pointerType)) return;
       if (touchReorderFromRef.current !== null) return;
       touchReorderFromRef.current = index;
       touchReorderPointerIdRef.current = e.pointerId;
@@ -448,38 +442,6 @@ export function ActionBars({
                 role="button"
                 tabIndex={disabled ? -1 : 0}
                 aria-disabled={disabled || undefined}
-                draggable={!!reordering}
-                onDragStart={
-                  reordering
-                    ? (e) => {
-                        e.dataTransfer.setData('text/plain', String(index));
-                        e.dataTransfer.effectAllowed = 'move';
-                        setDraggingBarIndex(index);
-                      }
-                    : undefined
-                }
-                onDragEnd={reordering ? () => setDraggingBarIndex(null) : undefined}
-                onDragOver={
-                  reordering
-                    ? (e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = 'move';
-                      }
-                    : undefined
-                }
-                onDrop={
-                  reordering
-                    ? (e) => {
-                        e.preventDefault();
-                        const raw = e.dataTransfer.getData('text/plain');
-                        const from = parseInt(raw, 10);
-                        if (Number.isNaN(from)) return;
-                        suppressPreviewClickUntilRef.current = performance.now() + 450;
-                        onReorderSlots(from, index);
-                        setDraggingBarIndex(null);
-                      }
-                    : undefined
-                }
                 onPointerDown={reordering ? (e) => handleTouchReorderPointerDown(index, e) : undefined}
                 onPointerMove={reordering ? handleTouchReorderPointerMove : undefined}
                 onPointerUp={reordering ? handleTouchReorderPointerEnd : undefined}

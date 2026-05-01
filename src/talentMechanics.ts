@@ -1,4 +1,4 @@
-import { CapstoneFormId, ClassType, Talent, Unit, PlayerCombatBuff, Spell } from './types.ts';
+import { CapstoneFormId, ClassType, Talent, Unit, PlayerCombatBuff } from './types.ts';
 import {
   MANA_SPIRIT_REGEN_LOCKOUT_TICKS,
   SPELL_TAG_DRUID_HOT,
@@ -7,7 +7,8 @@ import {
   spellHasTag,
   TICKS_PER_SECOND,
 } from './constants.ts';
-import type { MechanicId } from './mechanicsRegistry.ts';
+import type { MechanicId } from './data/index.ts';
+import { CLASS_PROGRESSION } from './playerStats.ts';
 
 export const TICKS_1S = 10;
 export const PLAYER_BUFF_MANA_REGEN_POTION = 'mana_regen_potion';
@@ -19,27 +20,27 @@ const PLAYER_COMBAT_BUFF_NO_TIME_DECAY = new Set([
   PLAYER_BUFF_POWER_INFUSION,
   PLAYER_BUFF_NATURAL_PERFECTION,
 ]);
+
 export const TICKS_SPIRIT_REDEMPTION = 10 * TICKS_1S;
 export const ICD_SPIRIT_REDEMPTION = 120 * TICKS_1S;
 export const SURGE_OF_LIGHT_TICKS = 6 * TICKS_1S;
 export const HEALER_UNIT_ID = '5';
 
-export const PRIEST_RENEW = 'renew';
-export const PRIEST_TALENT_ID_MENTAL_FORTITUDE = 'p_r0c0';
+const MENTAL_FORTITUDE_MANA_FRACTION_PER_5S = 0.01;
 
-const MENTAL_FORTITUDE_MAX_RANK_MANA_FRACTION_PER_5S = 0.01;
 
-export function priestMentalFortitudeMaxRankCombatManaPerTick(
-  playerClass: ClassType | null,
+export function runGeneralManaReturnMechanics(
   maxMana: number,
   talents: Talent[],
   spiritRegenLockoutTicksRemaining: number,
 ): number {
   if (spiritRegenLockoutTicksRemaining > 0) return 0;
-  if (playerClass !== 'PRIEST') return 0;
-  const t = talents.find((x) => x.id === PRIEST_TALENT_ID_MENTAL_FORTITUDE);
-  if (!t || t.maxPoints <= 0 || t.points < t.maxPoints) return 0;
-  return (maxMana * MENTAL_FORTITUDE_MAX_RANK_MANA_FRACTION_PER_5S) / (5 * TICKS_PER_SECOND);
+
+  // Search for the Meditative Wellspring mechanic regardless of class
+  const t = talents.find((x) => x.mechanicId === 'priest_meditative_wellspring');
+  if (!t || t.points < t.maxPoints) return 0;
+
+  return (maxMana * MENTAL_FORTITUDE_MANA_FRACTION_PER_5S) / (5 * TICKS_PER_SECOND);
 }
 
 export function talentRanks(talents: Talent[], mechanicId: MechanicId): number {
@@ -67,10 +68,6 @@ export function applyExclusiveUnlock(talents: Talent[], learnId: string): Talent
   });
 }
 
-function buffIndex(buffs: PlayerCombatBuff[], id: string): number {
-  return buffs.findIndex((b) => b.id === id);
-}
-
 function buffIsActive(b: PlayerCombatBuff): boolean {
   if (PLAYER_COMBAT_BUFF_NO_TIME_DECAY.has(b.id)) return b.stacks > 0;
   return b.remainingTicks > 0;
@@ -96,13 +93,23 @@ export function naturalPerfectionStacksFrom(buffs: PlayerCombatBuff[]): number {
   return getPlayerBuffStacks(buffs, PLAYER_BUFF_NATURAL_PERFECTION);
 }
 
+/**
+ * Uses CLASS_PROGRESSION metadata to dynamically determine if a capstone 
+ * should remain active based on player buffs.
+ */
 export function capstoneFormAfterBuffTick(
   form: CapstoneFormId | null,
   buffs: PlayerCombatBuff[],
+  playerClass: ClassType | null
 ): CapstoneFormId | null {
-  if (form === 'priest_archangel') return hasPlayerBuff(buffs, 'archangel') ? form : null;
-  if (form === 'druid_natures_grace') return hasPlayerBuff(buffs, 'natures_grace_aura') ? form : null;
-  if (form === 'paladin_avenging_wrath') return hasPlayerBuff(buffs, 'avenging_wrath_aura') ? form : null;
+  if (!form || !playerClass) return null;
+  
+  const config = CLASS_PROGRESSION[playerClass];
+  // FIX: Cast both to string to avoid literal-type comparison errors
+  if ((form as string) === (config.capstoneForm as string)) {
+    return hasPlayerBuff(buffs, config.capstonePlayerBuffId) ? form : null;
+  }
+  
   return null;
 }
 
@@ -121,7 +128,7 @@ export function upsertPlayerBuff(
   stacks: number,
   opts?: { potionDripPerTick?: number },
 ): PlayerCombatBuff[] {
-  const i = buffIndex(buffs, id);
+  const i = buffs.findIndex((b) => b.id === id);
   const drip = opts?.potionDripPerTick;
   if (i < 0) {
     return [
@@ -145,15 +152,6 @@ export function getManaPotionDripPerTick(buffs: PlayerCombatBuff[]): number {
   const b = buffs.find((x) => x.id === PLAYER_BUFF_MANA_REGEN_POTION);
   if (!b || b.remainingTicks <= 0) return 0;
   return b.potionDripPerTick ?? 0;
-}
-
-export function addOrRefreshBuffTicks(
-  buffs: PlayerCombatBuff[],
-  id: string,
-  ticks: number,
-  stacks: number,
-): PlayerCombatBuff[] {
-  return upsertPlayerBuff(buffs, id, ticks, stacks);
 }
 
 export function tickPlayerBuffs(buffs: PlayerCombatBuff[]): PlayerCombatBuff[] {
@@ -200,54 +198,66 @@ export function isIcDRdy(icds: Record<string, number>, key: string): boolean {
   return (icds[key] ?? 0) <= 0;
 }
 
+export function healerInParty(party: Unit[]): Unit | undefined {
+  return party.find((u) => u.role === 'HEALER');
+}
+
+/**
+ * Dynamic HoT detection using spell tags
+ */
+export function hasHotOnUnit(unit: Unit): boolean {
+  return unit.buffs.some((b) => 
+    spellHasTag(b.sourceSpellId, SPELL_TAG_DRUID_HOT) || 
+    spellHasTag(b.sourceSpellId, 'synergy-primer-source')
+  );
+}
+
+/**
+ * Dynamic consumable detection for Swiftmend-like mechanics
+ */
+export function findConsumableHotIndex(unit: Unit): number {
+  const prefer = unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_PREFER));
+  if (prefer >= 0) return prefer;
+  return unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_CONSUMABLE));
+}
+
+export function isHealSpell(spell: { type: string }, spellId: string): boolean {
+  if (spellId === 'mana_potion') return false;
+  return spell.type === 'DIRECT' || spell.type === 'HOT' || spell.type === 'AOE';
+}
+
+export function isDirectHealSpell(spell: { type: string; healing: number; hotDuration?: number }, spellId: string): boolean {
+  if (spellId === 'mana_potion') return false;
+  if (spell.type === 'AOE' || spell.type === 'DIRECT') return true;
+  if (spell.type === 'HOT' && spell.healing > 0) return true;
+  return false;
+}
+
+/**
+ * Apply damage through shield first, then health.
+ * Returns updated health, shield, shieldTicksRemaining, and whether health damage was taken.
+ */
 export function applyDamageThroughShield(
   health: number,
   shield: number,
   damage: number,
 ): { health: number; shield: number; shieldTicksRemaining: number; tookHealthDamage: number } {
-  if (damage <= 0) {
-    return { health, shield, shieldTicksRemaining: 0, tookHealthDamage: 0 };
-  }
   if (shield >= damage) {
-    return { health, shield: shield - damage, shieldTicksRemaining: 0, tookHealthDamage: 0 };
+    return {
+      health,
+      shield: shield - damage,
+      shieldTicksRemaining: 0,
+      tookHealthDamage: 0,
+    };
   }
-  const rest = damage - shield;
-  return { health: Math.max(0, health - rest), shield: 0, shieldTicksRemaining: 0, tookHealthDamage: rest };
+  
+  const remainingDamage = damage - shield;
+  return {
+    health: Math.max(0, health - remainingDamage),
+    shield: 0,
+    shieldTicksRemaining: 0,
+    tookHealthDamage: remainingDamage,
+  };
 }
 
-export function healerInParty(party: Unit[]): Unit | undefined {
-  return party.find((u) => u.role === 'HEALER');
-}
-
-export function hasHotOnUnit(unit: Unit, cls: ClassType | null): boolean {
-  if (cls === 'DRUID') {
-    return unit.buffs.some((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_DRUID_HOT));
-  }
-  if (cls === 'PRIEST') {
-    return unit.buffs.some((b) => b.sourceSpellId === PRIEST_RENEW);
-  }
-  return unit.buffs.some((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_DRUID_HOT));
-}
-
-export function findConsumableHotIndex(unit: Unit, cls: ClassType | null): number {
-  if (cls === 'DRUID') {
-    const prefer = unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_PREFER));
-    if (prefer >= 0) return prefer;
-    return unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_CONSUMABLE));
-  }
-  return unit.buffs.findIndex((b) => b.sourceSpellId === PRIEST_RENEW);
-}
-
-export function isHealSpell(spell: Spell, spellId: string): boolean {
-  if (spellId === 'mana_potion') return false;
-  return spell.type === 'DIRECT' || spell.type === 'HOT' || spell.type === 'AOE';
-}
-
-export function isDirectHealSpell(spell: Spell, spellId: string): boolean {
-  if (spellId === 'mana_potion') return false;
-  if (spell.type === 'AOE') return true;
-  if (spell.type === 'DIRECT') return true;
-  if (spell.type === 'HOT' && spell.healing > 0) return true;
-  return false;
-}
 

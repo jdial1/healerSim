@@ -1,22 +1,14 @@
 import type { ClassType } from './types.ts';
 import { classTheme } from './classTheme.ts';
+import { ClassRegistry } from './classes/index.ts';
 
-const CLASS_ICON_FILE: Record<ClassType, string> = {
-  PRIEST: 'priest',
-  DRUID: 'druid',
-  PALADIN: 'paladin',
-};
-
-const CLASS_ICON_TRANSFORM_CLASS: Record<ClassType, string> = {
-  PRIEST: '',
-  DRUID: '-rotate-[22deg] -scale-x-100',
-  PALADIN: '',
-};
-
-const CLASS_ICON_WRAPPER_TRANSFORM_CLASS = '-rotate-3 transform';
+function classIconFile(cls: ClassType): string {
+  return ClassRegistry.getMetadata(cls)?.portraitIcon?.split('/').pop()?.replace('.svg', '') ?? 'default';
+}
 
 export function classIconUrl(cls: ClassType): string {
-  return `${import.meta.env.BASE_URL}icons/class-icons/${CLASS_ICON_FILE[cls]}.png`;
+  const iconFile = classIconFile(cls);
+  return `${import.meta.env.BASE_URL}icons/class-icons/${iconFile}.png`;
 }
 
 export function classIconBorderClass(cls: ClassType): string {
@@ -24,9 +16,9 @@ export function classIconBorderClass(cls: ClassType): string {
 }
 
 export function classIconTransformClass(cls: ClassType): string {
-  return CLASS_ICON_TRANSFORM_CLASS[cls];
+  return ClassRegistry.getMetadata(cls)?.uiTransform ?? '';
 }
 
 export function classIconWrapperTransformClass(): string {
-  return CLASS_ICON_WRAPPER_TRANSFORM_CLASS;
+  return '-rotate-3 transform';
 }

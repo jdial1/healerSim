@@ -2,7 +2,7 @@
   {
     "id": "d_r0c0",
     "name": "Healing Focus I",
-    "description": "Healing 3% per point. Max rank: +9% healing total from this talent.",
+    "description": "Healing 3% per point.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -17,12 +17,12 @@
   {
     "id": "d_r0c1",
     "name": "Mana Focus I",
-    "description": "Max mana 12 per point. Max rank: +36 mana total from this talent.",
+    "description": "Max mana 12 per point.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_nature_moonglow",
+    "icon": "wow/spell_nature_moon glow",
     "gridX": 1,
     "gridY": 0,
     "statBonus": {
@@ -32,7 +32,7 @@
   {
     "id": "d_r0c2",
     "name": "Haste Focus I",
-    "description": "Haste 2% per point. Max rank: +4% haste total from this talent.",
+    "description": "Haste 2% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -47,7 +47,7 @@
   {
     "id": "d_r0c3",
     "name": "Critical Focus I",
-    "description": "Crit 2% per point. Max rank: +4% crit chance total from this talent.",
+    "description": "Crit 2% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -62,7 +62,7 @@
   {
     "id": "d_r0c4",
     "name": "Verdant Reservoir",
-    "description": "Your HoT ticks return 0.4 mana per point each tick. Max rank: substantially increased mana sustain from this talent.",
+    "description": "Your HoT ticks return 0.4 mana per point each tick.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -78,7 +78,7 @@
   {
     "id": "d_r1c0",
     "name": "Healing Focus II",
-    "description": "Healing 3% per point. Max rank: +6% healing total from this talent.",
+    "description": "Healing 3% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -96,7 +96,7 @@
   {
     "id": "d_r1c1",
     "name": "Mana Focus III",
-    "description": "Max mana 14 per point. Max rank: +28 mana total from this talent.",
+    "description": "Max mana 14 per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -130,7 +130,7 @@
   {
     "id": "d_r1c3",
     "name": "Critical Focus II",
-    "description": "Crit 2% per point. Max rank: +4% crit chance total from this talent.",
+    "description": "Crit 2% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -167,7 +167,7 @@
   {
     "id": "d_r2c0",
     "name": "Haste Focus II",
-    "description": "Haste 2.5% per point. When you take damage, restore a small amount of your own health. Max rank: +5% haste total from this talent.",
+    "description": "Haste 2.5% per point. When you take damage, restore a small amount of your own health.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
@@ -261,7 +261,7 @@
   {
     "id": "d_r3c0",
     "name": "Healing Focus III",
-    "description": "Healing 4% per point. Max rank: +4% healing total from this talent.",
+    "description": "Healing 4% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 13,
@@ -362,7 +362,7 @@
   {
     "id": "d_r4c0",
     "name": "Mana Focus IV",
-    "description": "Max mana 35. Max rank: +35 mana total from this talent.",
+    "description": "Max mana 35.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -380,7 +380,7 @@
   {
     "id": "d_r4c1",
     "name": "Healing Focus IV",
-    "description": "Healing 6% per point. Max rank: +6% healing total from this talent.",
+    "description": "Healing 6% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -414,7 +414,7 @@
   {
     "id": "d_r4c3",
     "name": "Haste Focus III",
-    "description": "Your HoT cadence accelerates your follow-up casts. Gain additional haste for each active party HoT. Haste 4% per point. Max rank: +4% haste total from this talent.",
+    "description": "Your HoT cadence accelerates your follow-up casts. Gain additional haste for each active party HoT. Haste 4% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -432,7 +432,7 @@
   {
     "id": "d_r4c4",
     "name": "Critical and Mana Focus",
-    "description": "Crit 4% and mana +45. Max rank: +4% crit chance, +45 mana total from this talent.",
+    "description": "Crit 4% and mana +45.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -451,7 +451,7 @@
   {
     "id": "d_r5c0",
     "name": "Healing and Haste Focus",
-    "description": "Healing 5% and haste 3%. Max rank: +5% healing, +3% haste total from this talent.",
+    "description": "Healing 5% and haste 3%.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -470,7 +470,7 @@
   {
     "id": "d_r5c1",
     "name": "Healing Focus V",
-    "description": "Healing 5% per point. Max rank: +5% healing total from this talent.",
+    "description": "Healing 5% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -488,7 +488,7 @@
   {
     "id": "d_r5c2",
     "name": "Critical and Healing Focus",
-    "description": "Crit 4% and healing 3%. Max rank: +4% crit chance, +3% healing total from this talent.",
+    "description": "Crit 4% and healing 3%.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -507,7 +507,7 @@
   {
     "id": "d_r5c3",
     "name": "Haste and Mana Focus",
-    "description": "Sustained HoT upkeep rewards smoother throughput. Haste 5% and max mana 54. Max rank: +5% haste, +54 mana total from this talent.",
+    "description": "Sustained HoT upkeep rewards smoother throughput. Haste 5% and max mana 54.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -526,7 +526,7 @@
   {
     "id": "d_r5c4",
     "name": "Healing and Critical Focus",
-    "description": "Healing 4% and crit 3%. Gain additional crit for each active party HoT. Max rank: +4% healing, +3% crit chance total from this talent.",
+    "description": "Healing 4% and crit 3%. Gain additional crit for each active party HoT.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,

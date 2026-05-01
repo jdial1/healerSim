@@ -40,7 +40,7 @@ import {
   naturalPerfectionStacksFrom,
   capstoneFormAfterBuffTick,
   upsertNaturalPerfectionStacks,
-  priestMentalFortitudeMaxRankCombatManaPerTick,
+  runGeneralManaReturnMechanics,
 } from './talentMechanics.ts';
 import { effectivePrimaryStats } from './playerStats.ts';
 import { T_SPIRIT_AMP } from './combatHelper.ts';
@@ -51,11 +51,11 @@ import {
   runHotTickManaReturn,
   runHotTickRateMultiplier,
   runOnShieldTransition,
-  runDruidBarkskinSelfHealOnDamage,
-  runPriestMeditativeManaReturnPerTick,
-} from './combatPipeline.ts';
-import { rollOmenOfClarityOnHotTick } from './combatHooks.ts';
-import { BALANCE } from './balance.ts';
+  runSelfHealOnDamage,
+  runManaReturnMechanics,
+} from './combatHookRegistry.ts';
+import { ClassRegistry } from './classes/index.ts';
+import { BALANCE } from './constants.ts';
 import {
   appendFloatingCombatDrafts,
   diffPartyCombatFloats,
@@ -471,9 +471,11 @@ function processPartyEnvironmentalTick(
     curShield = vit.shield;
     curShieldTicks = vit.shieldTicksRemaining;
     liveSeed = vit.livingSeedPool;
-    if (vit.naturalPerfectionTick) nextNat = Math.min(5, nextNat + 1);
-    if (state.playerClass === 'DRUID' && unit.role === 'HEALER' && vit.tookHealthDamage > 0) {
-      const rawBk = runDruidBarkskinSelfHealOnDamage(state, vit.tookHealthDamage);
+    if (vit.naturalPerfectionTick) {
+      nextNat = Math.min(5, nextNat + 1);
+    }
+    if (unit.role === 'HEALER' && vit.tookHealthDamage > 0) {
+      const rawBk = runSelfHealOnDamage(state, vit.tookHealthDamage);
       const bk = healEffectiveAndOverheal(currentHealth, unit.maxHealth, rawBk);
       envHealEff += bk.eff;
       envHealOh += bk.oh;
@@ -534,13 +536,16 @@ function processPartyEnvironmentalTick(
           ...tickCtx,
           appliedTickHeal: tickAmt,
         });
-        envPlayerCombatBuffs = rollOmenOfClarityOnHotTick(
-          state,
-          tickAmt,
-          buff.sourceSpellId,
-          envPlayerCombatBuffs,
-          random,
-        );
+        const hooks = state.playerClass ? ClassRegistry.getHooks(state.playerClass) : null;
+        if (hooks?.rollOmenOfClarityOnHotTick) {
+          envPlayerCombatBuffs = hooks.rollOmenOfClarityOnHotTick(
+            state,
+            tickAmt,
+            buff.sourceSpellId,
+            envPlayerCombatBuffs,
+            random,
+          );
+        }
       }
       rem -= 1;
       if (rem <= 0 && buff.bloomBurstHeal && currentHealth > 0) {
@@ -702,13 +707,8 @@ function resolvePlayerSystemsAfterEnvironmentalDamage(
   const regenThisTick =
     manaRegenAmountPerTick(lockTicksPre, spirit) +
     potionDrip +
-    priestMentalFortitudeMaxRankCombatManaPerTick(
-      state.playerClass,
-      state.maxMana,
-      state.talents,
-      lockTicksPre,
-    ) +
-    runPriestMeditativeManaReturnPerTick(state, lockTicksPre);
+    runGeneralManaReturnMechanics(state.maxMana, state.talents, lockTicksPre) +
+    runManaReturnMechanics(state, lockTicksPre);
   const newMana = Math.min(
     state.maxMana,
     state.mana + regenThisTick + manaReturnFromHotTicks + paladinResolveMana,
@@ -753,7 +753,7 @@ function resolvePlayerSystemsAfterEnvironmentalDamage(
     graceFloatDrafts = diffPartyCombatFloats(beforeGrace, newParty, false);
   }
   pComb = upsertNaturalPerfectionStacks(pComb, dmgNaturalPerfectionStacks);
-  const nextForm = capstoneFormAfterBuffTick(state.capstoneForm, pComb);
+  const nextForm = capstoneFormAfterBuffTick(state.capstoneForm, pComb, state.playerClass);
   return {
     party: newParty,
     newMana,

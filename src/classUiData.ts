@@ -1,4 +1,4 @@
-import classesData from './data/classes.json';
+import { ClassRegistry } from './classes/index.ts';
 import type { ClassType } from './types.ts';
 import { classTheme, type ClassTheme } from './classTheme.ts';
 
@@ -22,12 +22,8 @@ export type ClassUiRow = {
 };
 
 export function classUiRows(): ClassUiRow[] {
-  return classesData.selector.map((row) => {
-    const ext = row as typeof row & {
-      passiveTraitName?: string;
-      passiveTraitDescription?: string;
-      passiveTraitIcon?: string;
-    };
+  return ClassRegistry.getAll().map((module) => {
+    const row = module.metadata;
     return {
       id: row.id as ClassType,
       name: row.name,
@@ -41,17 +37,16 @@ export function classUiRows(): ClassUiRow[] {
       portraitUrl: row.portraitUrl,
       portraitIcon: row.portraitIcon,
       portraitGlow: row.portraitGlow,
-      passiveTraitName: ext.passiveTraitName ?? '',
-      passiveTraitDescription: ext.passiveTraitDescription ?? '',
-      passiveTraitIcon: ext.passiveTraitIcon ?? 'wow/spell_holy_sealofwisdom',
+      passiveTraitName: row.passiveTraitName ?? '',
+      passiveTraitDescription: row.passiveTraitDescription ?? '',
+      passiveTraitIcon: row.passiveTraitIcon ?? 'wow/spell_holy_sealofwisdom',
       theme: classTheme(row.id as ClassType),
     };
   });
 }
 
 export function classDisplayName(cls: ClassType): string {
-  const row = classesData.selector.find((r) => r.id === cls);
-  return row?.name ?? cls;
+  return ClassRegistry.getMetadata(cls)?.name ?? cls;
 }
 
 export function classUiRowForClass(cls: ClassType): ClassUiRow {

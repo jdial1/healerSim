@@ -6,59 +6,10 @@ import {
   Spell,
   Unit,
 } from './types.ts';
+import { ClassRegistry } from './classes/index.ts';
 import { diffPartyCombatFloats, mergeFloatingCombatForTick } from './floatingCombatText.ts';
-import {
-  talentRanks,
-  isHealSpell,
-  isDirectHealSpell,
-  upsertPlayerBuff,
-  naturalPerfectionStacksFrom,
-  SURGE_OF_LIGHT_TICKS,
-  PLAYER_BUFF_POWER_INFUSION,
-  getPlayerBuffStacks,
-  grantPowerInfusionCharges,
-  applyPowerInfusionCastsAfterCooldown,
-  upsertSpiritRegenLockoutIfSpentMana,
-  hasHotOnUnit,
-} from './talentMechanics.ts';
-import { rollCritAgainstEffective } from './effectivePlayerCombat.ts';
-import { calculateSpellRank, getRankHealMultiplier } from './playerStats.ts';
-import { oneHotTickDoubleRoll, resolveSwiftmend } from './combatHelper.ts';
-import { BALANCE } from './balance.ts';
-import {
-  applyAegisBurstsFromShieldTransitions,
-  applyBeaconEcho,
-  applyBindingHealSelf,
-  applyDivineAegis,
-  applyEchoOfLightPriest,
-  applyGraceStacksFromDirectHeal,
-  applyLightbringerResolveSplash,
-  applyLivingSeed,
-  druidHotTickManaReturn,
-  druidHotTickRateMultiplier,
-  druidRampCritBonus,
-  druidRampHasteBonus,
-  druidBarkskinSelfHealOnDamage,
-  dispellableCurseCleanseProcChance,
-  stripOneDispellableDebuff,
-  cultivationHotMultiplier,
-  deepRootsHotMultiplier,
-  devotionDamageTakenMultiplier,
-  druidHarmonyDirectMultiplier,
-  druidHarmonyHotTickMultiplier,
-  DRUID_HARMONY_HOT_BUFF,
-  DRUID_HARMONY_HOT_TICKS,
-  paladinAvengingWrathSplashFraction,
-  paladinEmergencyCritBonusForTarget,
-  paladinEmergencyHasteBonusForTarget,
-  priestSelfShieldDamageReduction,
-  priestShieldMaintenanceHasteBonus,
-  priestMeditativeManaReturnPerTick,
-  priestFlashCritBonusFromSynergy,
-  druidVitalityBloomTickExtras,
-  rollSurgeOfLight,
-  vowCrusaderAoEMultiplier,
-} from './combatHooks.ts';
+import { calculateSpellRank, getRankCostMultiplier } from './playerStats.ts';
+import { isDirectHealSpell } from './talentMechanics.ts';
 
 export type SpecialHealCastEff = {
   healingFromProgress: number;
@@ -85,17 +36,20 @@ export type HealLandContext = {
   rankHealMult: number;
 };
 
-export type CritContext = HealLandContext;
-
-export type DamageTakenContext = {
-  source: 'boss_attack' | 'trash_tick';
-};
-
 export type PostHealAccumulator = {
   party: Unit[];
   playerCombatBuffs: PlayerCombatBuff[];
   healEff: number;
   healOh: number;
+};
+
+export type HotTickModifierContext = {
+  state: GameState;
+  unit: Unit;
+  buff: Buff;
+  healPerTick: number;
+  appliedTickHeal?: number;
+  vitalityBloomMana?: number;
 };
 
 export type HealManaCostContext = {
@@ -114,15 +68,6 @@ export type ManaAfterHealContext = {
   healTargetId: string;
 };
 
-export type HotTickModifierContext = {
-  state: GameState;
-  unit: Unit;
-  buff: Buff;
-  healPerTick: number;
-  appliedTickHeal?: number;
-  vitalityBloomMana?: number;
-};
-
 export type SpecialHealCastContext = {
   spellId: string;
   targetId: string;
@@ -133,296 +78,215 @@ export type SpecialHealCastContext = {
   eff: SpecialHealCastEff;
 };
 
-export function runOnHealCast(_s: GameState, _ctx: HealCastContext): void {}
+/**
+ * DELEGATOR: runHealManaCost
+ * Fixes error: Module has no exported member 'runHealManaCost'
+ */
+export function runHealManaCost(
+  s: GameState,
+  classType: ClassType,
+  spell: Spell,
+  spellId: string,
+  surgeFree: boolean,
+): number {
+  const hooks = ClassRegistry.getHooks(classType);
+  const base = hooks?.onHealManaCost?.(s, spell, spellId, surgeFree) ?? spell.manaCost;
+  
+  if (base > 0) {
+    const rank = calculateSpellRank(spellId, classType, s.level);
+    return Math.round(base * getRankCostMultiplier(rank));
+  }
+  return base;
+}
 
-export function runOnCrit(_s: GameState, _ctx: CritContext): void {}
+/**
+ * DELEGATOR: runOnHealCast
+ */
+export function runOnHealCast(s: GameState, ctx: HealCastContext): void {
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  hooks?.onHealCast?.(s, ctx);
+}
 
+/**
+ * DELEGATOR: runOnCrit
+ */
+export function runOnCrit(s: GameState, ctx: HealLandContext): void {
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  hooks?.onCrit?.(s, ctx);
+}
+
+/**
+ * DELEGATOR: runHasteBonusSum
+ * Replaces hardcoded class checks with Registry delegation.
+ */
 export function runHasteBonusSum(
   s: GameState,
   classType: ClassType,
   healer: Unit | undefined,
 ): number {
-  let bonus = 0;
-  if (classType === 'DRUID' && healer) {
-    const p = talentRanks(s.talents, 'photosynthesis');
-    if (p > 0 && hasHotOnUnit(healer, 'DRUID')) {
-      bonus += p * BALANCE.combat.druid.photosynthesisHastePerRankWhenSelfHoT;
-    }
-    bonus += druidRampHasteBonus(s);
-  }
-  if (classType === 'PRIEST') {
-    bonus += priestShieldMaintenanceHasteBonus(s);
-  }
-  return bonus;
+  const hooks = ClassRegistry.getHooks(classType);
+  // Executes class-specific haste logic (e.g., Druid Ramp or Priest Shield Maintenance)
+  return hooks?.hasteBonusSum?.(s, healer) ?? 0;
 }
 
+/**
+ * DELEGATOR: runHotTickAmount
+ */
 export function runHotTickAmount(ctx: HotTickModifierContext): number {
-  let amt = ctx.healPerTick;
-  const { state } = ctx;
-  const photo = state.playerClass ? talentRanks(state.talents, 'photosynthesis') : 0;
-  if (state.playerClass === 'DRUID' && photo > 0 && oneHotTickDoubleRoll(photo)) {
-    amt *= 2;
+  const hooks = ctx.state.playerClass ? ClassRegistry.getHooks(ctx.state.playerClass) : null;
+  if (hooks?.hotTickAmount) {
+    return hooks.hotTickAmount(ctx);
   }
-  amt *= druidHarmonyHotTickMultiplier(state, state.playerCombatBuffs);
-  amt *= cultivationHotMultiplier(state, ctx.buff.sourceSpellId);
-  amt *= deepRootsHotMultiplier(state, ctx.unit, ctx.buff.sourceSpellId);
-  const vb = druidVitalityBloomTickExtras(state, amt);
-  ctx.vitalityBloomMana = vb.mana;
-  return amt + vb.extraHeal;
+  return ctx.healPerTick;
 }
 
+/**
+ * DELEGATOR: runHotTickRateMultiplier
+ */
 export function runHotTickRateMultiplier(ctx: HotTickModifierContext): number {
-  return druidHotTickRateMultiplier(ctx.state, ctx.buff.sourceSpellId);
+  const hooks = ctx.state.playerClass ? ClassRegistry.getHooks(ctx.state.playerClass) : null;
+  return hooks?.hotTickRateMultiplier?.(ctx.state, ctx.buff.sourceSpellId) ?? 1;
 }
 
+/**
+ * DELEGATOR: runHotTickManaReturn
+ */
 export function runHotTickManaReturn(ctx: HotTickModifierContext): number {
-  let m = druidHotTickManaReturn(ctx.state, ctx.buff.sourceSpellId);
+  const hooks = ctx.state.playerClass ? ClassRegistry.getHooks(ctx.state.playerClass) : null;
+  let m = hooks?.hotTickManaReturn?.(ctx.state, ctx.buff.sourceSpellId) ?? 0;
   m += ctx.vitalityBloomMana ?? 0;
   return m;
 }
 
+/**
+ * DELEGATOR: runCastDirectHealMultipliers
+ */
 export function runCastDirectHealMultipliers(s: GameState, spell: Spell, spellId: string): number {
-  let m = druidHarmonyDirectMultiplier(s);
-  if (spell.type === 'AOE') m *= vowCrusaderAoEMultiplier(s, spellId);
-  return m;
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  return hooks?.castDirectHealMultiplier?.(s, spell, spellId) ?? 1;
 }
 
+/**
+ * DELEGATOR: runCritBonusForHealRoll
+ */
 export function runCritBonusForHealRoll(s: GameState, spellId: string, targetId: string): number {
-  let bonus = 0;
-  if (s.playerClass === 'PRIEST' && spellId === 'flash_heal') {
-    bonus += priestFlashCritBonusFromSynergy(s);
-  }
-  if (s.playerClass === 'PALADIN') {
-    const target = s.party.find((u) => u.id === targetId);
-    bonus += paladinEmergencyCritBonusForTarget(s, target);
-  }
-  if (s.playerClass === 'DRUID') {
-    bonus += druidRampCritBonus(s);
-  }
-  return bonus;
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  return hooks?.critBonusForHealRoll?.(s, spellId, targetId) ?? 0;
 }
 
+/**
+ * DELEGATOR: trySpecialHealCast
+ * Moves specific spell logic (like Druid Swiftmend) into the Class folder.
+ */
 export function trySpecialHealCast(s: GameState, ctx: SpecialHealCastContext): GameState | null {
-  if (ctx.spellId !== 'swiftmend' || s.playerClass !== 'DRUID') return null;
-  const isCrit0 = rollCritAgainstEffective(
-    ctx.critRoll,
-    ctx.eff,
-    naturalPerfectionStacksFrom(s.playerCombatBuffs),
-  );
-  const critMod0 = isCrit0 ? 1.5 : 1.0;
-  const healMult0 = ctx.eff.healingFromProgress;
-  const rankHealMult = getRankHealMultiplier(calculateSpellRank(ctx.spellId, s.playerClass, s.level));
-  const { party: pr, applied, eff: smEff, oh: smOh } = resolveSwiftmend(
-    s,
-    s.playerClass,
-    ctx.targetId,
-    healMult0,
-    critMod0,
-    ctx.spell,
-    rankHealMult,
-  );
-  if (!applied) return null;
-  let m0 = s.mana - ctx.needMana;
-  let pbSm = s.playerCombatBuffs;
-  if (isCrit0 && talentRanks(s.talents, 'power_infusion') > 0) {
-    pbSm = grantPowerInfusionCharges(pbSm, 3);
-  }
-  const piSm = getPlayerBuffStacks(pbSm, PLAYER_BUFF_POWER_INFUSION);
-  const nPiSm = ctx.runCooldown(ctx.spell.cooldown, piSm);
-  pbSm = upsertSpiritRegenLockoutIfSpentMana(pbSm, ctx.needMana > 0);
-  pbSm = applyPowerInfusionCastsAfterCooldown(pbSm, nPiSm);
-  const fctDrafts = diffPartyCombatFloats(s.party, pr, isCrit0);
-  const manaSpent = Math.max(0, s.mana - m0);
-  return {
-    ...s,
-    party: pr,
-    mana: m0,
-    playerCombatBuffs: pbSm,
-    floatingCombatTexts: mergeFloatingCombatForTick(s.floatingCombatTexts, s.combatElapsedTicks, fctDrafts),
-    dungeonRunHealEffective: s.dungeonRunHealEffective + smEff,
-    dungeonRunHealOverheal: s.dungeonRunHealOverheal + smOh,
-    dungeonRunManaSpentHealing: s.dungeonRunManaSpentHealing + manaSpent,
-  };
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  return hooks?.trySpecialHealCast?.(s, ctx) ?? null;
 }
 
+/**
+ * DELEGATOR: runOnHealLand
+ * The primary aggregator for post-cast effects. 
+ * Logic like Divine Aegis or Beacon of Light now live in their respective class hooks.
+ */
 export function runOnHealLand(
   s: GameState,
   ctx: HealLandContext,
   partyAfterDirect: Unit[],
   playerCombatBuffs: PlayerCombatBuff[],
 ): PostHealAccumulator {
-  let acc: PostHealAccumulator = {
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  
+  // If the class has a specialized land-handler, use it.
+  if (hooks?.onHealLand) {
+    return hooks.onHealLand(s, ctx, partyAfterDirect, playerCombatBuffs);
+  }
+
+  // Fallback to basic accumulator if no hooks exist
+  return {
     party: partyAfterDirect,
     playerCombatBuffs,
     healEff: 0,
     healOh: 0,
   };
-
-  if (ctx.isCrit && talentRanks(s.talents, 'divine_aegis') > 0) {
-    acc = {
-      ...acc,
-      party: applyDivineAegis(s, ctx.partyBeforeCast, acc.party, ctx.isCrit),
-    };
-  }
-
-  if (s.playerClass && talentRanks(s.talents, 'binding_heal') > 0) {
-    const bindR = applyBindingHealSelf(
-      s,
-      acc.party,
-      ctx.targetId,
-      ctx.spell,
-      ctx.healMultB,
-      ctx.critH,
-      ctx.tMod,
-      ctx.rankHealMult,
-    );
-    acc = {
-      ...acc,
-      party: bindR.party,
-      healEff: acc.healEff + bindR.eff,
-      healOh: acc.healOh + bindR.oh,
-    };
-  }
-
-  if (talentRanks(s.talents, 'beacon_of_light') > 0) {
-    const bcR = applyBeaconEcho(
-      s,
-      acc.party,
-      ctx.targetId,
-      ctx.spell,
-      ctx.spellId,
-      ctx.healMultB,
-      ctx.critH,
-      ctx.tMod,
-      ctx.rankHealMult,
-    );
-    acc = {
-      ...acc,
-      party: bcR.party,
-      healEff: acc.healEff + bcR.eff,
-      healOh: acc.healOh + bcR.oh,
-    };
-  }
-
-  if (ctx.isCrit && talentRanks(s.talents, 'living_seed') > 0) {
-    acc = {
-      ...acc,
-      party: applyLivingSeed(
-        s,
-        acc.party,
-        ctx.targetId,
-        ctx.isCrit,
-        ctx.spell,
-        ctx.healMultB,
-        ctx.critH,
-        ctx.tMod,
-        ctx.rankHealMult,
-      ),
-    };
-  }
-
-  {
-    const pCurse = dispellableCurseCleanseProcChance(s);
-    const tgt = acc.party.find((x) => x.id === ctx.targetId);
-    if (pCurse > 0 && tgt && isHealSpell(ctx.spell, ctx.spellId) && Math.random() < pCurse) {
-      acc = {
-        ...acc,
-        party: acc.party.map((u) => {
-          if (u.id !== ctx.targetId) return u;
-          const nextDebuffs = stripOneDispellableDebuff(u.debuffs);
-          if (nextDebuffs === u.debuffs) return u;
-          return { ...u, debuffs: nextDebuffs };
-        }),
-      };
-    }
-  }
-
-  if (talentRanks(s.talents, 'surge_of_light') > 0 && rollSurgeOfLight(s, ctx.spellId)) {
-    acc = {
-      ...acc,
-      playerCombatBuffs: upsertPlayerBuff(acc.playerCombatBuffs, 'surge_of_light', SURGE_OF_LIGHT_TICKS, 1),
-    };
-  }
-
-  if (talentRanks(s.talents, 'priest_grace') > 0) {
-    acc = {
-      ...acc,
-      party: applyGraceStacksFromDirectHeal(s, acc.party, ctx.targetId, ctx.spell, ctx.spellId),
-    };
-  }
-
-  if (talentRanks(s.talents, 'druid_harmony') > 0) {
-    if (isDirectHealSpell(ctx.spell, ctx.spellId) && ctx.spell.type !== 'AOE') {
-      acc = {
-        ...acc,
-        playerCombatBuffs: upsertPlayerBuff(
-          acc.playerCombatBuffs,
-          DRUID_HARMONY_HOT_BUFF,
-          DRUID_HARMONY_HOT_TICKS,
-          1,
-        ),
-      };
-    }
-  }
-
-  if (s.playerClass === 'PRIEST') {
-    acc = {
-      ...acc,
-      party: applyEchoOfLightPriest(s, ctx.partyBeforeCast, acc.party, ctx.spell, ctx.spellId, ctx.targetId),
-    };
-  }
-  if (s.playerClass === 'PALADIN') {
-    const lbR = applyLightbringerResolveSplash(
-      s,
-      ctx.partyBeforeCast,
-      acc.party,
-      ctx.spell,
-      ctx.spellId,
-      ctx.targetId,
-    );
-    acc = {
-      ...acc,
-      party: lbR.party,
-      healEff: acc.healEff + lbR.eff,
-      healOh: acc.healOh + lbR.oh,
-    };
-  }
-
-  return acc;
 }
 
-export function runDamageTakenMultiplier(s: GameState, _ctx: DamageTakenContext): number {
-  let m = devotionDamageTakenMultiplier(s);
-  m *= 1 - priestSelfShieldDamageReduction(s);
-  return m;
+/**
+ * DELEGATOR: runDamageTakenMultiplier
+ */
+export function runDamageTakenMultiplier(s: GameState, ctx: { source: 'boss_attack' | 'trash_tick' }): number {
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  return hooks?.damageTakenMultiplier?.(s, ctx) ?? 1;
 }
 
-export function runPriestMeditativeManaReturnPerTick(
+/**
+ * DELEGATOR: runManaReturnMechanics
+ * Replaces hardcoded runPriestMeditative...
+ */
+export function runManaReturnMechanics(
   s: GameState,
   spiritRegenLockoutTicksRemaining: number,
 ): number {
-  return priestMeditativeManaReturnPerTick(s, spiritRegenLockoutTicksRemaining);
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  return hooks?.manaReturnOnTick?.(s, spiritRegenLockoutTicksRemaining) ?? 0;
 }
 
-export function runPaladinEmergencyHasteBonusForTarget(s: GameState, targetId: string): number {
-  return paladinEmergencyHasteBonusForTarget(
-    s,
-    s.party.find((unit) => unit.id === targetId),
-  );
+/**
+ * DELEGATOR: runEmergencyHasteBonus
+ */
+export function runEmergencyHasteBonus(s: GameState, targetId: string): number {
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  return hooks?.emergencyHasteBonus?.(s, targetId) ?? 0;
 }
 
-export function runDruidBarkskinSelfHealOnDamage(s: GameState, damageTaken: number): number {
-  return druidBarkskinSelfHealOnDamage(s, damageTaken);
+/**
+ * DELEGATOR: runSelfHealOnDamage
+ */
+export function runSelfHealOnDamage(s: GameState, damageTaken: number): number {
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  return hooks?.selfHealOnDamage?.(s, damageTaken) ?? 0;
 }
 
-export function runPaladinAvengingWrathSplashFraction(s: GameState): number {
-  return paladinAvengingWrathSplashFraction(s);
-}
-
+/**
+ * DELEGATOR: runOnShieldTransition
+ */
 export function runOnShieldTransition(
   s: GameState,
   partyBefore: Unit[],
   partyAfter: Unit[],
 ): { party: Unit[]; eff: number; oh: number } {
-  return applyAegisBurstsFromShieldTransitions(s, partyBefore, partyAfter);
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  if (hooks?.onShieldTransition) {
+    return hooks.onShieldTransition(s, partyBefore, partyAfter);
+  }
+  return { party: partyAfter, eff: 0, oh: 0 };
+}
+
+/**
+ * DELEGATOR: runManaAfterHealCast
+ * Fixes error: Cannot find name 'runManaAfterHealCast' in spellCastPipeline
+ */
+export function runManaAfterHealCast(
+  s: GameState,
+  spell: Spell,
+  spellId: string,
+  needMana: number,
+  surgeFree: boolean,
+  isCritH: boolean,
+  healTargetId: string,
+  initialMana: number
+): number {
+  const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
+  // 1. Run class specific logic (Illumination, Path of the Moon)
+  let m = hooks?.manaAfterHeal?.(s, spellId, needMana, surgeFree, isCritH, healTargetId, initialMana) ?? initialMana;
+  
+  // 2. Run global/shared logic (e.g. general mana return from talents)
+  const manaR = s.talents.reduce(
+    (a, t) => a + (t.statBonus?.manaReturnOnDirectHeal || 0) * (t.points > 0 ? t.points : 0),
+    0,
+  );
+  if (isDirectHealSpell(spell, spellId)) {
+    m = Math.min(s.maxMana, m + manaR);
+  }
+  
+  return m;
 }

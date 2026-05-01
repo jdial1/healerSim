@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import {
   useRef,
   useCallback,
@@ -15,7 +10,7 @@ import { bossCombatProfileForDungeon, TICKS_PER_SECOND } from '../constants.ts';
 import { DUNGEONS } from '../dungeons/index.ts';
 import { type BossDebuffTargeting, type Dungeon, type DungeonPace } from '../types.ts';
 import { computeDungeonXpGain, levelsOverDungeonMax } from '../gameStorage.ts';
-import { BALANCE } from '../balance.ts';
+import { BALANCE } from '../data/index.ts';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { GameIcon } from './GameIcon.tsx';
 import { DungeonQueueModal } from './DungeonQueueModal.tsx';
@@ -81,8 +76,7 @@ function BossMechanicsStrip({
   const profile = bossCombatProfileForDungeon(dungeon);
   const cardTheme = dungeon.cardTheme;
 
-  const cardShell =
-    'flex min-h-0 min-w-0 flex-1 basis-0 flex-col gap-1 rounded-md border bg-slate-900/75 px-2.5 py-2 sm:gap-1 sm:px-3 sm:py-2 md:px-3 md:py-2';
+  const cardShell = 'flex min-h-0 min-w-0 flex-1 basis-0 flex-col gap-0.5 sm:gap-1 rounded-md border bg-slate-900/75 p-1 sm:p-2';
 
   if (isLocked) {
     return (
@@ -93,19 +87,19 @@ function BossMechanicsStrip({
               key={i}
               className={`${cardShell} border-slate-800/90 opacity-[0.55]`}
             >
-              <span className="text-[10px] font-black uppercase tracking-tight text-slate-500 sm:text-[9px] md:text-xs">?</span>
+              <span className="text-[8px] font-black uppercase tracking-tight text-slate-500 sm:text-[10px]">?</span>
               <GameIcon
                 iconPath={LOCKED_DUNGEON_ICON}
                 glow="spell"
-                size="md"
+                size="sm"
                 dimmed
                 accentTint={cardTheme.iconTint}
-                className="mx-auto shrink-0"
+                className="mx-auto shrink-0 scale-75 sm:scale-100"
               />
               <div className="flex min-h-0 shrink-0 flex-col justify-center py-0.5">
-                <p className="text-center text-xs font-bold uppercase leading-snug text-slate-300 sm:text-sm md:text-sm">
-                  Hidden
-                </p>
+              <p className="text-center text-[9px] font-bold uppercase leading-tight text-slate-400 sm:text-xs">
+                Hidden
+              </p>
               </div>
             </div>
           ))}
@@ -120,41 +114,41 @@ function BossMechanicsStrip({
         {profile.debuffTemplates.map((d) => (
           <div
             key={d.abilityId}
-            className={`${cardShell} border-rose-900/45`}
+            className={`${cardShell} border-rose-900/40`}
           >
-            <p className="line-clamp-2 min-h-0 shrink-0 break-normal hyphens-auto px-1 text-center text-[11px] font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-xs md:text-sm">
+            <p className="line-clamp-1 min-h-0 shrink-0 px-0.5 text-center text-[8px] font-bold uppercase leading-none tracking-tighter text-slate-100 sm:line-clamp-2 sm:text-[10px] md:text-xs">
               {d.name}
             </p>
             <GameIcon
               iconPath={d.icon}
               glow="debuff"
-              size="md"
+              size="sm"
               title={d.dispellable ? `${d.name} (Dispellable)` : d.name}
               dimmed={dimmed}
-              className="mx-auto shrink-0"
+              className="mx-auto shrink-0 scale-75 sm:scale-100"
             />
-            <div className="mt-1 min-h-0 shrink-0 space-y-1 text-center sm:space-y-1.5">
+            <div className="min-h-0 shrink-0 space-y-0.5 text-center sm:mt-1 sm:space-y-1">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300 sm:text-xs md:text-sm">
+                <p className="text-[7px] font-semibold uppercase leading-none text-slate-400 sm:text-[9px] md:text-[10px]">
                   Dmg per tick
                 </p>
-                <p className="text-sm font-bold tabular-nums leading-snug text-slate-50 sm:text-sm md:text-base">
+                <p className="text-[10px] font-black tabular-nums leading-none text-slate-50 sm:text-xs md:text-sm">
                   {d.damagePerTick}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300 sm:text-xs md:text-sm">
+                <p className="text-[7px] font-semibold uppercase leading-none text-slate-400 sm:text-[9px] md:text-[10px]">
                   Duration
                 </p>
-                <p className="text-sm font-bold tabular-nums leading-snug text-slate-50 sm:text-sm md:text-base">
+                <p className="text-[10px] font-black tabular-nums leading-none text-slate-50 sm:text-xs md:text-sm">
                   {durationSecLabel(d.durationTicks)}
                 </p>
               </div>
-              <p className="text-xs font-semibold leading-snug text-slate-300 sm:text-xs md:text-sm">
+              <p className="text-[8px] font-medium leading-none text-slate-400 sm:text-[10px]">
                 {debuffTargetingDescription(d.targeting)}
               </p>
               {d.dispellable && (
-                <p className="text-[11px] font-bold uppercase tracking-wide text-sky-200 sm:text-xs md:text-sm">
+                <p className="text-[8px] font-black uppercase tracking-tighter text-sky-400 sm:text-[9px] md:text-[10px]">
                   Dispellable
                 </p>
               )}
@@ -164,29 +158,29 @@ function BossMechanicsStrip({
         {profile.attackTemplates.map((a) => (
           <div
             key={a.abilityId}
-            className={`${cardShell} border-orange-900/50`}
+            className={`${cardShell} border-orange-900/40`}
           >
-            <p className="line-clamp-2 min-h-0 shrink-0 break-normal hyphens-auto px-1 text-center text-[11px] font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-xs md:text-sm">
+            <p className="line-clamp-1 min-h-0 shrink-0 px-0.5 text-center text-[8px] font-bold uppercase leading-none tracking-tighter text-slate-100 sm:line-clamp-2 sm:text-[10px] md:text-xs">
               {a.name}
             </p>
             <GameIcon
               iconPath={a.icon}
               glow="debuff"
-              size="md"
+              size="sm"
               title={a.name}
               dimmed={dimmed}
-              className="mx-auto shrink-0"
+              className="mx-auto shrink-0 scale-75 sm:scale-100"
             />
-            <div className="mt-1 min-h-0 shrink-0 space-y-1 text-center sm:space-y-1.5">
+            <div className="min-h-0 shrink-0 space-y-0.5 text-center sm:mt-1 sm:space-y-1">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300 sm:text-xs md:text-sm">
+                <p className="text-[7px] font-semibold uppercase leading-none text-slate-400 sm:text-[9px] md:text-[10px]">
                   Special
                 </p>
-                <p className="text-sm font-bold tabular-nums leading-snug text-orange-100 sm:text-sm md:text-base">
+                <p className="text-[10px] font-black tabular-nums leading-none text-orange-200 sm:text-xs md:text-sm">
                   {a.damage}
                 </p>
               </div>
-              <p className="text-xs font-semibold leading-snug text-slate-300 sm:text-xs md:text-sm">
+              <p className="text-[8px] font-medium leading-none text-slate-400 sm:text-[10px]">
                 {debuffTargetingDescription(a.targeting)}
               </p>
             </div>
@@ -197,34 +191,34 @@ function BossMechanicsStrip({
           return (
             <div
               key={b.abilityId}
-              className={`${cardShell} border-amber-800/40`}
+          className={`${cardShell} border-amber-800/35`}
             >
-            <p className="line-clamp-2 min-h-0 shrink-0 break-normal hyphens-auto px-1 text-center text-[11px] font-bold uppercase leading-snug tracking-tight text-slate-100 sm:text-xs md:text-sm">
+            <p className="line-clamp-1 min-h-0 shrink-0 px-0.5 text-center text-[8px] font-bold uppercase leading-none tracking-tighter text-slate-100 sm:line-clamp-2 sm:text-[10px] md:text-xs">
                 {b.name}
               </p>
               <GameIcon
                 iconPath={b.icon}
                 glow="spell"
-                size="md"
+                size="sm"
                 title={b.name}
                 dimmed={dimmed}
                 accentTint={BOSS_BUFF_ICON_TINT}
-                className="mx-auto shrink-0"
+                className="mx-auto shrink-0 scale-75 sm:scale-100"
               />
-              <div className="mt-1 min-h-0 shrink-0 space-y-1 text-center sm:space-y-1.5">
+              <div className="min-h-0 shrink-0 space-y-0.5 text-center sm:mt-1 sm:space-y-1">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300 sm:text-xs md:text-sm">
+                  <p className="text-[7px] font-semibold uppercase leading-none text-slate-400 sm:text-[9px] md:text-[10px]">
                     Damage done
                   </p>
-                  <p className="text-sm font-bold tabular-nums leading-snug text-amber-100 sm:text-sm md:text-base">
+                  <p className="text-[10px] font-black tabular-nums leading-none text-amber-200 sm:text-xs md:text-sm">
                     +{pct}%
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300 sm:text-xs md:text-sm">
+                  <p className="text-[7px] font-semibold uppercase leading-none text-slate-400 sm:text-[9px] md:text-[10px]">
                     Duration
                   </p>
-                  <p className="text-sm font-bold tabular-nums leading-snug text-slate-50 sm:text-sm md:text-base">
+                  <p className="text-[10px] font-black tabular-nums leading-none text-slate-50 sm:text-xs md:text-sm">
                     {durationSecLabel(b.durationTicks)}
                   </p>
                 </div>

@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import {
   Spell,
   ClassType,
@@ -18,10 +13,7 @@ import {
   randomAllyLevel,
   spiritManaRegenMultiplier,
 } from './playerStats.ts';
-import spellsData from './data/spells.json';
-import npcPoolsData from './data/npc_pools.json';
-import balanceData from './data/balance.json';
-import pacingData from './data/pacing.json';
+import { SPELLS as spellsData, NPC_POOLS as npcPoolsData, BALANCE as balanceData, PACING as pacingData, MECHANICS } from './data/index.ts';
 
 export const TICK_RATE = 100; // ms per tick
 export const MANA_REGEN_PER_TICK = 0.5;
@@ -75,7 +67,8 @@ export function dungeonPaceBossSec(pace: DungeonPace): number {
   return pacingData.paces[pace].bossSec;
 }
 
-export { pacingData };
+export { pacingData, MECHANICS };
+export { BALANCE } from './data/index.ts';
 
 export function dungeonXpTierMultiplier(difficulty: number): number {
   return 1 + balanceData.xp.dungeonTierAdditivePerDifficultyOver1 * Math.max(0, difficulty - 1);
@@ -110,6 +103,9 @@ export function bossCombatProfileForDungeon(dungeon: Dungeon): BossCombatProfile
 }
 
 export const SPELLS = spellsData as Record<string, Spell>;
+export const NPC_POOLS = npcPoolsData;
+export const TANK_POOL = npcPoolsData.tankPool as AllyNpcTemplate<'TANK'>[];
+export const DPS_POOL = npcPoolsData.dpsPool as AllyNpcTemplate<'DPS'>[];
 
 export const SPELL_TAG_DRUID_HOT = 'druid-hot';
 export const SPELL_TAG_DRUID_CULTIVATION_HOT = 'druid-cultivation-hot';
@@ -157,9 +153,6 @@ export type AllyNpcTemplate<R extends 'TANK' | 'DPS'> = {
   healthScaling?: AllyHealthScaling;
 };
 
-export const TANK_POOL = npcPoolsData.tankPool as AllyNpcTemplate<'TANK'>[];
-
-export const DPS_POOL = npcPoolsData.dpsPool as AllyNpcTemplate<'DPS'>[];
 
 export function generateRandomParty(playerLevel: number, playerClass: ClassType | null): Unit[] {
   const tankTpl = TANK_POOL[Math.floor(Math.random() * TANK_POOL.length)];

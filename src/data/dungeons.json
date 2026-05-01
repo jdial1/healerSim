@@ -77,14 +77,14 @@
     "enemies": [
       { "name": "Shadowfang Worgen", "icon": "lorc/wolf-head" },
       { "name": "Haunted Static", "icon": "lorc/ghost" },
-      { "name": "Fenrus the Devourer", "icon": "delapouite/spider-altar" }
+      { "name": "Fenrus the Devourer", "icon": "delapouite/werewolf" }
     ],
     "bossCombat": {
       "debuffTemplates": [
         {
           "abilityId": "arugal_curse",
           "name": "Curse of Shadowfang",
-          "icon": "lorc/curse-staff",
+          "icon": "lorc/skull-staff",
           "durationTicks": 150,
           "damagePerTick": 1.2,
           "targeting": "single_random",
@@ -200,7 +200,7 @@
         {
           "abilityId": "therm_bomb",
           "name": "Explosive Shell",
-          "icon": "lorc/fragment-grenade",
+          "icon": "lorc/cluster-bomb",
           "damage": 55,
           "targeting": "single_random"
         }
@@ -694,7 +694,7 @@
     "bossName": "King Gordok",
     "bossHealth": 88000,
     "bossIcon": "lorc/crowned-skull",
-    "cardIcon": "lorc/jungle-leaf",
+    "cardIcon": "lorc/linden-leaf",
     "cardTheme": {
       "borderLeft": "border-l-emerald-700",
       "viaTint": "via-emerald-950/40",
@@ -751,7 +751,7 @@
       "iconTint": "rgba(248,113,113,0.52)"
     },
     "enemies": [
-      { "name": "Blackhand Elite", "icon": "lorc/plate-armor" },
+      { "name": "Blackhand Elite", "icon": "lorc/abdominal-armor" },
       { "name": "Chromatic Dragonkin", "icon": "lorc/dragon-head" },
       { "name": "Drakonid Slayer", "icon": "lorc/halberd" }
     ],
