@@ -161,8 +161,7 @@ function resolveGameIconUrls(author, icon) {
 
     const authorCandidates = [baseAuthor];
     if (swappableAuthors.has(baseAuthor)) {
-      const swappables = ['lorc', 'delapouite', 'skoll', 'willdabeast', 'darkzaitzev'];
-      for (const sw of swappables) {
+      for (const sw of swappableAuthors) {
         if (sw !== baseAuthor) authorCandidates.push(sw);
       }
     }
