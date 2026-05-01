@@ -7,6 +7,7 @@ import {
   BossCombatProfile,
   BossCombatOverrides,
 } from './types.ts';
+import { createBaseUnit } from './unitUtils.ts';
 import {
   allyMaxHealthForPoolEntry,
   healerMaxHealthFromStats,
@@ -169,46 +170,31 @@ export function generateRandomParty(playerLevel: number, playerClass: ClassType 
   const healerLevel = Math.max(1, playerLevel);
   const healerHp = healerMaxHealthFromStats(playerClass, healerLevel);
   return [
-    {
+    createBaseUnit({
       ...tankTpl,
       id: '1',
       level: tankLevel,
       maxHealth: tankHp,
       health: tankHp,
-      buffs: [],
-      debuffs: [],
-      shield: 0,
-      shieldTicksRemaining: 0,
-      livingSeedPool: 0,
-    },
+    }),
     ...selectedDps.map((tpl, i) => {
       const lv = randomAllyLevel(playerLevel);
       const hp = allyMaxHealthForPoolEntry('DPS', lv, tpl.healthScaling);
-      return {
+      return createBaseUnit({
         ...tpl,
         id: String(i + 2),
         level: lv,
         maxHealth: hp,
         health: hp,
-        buffs: [],
-        debuffs: [],
-        shield: 0,
-        shieldTicksRemaining: 0,
-        livingSeedPool: 0,
-      };
+      });
     }),
-    {
+    createBaseUnit({
       id: '5',
       name: 'Player (You)',
       role: 'HEALER',
       level: healerLevel,
       maxHealth: healerHp,
       health: healerHp,
-      buffs: [],
-      debuffs: [],
-      shield: 0,
-      shieldTicksRemaining: 0,
-      livingSeedPool: 0,
-    },
+    }),
   ];
 }

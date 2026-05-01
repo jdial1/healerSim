@@ -18,6 +18,7 @@ import {
   totalXpToReachLevel,
 } from '../src/gameStorage.ts';
 import type { ClassType, Dungeon, GameState } from '../src/types.ts';
+import { resetUnitStatus } from '../src/unitUtils.ts';
 import { testPalette } from './testColors.ts';
 
 const T = testPalette();
@@ -55,23 +56,18 @@ function maxRollingSum(values: number[], window: number): number {
   return max;
 }
 
-function beefParty<T extends { maxHealth: number; health: number }>(party: T[]): T[] {
+function beefParty(party: GameState['party']): GameState['party'] {
   return party.map((u) => ({
-    ...u,
+    ...resetUnitStatus(u),
     maxHealth: Math.round(u.maxHealth * HP_BEEF_MULT),
     health: Math.round(u.health * HP_BEEF_MULT),
-    buffs: [],
-    debuffs: [],
-    shield: 0,
-    shieldTicksRemaining: 0,
-    livingSeedPool: 0,
   }));
 }
 
 function partyFixedDungeonLevel(level: number, cls: ClassType): GameState['party'] {
   const raw = generateRandomParty(level, cls);
   return raw.map((u) => {
-    const cleared = { ...u, buffs: [] as typeof u.buffs, debuffs: [] as typeof u.debuffs, shield: 0, shieldTicksRemaining: 0, livingSeedPool: 0 };
+    const cleared = resetUnitStatus(u);
     if (u.role === 'TANK') {
       const hp = allyMaxHealthForRoleAndLevel('TANK', level);
       return { ...cleared, level, maxHealth: hp, health: hp };
