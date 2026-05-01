@@ -1,4 +1,5 @@
 import { CapstoneFormId, ClassType, Talent, Unit, PlayerCombatBuff } from './types.ts';
+import { EMPTY_SHIELD } from './unitUtils.ts';
 import {
   MANA_SPIRIT_REGEN_LOCKOUT_TICKS,
   SPELL_TAG_DRUID_HOT,
@@ -246,16 +247,15 @@ export function applyDamageThroughShield(
     return {
       health,
       shield: shield - damage,
-      shieldTicksRemaining: 0,
+      shieldTicksRemaining: EMPTY_SHIELD.shieldTicksRemaining,
       tookHealthDamage: 0,
     };
   }
-  
+
   const remainingDamage = damage - shield;
   return {
     health: Math.max(0, health - remainingDamage),
-    shield: 0,
-    shieldTicksRemaining: 0,
+    ...EMPTY_SHIELD,
     tookHealthDamage: remainingDamage,
   };
 }

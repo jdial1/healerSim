@@ -1,5 +1,6 @@
 import { GameState, PlayerCombatBuff, Spell, Unit } from './types.ts';
 import { MANA_POTION_USES_PER_DUNGEON } from './constants.ts';
+import { EMPTY_SHIELD } from './unitUtils.ts';
 import { manaPotionInstantMana, manaPotionOverTimeTotal } from './manaPotionIcon.ts';
 import { spellHasTag } from './constants.ts';
 import { calculateSpellRank, effectiveUniqueStatRating, getRankHealMultiplier } from './playerStats.ts';
@@ -422,7 +423,7 @@ function patchPartyStandardDirectAndHot(
     });
   }
   if (arch && archShieldBonus > 0) {
-    newParty2 = newParty2.map((u) => ({ ...u, shield: 0, shieldTicksRemaining: 0 }));
+    newParty2 = newParty2.map((u) => ({ ...u, ...EMPTY_SHIELD }));
   }
   return { newParty: newParty2, healEff: patchHealEff, healOh: patchHealOh };
 }

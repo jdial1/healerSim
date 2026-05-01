@@ -56,6 +56,7 @@ import {
 } from './combatHookRegistry.ts';
 import { ClassRegistry } from './classes/index.ts';
 import { BALANCE } from './constants.ts';
+import { EMPTY_SHIELD } from './unitUtils.ts';
 import {
   appendFloatingCombatDrafts,
   diffPartyCombatFloats,
@@ -193,7 +194,7 @@ function applyDamageToUnitVitality(
   let sh = hit.shield;
   let seed = v.livingSeedPool;
   let ticks = v.shieldTicksRemaining;
-  if (sh <= 0) ticks = 0;
+  if (sh <= 0) ticks = EMPTY_SHIELD.shieldTicksRemaining;
   if (hit.tookHealthDamage > 0 && seed > 0 && hp > 0) {
     hp = Math.min(v.maxHealth, hp + seed);
     seed = 0;
@@ -576,7 +577,7 @@ function processPartyEnvironmentalTick(
     if (curShield > 0 && curShieldTicks > 0) {
       curShieldTicks -= 1;
       if (curShieldTicks <= 0) {
-        curShield = 0;
+        curShield = EMPTY_SHIELD.shield;
       }
     }
 
