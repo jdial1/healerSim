@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { gameIconUrlCandidates, GLOW_BOX, ICON_TINT, type IconGlow } from '../gameIcons.ts';
+import { getIconUrlCandidates, GLOW_BOX, ICON_TINT, type IconGlow } from '../gameIcons.ts';
 
 type GameIconSize =
   | 'xs'
@@ -49,7 +49,7 @@ export function GameIcon({
 }) {
   const tint = accentTint ?? ICON_TINT[glow];
   const tall = size === 'heroTall';
-  const candidates = useMemo(() => gameIconUrlCandidates(iconPath), [iconPath]);
+  const candidates = useMemo(() => getIconUrlCandidates(iconPath), [iconPath]);
   const [candidateIndex, setCandidateIndex] = useState(0);
 
   useEffect(() => {

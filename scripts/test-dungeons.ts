@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { emptyGameBase, gameReducer, gameStateForClass } from '../src/gameEngineReducer.ts';
+import { emptyGameBase, gameReducer, getInitialState } from '../src/gameEngineReducer.ts';
 import { DUNGEONS } from '../src/dungeons/index.ts';
 import {
   TICKS_PER_SECOND,
@@ -8,22 +8,22 @@ import {
   dungeonPaceDpsMultiplier,
   dungeonPaceTrashSec,
   dungeonPaceBossSec,
-  bossCombatProfileForDungeon,
-  bossDamageMultiplierForDifficulty,
-  damageTakenMultiplierFromDungeonLevelGap,
+  getCombatProfile,
+  getBossDamageMultiplier,
+  getLevelGapDamageMultiplier,
   SPELLS,
   spellHasTag,
 } from '../src/constants.ts';
-import { computeMetaFromProgress } from '../src/gameStorage.ts';
+import { getMeta } from '../src/gameStorage.ts';
 import {
-  allyMaxHealthForRoleAndLevel,
-  calculateSpellRank,
-  getRankHealMultiplier,
-  spellHealingMultiplierFromProgress,
-  talentCritChancePctFromTalents,
-  talentHastePctFromTalents,
+  getMaxHealth,
+  getSpellRank,
+  getRankHealMult,
+  getHealingMultiplier,
+  getTalentCritChancePct,
+  getTalentHastePct,
 } from '../src/playerStats.ts';
-import { runDamageTakenMultiplier } from '../src/combatHookRegistry.ts';
+import { getDamageTakenMultiplier } from '../src/combatHookRegistry.ts';
 import { BALANCE } from '../src/data/index.ts';
 import type {
   BossCombatProfile,
@@ -138,9 +138,9 @@ function maxTicksForDungeonPaceSim(pace: DungeonPace): number {
 }
 
 async function runSimulation(dungeon: Dungeon, pace: DungeonPace): Promise<RunResult> {
-  let state: GameState = { ...gameStateForClass('PRIEST', undefined), introTutorialComplete: true };
+  let state: GameState = { ...getInitialState('PRIEST', undefined), introTutorialComplete: true };
   const noTalents = state.talents.map((t) => ({ ...t, points: 0 }));
-  const meta = computeMetaFromProgress(state.xp, 'PRIEST', noTalents);
+  const meta = getMeta(state.xp, 'PRIEST', noTalents);
   state = {
     ...state,
     ...meta,
@@ -261,11 +261,11 @@ function maxSelfBuffPartyDamageMult(profile: BossCombatProfile): number {
 function totalHealPerCast(spellId: string, cls: ClassType, level: number, talents: Talent[]): number {
   const sp = SPELLS[spellId];
   if (!sp || spellId === 'mana_potion') return 0;
-  const mult = spellHealingMultiplierFromProgress(cls, level, talents);
+  const mult = getHealingMultiplier(cls, level, talents);
   const syn = synergyDirectMult(spellId);
-  const critPct = talentCritChancePctFromTalents(talents);
+  const critPct = getTalentCritChancePct(talents);
   const critM = 1 + (critPct / 100) * 0.5;
-  const rankM = getRankHealMultiplier(calculateSpellRank(spellId, cls, level));
+  const rankM = getRankHealMult(getSpellRank(spellId, cls, level));
   const direct = sp.healing * mult * syn * critM * rankM;
   const hotTicks = sp.hotDuration ?? 0;
   const hotHeal = (sp.hotHealingPerTick ?? 0) * hotTicks * mult * critM * rankM;
@@ -277,7 +277,7 @@ function totalHealPerCast(spellId: string, cls: ClassType, level: number, talent
 function castIntervalSec(spellId: string, _cls: ClassType, talents: Talent[]): number {
   const sp = SPELLS[spellId];
   if (!sp) return 1;
-  const h = talentHastePctFromTalents(talents);
+  const h = getTalentHastePct(talents);
   const cdTicks = Math.max(
     MIN_HEAL_GCD_TICKS,
     Math.round(sp.cooldown * (1 - h / 100)),
@@ -318,10 +318,10 @@ function estimateAmbientBossPartyChipDpsRaw(
   const tankRaw = e.tankProcChance * (e.tankDamageRandomMax * 0.5 + D) * e.ambientChipDamageMultiplier;
   const nonRaw = e.nonTankProcChance * (e.nonTankDamageRandomMax * 0.5 + D) * e.ambientChipDamageMultiplier;
   const expectedRawPerTick = chipScale * (tankRaw + 4 * nonRaw);
-  const diffMult = bossDamageMultiplierForDifficulty(dungeon.difficulty);
-  const gap = damageTakenMultiplierFromDungeonLevelGap(memberLevel, dungeon.levelMax);
+  const diffMult = getBossDamageMultiplier(dungeon.difficulty);
+  const gap = getLevelGapDamageMultiplier(memberLevel, dungeon.levelMax);
   const shell = shellStateForDamageTaken();
-  const dmgTakenMult = runDamageTakenMultiplier(shell, { source: 'trash_tick' });
+  const dmgTakenMult = getDamageTakenMultiplier(shell, { source: 'trash_tick' });
   const scaledPerTick = expectedRawPerTick * diffMult * partyBuffMult * gap * dmgTakenMult;
   return scaledPerTick * TICKS_PER_SECOND;
 }
@@ -333,9 +333,9 @@ function estimateBossMechanicalPartyDps(dungeon: Dungeon, profile: BossCombatPro
   if (nKinds === 0 || avgSec <= 0) return 0;
   const mechPerSec = 1 / avgSec;
   const partyBuff = maxSelfBuffPartyDamageMult(profile);
-  const diffMult = bossDamageMultiplierForDifficulty(dungeon.difficulty);
-  const gap = damageTakenMultiplierFromDungeonLevelGap(memberLevel, dungeon.levelMax);
-  const dmgTakenMult = runDamageTakenMultiplier(shellStateForDamageTaken(), { source: 'boss_attack' });
+  const diffMult = getBossDamageMultiplier(dungeon.difficulty);
+  const gap = getLevelGapDamageMultiplier(memberLevel, dungeon.levelMax);
+  const dmgTakenMult = getDamageTakenMultiplier(shellStateForDamageTaken(), { source: 'boss_attack' });
   const atkShare = profile.attackTemplates.length > 0 ? 1 / nKinds : 0;
   let atkMean = 0;
   for (const a of profile.attackTemplates) {
@@ -368,9 +368,9 @@ function scaledBossAttackHit(
   partyDmgMult: number,
   memberLevel: number,
 ): number {
-  const gap = damageTakenMultiplierFromDungeonLevelGap(memberLevel, dungeon.levelMax);
-  const dmgTakenMult = runDamageTakenMultiplier(shellStateForDamageTaken(), { source: 'boss_attack' });
-  return damage * bossDamageMultiplierForDifficulty(dungeon.difficulty) * partyDmgMult * gap * dmgTakenMult;
+  const gap = getLevelGapDamageMultiplier(memberLevel, dungeon.levelMax);
+  const dmgTakenMult = getDamageTakenMultiplier(shellStateForDamageTaken(), { source: 'boss_attack' });
+  return damage * getBossDamageMultiplier(dungeon.difficulty) * partyDmgMult * gap * dmgTakenMult;
 }
 
 function printBossVsHealerHpsOverlap(): void {
@@ -385,7 +385,7 @@ function printBossVsHealerHpsOverlap(): void {
   console.log(`${'='.repeat(70)}`);
   const emptyTalents: Talent[] = [];
   for (const dungeon of DUNGEONS_PHASE_TEST) {
-    const profile = bossCombatProfileForDungeon(dungeon);
+    const profile = getCombatProfile(dungeon);
     if (
       profile.attackTemplates.length === 0 &&
       profile.debuffTemplates.length === 0 &&
@@ -424,9 +424,9 @@ function printOneshotSpikeOverlap(): void {
     `${COLOR.dim}Uses attackTemplates × difficulty × max self-buff party mult; crits add ~50% more in-game.${COLOR.r}`,
   );
   console.log(`${'='.repeat(70)}`);
-  const dpsHp = (lv: number) => allyMaxHealthForRoleAndLevel('DPS', lv);
+  const dpsHp = (lv: number) => getMaxHealth('DPS', lv);
   for (const dungeon of DUNGEONS_PHASE_TEST) {
-    const profile = bossCombatProfileForDungeon(dungeon);
+    const profile = getCombatProfile(dungeon);
     if (profile.attackTemplates.length === 0) continue;
     const partyMult = maxSelfBuffPartyDamageMult(profile);
     const lv = dungeon.levelMin;
@@ -457,7 +457,7 @@ function printBossVsHealerHpsCondensed(): void {
   const emptyTalents: Talent[] = [];
   const parts: string[] = [];
   for (const dungeon of DUNGEONS_PHASE_TEST) {
-    const profile = bossCombatProfileForDungeon(dungeon);
+    const profile = getCombatProfile(dungeon);
     if (
       profile.attackTemplates.length === 0 &&
       profile.debuffTemplates.length === 0 &&
@@ -483,10 +483,10 @@ function printBossVsHealerHpsCondensed(): void {
 }
 
 function printOneshotSpikeCondensed(): void {
-  const dpsHp = (lv: number) => allyMaxHealthForRoleAndLevel('DPS', lv);
+  const dpsHp = (lv: number) => getMaxHealth('DPS', lv);
   const bits: string[] = [];
   for (const dungeon of DUNGEONS_PHASE_TEST) {
-    const profile = bossCombatProfileForDungeon(dungeon);
+    const profile = getCombatProfile(dungeon);
     if (profile.attackTemplates.length === 0) continue;
     const partyMult = maxSelfBuffPartyDamageMult(profile);
     const lv = dungeon.levelMin;

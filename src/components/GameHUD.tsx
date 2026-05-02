@@ -11,8 +11,8 @@ import type { BossSelfBuff } from '../types.ts';
 
 import { GameIcon } from './GameIcon.tsx';
 
-import { BOSS_BUFF_ICON_TINT, glowForBossSelfBuff } from '../gameIcons.ts';
-import { TRASH_PACK_COUNT, endlessCycleMultiplier } from '../constants.ts';
+import { BOSS_BUFF_ICON_TINT, getSelfBuffGlow } from '../gameIcons.ts';
+import { TRASH_PACK_COUNT, getEndlessMultiplier } from '../constants.ts';
 import { useGhostBarPercent } from '../useGhostBarPercent.ts';
 const TRASH_PACKS = TRASH_PACK_COUNT;
 
@@ -224,7 +224,7 @@ export function GameHUD({
               <div className="flex flex-wrap items-center justify-center gap-2">
                 {endlessStacks !== undefined ? (
                   <span className="ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 sm:text-[9px]">
-                    Endless x{endlessCycleMultiplier(endlessStacks).toFixed(2)}
+                    Endless x{getEndlessMultiplier(endlessStacks).toFixed(2)}
                   </span>
                 ) : null}
               </div>
@@ -266,7 +266,7 @@ export function GameHUD({
             <div className="mt-1.5 flex justify-center sm:mt-2">
 
               <span className="ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 tabular-nums sm:text-[9px]">
-                Endless ×{endlessCycleMultiplier(endlessStacks).toFixed(2)}
+                Endless ×{getEndlessMultiplier(endlessStacks).toFixed(2)}
               </span>
 
             </div>
@@ -342,7 +342,7 @@ export function GameHUD({
 
                           iconPath={b.icon}
 
-                          glow={glowForBossSelfBuff(b.sourceAbilityId)}
+                          glow={getSelfBuffGlow(b.sourceAbilityId)}
 
                           size="xs"
 
@@ -418,7 +418,7 @@ export function GameHUD({
               <div className="ui-spell-tooltip-arrow-up" aria-hidden />
               <GameIcon
                 iconPath={bossBuffTip.buff.icon}
-                glow={glowForBossSelfBuff(bossBuffTip.buff.sourceAbilityId)}
+                glow={getSelfBuffGlow(bossBuffTip.buff.sourceAbilityId)}
                 size="md"
                 className="ui-spell-tooltip-icon"
                 accentTint={BOSS_BUFF_ICON_TINT}

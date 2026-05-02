@@ -17,13 +17,13 @@ import { TRASH_PACK_COUNT, TICKS_PER_SECOND, MANA_POTION_USES_PER_DUNGEON } from
 import {
   PLAYER_BUFF_MANA_REGEN_POTION,
   PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT,
-  getPlayerBuffRemainingTicks,
-  getManaPotionDripPerTick,
+  getBuffTicks,
+  getPotionDrip,
 } from './talentMechanics.ts';
 import { partyWithHealerManaRegenDisplayBuff } from './buffDisplay.ts';
 import { TalentTree } from './components/TalentTree.tsx';
 import { DungeonOutcomeModal } from './components/DungeonOutcomeModal.tsx';
-import { spellHealingMultiplierFromProgress, effectivePrimaryStats } from './playerStats.ts';
+import { getHealingMultiplier, getPrimaryStats } from './playerStats.ts';
 import type { PlayerCombatStats } from './types.ts';
 import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
 import { TutorialOverlay } from './components/TutorialOverlay.tsx';
@@ -56,7 +56,7 @@ export default function App() {
     actionBarHighlights,
     setTutorialPaused,
     completeIntroTutorial,
-    markTutorialStepCompleted,
+    markTutorialComplete,
   } = useGameEngine();
   const [targetId, setTargetId] = useState<string | null>(null);
   const [castTutorialSignal, setCastTutorialSignal] = useState<{
@@ -134,7 +134,7 @@ export default function App() {
       clearCastSpellSignal: clearCastTutorialSignal,
       setTutorialPaused,
       completeIntroTutorial,
-      markTutorialStepCompleted,
+      markTutorialComplete,
       reorderSignal: reorderTutorialSignal,
     });
 
@@ -150,7 +150,7 @@ export default function App() {
   const manaRegenTicksForUi = useMemo(
     () =>
       state.currentDungeon
-        ? getPlayerBuffRemainingTicks(state.playerCombatBuffs, PLAYER_BUFF_MANA_REGEN_POTION)
+        ? getBuffTicks(state.playerCombatBuffs, PLAYER_BUFF_MANA_REGEN_POTION)
         : 0,
     [state.currentDungeon, state.playerCombatBuffs],
   );
@@ -158,7 +158,7 @@ export default function App() {
   const spiritLockTicksForUi = useMemo(
     () =>
       state.currentDungeon
-        ? getPlayerBuffRemainingTicks(state.playerCombatBuffs, PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT)
+        ? getBuffTicks(state.playerCombatBuffs, PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT)
         : 0,
     [state.currentDungeon, state.playerCombatBuffs],
   );
@@ -178,15 +178,15 @@ export default function App() {
       mana: state.currentDungeon ? state.mana : state.maxMana,
       maxMana: state.maxMana,
       manaRegenBuffTicksRemaining: manaRegenTicksForUi,
-      manaPotionDripPerSec: getManaPotionDripPerTick(state.playerCombatBuffs) * TICKS_PER_SECOND,
+      manaPotionDripPerSec: getPotionDrip(state.playerCombatBuffs) * TICKS_PER_SECOND,
       spiritRegenLockoutTicksRemaining: spiritLockTicksForUi,
-      spirit: effectivePrimaryStats(state.playerClass, state.level).spirit,
+      spirit: getPrimaryStats(state.playerClass, state.level).spirit,
       spellsEnabled: !!state.currentDungeon,
       manaPotionChargesRemaining: Math.max(
         0,
         MANA_POTION_USES_PER_DUNGEON - state.manaPotionsUsedThisDungeon,
       ),
-      spellHealingMultiplier: spellHealingMultiplierFromProgress(
+      spellHealingMultiplier: getHealingMultiplier(
         state.playerClass,
         state.level,
         state.talents,
@@ -264,8 +264,8 @@ export default function App() {
     !state.tutorialCompletedSteps.includes(TUTORIAL_STEP_NAV_PRIMER);
 
   const dismissNavPrimerModal = useCallback(() => {
-    markTutorialStepCompleted(TUTORIAL_STEP_NAV_PRIMER);
-  }, [markTutorialStepCompleted]);
+    markTutorialComplete(TUTORIAL_STEP_NAV_PRIMER);
+  }, [markTutorialComplete]);
 
   return (
     <div

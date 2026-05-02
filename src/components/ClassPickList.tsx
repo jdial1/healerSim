@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
 import type { ClassType } from '../types.ts';
 import { classUiRows, type ClassUiRow } from '../classUiData.ts';
-import { classIconTransformClass, classIconUrl, classIconWrapperTransformClass } from '../classIcons.ts';
+import { getTransformClass, getIconUrl, getWrapperTransformClass } from '../classIcons.ts';
 
 export type ClassPickListProps = {
   title: ReactNode;
@@ -62,12 +62,12 @@ export function ClassPickList({
                     className="h-20 w-20 rounded-sm object-cover"
                   />
                 ) : null}
-                <div className={classIconWrapperTransformClass()}>
+                <div className={getWrapperTransformClass()}>
                   <img
-                    src={classIconUrl(row.id)}
+                    src={getIconUrl(row.id)}
                     alt=""
                     draggable={false}
-                    className={`h-[5.5rem] w-[5.5rem] select-none object-contain [filter:drop-shadow(0_2px_2px_rgba(0,0,0,0.6))] sm:h-[6rem] sm:w-[6rem] ${classIconTransformClass(row.id)}`}
+                    className={`h-[5.5rem] w-[5.5rem] select-none object-contain [filter:drop-shadow(0_2px_2px_rgba(0,0,0,0.6))] sm:h-[6rem] sm:w-[6rem] ${getTransformClass(row.id)}`}
                   />
                 </div>
               </div>

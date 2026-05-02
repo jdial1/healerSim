@@ -9,11 +9,11 @@ import {
   mergeRosterWithCharacter,
   writeSuspendedRun,
   clearSuspendedRun,
-  takeSuspendedRunForClass,
+  getSuspendedRun,
   type RosterV2,
 } from '../gameStorage.ts';
-import { hasPlayerBuff } from '../talentMechanics.ts';
-import { gameReducer, emptyGameBase, gameStateForClass } from '../gameEngineReducer.ts';
+import { hasBuff } from '../talentMechanics.ts';
+import { gameReducer, emptyGameBase, getInitialState } from '../gameEngineReducer.ts';
 
 export function useGameEngine() {
   const initialTutorialSteps = useRef<string[]>(readTutorialCompletedSteps()).current;
@@ -43,8 +43,8 @@ export function useGameEngine() {
   const loadCharacter = useCallback(
     (cls: ClassType) => {
       const r = persistActiveSessionIfAny();
-      const suspended = takeSuspendedRunForClass(cls);
-      const next = suspended ?? gameStateForClass(cls, r.byClass[cls]);
+      const suspended = getSuspendedRun(cls);
+      const next = suspended ?? getInitialState(cls, r.byClass[cls]);
       dispatch({
         type: 'SET',
         state: { ...next, tutorialCompletedSteps: tutorialStepsRef.current },
@@ -59,7 +59,7 @@ export function useGameEngine() {
       dispatch({
         type: 'SET',
         state: {
-          ...gameStateForClass(cls, undefined),
+          ...getInitialState(cls, undefined),
           tutorialCompletedSteps: tutorialStepsRef.current,
         },
       });
@@ -152,7 +152,7 @@ export function useGameEngine() {
     dispatch({ type: 'COMPLETE_INTRO_TUTORIAL' });
   }, []);
 
-  const markTutorialStepCompleted = useCallback((stepId: string) => {
+  const markTutorialComplete = useCallback((stepId: string) => {
     dispatch({ type: 'MARK_TUTORIAL_STEP_COMPLETED', stepId });
   }, []);
 
@@ -190,9 +190,9 @@ export function useGameEngine() {
 
   const actionBarHighlights = useMemo(
     () => ({
-      greater_heal: hasPlayerBuff(state.playerCombatBuffs, 'surge_of_light'),
-      regrowth: hasPlayerBuff(state.playerCombatBuffs, 'omen_clearcasting'),
-      healing_touch: hasPlayerBuff(state.playerCombatBuffs, 'omen_clearcasting'),
+      greater_heal: hasBuff(state.playerCombatBuffs, 'surge_of_light'),
+      regrowth: hasBuff(state.playerCombatBuffs, 'omen_clearcasting'),
+      healing_touch: hasBuff(state.playerCombatBuffs, 'omen_clearcasting'),
     }),
     [state.playerCombatBuffs],
   );
@@ -217,6 +217,6 @@ export function useGameEngine() {
     actionBarHighlights,
     setTutorialPaused,
     completeIntroTutorial,
-    markTutorialStepCompleted,
+    markTutorialComplete,
   };
 }

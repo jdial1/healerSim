@@ -4,29 +4,29 @@ import {
   TRASH_PACK_COUNT,
   SPELLS,
   generateRandomParty,
-  trashMaxHealthForDungeon,
+  getTrashMaxHealth,
 } from './constants.ts';
 import { buildEndlessWaveDungeon, endlessBossPool, getEndlessTemplate } from './dungeons/index.ts';
 import { INTRO_TUTORIAL_DUNGEON_ID } from './tutorialConfig.ts';
-import { cloneTalentsForClass } from './talents/index.ts';
+import { getTalents } from './talents/index.ts';
 import {
   patchFromSavedShape,
-  computeMetaFromProgress,
+  getMeta,
   reconcileActionBarOrder,
   xpProgressWithinLevel,
   levelUpRewardSummary,
   type RosterV2,
 } from './gameStorage.ts';
 import {
-  talentChainedPrereqsSatisfied,
-  transitivePrerequisiteTalentIds,
+  arePrereqsSatisfied,
+  getPrerequisiteIds,
   CLASS_PROGRESSION,
   CAPSTONE_PLAYER_BUFF_IDS,
 } from './playerStats.ts';
-import { applyExclusiveUnlock, upsertPlayerBuff, withBuffRemoved } from './talentMechanics.ts';
-import { playerCombatAuraTicks } from './auraConfig.ts';
+import { exclusiveUnlock, addBuff, removeBuff } from './talentMechanics.ts';
+import { getAuraTicks } from './auraConfig.ts';
 import { advanceCombatTick, type TickRandom } from './gameTick.ts';
-import { tryApplySpellCast, type CastRuntime } from './spellCastPipeline.ts';
+import { tryCast, type CastRuntime } from './spellCastPipeline.ts';
 
 export type GameAction =
   | { type: 'TICK'; random: TickRandom; now: number; dpsMultiplier?: number; ticksToProcess?: number }
@@ -120,8 +120,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         capstoneForm: null,
         holyPower: 0,
         dungeonOutcome: null,
-        bossMechanicCountdownTicks: 0,
-        bossMechanicOrdinal: 0,
+        mechanicCooldown: 0,
+        mechanicOrdinal: 0,
         spellCooldowns: {},
         dungeonPace: null,
         combatElapsedTicks: 0,
@@ -145,7 +145,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         dungeon = buildEndlessWaveDungeon(template, source, 0);
         endlessStacks = 0;
       }
-      const trashHp = trashMaxHealthForDungeon(dungeon);
+      const trashHp = getTrashMaxHealth(dungeon);
       const introTutorialRun =
         dungeon.id === INTRO_TUTORIAL_DUNGEON_ID &&
         !state.introTutorialComplete &&
@@ -182,8 +182,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         capstoneForm: null,
         holyPower: 0,
         dungeonOutcome: null,
-        bossMechanicCountdownTicks: 0,
-        bossMechanicOrdinal: 0,
+        mechanicCooldown: 0,
+        mechanicOrdinal: 0,
         spellCooldowns: {},
         combatElapsedTicks: 0,
         floatingCombatTexts: [],
@@ -212,7 +212,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const { into, needed } = xpProgressWithinLevel(state.xp);
       const delta = Math.max(0, needed - into) + 1;
       const newXp = state.xp + delta;
-      const meta = computeMetaFromProgress(newXp, state.playerClass, state.talents);
+      const meta = getMeta(newXp, state.playerClass, state.talents);
       const activeActionBars = reconcileActionBarOrder(state.activeActionBars, meta.activeActionBars);
       const party =
         meta.level > state.level
@@ -252,7 +252,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 function reduceUnlockTalent(state: GameState, talentId: string): GameState {
   const talent = state.talents.find((t) => t.id === talentId);
   if (!talent) return state;
-  const hasPrereqs = talentChainedPrereqsSatisfied(state.talents, talent);
+  const hasPrereqs = arePrereqsSatisfied(state.talents, talent);
   if (
     !hasPrereqs ||
     talent.points >= talent.maxPoints ||
@@ -261,8 +261,8 @@ function reduceUnlockTalent(state: GameState, talentId: string): GameState {
   ) {
     return state;
   }
-  const newTalents = applyExclusiveUnlock(state.talents, talentId);
-  const meta = computeMetaFromProgress(state.xp, state.playerClass, newTalents);
+  const newTalents = exclusiveUnlock(state.talents, talentId);
+  const meta = getMeta(state.xp, state.playerClass, newTalents);
   const activeActionBars = reconcileActionBarOrder(state.activeActionBars, meta.activeActionBars);
   let next: GameState = { ...state, ...meta, activeActionBars, mana: Math.min(meta.maxMana, state.mana) };
   if (state.playerClass) {
@@ -274,10 +274,10 @@ function reduceUnlockTalent(state: GameState, talentId: string): GameState {
       next = {
         ...next,
         capstoneForm: capProg.capstoneForm,
-        playerCombatBuffs: upsertPlayerBuff(
+        playerCombatBuffs: addBuff(
           next.playerCombatBuffs,
           capProg.capstonePlayerBuffId,
-          playerCombatAuraTicks(capProg.capstonePlayerBuffId),
+          getAuraTicks(capProg.capstonePlayerBuffId),
           1,
         ),
       };
@@ -289,11 +289,11 @@ function reduceUnlockTalent(state: GameState, talentId: string): GameState {
 function reduceRespecTalents(state: GameState): GameState {
   if (!state.playerClass || state.talents.length === 0) return state;
   const cleared = state.talents.map((t) => ({ ...t, points: 0 }));
-  const meta = computeMetaFromProgress(state.xp, state.playerClass, cleared);
+  const meta = getMeta(state.xp, state.playerClass, cleared);
   const activeActionBars = reconcileActionBarOrder(state.activeActionBars, meta.activeActionBars);
   let pbuffs = state.playerCombatBuffs;
   for (const id of CAPSTONE_PLAYER_BUFF_IDS) {
-    pbuffs = withBuffRemoved(pbuffs, id);
+    pbuffs = removeBuff(pbuffs, id);
   }
   return {
     ...state,
@@ -312,14 +312,14 @@ function reduceDecrementTalent(state: GameState, talentId: string): GameState {
     (candidate) =>
       candidate.points > 0 &&
       candidate.id !== talentId &&
-      transitivePrerequisiteTalentIds(state.talents, candidate).includes(talentId),
+      getPrerequisiteIds(state.talents, candidate).includes(talentId),
   );
   if (blockedByDependent) return state;
 
   const newTalents = state.talents.map((t) =>
     t.id === talentId ? { ...t, points: Math.max(0, t.points - 1) } : t,
   );
-  const meta = computeMetaFromProgress(state.xp, state.playerClass, newTalents);
+  const meta = getMeta(state.xp, state.playerClass, newTalents);
   const activeActionBars = reconcileActionBarOrder(state.activeActionBars, meta.activeActionBars);
   let next: GameState = {
     ...state,
@@ -334,7 +334,7 @@ function reduceDecrementTalent(state: GameState, talentId: string): GameState {
       next = {
         ...next,
         capstoneForm: null,
-        playerCombatBuffs: withBuffRemoved(next.playerCombatBuffs, capProg.capstonePlayerBuffId),
+        playerCombatBuffs: removeBuff(next.playerCombatBuffs, capProg.capstonePlayerBuffId),
       };
     }
   }
@@ -366,7 +366,7 @@ function reduceCastSpell(
       return nextPi;
     },
   };
-  const next = tryApplySpellCast(state, { spell, spellId, targetId, critRoll }, cdRem, rt);
+  const next = tryCast(state, { spell, spellId, targetId, critRoll }, cdRem, rt);
   if (next === state) return state;
   return { ...next, spellCooldowns: nextCooldowns };
 }
@@ -400,8 +400,8 @@ export function emptyGameBase(): GameState {
     capstoneForm: null,
     holyPower: 0,
     beaconTargetId: '1',
-    bossMechanicCountdownTicks: 0,
-    bossMechanicOrdinal: 0,
+    mechanicCooldown: 0,
+    mechanicOrdinal: 0,
     dungeonOutcome: null,
     spellCooldowns: {},
     combatElapsedTicks: 0,
@@ -433,8 +433,8 @@ function applyProgressPatchToBase(base: GameState, patch: Partial<GameState>): G
     capstoneForm: patch.capstoneForm ?? null,
     holyPower: patch.holyPower ?? 0,
     beaconTargetId: patch.beaconTargetId ?? '1',
-    bossMechanicCountdownTicks: patch.bossMechanicCountdownTicks ?? base.bossMechanicCountdownTicks,
-    bossMechanicOrdinal: patch.bossMechanicOrdinal ?? base.bossMechanicOrdinal,
+    mechanicCooldown: patch.mechanicCooldown ?? base.mechanicCooldown,
+    mechanicOrdinal: patch.mechanicOrdinal ?? base.mechanicOrdinal,
     dungeonOutcome: null,
     spellCooldowns: patch.spellCooldowns ?? base.spellCooldowns,
     combatElapsedTicks: patch.combatElapsedTicks ?? base.combatElapsedTicks,
@@ -450,11 +450,11 @@ function applyProgressPatchToBase(base: GameState, patch: Partial<GameState>): G
   };
 }
 
-export function gameStateForClass(cls: ClassType, saved: RosterV2['byClass'][ClassType]): GameState {
+export function getInitialState(cls: ClassType, saved: RosterV2['byClass'][ClassType]): GameState {
   const base = emptyGameBase();
   if (!saved) {
-    const talents = cloneTalentsForClass(cls);
-    const meta = computeMetaFromProgress(0, cls, talents);
+    const talents = getTalents(cls);
+    const meta = getMeta(0, cls, talents);
     return {
       ...base,
       ...meta,
@@ -474,6 +474,6 @@ export function gameStateForClass(cls: ClassType, saved: RosterV2['byClass'][Cla
   }
   const normalized = { ...saved, playerClass: cls, v: 1 as const };
   const progressPatch = patchFromSavedShape(normalized);
-  if (!progressPatch) return gameStateForClass(cls, undefined);
+  if (!progressPatch) return getInitialState(cls, undefined);
   return applyProgressPatchToBase(base, progressPatch);
 }

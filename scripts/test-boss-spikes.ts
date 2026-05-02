@@ -4,18 +4,18 @@ import { emptyGameBase } from '../src/gameEngineReducer.ts';
 import { DUNGEONS } from '../src/dungeons/index.ts';
 import {
   TICKS_PER_SECOND,
-  bossCombatProfileForDungeon,
+  getCombatProfile,
   generateRandomParty,
 } from '../src/constants.ts';
 import { advanceBossSpikeSimTick, type TickRandom } from '../src/gameTick.ts';
 import {
-  allyMaxHealthForRoleAndLevel,
-  healerMaxHealthFromStats,
+  getMaxHealth,
+  getHealerMaxHealth,
 } from '../src/playerStats.ts';
-import { cloneTalentsForClass } from '../src/talents/index.ts';
+import { getTalents } from '../src/talents/index.ts';
 import {
-  computeMetaFromProgress,
-  totalXpToReachLevel,
+  getMeta,
+  getXpToLevel,
 } from '../src/gameStorage.ts';
 import type { ClassType, Dungeon, GameState } from '../src/types.ts';
 import { testPalette } from './testColors.ts';
@@ -73,25 +73,25 @@ function partyFixedDungeonLevel(level: number, cls: ClassType): GameState['party
   return raw.map((u) => {
     const cleared = { ...u, buffs: [] as typeof u.buffs, debuffs: [] as typeof u.debuffs, shield: 0, shieldTicksRemaining: 0, livingSeedPool: 0 };
     if (u.role === 'TANK') {
-      const hp = allyMaxHealthForRoleAndLevel('TANK', level);
+      const hp = getMaxHealth('TANK', level);
       return { ...cleared, level, maxHealth: hp, health: hp };
     }
     if (u.role === 'DPS') {
-      const hp = allyMaxHealthForRoleAndLevel('DPS', level);
+      const hp = getMaxHealth('DPS', level);
       return { ...cleared, level, maxHealth: hp, health: hp };
     }
-    const hp = healerMaxHealthFromStats(cls, level);
+    const hp = getHealerMaxHealth(cls, level);
     return { ...cleared, level, maxHealth: hp, health: hp };
   });
 }
 
 function buildBossSpikeState(dungeon: Dungeon, episodeIndex: number): GameState {
   const allyLevel = dungeon.levelMax;
-  const talents = cloneTalentsForClass('PRIEST');
-  const xp = totalXpToReachLevel(allyLevel);
-  const meta = computeMetaFromProgress(xp, 'PRIEST', talents);
+  const talents = getTalents('PRIEST');
+  const xp = getXpToLevel(allyLevel);
+  const meta = getMeta(xp, 'PRIEST', talents);
   const party = beefParty(partyFixedDungeonLevel(allyLevel, 'PRIEST'));
-  const prof = bossCombatProfileForDungeon(dungeon);
+  const prof = getCombatProfile(dungeon);
   const rng = mulberry32(episodeIndex * 0x9e3779b9 ^ dungeon.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0));
   const mechCd = randomIntInclusive(
     prof.mechanicIntervalTicksMin,
@@ -114,8 +114,8 @@ function buildBossSpikeState(dungeon: Dungeon, episodeIndex: number): GameState 
     dungeonProgress: 75,
     party,
     bossSelfBuffs: [],
-    bossMechanicCountdownTicks: mechCd,
-    bossMechanicOrdinal: 0,
+    mechanicCooldown: mechCd,
+    mechanicOrdinal: 0,
     playerCombatBuffs: [],
     internalCooldowns: {},
     capstoneForm: null,
@@ -165,7 +165,7 @@ function runDungeonBossSpikes(dungeon: Dungeon): void {
     globalMax3s = Math.max(globalMax3s, maxRollingSum(damages, WINDOW_3S));
     globalMax2s = Math.max(globalMax2s, maxRollingSum(damages, WINDOW_2S));
   }
-  const tankMaxHp = allyMaxHealthForRoleAndLevel('TANK', dungeon.levelMax);
+  const tankMaxHp = getMaxHealth('TANK', dungeon.levelMax);
   console.log(lineForSpike(dungeon, globalMax3s, globalMax2s, tankMaxHp));
 }
 
@@ -174,7 +174,7 @@ export function runBossSpikesTest(): void {
     `${T.dim}Monte Carlo:${T.r} ${T.cyan}${TICKS_PER_DUNGEON}${T.r} boss ticks per dungeon ${T.dim}(${EPISODES}×${EPISODE_TICKS}, boss-only, no player heals). Rolling windows: 2s / 3s.${T.r}\n`,
   );
   for (const d of DUNGEONS) {
-    const prof = bossCombatProfileForDungeon(d);
+    const prof = getCombatProfile(d);
     if (
       prof.attackTemplates.length === 0 &&
       prof.debuffTemplates.length === 0 &&

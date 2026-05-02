@@ -309,8 +309,8 @@ export interface GameState {
   capstoneForm: CapstoneFormId | null;
   holyPower: number;
   beaconTargetId: string;
-  bossMechanicCountdownTicks: number;
-  bossMechanicOrdinal: number;
+  mechanicCooldown: number;
+  mechanicOrdinal: number;
   dungeonOutcome: DungeonRunOutcome | null;
   spellCooldowns: Record<string, number>;
   combatElapsedTicks: number;

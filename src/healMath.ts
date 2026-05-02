@@ -1,4 +1,4 @@
-export function healEffectiveAndOverheal(
+export function getHealSplit(
   healthBefore: number,
   maxHealth: number,
   rawHeal: number,

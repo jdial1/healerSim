@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { Unit, Buff, PartyDebuff, FloatingCombatTextEntry } from '../types.ts';
 import { Shield, Zap, User } from 'lucide-react';
-import { glowForSpellId, glowForBossAbilityId } from '../gameIcons.ts';
+import { getSpellGlow, getAbilityGlow } from '../gameIcons.ts';
 import { GameIcon } from './GameIcon.tsx';
 import {
   INTRO_TUTORIAL_DEBUFF_ABILITY,
@@ -66,7 +66,7 @@ function HoTBuffIcon({ buff }: { buff: Buff }) {
         }}
       />
       <div className="ui-hot-inner">
-        <GameIcon iconPath={buff.icon} glow={glowForSpellId(buff.sourceSpellId)} size="xs" className="scale-90" />
+        <GameIcon iconPath={buff.icon} glow={getSpellGlow(buff.sourceSpellId)} size="xs" className="scale-90" />
       </div>
       <div className={`ui-hot-timer ${urgent ? 'ui-hot-timer-urgent' : 'ui-hot-timer-ok'}`}>{secondsLeft}</div>
     </div>
@@ -77,7 +77,7 @@ function ManaRegenBuffIcon({ buff }: { buff: Buff }) {
   const showCountdown = buff.remainingTicks < 50;
   return (
     <div className="relative sm:p-0.5" title={buff.name}>
-      <GameIcon iconPath={buff.icon} glow={glowForSpellId(buff.sourceSpellId)} size="xs" />
+      <GameIcon iconPath={buff.icon} glow={getSpellGlow(buff.sourceSpellId)} size="xs" />
       {showCountdown ? (
         <div className="ui-mana-regen-overlay">{Math.ceil(buff.remainingTicks / 10)}</div>
       ) : null}
@@ -310,7 +310,7 @@ export function HealGrid({
             >
               <GameIcon
                 iconPath={debuffTip.debuff.icon}
-                glow={glowForBossAbilityId(debuffTip.debuff.sourceAbilityId)}
+                glow={getAbilityGlow(debuffTip.debuff.sourceAbilityId)}
                 size="md"
                 className="ui-spell-tooltip-icon"
               />
@@ -486,7 +486,7 @@ function HealGridUnitRow(props: HealGridUnitRowProps) {
                       >
                         <GameIcon
                           iconPath={buff.icon}
-                          glow={glowForSpellId(buff.sourceSpellId)}
+                          glow={getSpellGlow(buff.sourceSpellId)}
                           size="xs"
                         />
                       </div>
@@ -528,7 +528,7 @@ function HealGridUnitRow(props: HealGridUnitRowProps) {
                       >
                         <GameIcon
                           iconPath={debuff.icon}
-                          glow={glowForBossAbilityId(debuff.sourceAbilityId)}
+                          glow={getAbilityGlow(debuff.sourceAbilityId)}
                           size="xs"
                         />
                         {showCountdown && <div className="ui-debuff-countdown">{secondsLeft}</div>}

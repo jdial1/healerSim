@@ -2,12 +2,12 @@ import { type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { ChevronDown, X } from 'lucide-react';
 import { ClassType, Talent } from '../types.ts';
-import { buildPlayerStatBreakdown } from '../playerStats.ts';
+import { getStatBreakdown } from '../playerStats.ts';
 import { getManaRegenPerSecond } from '../constants.ts';
 import { classDisplayName } from '../classUiData.ts';
 import { xpProgressWithinLevel } from '../gameStorage.ts';
 import { sentenceCaseBlock, sentenceCaseLabel } from '../gameUiText.ts';
-import { classIconTransformClass, classIconUrl, classIconWrapperTransformClass } from '../classIcons.ts';
+import { getTransformClass, getIconUrl, getWrapperTransformClass } from '../classIcons.ts';
 import { GameIcon } from './GameIcon.tsx';
 
 interface PlayerStatsModalProps {
@@ -140,7 +140,7 @@ export function PlayerStatsModal({
   talents,
   onClose,
 }: PlayerStatsModalProps) {
-  const b = buildPlayerStatBreakdown(playerClass, level, talents);
+  const b = getStatBreakdown(playerClass, level, talents);
   const regenSec = getManaRegenPerSecond(0, b.spirit);
   const { into: xpIntoLevel, needed: xpForNextLevel } = xpProgressWithinLevel(xp);
   const xpRingPct = xpForNextLevel > 0 ? Math.min(1, Math.max(0, xpIntoLevel / xpForNextLevel)) : 0;
@@ -182,12 +182,12 @@ export function PlayerStatsModal({
                     <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3">
                       <div className="pt-0.5 text-xs font-semibold tracking-wide text-slate-400">Level</div>
                       <div className="row-span-2 justify-self-center rounded-xl bg-transparent p-0 text-white shadow-none">
-                        <div className={classIconWrapperTransformClass()}>
+                        <div className={getWrapperTransformClass()}>
                           <img
-                            src={classIconUrl(playerClass)}
+                            src={getIconUrl(playerClass)}
                             alt=""
                             draggable={false}
-                            className={`h-[76px] w-[76px] select-none object-contain [filter:drop-shadow(0_3px_3px_rgba(0,0,0,0.65))] sm:h-[84px] sm:w-[84px] ${classIconTransformClass(playerClass)}`}
+                            className={`h-[76px] w-[76px] select-none object-contain [filter:drop-shadow(0_3px_3px_rgba(0,0,0,0.65))] sm:h-[84px] sm:w-[84px] ${getTransformClass(playerClass)}`}
                           />
                         </div>
                       </div>

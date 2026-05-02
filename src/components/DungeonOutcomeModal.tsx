@@ -4,12 +4,12 @@ import { Skull, Trophy, X, Copy, Check } from 'lucide-react';
 import { DungeonRunOutcome, DungeonFailureReason } from '../types.ts';
 import { SPELLS } from '../constants.ts';
 import {
-  classSpellOrder,
-  effectivePrimaryStats,
-  spellHealingMultiplierFromProgress,
+  getSpellOrder,
+  getPrimaryStats,
+  getHealingMultiplier,
 } from '../playerStats.ts';
 import { GameIcon } from './GameIcon.tsx';
-import { glowForSpellId } from '../gameIcons.ts';
+import { getSpellGlow } from '../gameIcons.ts';
 import { manaPotionDisplayName, manaPotionIconPath } from '../manaPotionIcon.ts';
 import {
   spellDisplayManaCost,
@@ -65,7 +65,7 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
   };
 
   const cls = outcome.playerClass;
-  const order = cls ? classSpellOrder(cls) : [];
+  const order = cls ? getSpellOrder(cls) : [];
   const spellRewardIds = [...outcome.upgradedSpellIds].sort((a, b) => {
     const ia = order.indexOf(a);
     const ib = order.indexOf(b);
@@ -79,8 +79,8 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
   const previousRewardSpellTipCtx =
     cls && spellRewardIds.length > 0 && outcome.levelAfter > 1
       ? {
-          spellHealingMultiplier: spellHealingMultiplierFromProgress(cls, outcome.levelAfter - 1, []),
-          spirit: effectivePrimaryStats(cls, outcome.levelAfter - 1).spirit,
+          spellHealingMultiplier: getHealingMultiplier(cls, outcome.levelAfter - 1, []),
+          spirit: getPrimaryStats(cls, outcome.levelAfter - 1).spirit,
           playerLevel: outcome.levelAfter - 1,
           playerClass: cls,
           unlockedSpells: spellRewardIds,
@@ -131,8 +131,8 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
   const rewardSpellTipCtx =
     cls && spellRewardIds.length > 0
       ? {
-          spellHealingMultiplier: spellHealingMultiplierFromProgress(cls, outcome.levelAfter, []),
-          spirit: effectivePrimaryStats(cls, outcome.levelAfter).spirit,
+          spellHealingMultiplier: getHealingMultiplier(cls, outcome.levelAfter, []),
+          spirit: getPrimaryStats(cls, outcome.levelAfter).spirit,
           playerLevel: outcome.levelAfter,
           playerClass: cls,
           unlockedSpells: spellRewardIds,
@@ -246,7 +246,7 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
                   <li className="ui-frame flex items-center gap-2 rounded bg-slate-950/60 px-2 py-2 text-left">
                     <GameIcon
                       iconPath={manaPotionIconPath(outcome.levelAfter)}
-                      glow={glowForSpellId('mana_potion')}
+                      glow={getSpellGlow('mana_potion')}
                       size="sm"
                       className="shrink-0"
                     />
@@ -278,7 +278,7 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
                           <div className="flex w-full min-w-0 items-start gap-1.5 shadow-2xl sm:gap-2">
                             <GameIcon
                               iconPath={sp.icon}
-                              glow={glowForSpellId(sid)}
+                              glow={getSpellGlow(sid)}
                               size="md"
                               className="ui-spell-tooltip-icon shrink-0"
                             />

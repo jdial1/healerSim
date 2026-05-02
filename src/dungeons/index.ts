@@ -1,6 +1,6 @@
 import type { Dungeon } from '../types.ts';
 import dungeonsData from '../data/dungeons.json';
-import { endlessCycleMultiplier } from '../constants.ts';
+import { getEndlessMultiplier } from '../constants.ts';
 
 export const DUNGEONS = dungeonsData as Dungeon[];
 
@@ -23,7 +23,7 @@ export function buildEndlessWaveDungeon(
   bossSource: Dungeon,
   stacks: number,
 ): Dungeon {
-  const m = endlessCycleMultiplier(stacks);
+  const m = getEndlessMultiplier(stacks);
   return {
     ...endlessTemplate,
     bossName: bossSource.bossName,

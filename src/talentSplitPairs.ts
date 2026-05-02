@@ -11,7 +11,7 @@ function exclusiveSplitPartner(allTalents: Talent[], t: Talent): Talent | undefi
   return p;
 }
 
-export function collectExclusiveSplitPairs(talents: Talent[]): ExclusiveSplitPair[] {
+export function getSplitPairs(talents: Talent[]): ExclusiveSplitPair[] {
   const seen = new Set<string>();
   const out: ExclusiveSplitPair[] = [];
   for (const t of talents) {
@@ -27,7 +27,7 @@ export function collectExclusiveSplitPairs(talents: Talent[]): ExclusiveSplitPai
   return out;
 }
 
-export function splitPairContaining(
+export function getPairContaining(
   talentId: string,
   pairs: ExclusiveSplitPair[],
 ): ExclusiveSplitPair | undefined {

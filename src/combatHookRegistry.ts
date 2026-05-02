@@ -7,12 +7,12 @@ import {
   Unit,
 } from './types.ts';
 import { ClassRegistry } from './classes/index.ts';
-import { diffPartyCombatFloats, mergeFloatingCombatForTick } from './floatingCombatText.ts';
-import { calculateSpellRank, getRankCostMultiplier } from './playerStats.ts';
-import { isDirectHealSpell } from './talentMechanics.ts';
+import { diffFloats, mergeFloats } from './floatingCombatText.ts';
+import { getSpellRank, getRankCostMult } from './playerStats.ts';
+import { isDirectHeal } from './talentMechanics.ts';
 
 export type SpecialHealCastEff = {
-  healingFromProgress: number;
+  baseHealingMultiplier: number;
   critChancePercent: (naturalPerfectionStacks: number, extraCritPct?: number) => number;
 };
 
@@ -79,10 +79,10 @@ export type SpecialHealCastContext = {
 };
 
 /**
- * DELEGATOR: runHealManaCost
- * Fixes error: Module has no exported member 'runHealManaCost'
+ * DELEGATOR: getManaCost
+ * Fixes error: Module has no exported member 'getManaCost'
  */
-export function runHealManaCost(
+export function getManaCost(
   s: GameState,
   classType: ClassType,
   spell: Spell,
@@ -93,33 +93,33 @@ export function runHealManaCost(
   const base = hooks?.onHealManaCost?.(s, spell, spellId, surgeFree) ?? spell.manaCost;
   
   if (base > 0) {
-    const rank = calculateSpellRank(spellId, classType, s.level);
-    return Math.round(base * getRankCostMultiplier(rank));
+    const rank = getSpellRank(spellId, classType, s.level);
+    return Math.round(base * getRankCostMult(rank));
   }
   return base;
 }
 
 /**
- * DELEGATOR: runOnHealCast
+ * DELEGATOR: onHealCast
  */
-export function runOnHealCast(s: GameState, ctx: HealCastContext): void {
+export function onHealCast(s: GameState, ctx: HealCastContext): void {
   const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
   hooks?.onHealCast?.(s, ctx);
 }
 
 /**
- * DELEGATOR: runOnCrit
+ * DELEGATOR: onCrit
  */
-export function runOnCrit(s: GameState, ctx: HealLandContext): void {
+export function onCrit(s: GameState, ctx: HealLandContext): void {
   const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
   hooks?.onCrit?.(s, ctx);
 }
 
 /**
- * DELEGATOR: runHasteBonusSum
+ * DELEGATOR: getHasteBonus
  * Replaces hardcoded class checks with Registry delegation.
  */
-export function runHasteBonusSum(
+export function getHasteBonus(
   s: GameState,
   classType: ClassType,
   healer: Unit | undefined,
@@ -130,9 +130,9 @@ export function runHasteBonusSum(
 }
 
 /**
- * DELEGATOR: runHotTickAmount
+ * DELEGATOR: getHotTickAmount
  */
-export function runHotTickAmount(ctx: HotTickModifierContext): number {
+export function getHotTickAmount(ctx: HotTickModifierContext): number {
   const hooks = ctx.state.playerClass ? ClassRegistry.getHooks(ctx.state.playerClass) : null;
   if (hooks?.hotTickAmount) {
     return hooks.hotTickAmount(ctx);
@@ -141,17 +141,17 @@ export function runHotTickAmount(ctx: HotTickModifierContext): number {
 }
 
 /**
- * DELEGATOR: runHotTickRateMultiplier
+ * DELEGATOR: getHotTickRateMultiplier
  */
-export function runHotTickRateMultiplier(ctx: HotTickModifierContext): number {
+export function getHotTickRateMultiplier(ctx: HotTickModifierContext): number {
   const hooks = ctx.state.playerClass ? ClassRegistry.getHooks(ctx.state.playerClass) : null;
   return hooks?.hotTickRateMultiplier?.(ctx.state, ctx.buff.sourceSpellId) ?? 1;
 }
 
 /**
- * DELEGATOR: runHotTickManaReturn
+ * DELEGATOR: getHotTickManaReturn
  */
-export function runHotTickManaReturn(ctx: HotTickModifierContext): number {
+export function getHotTickManaReturn(ctx: HotTickModifierContext): number {
   const hooks = ctx.state.playerClass ? ClassRegistry.getHooks(ctx.state.playerClass) : null;
   let m = hooks?.hotTickManaReturn?.(ctx.state, ctx.buff.sourceSpellId) ?? 0;
   m += ctx.vitalityBloomMana ?? 0;
@@ -159,17 +159,17 @@ export function runHotTickManaReturn(ctx: HotTickModifierContext): number {
 }
 
 /**
- * DELEGATOR: runCastDirectHealMultipliers
+ * DELEGATOR: getDirectHealMultiplier
  */
-export function runCastDirectHealMultipliers(s: GameState, spell: Spell, spellId: string): number {
+export function getDirectHealMultiplier(s: GameState, spell: Spell, spellId: string): number {
   const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
   return hooks?.castDirectHealMultiplier?.(s, spell, spellId) ?? 1;
 }
 
 /**
- * DELEGATOR: runCritBonusForHealRoll
+ * DELEGATOR: getCritBonus
  */
-export function runCritBonusForHealRoll(s: GameState, spellId: string, targetId: string): number {
+export function getCritBonus(s: GameState, spellId: string, targetId: string): number {
   const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
   return hooks?.critBonusForHealRoll?.(s, spellId, targetId) ?? 0;
 }
@@ -184,11 +184,11 @@ export function trySpecialHealCast(s: GameState, ctx: SpecialHealCastContext): G
 }
 
 /**
- * DELEGATOR: runOnHealLand
+ * DELEGATOR: onHealLand
  * The primary aggregator for post-cast effects. 
  * Logic like Divine Aegis or Beacon of Light now live in their respective class hooks.
  */
-export function runOnHealLand(
+export function onHealLand(
   s: GameState,
   ctx: HealLandContext,
   partyAfterDirect: Unit[],
@@ -211,18 +211,18 @@ export function runOnHealLand(
 }
 
 /**
- * DELEGATOR: runDamageTakenMultiplier
+ * DELEGATOR: getDamageTakenMultiplier
  */
-export function runDamageTakenMultiplier(s: GameState, ctx: { source: 'boss_attack' | 'trash_tick' }): number {
+export function getDamageTakenMultiplier(s: GameState, ctx: { source: 'boss_attack' | 'trash_tick' }): number {
   const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
   return hooks?.damageTakenMultiplier?.(s, ctx) ?? 1;
 }
 
 /**
- * DELEGATOR: runManaReturnMechanics
+ * DELEGATOR: getManaReturn
  * Replaces hardcoded runPriestMeditative...
  */
-export function runManaReturnMechanics(
+export function getManaReturn(
   s: GameState,
   spiritRegenLockoutTicksRemaining: number,
 ): number {
@@ -231,25 +231,25 @@ export function runManaReturnMechanics(
 }
 
 /**
- * DELEGATOR: runEmergencyHasteBonus
+ * DELEGATOR: getEmergencyHaste
  */
-export function runEmergencyHasteBonus(s: GameState, targetId: string): number {
+export function getEmergencyHaste(s: GameState, targetId: string): number {
   const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
   return hooks?.emergencyHasteBonus?.(s, targetId) ?? 0;
 }
 
 /**
- * DELEGATOR: runSelfHealOnDamage
+ * DELEGATOR: getSelfHealOnDamage
  */
-export function runSelfHealOnDamage(s: GameState, damageTaken: number): number {
+export function getSelfHealOnDamage(s: GameState, damageTaken: number): number {
   const hooks = s.playerClass ? ClassRegistry.getHooks(s.playerClass) : null;
   return hooks?.selfHealOnDamage?.(s, damageTaken) ?? 0;
 }
 
 /**
- * DELEGATOR: runOnShieldTransition
+ * DELEGATOR: onShieldTransition
  */
-export function runOnShieldTransition(
+export function onShieldTransition(
   s: GameState,
   partyBefore: Unit[],
   partyAfter: Unit[],
@@ -262,10 +262,10 @@ export function runOnShieldTransition(
 }
 
 /**
- * DELEGATOR: runManaAfterHealCast
- * Fixes error: Cannot find name 'runManaAfterHealCast' in spellCastPipeline
+ * DELEGATOR: onManaAfterHeal
+ * Fixes error: Cannot find name 'onManaAfterHeal' in spellCastPipeline
  */
-export function runManaAfterHealCast(
+export function onManaAfterHeal(
   s: GameState,
   spell: Spell,
   spellId: string,
@@ -284,7 +284,7 @@ export function runManaAfterHealCast(
     (a, t) => a + (t.statBonus?.manaReturnOnDirectHeal || 0) * (t.points > 0 ? t.points : 0),
     0,
   );
-  if (isDirectHealSpell(spell, spellId)) {
+  if (isDirectHeal(spell, spellId)) {
     m = Math.min(s.maxMana, m + manaR);
   }
   

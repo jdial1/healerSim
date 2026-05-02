@@ -11,7 +11,7 @@ import {
   computeDungeonFailureXpGain,
   computeDungeonXpGain,
   levelFromTotalXp,
-  totalXpToReachLevel,
+  getXpToLevel,
 } from '../src/gameStorage.ts';
 import { testPalette } from './testColors.ts';
 
@@ -22,7 +22,7 @@ const WIPE_RATE = 0.2;
 const FAIL_PULLS_CLEARED = 1;
 
 function xpToAdvanceOneLevel(fromLevel: number): number {
-  return totalXpToReachLevel(fromLevel + 1) - totalXpToReachLevel(fromLevel);
+  return getXpToLevel(fromLevel + 1) - getXpToLevel(fromLevel);
 }
 
 function pickDungeonForLevel(level: number): Dungeon {

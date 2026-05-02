@@ -29,7 +29,7 @@ export const HEALER_UNIT_ID = '5';
 const MENTAL_FORTITUDE_MANA_FRACTION_PER_5S = 0.01;
 
 
-export function runGeneralManaReturnMechanics(
+export function getGeneralManaReturn(
   maxMana: number,
   talents: Talent[],
   spiritRegenLockoutTicksRemaining: number,
@@ -43,17 +43,17 @@ export function runGeneralManaReturnMechanics(
   return (maxMana * MENTAL_FORTITUDE_MANA_FRACTION_PER_5S) / (5 * TICKS_PER_SECOND);
 }
 
-export function talentRanks(talents: Talent[], mechanicId: MechanicId): number {
+export function getRanks(talents: Talent[], mechanicId: MechanicId): number {
   return talents
     .filter((t) => t.mechanicId === mechanicId)
     .reduce((a, t) => a + t.points, 0);
 }
 
 export function hasTalent(talents: Talent[], mechanicId: MechanicId): boolean {
-  return talentRanks(talents, mechanicId) > 0;
+  return getRanks(talents, mechanicId) > 0;
 }
 
-export function applyExclusiveUnlock(talents: Talent[], learnId: string): Talent[] {
+export function exclusiveUnlock(talents: Talent[], learnId: string): Talent[] {
   const t = talents.find((x) => x.id === learnId);
   if (!t) return talents;
   const toClear = new Set(t.exclusiveWith ?? []);
@@ -73,31 +73,31 @@ function buffIsActive(b: PlayerCombatBuff): boolean {
   return b.remainingTicks > 0;
 }
 
-export function hasPlayerBuff(buffs: PlayerCombatBuff[], id: string): boolean {
+export function hasBuff(buffs: PlayerCombatBuff[], id: string): boolean {
   return buffs.some((b) => b.id === id && buffIsActive(b));
 }
 
-export function getPlayerBuffRemainingTicks(buffs: PlayerCombatBuff[], id: string): number {
+export function getBuffTicks(buffs: PlayerCombatBuff[], id: string): number {
   const b = buffs.find((x) => x.id === id);
   if (!b || PLAYER_COMBAT_BUFF_NO_TIME_DECAY.has(id)) return 0;
   return b.remainingTicks > 0 ? b.remainingTicks : 0;
 }
 
-export function getPlayerBuffStacks(buffs: PlayerCombatBuff[], id: string): number {
+export function getBuffStacks(buffs: PlayerCombatBuff[], id: string): number {
   const b = buffs.find((x) => x.id === id);
   if (!b || !buffIsActive(b)) return 0;
   return b.stacks;
 }
 
-export function naturalPerfectionStacksFrom(buffs: PlayerCombatBuff[]): number {
-  return getPlayerBuffStacks(buffs, PLAYER_BUFF_NATURAL_PERFECTION);
+export function getNaturalPerfectionStacks(buffs: PlayerCombatBuff[]): number {
+  return getBuffStacks(buffs, PLAYER_BUFF_NATURAL_PERFECTION);
 }
 
 /**
  * Uses CLASS_PROGRESSION metadata to dynamically determine if a capstone 
  * should remain active based on player buffs.
  */
-export function capstoneFormAfterBuffTick(
+export function getCapstoneAfterTick(
   form: CapstoneFormId | null,
   buffs: PlayerCombatBuff[],
   playerClass: ClassType | null
@@ -107,21 +107,21 @@ export function capstoneFormAfterBuffTick(
   const config = CLASS_PROGRESSION[playerClass];
   // FIX: Cast both to string to avoid literal-type comparison errors
   if ((form as string) === (config.capstoneForm as string)) {
-    return hasPlayerBuff(buffs, config.capstonePlayerBuffId) ? form : null;
+    return hasBuff(buffs, config.capstonePlayerBuffId) ? form : null;
   }
   
   return null;
 }
 
-export function upsertSpiritRegenLockoutIfSpentMana(
+export function addSpiritLockoutIfSpent(
   buffs: PlayerCombatBuff[],
   spentMana: boolean,
 ): PlayerCombatBuff[] {
   if (!spentMana) return buffs;
-  return upsertPlayerBuff(buffs, PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT, MANA_SPIRIT_REGEN_LOCKOUT_TICKS, 1);
+  return addBuff(buffs, PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT, MANA_SPIRIT_REGEN_LOCKOUT_TICKS, 1);
 }
 
-export function upsertPlayerBuff(
+export function addBuff(
   buffs: PlayerCombatBuff[],
   id: string,
   ticks: number,
@@ -148,13 +148,13 @@ export function upsertPlayerBuff(
   return next;
 }
 
-export function getManaPotionDripPerTick(buffs: PlayerCombatBuff[]): number {
+export function getPotionDrip(buffs: PlayerCombatBuff[]): number {
   const b = buffs.find((x) => x.id === PLAYER_BUFF_MANA_REGEN_POTION);
   if (!b || b.remainingTicks <= 0) return 0;
   return b.potionDripPerTick ?? 0;
 }
 
-export function tickPlayerBuffs(buffs: PlayerCombatBuff[]): PlayerCombatBuff[] {
+export function tickBuffs(buffs: PlayerCombatBuff[]): PlayerCombatBuff[] {
   return buffs
     .map((b) =>
       PLAYER_COMBAT_BUFF_NO_TIME_DECAY.has(b.id) ? b : { ...b, remainingTicks: b.remainingTicks - 1 },
@@ -162,7 +162,7 @@ export function tickPlayerBuffs(buffs: PlayerCombatBuff[]): PlayerCombatBuff[] {
     .filter(buffIsActive);
 }
 
-export function decBuffStack(buffs: PlayerCombatBuff[], id: string): PlayerCombatBuff[] {
+export function decrementBuff(buffs: PlayerCombatBuff[], id: string): PlayerCombatBuff[] {
   return buffs
     .map((b) => {
       if (b.id !== id) return b;
@@ -172,40 +172,40 @@ export function decBuffStack(buffs: PlayerCombatBuff[], id: string): PlayerComba
     .filter((b) => b.remainingTicks > 0 && b.stacks > 0);
 }
 
-export function withBuffRemoved(buffs: PlayerCombatBuff[], id: string): PlayerCombatBuff[] {
+export function removeBuff(buffs: PlayerCombatBuff[], id: string): PlayerCombatBuff[] {
   return buffs.filter((b) => b.id !== id);
 }
 
-export function applyPowerInfusionCastsAfterCooldown(
+export function applyPiAfterCd(
   buffs: PlayerCombatBuff[],
   castsRemaining: number,
 ): PlayerCombatBuff[] {
-  if (castsRemaining <= 0) return withBuffRemoved(buffs, PLAYER_BUFF_POWER_INFUSION);
-  return upsertPlayerBuff(buffs, PLAYER_BUFF_POWER_INFUSION, 1, castsRemaining);
+  if (castsRemaining <= 0) return removeBuff(buffs, PLAYER_BUFF_POWER_INFUSION);
+  return addBuff(buffs, PLAYER_BUFF_POWER_INFUSION, 1, castsRemaining);
 }
 
-export function grantPowerInfusionCharges(buffs: PlayerCombatBuff[], minCharges: number): PlayerCombatBuff[] {
-  const cur = getPlayerBuffStacks(buffs, PLAYER_BUFF_POWER_INFUSION);
-  return upsertPlayerBuff(buffs, PLAYER_BUFF_POWER_INFUSION, 1, Math.max(cur, minCharges));
+export function addPiCharges(buffs: PlayerCombatBuff[], minCharges: number): PlayerCombatBuff[] {
+  const cur = getBuffStacks(buffs, PLAYER_BUFF_POWER_INFUSION);
+  return addBuff(buffs, PLAYER_BUFF_POWER_INFUSION, 1, Math.max(cur, minCharges));
 }
 
-export function upsertNaturalPerfectionStacks(buffs: PlayerCombatBuff[], stacks: number): PlayerCombatBuff[] {
-  if (stacks <= 0) return withBuffRemoved(buffs, PLAYER_BUFF_NATURAL_PERFECTION);
-  return upsertPlayerBuff(buffs, PLAYER_BUFF_NATURAL_PERFECTION, 1, stacks);
+export function addNaturalPerfection(buffs: PlayerCombatBuff[], stacks: number): PlayerCombatBuff[] {
+  if (stacks <= 0) return removeBuff(buffs, PLAYER_BUFF_NATURAL_PERFECTION);
+  return addBuff(buffs, PLAYER_BUFF_NATURAL_PERFECTION, 1, stacks);
 }
 
-export function isIcDRdy(icds: Record<string, number>, key: string): boolean {
+export function isReady(icds: Record<string, number>, key: string): boolean {
   return (icds[key] ?? 0) <= 0;
 }
 
-export function healerInParty(party: Unit[]): Unit | undefined {
+export function getHealer(party: Unit[]): Unit | undefined {
   return party.find((u) => u.role === 'HEALER');
 }
 
 /**
  * Dynamic HoT detection using spell tags
  */
-export function hasHotOnUnit(unit: Unit): boolean {
+export function hasHot(unit: Unit): boolean {
   return unit.buffs.some((b) => 
     spellHasTag(b.sourceSpellId, SPELL_TAG_DRUID_HOT) || 
     spellHasTag(b.sourceSpellId, 'synergy-primer-source')
@@ -215,18 +215,18 @@ export function hasHotOnUnit(unit: Unit): boolean {
 /**
  * Dynamic consumable detection for Swiftmend-like mechanics
  */
-export function findConsumableHotIndex(unit: Unit): number {
+export function getConsumableHotIndex(unit: Unit): number {
   const prefer = unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_PREFER));
   if (prefer >= 0) return prefer;
   return unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_CONSUMABLE));
 }
 
-export function isHealSpell(spell: { type: string }, spellId: string): boolean {
+export function isHeal(spell: { type: string }, spellId: string): boolean {
   if (spellId === 'mana_potion') return false;
   return spell.type === 'DIRECT' || spell.type === 'HOT' || spell.type === 'AOE';
 }
 
-export function isDirectHealSpell(spell: { type: string; healing: number; hotDuration?: number }, spellId: string): boolean {
+export function isDirectHeal(spell: { type: string; healing: number; hotDuration?: number }, spellId: string): boolean {
   if (spellId === 'mana_potion') return false;
   if (spell.type === 'AOE' || spell.type === 'DIRECT') return true;
   if (spell.type === 'HOT' && spell.healing > 0) return true;
@@ -237,7 +237,7 @@ export function isDirectHealSpell(spell: { type: string; healing: number; hotDur
  * Apply damage through shield first, then health.
  * Returns updated health, shield, shieldTicksRemaining, and whether health damage was taken.
  */
-export function applyDamageThroughShield(
+export function applyDamage(
   health: number,
   shield: number,
   damage: number,

@@ -1,10 +1,10 @@
 import { GameState, Spell, Unit } from '../../types.ts';
-import { talentRanks, hasPlayerBuff, HEALER_UNIT_ID, isDirectHealSpell, upsertPlayerBuff } from '../../talentMechanics.ts';
+import { getRanks, hasBuff, HEALER_UNIT_ID, isDirectHeal, addBuff } from '../../talentMechanics.ts';
 import { spellHasTag } from '../../constants.ts';
 import { generateCombatUid } from '../../combatUid.ts';
 import { mapEntityById } from '../../mapEntityById.ts';
-import { effectiveUniqueStatRating } from '../../playerStats.ts';
-import { healEffectiveAndOverheal } from '../../healMath.ts';
+import { getUniqueStatRating } from '../../playerStats.ts';
+import { getHealSplit } from '../../healMath.ts';
 
 // Break circular dependency
 import balanceData from '../../data/balance.json';
@@ -44,12 +44,12 @@ export function manaAfterHeal(
 ): number {
   if (
     s.playerClass === 'PRIEST' &&
-    talentRanks(s.talents, 'path_moon') > 0 &&
-    (spellHasTag(spellId, 'synergy-direct') || isDirectHealSpell({type: 'DIRECT', healing: 1}, spellId))
+    getRanks(s.talents, 'path_moon') > 0 &&
+    (spellHasTag(spellId, 'synergy-direct') || isDirectHeal({type: 'DIRECT', healing: 1}, spellId))
   ) {
     return Math.min(
       s.maxMana,
-      initialMana + s.maxMana * PRIEST.pathMoonMaxManaReturnPerRank * talentRanks(s.talents, 'path_moon'),
+      initialMana + s.maxMana * PRIEST.pathMoonMaxManaReturnPerRank * getRanks(s.talents, 'path_moon'),
     );
   }
   return initialMana;
@@ -88,17 +88,17 @@ export function applyDivineAegis(
   newParty: Unit[],
   isCritH: boolean,
 ): Unit[] {
-  if (!isCritH || talentRanks(s.talents, 'divine_aegis') <= 0) {
+  if (!isCritH || getRanks(s.talents, 'divine_aegis') <= 0) {
     return newParty;
   }
-  const daRanks = talentRanks(s.talents, 'divine_aegis');
+  const daRanks = getRanks(s.talents, 'divine_aegis');
   let mult = PRIEST.divineAegisShieldFractionPerRank * daRanks;
   if (s.playerClass === 'PRIEST') {
-    const rating = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
+    const rating = getUniqueStatRating(s.playerClass, s.level, s.talents);
     mult *= 1 + rating * PRIEST.divinityAegisMultBonusPerRating;
   }
-  if (talentRanks(s.talents, 'luminous_aegis') > 0) {
-    mult *= 1 + PRIEST.luminousAegisMultiplierPerRank * talentRanks(s.talents, 'luminous_aegis');
+  if (getRanks(s.talents, 'luminous_aegis') > 0) {
+    mult *= 1 + PRIEST.luminousAegisMultiplierPerRank * getRanks(s.talents, 'luminous_aegis');
   }
   return newParty.map((uNow) => {
     const uOld = oldParty.find((x) => x.id === uNow.id);
@@ -124,7 +124,7 @@ export function applyBindingHealSelf(
   tMod: number,
   rankHealMult: number,
 ): { party: Unit[]; eff: number; oh: number } {
-  if (!s.playerClass || talentRanks(s.talents, 'binding_heal') <= 0) {
+  if (!s.playerClass || getRanks(s.talents, 'binding_heal') <= 0) {
     return { party: newParty, eff: 0, oh: 0 };
   }
   const healerW = newParty.find((x) => x.id === HEALER_UNIT_ID);
@@ -136,9 +136,9 @@ export function applyBindingHealSelf(
     critH *
     tMod *
     PRIEST.bindingHealSelfFraction *
-    Math.min(PRIEST.bindingHealMaxRanksForCap, talentRanks(s.talents, 'binding_heal'));
+    Math.min(PRIEST.bindingHealMaxRanksForCap, getRanks(s.talents, 'binding_heal'));
   if (!healerW || !thp || thp.id === healerW.id) return { party: newParty, eff: 0, oh: 0 };
-  const { eff, oh } = healEffectiveAndOverheal(healerW.health, healerW.maxHealth, bind);
+  const { eff, oh } = getHealSplit(healerW.health, healerW.maxHealth, bind);
   return {
     party: mapEntityById(newParty, HEALER_UNIT_ID, (u) => ({
       ...u,
@@ -156,14 +156,14 @@ export function rollSurgeOfLight(
 ): boolean {
   return (
     spellId === 'flash_heal' &&
-    talentRanks(s.talents, 'surge_of_light') > 0 &&
-    Math.random() < PRIEST.surgeOfLightProcChancePerRank * talentRanks(s.talents, 'surge_of_light')
+    getRanks(s.talents, 'surge_of_light') > 0 &&
+    Math.random() < PRIEST.surgeOfLightProcChancePerRank * getRanks(s.talents, 'surge_of_light')
   );
 }
 
 export function priestFlashCritBonusFromSynergy(s: GameState): number {
-  if (talentRanks(s.talents, 'gleaming_proclamation') <= 0) return 0;
-  if (talentRanks(s.talents, 'surge_of_light') <= 0) return 0;
+  if (getRanks(s.talents, 'gleaming_proclamation') <= 0) return 0;
+  if (getRanks(s.talents, 'surge_of_light') <= 0) return 0;
   return PRIEST.gleamingProclamationFlashHealCritBonusPct;
 }
 
@@ -194,7 +194,7 @@ export function applyEchoOfLightPriest(
   spellId: string,
   targetId: string,
 ): Unit[] {
-  if (s.playerClass !== 'PRIEST' || spellId === 'mana_potion' || !isDirectHealSpell(spell, spellId)) {
+  if (s.playerClass !== 'PRIEST' || spellId === 'mana_potion' || !isDirectHeal(spell, spellId)) {
     return party;
   }
   if (spell.type === 'AOE') {
@@ -226,8 +226,8 @@ export function applyGraceStacksFromDirectHeal(
   spell: Spell,
   spellId: string,
 ): Unit[] {
-  const g = talentRanks(s.talents, 'priest_grace');
-  if (g <= 0 || !isDirectHealSpell(spell, spellId) || spell.type === 'AOE') return party;
+  const g = getRanks(s.talents, 'priest_grace');
+  if (g <= 0 || !isDirectHeal(spell, spellId) || spell.type === 'AOE') return party;
   return mapEntityById(party, targetId, (u) =>
     u.health > 0 ? upsertGraceOnTarget(u, 1, g) : u,
   );
@@ -265,7 +265,7 @@ export function upsertGraceOnTarget(unit: Unit, stacksAdd: number, graceRanks: n
 
 // Aegis Burst
 export function aegisBurstHealFromAbsorb(s: GameState, absorbed: number): number {
-  const r = talentRanks(s.talents, 'aegis_burst');
+  const r = getRanks(s.talents, 'aegis_burst');
   if (r <= 0 || absorbed <= 0) return 0;
   return absorbed * PRIEST.aegisBurstHealPerAbsorbPerRank * r;
 }
@@ -293,7 +293,7 @@ export function applyAegisBurstSplash(
   if (!bestId) return { party, eff: 0, oh: 0 };
   const tgt = party.find((u) => u.id === bestId);
   if (!tgt) return { party, eff: 0, oh: 0 };
-  const { eff, oh } = healEffectiveAndOverheal(tgt.health, tgt.maxHealth, splash);
+  const { eff, oh } = getHealSplit(tgt.health, tgt.maxHealth, splash);
   return {
     party: mapEntityById(party, bestId, (u) => ({
       ...u,
@@ -334,9 +334,9 @@ export function archangelEchoShieldBonusFraction(
 ): number {
   if (
     s.capstoneForm !== 'priest_archangel' ||
-    !hasPlayerBuff(s.playerCombatBuffs, 'archangel') ||
+    !hasBuff(s.playerCombatBuffs, 'archangel') ||
     archangelSkipsSpell(spellId) ||
-    !isDirectHealSpell(spell, spellId)
+    !isDirectHeal(spell, spellId)
   ) {
     return 0;
   }
@@ -352,4 +352,4 @@ export function priestDivinityOverhealAbsorb(overheal: number, rating: number): 
 }
 
 // Re-export from talentMechanics for convenience
-export { hasPlayerBuff, upsertPlayerBuff, isDirectHealSpell, HEALER_UNIT_ID } from '../../talentMechanics.ts';
+export { hasBuff, addBuff, isDirectHeal, HEALER_UNIT_ID } from '../../talentMechanics.ts';

@@ -8,10 +8,10 @@ import {
   BossCombatOverrides,
 } from './types.ts';
 import {
-  allyMaxHealthForPoolEntry,
-  healerMaxHealthFromStats,
+  getMaxHealthForPool,
+  getHealerMaxHealth,
   randomAllyLevel,
-  spiritManaRegenMultiplier,
+  getSpiritRegenMultiplier,
 } from './playerStats.ts';
 import { SPELLS as spellsData, NPC_POOLS as npcPoolsData, BALANCE as balanceData, PACING as pacingData, MECHANICS } from './data/index.ts';
 
@@ -20,18 +20,18 @@ export const MANA_REGEN_PER_TICK = 0.5;
 export const MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE;
 export const MANA_POTION_USES_PER_DUNGEON = 2;
 
-export function bossDamageMultiplierForDifficulty(difficulty: number): number {
+export function getBossDamageMultiplier(difficulty: number): number {
   return Math.pow(
     balanceData.boss.damageMultiplierPerDifficultyStep,
     Math.max(0, difficulty - 1),
   );
 }
 
-export function endlessCycleMultiplier(stacks: number): number {
+export function getEndlessMultiplier(stacks: number): number {
   return Math.pow(balanceData.endless.scalingPerCycle, Math.max(0, stacks));
 }
 
-export function damageTakenMultiplierFromDungeonLevelGap(
+export function getLevelGapDamageMultiplier(
   partyMemberLevel: number,
   dungeonLevelMax: number,
 ): number {
@@ -42,7 +42,7 @@ export function damageTakenMultiplierFromDungeonLevelGap(
 
 export const TRASH_PACK_COUNT = 3;
 
-export function trashMaxHealthForDungeon(dungeon: Dungeon): number {
+export function getTrashMaxHealth(dungeon: Dungeon): number {
   return Math.max(
     1,
     Math.round(dungeon.bossHealth * balanceData.trash.maxHealthFractionOfBoss),
@@ -90,7 +90,7 @@ const DEFAULT_BOSS_COMBAT_INTERVALS: Pick<
   mechanicIntervalTicksMax: 5 * TICKS_PER_SECOND,
 };
 
-export function bossCombatProfileForDungeon(dungeon: Dungeon): BossCombatProfile {
+export function getCombatProfile(dungeon: Dungeon): BossCombatProfile {
   const c: BossCombatOverrides | undefined = dungeon.bossCombat;
   return {
     ...DEFAULT_BOSS_COMBAT_INTERVALS,
@@ -121,7 +121,7 @@ function roundedManaRegenPerTickAndPerSec(
   spiritRegenLockoutTicksRemaining: number,
   spirit: number,
 ): { perTick: number; perSec: number } {
-  const rawPerTick = MANA_REGEN_PER_TICK * spiritManaRegenMultiplier(spirit);
+  const rawPerTick = MANA_REGEN_PER_TICK * getSpiritRegenMultiplier(spirit);
   if (spiritRegenLockoutTicksRemaining > 0) {
     return { perTick: 0, perSec: 0 };
   }
@@ -165,9 +165,9 @@ export function generateRandomParty(playerLevel: number, playerClass: ClassType 
   }
   const selectedDps = dpsCopy.slice(0, 3);
   const tankLevel = randomAllyLevel(playerLevel);
-  const tankHp = allyMaxHealthForPoolEntry('TANK', tankLevel, tankTpl.healthScaling);
+  const tankHp = getMaxHealthForPool('TANK', tankLevel, tankTpl.healthScaling);
   const healerLevel = Math.max(1, playerLevel);
-  const healerHp = healerMaxHealthFromStats(playerClass, healerLevel);
+  const healerHp = getHealerMaxHealth(playerClass, healerLevel);
   return [
     {
       ...tankTpl,
@@ -183,7 +183,7 @@ export function generateRandomParty(playerLevel: number, playerClass: ClassType 
     },
     ...selectedDps.map((tpl, i) => {
       const lv = randomAllyLevel(playerLevel);
-      const hp = allyMaxHealthForPoolEntry('DPS', lv, tpl.healthScaling);
+      const hp = getMaxHealthForPool('DPS', lv, tpl.healthScaling);
       return {
         ...tpl,
         id: String(i + 2),

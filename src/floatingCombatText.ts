@@ -2,14 +2,14 @@ import type { FloatingCombatTextEntry, Unit } from './types.ts';
 
 export const FLOATING_COMBAT_TEXT_LIFETIME_TICKS = 22;
 
-export function pruneFloatingCombatTexts(
+export function pruneFloats(
   entries: FloatingCombatTextEntry[],
   combatElapsedTicks: number,
 ): FloatingCombatTextEntry[] {
   return entries.filter((e) => e.expiresAtCombatTick > combatElapsedTicks);
 }
 
-export function diffPartyCombatFloats(
+export function diffFloats(
   before: Unit[],
   after: Unit[],
   healCrit: boolean,
@@ -45,13 +45,13 @@ export function appendFloatingCombatDrafts(
   return [...pruned, ...adds];
 }
 
-export function mergeFloatingCombatForTick(
+export function mergeFloats(
   existing: FloatingCombatTextEntry[],
   combatElapsedTicks: number,
   drafts: Array<{ unitId: string; amount: number; kind: 'heal' | 'absorb'; crit: boolean }>,
 ): FloatingCombatTextEntry[] {
   return appendFloatingCombatDrafts(
-    pruneFloatingCombatTexts(existing, combatElapsedTicks),
+    pruneFloats(existing, combatElapsedTicks),
     combatElapsedTicks,
     drafts,
   );
