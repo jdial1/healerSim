@@ -1,5 +1,5 @@
 import type { ClassType, Talent } from './types.ts';
-import { unmetChainedPrerequisiteTalents } from './playerStats.ts';
+import { getUnmetPrerequisites } from './playerStats.ts';
 
 export const INTRO_TUTORIAL_DUNGEON_ID = 'deadmines';
 export const TUTORIAL_SPOTLIGHT_TANK_DATA_ID = 'tutorial-spotlight-tank';
@@ -54,7 +54,7 @@ export function pickTutorialFirstTalentId(
   for (const t of talents) {
     if (t.points >= t.maxPoints) continue;
     if (t.levelReq > playerLevel) continue;
-    if (unmetChainedPrerequisiteTalents(talents, t).length > 0) continue;
+    if (getUnmetPrerequisites(talents, t).length > 0) continue;
     if (talentPoints < t.cost) continue;
     return t.id;
   }

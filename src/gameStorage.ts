@@ -3,11 +3,11 @@ import { ClassRegistry } from './classes/index.ts';
 import { dungeonBaseXp, dungeonXpTierMultiplier, TRASH_PACK_COUNT } from './constants.ts';
 import { BALANCE as balanceData } from './data/index.ts';
 import {
-  classSpellOrder,
-  computedMaxMana,
+  getSpellOrder,
+  getMaxMana,
   getPotionUpgradeAtLevel,
   getSpellUpgradeAtLevel,
-  starterSpellsForClass,
+  getStarterSpells,
 } from './playerStats.ts';
 
 export const PLAYER_MAX_LEVEL = 55;
@@ -23,7 +23,7 @@ function needXpToReachNextLevel(currentLevel: number): number {
   return Math.max(1, Math.round(perClear * runsMultiplier));
 }
 
-export function totalXpToReachLevel(targetLevel: number): number {
+export function getXpToLevel(targetLevel: number): number {
   const cap = Math.min(Math.max(targetLevel, 1), PLAYER_MAX_LEVEL);
   if (cap <= 1) return 0;
   let t = 0;
@@ -49,7 +49,7 @@ export function levelFromTotalXp(xp: number): number {
 
 export function xpProgressWithinLevel(xp: number): { into: number; needed: number } {
   const level = levelFromTotalXp(xp);
-  const start = totalXpToReachLevel(level);
+  const start = getXpToLevel(level);
   if (level >= PLAYER_MAX_LEVEL) {
     return { into: 1, needed: 1 };
   }
@@ -221,7 +221,7 @@ export function writeTutorialCompletedSteps(steps: string[]): void {
   localStorage.setItem(TUTORIAL_PROGRESS_KEY, JSON.stringify(deduped));
 }
 
-export function takeSuspendedRunForClass(cls: ClassType): GameState | null {
+export function getSuspendedRun(cls: ClassType): GameState | null {
   const suspended = readSuspendedRun();
   if (!suspended || suspended.playerClass !== cls) return null;
   clearSuspendedRun();
@@ -273,7 +273,7 @@ export function buildSpellLoadout(
   talents: Talent[],
 ): { unlockedSpells: string[]; activeActionBars: string[] } {
   if (!cls) return { unlockedSpells: [], activeActionBars: [] };
-  const starter = starterSpellsForClass(cls);
+  const starter = getStarterSpells(cls);
   const extra: string[] = [];
   for (const t of talents) {
     if (t.spellId && t.points > 0 && !extra.includes(t.spellId)) extra.push(t.spellId);
@@ -282,7 +282,7 @@ export function buildSpellLoadout(
   for (const id of extra) {
     if (!merged.includes(id)) merged.push(id);
   }
-  const order = classSpellOrder(cls);
+  const order = getSpellOrder(cls);
   const healRow: string[] = [];
   for (const id of order) {
     if (merged.includes(id) && healRow.length < 3 && !healRow.includes(id)) healRow.push(id);
@@ -335,7 +335,7 @@ export function mergeSavedTalentRanks(ranks: Record<string, number> | undefined,
   }));
 }
 
-export function computeMetaFromProgress(
+export function getMeta(
   xp: number,
   cls: ClassType | null,
   talents: Talent[],
@@ -354,7 +354,7 @@ export function computeMetaFromProgress(
   const pool = level;
   const spent = talents.reduce((acc, t) => acc + t.points * t.cost, 0);
   const talentPoints = Math.max(0, pool - spent);
-  const maxMana = computedMaxMana(cls, level, talents);
+  const maxMana = getMaxMana(cls, level, talents);
   const { unlockedSpells, activeActionBars } = buildSpellLoadout(cls, talents);
   return {
     xp,
@@ -372,7 +372,7 @@ export function patchFromSavedShape(shape: SavedShape): Partial<GameState> | nul
   if (!shape.playerClass) return null;
   const cls = shape.playerClass;
   const talents = mergeSavedTalentRanks(shape.talentRanks, cls);
-  const meta = computeMetaFromProgress(shape.xp, cls, talents);
+  const meta = getMeta(shape.xp, cls, talents);
   const activeActionBars = applySavedActionBarOrder(
     meta.activeActionBars,
     Array.isArray(shape.actionBarSpellIds) ? shape.actionBarSpellIds : undefined,

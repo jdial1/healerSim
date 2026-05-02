@@ -1,12 +1,12 @@
 import { GameState, Spell, Unit } from '../../types.ts';
-import { talentRanks, hasPlayerBuff, upsertPlayerBuff, isDirectHealSpell } from '../../talentMechanics.ts';
+import { getRanks, hasBuff, addBuff, isDirectHeal } from '../../talentMechanics.ts';
 import { SPELLS, SPELL_TAG_DRUID_CULTIVATION_HOT, SPELL_TAG_DRUID_HOT, spellHasTag } from '../../constants.ts';
 import type { HealManaCostContext, ManaAfterHealContext } from '../../combatHookRegistry.ts';
 import { generateCombatUid } from '../../combatUid.ts';
 import { mapEntityById } from '../../mapEntityById.ts';
 import balanceData from '../../data/balance.json';
-import { effectiveUniqueStatRating } from '../../playerStats.ts';
-import { healEffectiveAndOverheal } from '../../healMath.ts';
+import { getUniqueStatRating } from '../../playerStats.ts';
+import { getHealSplit } from '../../healMath.ts';
 
 export const PLAYER_BUFF_OMEN_CLEARCASTING = 'omen_clearcasting';
 export const DRUID_HARMONY_HOT_BUFF = 'druid_harmony_for_hot';
@@ -18,12 +18,12 @@ const SHARED = balanceData.combat.shared;
 // Mana cost hooks
 export function onHealManaCost(s: GameState, spell: Spell, spellId: string, surgeFree: boolean): number | undefined {
   // Clearcasting
-  if (hasPlayerBuff(s.playerCombatBuffs, PLAYER_BUFF_OMEN_CLEARCASTING)) {
+  if (hasBuff(s.playerCombatBuffs, PLAYER_BUFF_OMEN_CLEARCASTING)) {
     if (spellId === 'regrowth' || spellId === 'healing_touch') return 0;
   }
   
   // Tree of Life
-  if (talentRanks(s.talents, 'tree_of_life') > 0) {
+  if (getRanks(s.talents, 'tree_of_life') > 0) {
     const isHot = spell.type === 'HOT' || Boolean(spell.hotDuration && spell.healing > 0);
     if (isHot) return Math.round(spell.manaCost * DRUID.treeOfLifeHotManaCostFactor);
     if (spellHasTag(spellId, 'tree-of-life-big-direct')) {
@@ -45,7 +45,7 @@ export function druidHotTickManaReturn(s: GameState, sourceSpellId: string): num
 export function druidHotTickRateMultiplier(s: GameState, sourceSpellId: string): number {
   if (
     s.capstoneForm !== 'druid_natures_grace' ||
-    !hasPlayerBuff(s.playerCombatBuffs, 'natures_grace_aura') ||
+    !hasBuff(s.playerCombatBuffs, 'natures_grace_aura') ||
     !spellHasTag(sourceSpellId, SPELL_TAG_DRUID_HOT)
   ) {
     return 1;
@@ -54,30 +54,30 @@ export function druidHotTickRateMultiplier(s: GameState, sourceSpellId: string):
 }
 
 export function druidHarmonyHotTickMultiplier(s: GameState, pComb: typeof s.playerCombatBuffs): number {
-  const h = talentRanks(s.talents, 'druid_harmony');
-  if (h <= 0 || !hasPlayerBuff(pComb, DRUID_HARMONY_HOT_BUFF)) return 1;
+  const h = getRanks(s.talents, 'druid_harmony');
+  if (h <= 0 || !hasBuff(pComb, DRUID_HARMONY_HOT_BUFF)) return 1;
   return 1 + DRUID.harmonyBonusPerRank * h;
 }
 
 export function druidHarmonyDirectMultiplier(s: GameState): number {
-  const h = talentRanks(s.talents, 'druid_harmony');
+  const h = getRanks(s.talents, 'druid_harmony');
   if (h <= 0 || !partyHasDruidHotOnAnyAlly(s)) return 1;
   return 1 + DRUID.harmonyBonusPerRank * h;
 }
 
 export function cultivationHotMultiplier(s: GameState, sourceSpellId: string): number {
-  if (talentRanks(s.talents, 'druid_path_cultivation') <= 0) return 1;
+  if (getRanks(s.talents, 'druid_path_cultivation') <= 0) return 1;
   if (spellHasTag(sourceSpellId, SPELL_TAG_DRUID_CULTIVATION_HOT)) {
-    return 1 + DRUID.cultivationBonusPerRank * talentRanks(s.talents, 'druid_path_cultivation');
+    return 1 + DRUID.cultivationBonusPerRank * getRanks(s.talents, 'druid_path_cultivation');
   }
   return 1;
 }
 
 export function deepRootsHotMultiplier(s: GameState, unit: Unit, sourceSpellId: string): number {
-  if (talentRanks(s.talents, 'druid_path_deep_roots') <= 0) return 1;
+  if (getRanks(s.talents, 'druid_path_deep_roots') <= 0) return 1;
   if (unit.role !== 'TANK') return 1;
   if (spellHasTag(sourceSpellId, SPELL_TAG_DRUID_HOT)) {
-    return 1 + DRUID.deepRootsBonusPerRank * talentRanks(s.talents, 'druid_path_deep_roots');
+    return 1 + DRUID.deepRootsBonusPerRank * getRanks(s.talents, 'druid_path_deep_roots');
   }
   return 1;
 }
@@ -125,11 +125,11 @@ export function applyLivingSeed(
   tMod: number,
   rankHealMult: number,
 ): Unit[] {
-  if (!isCritH || talentRanks(s.talents, 'living_seed') <= 0) {
+  if (!isCritH || getRanks(s.talents, 'living_seed') <= 0) {
     return newParty;
   }
   let pct = DRUID.livingSeedPoolFraction;
-  if (talentRanks(s.talents, 'living_seed') > 0 && talentRanks(s.talents, 'natural_perfection') > 0) {
+  if (getRanks(s.talents, 'living_seed') > 0 && getRanks(s.talents, 'natural_perfection') > 0) {
     pct += DRUID.livingSeedNaturalPerfectionBonusFraction;
   }
   const am = spell.healing * rankHealMult * healMultB * critH * tMod * pct;
@@ -142,7 +142,7 @@ export function druidVitalityBloomTickExtras(
   tickAmtAfterModifiers: number,
 ): { extraHeal: number; mana: number } {
   if (s.playerClass !== 'DRUID' || tickAmtAfterModifiers <= 0) return { extraHeal: 0, mana: 0 };
-  const r = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
+  const r = getUniqueStatRating(s.playerClass, s.level, s.talents);
   if (r <= 0) return { extraHeal: 0, mana: 0 };
   const p = Math.min(DRUID.vitalityBloomChanceCap, r * DRUID.vitalityBloomChancePerRating);
   if (Math.random() >= p) return { extraHeal: 0, mana: 0 };
@@ -164,11 +164,11 @@ export function rollOmenOfClarityOnHotTick(
   if (s.playerClass !== 'DRUID' || tickAmt <= 0 || !spellHasTag(sourceSpellId, SPELL_TAG_DRUID_HOT)) {
     return playerCombatBuffs;
   }
-  const r = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
+  const r = getUniqueStatRating(s.playerClass, s.level, s.talents);
   if (r <= 0) return playerCombatBuffs;
   const p = Math.min(DRUID.passiveOmenProcChanceCap, r * DRUID.passiveOmenProcPerHotTickPerRating);
   if (random() >= p) return playerCombatBuffs;
-  return upsertPlayerBuff(playerCombatBuffs, PLAYER_BUFF_OMEN_CLEARCASTING, DRUID.passiveOmenClearcastingTicks, 1);
+  return addBuff(playerCombatBuffs, PLAYER_BUFF_OMEN_CLEARCASTING, DRUID.passiveOmenClearcastingTicks, 1);
 }
 
 // Party check
@@ -179,4 +179,4 @@ export function partyHasDruidHotOnAnyAlly(s: GameState): boolean {
 }
 
 // Re-export from talentMechanics for convenience
-export { hasPlayerBuff, upsertPlayerBuff, isDirectHealSpell } from '../../talentMechanics.ts';
+export { hasBuff, addBuff, isDirectHeal } from '../../talentMechanics.ts';

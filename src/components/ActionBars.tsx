@@ -11,7 +11,7 @@ import { PlayerCombatStats } from '../types.ts';
 import { spellDisplayManaCost, spellEffectTooltipText, spellTooltipRankLabel } from '../spellTooltip.ts';
 import { xpProgressWithinLevel } from '../gameStorage.ts';
 import { motion } from 'motion/react';
-import { glowForSpellId } from '../gameIcons.ts';
+import { getSpellGlow } from '../gameIcons.ts';
 import { manaPotionDisplayName, manaPotionIconPath } from '../manaPotionIcon.ts';
 import { GameIcon } from './GameIcon.tsx';
 
@@ -469,7 +469,7 @@ export function ActionBars({
               >
                 <GameIcon
                   iconPath={iconPath}
-                  glow={glowForSpellId(id)}
+                  glow={getSpellGlow(id)}
                   size="lg"
                   title={displayName}
                   dimmed={spellsEnabled && cooldown > 0}
@@ -534,7 +534,7 @@ export function ActionBars({
               >
                 <GameIcon
                   iconPath={iconPath}
-                  glow={glowForSpellId(id)}
+                  glow={getSpellGlow(id)}
                   size="md"
                   className="ui-spell-tooltip-icon"
                 />

@@ -24,6 +24,6 @@ const THEMES: Record<ClassType, ClassTheme> = {
   },
 };
 
-export function classTheme(cls: ClassType): ClassTheme {
+export function getTheme(cls: ClassType): ClassTheme {
   return THEMES[cls];
 }

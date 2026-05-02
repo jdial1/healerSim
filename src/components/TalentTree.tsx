@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Lock, RotateCcw, X } from 'lucide-react';
 import { ClassType, Talent } from '../types.ts';
 import {
-  effectiveTalentPointWeight,
-  talentTreeGlowForClass,
-  transitivePrerequisiteTalentIds,
-  unmetChainedPrerequisiteTalents,
+  getTalentWeight,
+  getTalentGlow,
+  getPrerequisiteIds,
+  getUnmetPrerequisites,
+  arePrereqsSatisfied,
   UNIQUE_STAT_LABELS,
 } from '../playerStats.ts';
 import { GameIcon } from './GameIcon.tsx';
@@ -91,7 +92,7 @@ function uniqueStatsPresent(all: Talent[]): TalentStatKey[] {
 function totalStatFromTalents(all: Talent[], key: TalentStatKey): number {
   return all.reduce((sum, t) => {
     if (t.points <= 0 || !t.statBonus?.[key]) return sum;
-    const weightedPoints = effectiveTalentPointWeight(t.points, t.maxPoints);
+    const weightedPoints = getTalentWeight(t.points, t.maxPoints);
     return sum + (t.statBonus[key] ?? 0) * weightedPoints;
   }, 0);
 }
@@ -230,7 +231,7 @@ function learnBlockedReason(talent: Talent, allTalents: Talent[], talentPoints: 
   if (talent.levelReq > playerLevel) {
     return `Requires level ${talent.levelReq} (you are level ${playerLevel})`;
   }
-  const unmet = unmetChainedPrerequisiteTalents(allTalents, talent);
+  const unmet = getUnmetPrerequisites(allTalents, talent);
   if (unmet.length > 0) {
     return `Spend at least 1 point in ${unmet.map((p) => p.name).join(' · ')}`;
   }
@@ -250,7 +251,7 @@ function canRemoveTalentPoint(talent: Talent, allTalents: Talent[]): boolean {
     (candidate) =>
       candidate.points > 0 &&
       candidate.id !== talent.id &&
-      transitivePrerequisiteTalentIds(allTalents, candidate).includes(talent.id),
+      getPrerequisiteIds(allTalents, candidate).includes(talent.id),
   );
 }
 
@@ -278,7 +279,8 @@ export function TalentTree({
     moved: boolean;
   } | null>(null);
   const suppressNextTalentClickRef = useRef(false);
-  const talentGlow = talentTreeGlowForClass(playerClass);
+  suppressNextTalentClickRef.current = false;
+  const talentGlow = getTalentGlow(playerClass);
 
   const uiGraph = useMemo(() => buildTalentTreeUiGraph(talents), [talents]);
   const { pairs: exclusiveSplitPairs, pairIndexByTalentId, connections } = uiGraph;
@@ -312,7 +314,7 @@ export function TalentTree({
   );
   function isTalentAccessible(talent: Talent): boolean {
     if (talent.levelReq > playerLevel) return false;
-    return unmetChainedPrerequisiteTalents(talents, talent).length === 0;
+    return arePrereqsSatisfied(talents, talent);
   }
   const effectiveStatHighlight =
     statHighlightKey !== null && statPills.includes(statHighlightKey) ? statHighlightKey : null;

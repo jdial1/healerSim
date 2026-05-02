@@ -32,11 +32,11 @@ function parseIconSource(iconPath: string): IconSource {
   return { kind: 'game-icons', author, icon };
 }
 
-export function gameIconUrl(iconPath: string): string {
-  return gameIconUrlCandidates(iconPath)[0];
+export function getIconUrl(iconPath: string): string {
+  return getIconUrlCandidates(iconPath)[0];
 }
 
-export function gameIconUrlCandidates(iconPath: string): readonly string[] {
+export function getIconUrlCandidates(iconPath: string): readonly string[] {
   const source = parseIconSource(iconPath);
   if (source.kind === 'wow') {
     const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${source.icon}.${ext}`);
@@ -55,18 +55,18 @@ export function gameIconUrlCandidates(iconPath: string): readonly string[] {
   return [...local, ...remote];
 }
 
-export function glowForSpellId(spellId: string | undefined): IconGlow {
+export function getSpellGlow(spellId: string | undefined): IconGlow {
   if (!spellId) return 'nature';
   const g = SPELLS[spellId]?.glowType;
   if (g === 'nature' || g === 'debuff' || g === 'spell') return g;
   return 'spell';
 }
 
-export function glowForBossAbilityId(_abilityId: string | undefined): IconGlow {
+export function getAbilityGlow(_abilityId: string | undefined): IconGlow {
   return 'debuff';
 }
 
-export function glowForBossSelfBuff(_abilityId: string | undefined): IconGlow {
+export function getSelfBuffGlow(_abilityId: string | undefined): IconGlow {
   return 'spell';
 }
 

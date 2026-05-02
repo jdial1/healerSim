@@ -22,7 +22,7 @@ const raw = aurasData as {
 export const GRACE_PARTY_AURA = raw.partyUnitBuffs.priest_grace;
 export const GRACE_SOURCE_ID = GRACE_PARTY_AURA.sourceSpellId;
 
-export function playerCombatAuraTicks(buffId: string): number {
+export function getAuraTicks(buffId: string): number {
   const n = raw.playerCombatAuras[buffId]?.defaultDurationTicks;
   if (typeof n !== 'number' || n <= 0) {
     throw new Error(`Unknown player combat aura: ${buffId}`);

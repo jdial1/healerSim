@@ -6,7 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { bossCombatProfileForDungeon, TICKS_PER_SECOND } from '../constants.ts';
+import { getCombatProfile, TICKS_PER_SECOND } from '../constants.ts';
 import { DUNGEONS } from '../dungeons/index.ts';
 import { type BossDebuffTargeting, type Dungeon, type DungeonPace } from '../types.ts';
 import { computeDungeonXpGain, levelsOverDungeonMax } from '../gameStorage.ts';
@@ -73,7 +73,7 @@ function BossMechanicsStrip({
   isLocked: boolean;
   dimmed: boolean;
 }) {
-  const profile = bossCombatProfileForDungeon(dungeon);
+  const profile = getCombatProfile(dungeon);
   const cardTheme = dungeon.cardTheme;
 
   const cardShell = 'flex min-h-0 min-w-0 flex-1 basis-0 flex-col gap-0.5 sm:gap-1 rounded-md border bg-slate-900/75 p-1 sm:p-2';
@@ -404,7 +404,7 @@ export function DungeonSelector({ onSelect, level, completedDungeonIds }: Dungeo
             const nominalClearXp = computeDungeonXpGain(dungeon, dungeon.levelMax);
             const clearXp = computeDungeonXpGain(dungeon, level);
             const theme = dungeon.cardTheme;
-            const bossCombat = bossCombatProfileForDungeon(dungeon);
+            const bossCombat = getCombatProfile(dungeon);
             const showBossMechanicsRow =
               isLocked ||
               bossCombat.debuffTemplates.length +

@@ -1,6 +1,6 @@
 import type { Talent } from './types.ts';
 import {
-  collectExclusiveSplitPairs,
+  getSplitPairs,
   type ExclusiveSplitPair,
 } from './talentSplitPairs.ts';
 
@@ -69,7 +69,7 @@ export function pairHasAnyPoints(pair: ExclusiveSplitPair): boolean {
 }
 
 export function buildTalentTreeUiGraph(talents: Talent[]): TalentTreeUiGraph {
-  const pairs = collectExclusiveSplitPairs(talents);
+  const pairs = getSplitPairs(talents);
   const pairIndexByTalentId = new Map<string, number>();
   pairs.forEach((pair, i) => {
     pairIndexByTalentId.set(pair.top.id, i);

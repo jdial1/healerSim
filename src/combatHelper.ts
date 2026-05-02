@@ -1,9 +1,9 @@
 import { Buff, ClassType, GameState, Unit, Spell, PartyDebuff } from './types.ts';
-import { findConsumableHotIndex } from './talentMechanics.ts';
-import { runHealManaCost } from './combatHookRegistry.ts';
+import { getConsumableHotIndex } from './talentMechanics.ts';
+import { getManaCost as getManaCostRegistry } from './combatHookRegistry.ts';
 import { BALANCE, SPELLS } from './data/index.ts';
 import { spellHasTag } from './constants.ts';
-import { healEffectiveAndOverheal } from './healMath.ts';
+import { getHealSplit } from './healMath.ts';
 
 export const T_SPIRIT_AMP = 10 * 10;
 export const SHIELD_DEFAULT_TICKS = BALANCE.combat.shared.shieldDefaultTicks;
@@ -21,7 +21,7 @@ function hotPandemicCapMult(spell: Spell): number {
  * SHARED UTILITY: helper for synergy bonuses
  * Moved from deleted combatHooks.ts
  */
-export function directHealSynergyMultiplierFromIds(unit: Unit, spellId: string): number {
+export function getSynergyMultiplierByIds(unit: Unit, spellId: string): number {
   if (!spellHasTag(spellId, 'synergy-direct')) return 1;
   if (!unit.buffs.some((b) => spellHasTag(b.sourceSpellId, 'synergy-primer-source'))) return 1;
   const sp = SPELLS[spellId];
@@ -32,7 +32,7 @@ export function directHealSynergyMultiplierFromIds(unit: Unit, spellId: string):
  * SHARED UTILITY: Debuff stripping
  * Moved from deleted combatHooks.ts
  */
-export function stripOneDispellableDebuff(debuffs: PartyDebuff[]): PartyDebuff[] {
+export function dispelOne(debuffs: PartyDebuff[]): PartyDebuff[] {
   for (let i = debuffs.length - 1; i >= 0; i--) {
     if (debuffs[i].dispellable) {
       return debuffs.filter((_, j) => j !== i);
@@ -41,14 +41,14 @@ export function stripOneDispellableDebuff(debuffs: PartyDebuff[]): PartyDebuff[]
   return debuffs;
 }
 
-export function directHealSynergyMultiplier(unit: Unit, spellId: string): number {
-  return directHealSynergyMultiplierFromIds(unit, spellId);
+export function getSynergyMultiplier(unit: Unit, spellId: string): number {
+  return getSynergyMultiplierByIds(unit, spellId);
 }
 
 /**
  * UNIT MUTATOR: Applies a HoT while respecting the Pandemic window
  */
-export function applyPandemicHotToUnit(
+export function applyHot(
   unit: Unit,
   spell: Spell,
   healingPerTick: number,
@@ -91,24 +91,24 @@ export function applyPandemicHotToUnit(
 /**
  * DELEGATOR: Calculates final mana cost using class hooks
  */
-export function nextManaForSpell(
+export function getManaCost(
   s: GameState,
   classType: ClassType,
   spell: Spell,
   spellId: string,
   surgeFree: boolean,
 ): number {
-  return runHealManaCost(s, classType, spell, spellId, surgeFree);
+  return getManaCostRegistry(s, classType, spell, spellId, surgeFree);
 }
 
 /**
  * SHARED LOGIC: swiftmend eligibility check
  */
-export function swiftmendCanApply(s: GameState, targetId: string): boolean {
+export function canSwiftmend(s: GameState, targetId: string): boolean {
   if (s.playerClass !== 'DRUID') return false;
   const u = s.party.find((x) => x.id === targetId);
   if (!u || u.health <= 0) return false;
-  return findConsumableHotIndex(u) >= 0;
+  return getConsumableHotIndex(u) >= 0;
 }
 
 /**
@@ -130,13 +130,13 @@ export function resolveSwiftmend(
   const u = p[idx];
   if (u.health <= 0) return { party: s.party, applied: false, eff: 0, oh: 0 };
   
-  const hotIdx = findConsumableHotIndex(u);
+  const hotIdx = getConsumableHotIndex(u);
   if (hotIdx < 0) {
     return { party: s.party, applied: false, eff: 0, oh: 0 };
   }
 
   const raw = spell.healing * rankHealMult * healMult * critMod;
-  const { eff, oh } = healEffectiveAndOverheal(u.health, u.maxHealth, raw);
+  const { eff, oh } = getHealSplit(u.health, u.maxHealth, raw);
   
   // Consume the HoT
   u.buffs = u.buffs.filter((_, j) => j !== hotIdx);
@@ -146,7 +146,7 @@ export function resolveSwiftmend(
   return { party: p, applied: true, eff, oh };
 }
 
-export function oneHotTickDoubleRoll(photosynthPoints: number): boolean {
+export function isDoubleTick(photosynthPoints: number): boolean {
   if (photosynthPoints <= 0) return false;
   return Math.random() < photosynthPoints * DRUID.photosynthesisDoubleTickChancePerRank;
 }

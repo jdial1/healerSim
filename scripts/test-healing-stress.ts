@@ -1,12 +1,12 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gameReducer, gameStateForClass } from '../src/gameEngineReducer.ts';
+import { gameReducer, getInitialState } from '../src/gameEngineReducer.ts';
 import { DUNGEONS } from '../src/dungeons/index.ts';
 import { TICK_RATE, dungeonPaceDpsMultiplier, generateRandomParty } from '../src/constants.ts';
-import { computeMetaFromProgress, totalXpToReachLevel } from '../src/gameStorage.ts';
+import { getMeta, getXpToLevel } from '../src/gameStorage.ts';
 import { CLASS_PROGRESSION } from '../src/playerStats.ts';
-import { hasPlayerBuff, upsertPlayerBuff } from '../src/talentMechanics.ts';
-import { playerCombatAuraTicks } from '../src/auraConfig.ts';
+import { hasBuff, addBuff } from '../src/talentMechanics.ts';
+import { getAuraTicks } from '../src/auraConfig.ts';
 import type { ClassType, Dungeon, GameState, Unit } from '../src/types.ts';
 import { testPalette } from './testColors.ts';
 
@@ -38,15 +38,15 @@ function tryActivateArchangelCrisis(state: GameState): GameState {
   if (state.playerClass !== 'PRIEST') return state;
   const frac = minLivingAllyHpFraction(state.party);
   if (frac === null || frac >= CRISIS_HP_FRAC) return state;
-  if (hasPlayerBuff(state.playerCombatBuffs, 'archangel')) return state;
+  if (hasBuff(state.playerCombatBuffs, 'archangel')) return state;
   const cap = CLASS_PROGRESSION.PRIEST;
   return {
     ...state,
     capstoneForm: cap.capstoneForm,
-    playerCombatBuffs: upsertPlayerBuff(
+    playerCombatBuffs: addBuff(
       state.playerCombatBuffs,
       cap.capstonePlayerBuffId,
-      playerCombatAuraTicks(cap.capstonePlayerBuffId),
+      getAuraTicks(cap.capstonePlayerBuffId),
       1,
     ),
   };
@@ -86,8 +86,8 @@ function resolveCastTargetId(state: GameState, preferredId: string): string {
 }
 
 function initialStateForDungeon(dungeon: Dungeon): GameState {
-  let state = gameStateForClass(HEALER_CLASS, undefined);
-  const meta = computeMetaFromProgress(totalXpToReachLevel(dungeon.levelMax), HEALER_CLASS, state.talents);
+  let state = getInitialState(HEALER_CLASS, undefined);
+  const meta = getMeta(getXpToLevel(dungeon.levelMax), HEALER_CLASS, state.talents);
   state = {
     ...state,
     ...meta,

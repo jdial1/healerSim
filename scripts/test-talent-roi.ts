@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cloneTalentsForClass } from '../src/talents/index.ts';
+import { getTalents } from '../src/talents/index.ts';
 import type { Talent } from '../src/types.ts';
 import { realisticBarHpsForClass } from './test-dungeons.ts';
 import { simulateSecondsToOom } from './test-spells.ts';
@@ -12,7 +12,7 @@ const HEAL_IDS = ['p_r0c1', 'p_r1c1'] as const;
 const CRIT_IDS = ['p_r0c3', 'p_r1c3'] as const;
 
 function talentsHeal5(): Talent[] {
-  const t = cloneTalentsForClass('PRIEST');
+  const t = getTalents('PRIEST');
   return t.map((x) => {
     if (x.id === HEAL_IDS[0]) return { ...x, points: 3 };
     if (x.id === HEAL_IDS[1]) return { ...x, points: 2 };
@@ -21,7 +21,7 @@ function talentsHeal5(): Talent[] {
 }
 
 function talentsCrit5(): Talent[] {
-  const t = cloneTalentsForClass('PRIEST');
+  const t = getTalents('PRIEST');
   return t.map((x) => {
     if (x.id === CRIT_IDS[0]) return { ...x, points: 3 };
     if (x.id === CRIT_IDS[1]) return { ...x, points: 2 };

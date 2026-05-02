@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameState } from '../types.ts';
-import { classTutorialCopy } from '../playerStats.ts';
+import { getTutorialCopy } from '../playerStats.ts';
 import {
   INTRO_TUTORIAL_DEBUFF_ABILITY,
   INTRO_TUTORIAL_DEBUFF_DATA_ID,
@@ -99,7 +99,7 @@ export function useIntroTutorial({
   const hasMasteryOpen = activeMasteryStep !== null;
   const aoeSpellId = state.playerClass ? tutorialAoeSpellId(state.playerClass) : null;
   const passiveTrigger = state.playerClass ? tutorialPassiveTrigger(state.playerClass) : null;
-  const passiveCopy = state.playerClass ? classTutorialCopy(state.playerClass).passiveDescription : 'Passive effect active.';
+  const passiveCopy = state.playerClass ? getTutorialCopy(state.playerClass).passiveDescription : 'Passive effect active.';
 
   useEffect(() => {
     const inDeadmines = state.currentDungeon?.id === INTRO_TUTORIAL_DUNGEON_ID;

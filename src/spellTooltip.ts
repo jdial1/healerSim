@@ -2,10 +2,10 @@ import type { ClassType } from './types.ts';
 import { Spell } from './types.ts';
 import { manaPotionInstantMana, manaPotionOverTimeTotal } from './manaPotionIcon.ts';
 import {
-  calculateSpellRank,
-  classSpellOrder,
-  getRankCostMultiplier,
-  getRankHealMultiplier,
+  getSpellRank,
+  getSpellOrder,
+  getRankCostMult,
+  getRankHealMult,
 } from './playerStats.ts';
 
 export type SpellEffectTooltipContext = {
@@ -18,24 +18,24 @@ export type SpellEffectTooltipContext = {
 
 function rankHealMultForSpell(spellId: string, ctx: SpellEffectTooltipContext): number {
   if (!ctx.playerClass || ctx.playerLevel === undefined) return 1;
-  if (!classSpellOrder(ctx.playerClass).includes(spellId)) return 1;
-  return getRankHealMultiplier(calculateSpellRank(spellId, ctx.playerClass, ctx.playerLevel));
+  if (!getSpellOrder(ctx.playerClass).includes(spellId)) return 1;
+  return getRankHealMult(getSpellRank(spellId, ctx.playerClass, ctx.playerLevel));
 }
 
 export function spellTooltipRankLabel(spell: Spell, ctx: SpellEffectTooltipContext): string | null {
   if (!ctx.playerClass || ctx.playerLevel === undefined) return null;
-  if (!classSpellOrder(ctx.playerClass).includes(spell.id)) return null;
+  if (!getSpellOrder(ctx.playerClass).includes(spell.id)) return null;
   if (ctx.unlockedSpells !== undefined && !ctx.unlockedSpells.includes(spell.id)) return null;
-  return `Rank ${calculateSpellRank(spell.id, ctx.playerClass, ctx.playerLevel)}`;
+  return `Rank ${getSpellRank(spell.id, ctx.playerClass, ctx.playerLevel)}`;
 }
 
 export function spellDisplayManaCost(spell: Spell, ctx: SpellEffectTooltipContext): number {
   if (spell.manaCost <= 0) return spell.manaCost;
   if (!ctx.playerClass || ctx.playerLevel === undefined) return spell.manaCost;
   if (ctx.unlockedSpells !== undefined && !ctx.unlockedSpells.includes(spell.id)) return spell.manaCost;
-  if (!classSpellOrder(ctx.playerClass).includes(spell.id)) return spell.manaCost;
-  const rank = calculateSpellRank(spell.id, ctx.playerClass, ctx.playerLevel);
-  return Math.round(spell.manaCost * getRankCostMultiplier(rank));
+  if (!getSpellOrder(ctx.playerClass).includes(spell.id)) return spell.manaCost;
+  const rank = getSpellRank(spell.id, ctx.playerClass, ctx.playerLevel);
+  return Math.round(spell.manaCost * getRankCostMult(rank));
 }
 
 export function spellEffectTooltipText(spell: Spell, ctx: SpellEffectTooltipContext): string {

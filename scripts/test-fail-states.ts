@@ -7,7 +7,7 @@ import {
   computeDungeonXpGain,
   levelFromTotalXp,
   PLAYER_MAX_LEVEL,
-  totalXpToReachLevel,
+  getXpToLevel,
 } from '../src/gameStorage.ts';
 import type { Dungeon } from '../src/types.ts';
 import { testPalette } from './testColors.ts';
@@ -69,10 +69,10 @@ export function runFailStatesTest(): void {
   }
 
   const finalLevel = levelFromTotalXp(xp);
-  const xpInto = xp - totalXpToReachLevel(finalLevel);
+  const xpInto = xp - getXpToLevel(finalLevel);
   const needNext =
     finalLevel < PLAYER_MAX_LEVEL
-      ? totalXpToReachLevel(finalLevel + 1) - totalXpToReachLevel(finalLevel)
+      ? getXpToLevel(finalLevel + 1) - getXpToLevel(finalLevel)
       : 0;
   const stuck = stuckCounter >= STUCK_WINDOW;
   const stuckCol = stuck ? T.red : T.green;

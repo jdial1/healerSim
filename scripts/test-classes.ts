@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPlayerStatBreakdown } from '../src/playerStats.ts';
-import { cloneTalentsForClass } from '../src/talents/index.ts';
-import { collectExclusiveSplitPairs } from '../src/talentSplitPairs.ts';
+import { getStatBreakdown } from '../src/playerStats.ts';
+import { getTalents } from '../src/talents/index.ts';
+import { getSplitPairs } from '../src/talentSplitPairs.ts';
 import type { ClassType, Talent } from '../src/types.ts';
 import { testPalette } from './testColors.ts';
 
@@ -12,8 +12,8 @@ const LEVELS = [1, 10, 20, 25];
 const C = testPalette();
 
 function getMaxedTalents(cls: ClassType): Talent[] {
-  const base = cloneTalentsForClass(cls).map((t) => ({ ...t, points: t.maxPoints }));
-  const pairs = collectExclusiveSplitPairs(base);
+  const base = getTalents(cls).map((t) => ({ ...t, points: t.maxPoints }));
+  const pairs = getSplitPairs(base);
   const bottomIds = new Set(pairs.map((p) => p.bottom.id));
   return base.map((t) => (bottomIds.has(t.id) ? { ...t, points: 0 } : t));
 }
@@ -26,9 +26,9 @@ export function runClassTestCondensed(): void {
   const rows: string[] = [];
   for (const cls of CLASSES) {
     for (const lvl of LEVELS) {
-      const baseStats = buildPlayerStatBreakdown(cls, lvl, []);
+      const baseStats = getStatBreakdown(cls, lvl, []);
       const maxTalents = getMaxedTalents(cls);
-      const specStats = buildPlayerStatBreakdown(cls, lvl, maxTalents);
+      const specStats = getStatBreakdown(cls, lvl, maxTalents);
       const healDiff =
         (specStats.healingEffectMultiplier / baseStats.healingEffectMultiplier - 1) * 100;
       rows.push(
@@ -59,9 +59,9 @@ export function runClassTest(): void {
     console.log(`${'-'.repeat(80)}`);
 
     for (const lvl of LEVELS) {
-      const baseStats = buildPlayerStatBreakdown(cls, lvl, []);
+      const baseStats = getStatBreakdown(cls, lvl, []);
       const maxTalents = getMaxedTalents(cls);
-      const specStats = buildPlayerStatBreakdown(cls, lvl, maxTalents);
+      const specStats = getStatBreakdown(cls, lvl, maxTalents);
 
       console.log(
         `${lvl.toString().padEnd(4)} | ` +

@@ -1,6 +1,6 @@
 import { ClassRegistry } from './classes/index.ts';
 import type { ClassType } from './types.ts';
-import { classTheme, type ClassTheme } from './classTheme.ts';
+import { getTheme, type ClassTheme } from './classTheme.ts';
 
 export type ClassUiRow = {
   id: ClassType;
@@ -40,7 +40,7 @@ export function classUiRows(): ClassUiRow[] {
       passiveTraitName: row.passiveTraitName ?? '',
       passiveTraitDescription: row.passiveTraitDescription ?? '',
       passiveTraitIcon: row.passiveTraitIcon ?? 'wow/spell_holy_sealofwisdom',
-      theme: classTheme(row.id as ClassType),
+      theme: getTheme(row.id as ClassType),
     };
   });
 }
@@ -49,7 +49,7 @@ export function classDisplayName(cls: ClassType): string {
   return ClassRegistry.getMetadata(cls)?.name ?? cls;
 }
 
-export function classUiRowForClass(cls: ClassType): ClassUiRow {
+export function getUiRow(cls: ClassType): ClassUiRow {
   const row = classUiRows().find((x) => x.id === cls);
   if (!row) throw new Error(`Unknown class ${cls}`);
   return row;

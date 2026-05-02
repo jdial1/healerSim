@@ -1,12 +1,12 @@
 import { GameState, Spell, Unit, PartyDebuff } from '../../types.ts';
-import { talentRanks, hasPlayerBuff, upsertPlayerBuff, isDirectHealSpell } from '../../talentMechanics.ts';
+import { getRanks, hasBuff, addBuff, isDirectHeal } from '../../talentMechanics.ts';
 import { SPELLS } from '../../constants.ts';
 import type { HealManaCostContext, ManaAfterHealContext } from '../../combatHookRegistry.ts';
 import { generateCombatUid } from '../../combatUid.ts';
 import { mapEntityById } from '../../mapEntityById.ts';
 import balanceData from '../../data/balance.json';
-import { effectiveUniqueStatRating } from '../../playerStats.ts';
-import { healEffectiveAndOverheal } from '../../healMath.ts';
+import { getUniqueStatRating } from '../../playerStats.ts';
+import { getHealSplit } from '../../healMath.ts';
 
 export const PLAYER_BUFF_OMEN_CLEARCASTING = 'omen_clearcasting';
 
@@ -16,7 +16,7 @@ const SHARED = balanceData.combat.shared;
 // Damage reduction
 export function devotionDamageTakenMultiplier(s: GameState): number {
   if (s.playerClass !== 'PALADIN') return 1;
-  const r = talentRanks(s.talents, 'devotion_aura');
+  const r = getRanks(s.talents, 'devotion_aura');
   if (r <= 0) return 1;
   return Math.max(PALADIN.devotionDamageTakenFloor, 1 - PALADIN.devotionDamageReductionPerRank * r);
 }
@@ -24,7 +24,7 @@ export function devotionDamageTakenMultiplier(s: GameState): number {
 // Emergency bonuses
 export function paladinEmergencyCritBonusForTarget(s: GameState, target: Unit | undefined): number {
   if (s.playerClass !== 'PALADIN' || !target || target.maxHealth <= 0) return 0;
-  const ranks = talentRanks(s.talents, 'tower_of_radiance');
+  const ranks = getRanks(s.talents, 'tower_of_radiance');
   if (ranks <= 0) return 0;
   if (target.health / target.maxHealth >= PALADIN.emergencyCritHealthThreshold) return 0;
   return PALADIN.emergencyCritBonusPerRankBelowHealthFraction * ranks;
@@ -42,7 +42,7 @@ export function paladinAvengingWrathSplashFraction(s: GameState): number {
   if (
     s.playerClass !== 'PALADIN' ||
     s.capstoneForm !== 'paladin_avenging_wrath' ||
-    !hasPlayerBuff(s.playerCombatBuffs, 'avenging_wrath_aura')
+    !hasBuff(s.playerCombatBuffs, 'avenging_wrath_aura')
   ) {
     return 0;
   }
@@ -52,8 +52,8 @@ export function paladinAvengingWrathSplashFraction(s: GameState): number {
 // Beacon of Light
 export function beaconEchoMultiplier(s: GameState): number {
   let m = PALADIN.beaconEchoBaseMultiplier;
-  if (talentRanks(s.talents, 'paladin_vow_protector') > 0) {
-    m += PALADIN.beaconEchoVowBonusPerRank * talentRanks(s.talents, 'paladin_vow_protector');
+  if (getRanks(s.talents, 'paladin_vow_protector') > 0) {
+    m += PALADIN.beaconEchoVowBonusPerRank * getRanks(s.talents, 'paladin_vow_protector');
   }
   return m;
 }
@@ -69,13 +69,13 @@ export function applyBeaconEcho(
   tMod: number,
   rankHealMult: number,
 ): { party: Unit[]; eff: number; oh: number } {
-  if (talentRanks(s.talents, 'beacon_of_light') <= 0) return { party: newParty, eff: 0, oh: 0 };
+  if (getRanks(s.talents, 'beacon_of_light') <= 0) return { party: newParty, eff: 0, oh: 0 };
   const tankId = s.beaconTargetId;
   if (targetId === tankId || spell.type === 'AOE') return { party: newParty, eff: 0, oh: 0 };
   const amount = spell.healing * rankHealMult * healMultB * critH * tMod * beaconEchoMultiplier(s);
   const tank = newParty.find((u) => u.id === tankId);
   if (!tank || tank.health <= 0) return { party: newParty, eff: 0, oh: 0 };
-  const { eff, oh } = healEffectiveAndOverheal(tank.health, tank.maxHealth, amount);
+  const { eff, oh } = getHealSplit(tank.health, tank.maxHealth, amount);
   return {
     party: mapEntityById(newParty, tankId, (u) =>
       u.health > 0 ? { ...u, health: Math.min(u.maxHealth, u.health + amount) } : u,
@@ -94,8 +94,8 @@ export function manaAfterHealPaladinIllumination(
   if (
     s.playerClass === 'PALADIN' &&
     ctx.isCritH &&
-    isDirectHealSpell(ctx.spell, ctx.spellId) &&
-    talentRanks(s.talents, 'illumination') > 0
+    isDirectHeal(ctx.spell, ctx.spellId) &&
+    getRanks(s.talents, 'illumination') > 0
   ) {
     return Math.min(s.maxMana, mOut + ctx.needMana * PALADIN.illuminationManaRefundFraction);
   }
@@ -111,8 +111,8 @@ export function manaAfterHealPaladinBeaconVow(
   if (
     s.playerClass === 'PALADIN' &&
     ctx.isCritH &&
-    talentRanks(s.talents, 'beacon_of_light') > 0 &&
-    talentRanks(s.talents, 'paladin_vow_protector') > 0 &&
+    getRanks(s.talents, 'beacon_of_light') > 0 &&
+    getRanks(s.talents, 'paladin_vow_protector') > 0 &&
     ctx.spellId !== 'mana_potion' &&
     ctx.spell.type !== 'AOE' &&
     ctx.healTargetId === beaconId
@@ -120,7 +120,7 @@ export function manaAfterHealPaladinBeaconVow(
     const refund =
       ctx.needMana *
       PALADIN.vowProtectorCritManaRefundFraction *
-      talentRanks(s.talents, 'paladin_vow_protector');
+      getRanks(s.talents, 'paladin_vow_protector');
     return Math.min(s.maxMana, mOut + refund);
   }
   return mOut;
@@ -129,7 +129,7 @@ export function manaAfterHealPaladinBeaconVow(
 // Radiance
 export function paladinRadianceHealMultiplier(s: GameState, unit: Unit): number {
   if (s.playerClass !== 'PALADIN' || unit.maxHealth <= 0) return 1;
-  const r = effectiveUniqueStatRating(s.playerClass, s.level, s.talents);
+  const r = getUniqueStatRating(s.playerClass, s.level, s.talents);
   const missing = Math.max(0, 1 - unit.health / unit.maxHealth);
   const bonus = Math.min(
     PALADIN.radianceHealMultBonusCap,
@@ -147,7 +147,7 @@ export function applyLightbringerResolveSplash(
   spellId: string,
   targetId: string,
 ): { party: Unit[]; eff: number; oh: number } {
-  if (s.playerClass !== 'PALADIN' || spellId === 'mana_potion' || !isDirectHealSpell(spell, spellId)) {
+  if (s.playerClass !== 'PALADIN' || spellId === 'mana_potion' || !isDirectHeal(spell, spellId)) {
     return { party, eff: 0, oh: 0 };
   }
   if (spell.type === 'AOE') return { party, eff: 0, oh: 0 };
@@ -172,7 +172,7 @@ export function applyLightbringerResolveSplash(
   if (!bestId) return { party, eff: 0, oh: 0 };
   const splashTgt = party.find((u) => u.id === bestId);
   if (!splashTgt) return { party, eff: 0, oh: 0 };
-  const { eff, oh } = healEffectiveAndOverheal(splashTgt.health, splashTgt.maxHealth, splash);
+  const { eff, oh } = getHealSplit(splashTgt.health, splashTgt.maxHealth, splash);
   return {
     party: mapEntityById(party, bestId, (u) => ({
       ...u,
@@ -185,22 +185,22 @@ export function applyLightbringerResolveSplash(
 
 // Vow Crusader
 export function vowCrusaderAoEMultiplier(s: GameState, spellId: string): number {
-  if (spellId !== 'light_of_dawn' || talentRanks(s.talents, 'paladin_vow_crusader') <= 0) return 1;
-  return 1 + PALADIN.vowCrusaderAoEBonusPerRank * talentRanks(s.talents, 'paladin_vow_crusader');
+  if (spellId !== 'light_of_dawn' || getRanks(s.talents, 'paladin_vow_crusader') <= 0) return 1;
+  return 1 + PALADIN.vowCrusaderAoEBonusPerRank * getRanks(s.talents, 'paladin_vow_crusader');
 }
 
 // Dispel
 export function dispellableCurseCleanseProcChance(s: GameState): number {
   if (!s.playerClass) return 0;
   let c = 0;
-  if (s.playerClass === 'PALADIN') c = talentRanks(s.talents, 'purify');
+  if (s.playerClass === 'PALADIN') c = getRanks(s.talents, 'purify');
   if (c <= 0) return 0;
   let p = SHARED.dispellableCurseCleanseProcPerRank * c;
-  if (s.playerClass === 'PALADIN' && talentRanks(s.talents, 'tower_of_radiance') > 0) {
+  if (s.playerClass === 'PALADIN' && getRanks(s.talents, 'tower_of_radiance') > 0) {
     p *= PALADIN.purifyTowerOfRadianceMultiplier;
   }
   return p;
 }
 
 // Re-export from talentMechanics for convenience
-export { hasPlayerBuff, upsertPlayerBuff, isDirectHealSpell } from '../../talentMechanics.ts';
+export { hasBuff, addBuff, isDirectHeal } from '../../talentMechanics.ts';
