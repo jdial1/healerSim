@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, memo } from 'react';
 
 import { getIconUrlCandidates, GLOW_BOX, ICON_TINT, type IconGlow } from '../gameIcons.ts';
 
@@ -28,7 +28,13 @@ const frameSize: Record<GameIconSize, string> = {
   heroTall: 'h-full w-full min-h-0 flex-col p-3 sm:p-3.5',
 };
 
-export function GameIcon({
+/**
+ * ⚡ Bolt Optimization: Memoized GameIcon.
+ * GameIcon is rendered frequently in HealGrid and ActionBars during combat.
+ * Wrapping it in memo ensures that icons only re-render if their props change,
+ * which is rare compared to the 100ms game engine tick that triggers parent re-renders.
+ */
+export const GameIcon = memo(function GameIcon({
   iconPath,
   glow,
   size = 'md',
@@ -81,4 +87,4 @@ export function GameIcon({
       </div>
     </div>
   );
-}
+});
