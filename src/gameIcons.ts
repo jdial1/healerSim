@@ -36,23 +36,33 @@ export function getIconUrl(iconPath: string): string {
   return getIconUrlCandidates(iconPath)[0];
 }
 
+const iconUrlCache = new Map<string, readonly string[]>();
+
 export function getIconUrlCandidates(iconPath: string): readonly string[] {
+  const cached = iconUrlCache.get(iconPath);
+  if (cached) return cached;
+
   const source = parseIconSource(iconPath);
+  let result: readonly string[];
+
   if (source.kind === 'wow') {
     const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${source.icon}.${ext}`);
     const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${source.icon}.${ext}`);
-    return [...local, ...remote];
-  }
-  if (source.kind === 'game-icons') {
+    result = [...local, ...remote];
+  } else if (source.kind === 'game-icons') {
     const local = [`${LOCAL_ICON_BASE}/game-icons/${source.author}/${source.icon}.png`];
     const remote = GAME_ICON_CANDIDATE_PATHS.map(
       (palette) => `${GAME_ICONS_BASE}/${palette}/1x1/${source.author}/${source.icon}.png`,
     );
-    return [...local, ...remote];
+    result = [...local, ...remote];
+  } else {
+    const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${FALLBACK_WOW_ICON}.${ext}`);
+    const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${FALLBACK_WOW_ICON}.${ext}`);
+    result = [...local, ...remote];
   }
-  const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${FALLBACK_WOW_ICON}.${ext}`);
-  const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${FALLBACK_WOW_ICON}.${ext}`);
-  return [...local, ...remote];
+
+  iconUrlCache.set(iconPath, result);
+  return result;
 }
 
 export function getSpellGlow(spellId: string | undefined): IconGlow {

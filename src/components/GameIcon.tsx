@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 
 import { getIconUrlCandidates, GLOW_BOX, ICON_TINT, type IconGlow } from '../gameIcons.ts';
 
@@ -28,7 +28,7 @@ const frameSize: Record<GameIconSize, string> = {
   heroTall: 'h-full w-full min-h-0 flex-col p-3 sm:p-3.5',
 };
 
-export function GameIcon({
+export const GameIcon = memo(function GameIcon({
   iconPath,
   glow,
   size = 'md',
@@ -81,4 +81,4 @@ export function GameIcon({
       </div>
     </div>
   );
-}
+});
