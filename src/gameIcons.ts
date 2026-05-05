@@ -36,23 +36,37 @@ export function getIconUrl(iconPath: string): string {
   return getIconUrlCandidates(iconPath)[0];
 }
 
+/**
+ * BOLT OPTIMIZATION: Cache icon URL candidates globally.
+ * Avoids redundant string allocations and logic execution for frequently rendered icons (e.g. in HealGrid).
+ */
+const urlCandidatesCache = new Map<string, readonly string[]>();
+
 export function getIconUrlCandidates(iconPath: string): readonly string[] {
+  const cached = urlCandidatesCache.get(iconPath);
+  if (cached) return cached;
+
   const source = parseIconSource(iconPath);
+  let candidates: readonly string[];
+
   if (source.kind === 'wow') {
     const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${source.icon}.${ext}`);
     const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${source.icon}.${ext}`);
-    return [...local, ...remote];
-  }
-  if (source.kind === 'game-icons') {
+    candidates = [...local, ...remote];
+  } else if (source.kind === 'game-icons') {
     const local = [`${LOCAL_ICON_BASE}/game-icons/${source.author}/${source.icon}.png`];
     const remote = GAME_ICON_CANDIDATE_PATHS.map(
       (palette) => `${GAME_ICONS_BASE}/${palette}/1x1/${source.author}/${source.icon}.png`,
     );
-    return [...local, ...remote];
+    candidates = [...local, ...remote];
+  } else {
+    const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${FALLBACK_WOW_ICON}.${ext}`);
+    const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${FALLBACK_WOW_ICON}.${ext}`);
+    candidates = [...local, ...remote];
   }
-  const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${FALLBACK_WOW_ICON}.${ext}`);
-  const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${FALLBACK_WOW_ICON}.${ext}`);
-  return [...local, ...remote];
+
+  urlCandidatesCache.set(iconPath, candidates);
+  return candidates;
 }
 
 export function getSpellGlow(spellId: string | undefined): IconGlow {
