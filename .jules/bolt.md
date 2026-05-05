@@ -1,0 +1,3 @@
+## 2025-05-15 - Caching and Memoization for High-Frequency Renders
+**Learning:** In applications with a high-frequency global state update (e.g., 100ms game ticks), utility functions that perform string manipulation and array operations (like icon URL resolution) can become a significant source of object allocation and GC pressure. Additionally, small UI components used in large grids (like `GameIcon` in `HealGrid`) trigger expensive re-renders even when their specific props haven't changed.
+**Action:** Use `Map`-based caches for pure, repetitive string/data transformations outside of React components. Apply `React.memo()` to leaf components in large grids to prevent unnecessary re-renders during state ticks.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, memo } from 'react';
 
 import { getIconUrlCandidates, GLOW_BOX, ICON_TINT, type IconGlow } from '../gameIcons.ts';
 
@@ -28,7 +28,12 @@ const frameSize: Record<GameIconSize, string> = {
   heroTall: 'h-full w-full min-h-0 flex-col p-3 sm:p-3.5',
 };
 
-export function GameIcon({
+/**
+ * BOLT OPTIMIZATION: Memoized GameIcon component.
+ * GameIcons are frequently used in lists that re-render often (like the HealGrid).
+ * Memoization prevents redundant re-renders of the icon when only other unit properties (like health) change.
+ */
+export const GameIcon = memo(function GameIcon({
   iconPath,
   glow,
   size = 'md',
@@ -81,4 +86,4 @@ export function GameIcon({
       </div>
     </div>
   );
-}
+});
