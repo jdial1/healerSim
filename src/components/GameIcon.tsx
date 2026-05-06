@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, memo } from 'react';
 
 import { getIconUrlCandidates, GLOW_BOX, ICON_TINT, type IconGlow } from '../gameIcons.ts';
 
@@ -28,7 +28,12 @@ const frameSize: Record<GameIconSize, string> = {
   heroTall: 'h-full w-full min-h-0 flex-col p-3 sm:p-3.5',
 };
 
-export function GameIcon({
+/**
+ * GameIcon is a leaf component used extensively in HealGrid and ActionBars.
+ * Memoizing it prevents unnecessary re-renders when parent components (like unit rows)
+ * re-render due to health changes, as long as the icon's own props haven't changed.
+ */
+export const GameIcon = memo(function GameIcon({
   iconPath,
   glow,
   size = 'md',
@@ -81,4 +86,4 @@ export function GameIcon({
       </div>
     </div>
   );
-}
+});
