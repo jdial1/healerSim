@@ -1,0 +1,3 @@
+## 2025-05-14 - Optimized Icon Rendering Path
+**Learning:** In a high-frequency tick environment (100ms), UI components that re-render every tick (like the HealGrid and its children) can create significant overhead if they perform string parsing or redundant array allocations in their render path. Memoizing these "leaf" components and adding a global cache for pure data transformations (like icon URL candidate generation) significantly reduces CPU and GC pressure.
+**Action:** Always consider global caching for pure utility functions that are called frequently in the React render loop, and memoize leaf components that are rendered in large quantities (e.g., icons, status bars).
