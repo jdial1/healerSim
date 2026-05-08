@@ -134,7 +134,7 @@ export default function App() {
       clearCastSpellSignal: clearCastTutorialSignal,
       setTutorialPaused,
       completeIntroTutorial,
-      markTutorialComplete,
+      markTutorialStepCompleted: markTutorialComplete,
       reorderSignal: reorderTutorialSignal,
     });
 

@@ -36,23 +36,36 @@ export function getIconUrl(iconPath: string): string {
   return getIconUrlCandidates(iconPath)[0];
 }
 
+/**
+ * Cache for icon URL candidates to avoid redundant string allocations and logic
+ * during the 100ms game tick cycles where many icons are rendered.
+ */
+const urlCandidatesCache: Record<string, readonly string[]> = {};
+
 export function getIconUrlCandidates(iconPath: string): readonly string[] {
+  if (urlCandidatesCache[iconPath]) return urlCandidatesCache[iconPath];
+
   const source = parseIconSource(iconPath);
+  let candidates: readonly string[];
+
   if (source.kind === 'wow') {
     const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${source.icon}.${ext}`);
     const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${source.icon}.${ext}`);
-    return [...local, ...remote];
-  }
-  if (source.kind === 'game-icons') {
+    candidates = [...local, ...remote];
+  } else if (source.kind === 'game-icons') {
     const local = [`${LOCAL_ICON_BASE}/game-icons/${source.author}/${source.icon}.png`];
     const remote = GAME_ICON_CANDIDATE_PATHS.map(
       (palette) => `${GAME_ICONS_BASE}/${palette}/1x1/${source.author}/${source.icon}.png`,
     );
-    return [...local, ...remote];
+    candidates = [...local, ...remote];
+  } else {
+    const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${FALLBACK_WOW_ICON}.${ext}`);
+    const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${FALLBACK_WOW_ICON}.${ext}`);
+    candidates = [...local, ...remote];
   }
-  const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${FALLBACK_WOW_ICON}.${ext}`);
-  const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${FALLBACK_WOW_ICON}.${ext}`);
-  return [...local, ...remote];
+
+  urlCandidatesCache[iconPath] = candidates;
+  return candidates;
 }
 
 export function getSpellGlow(spellId: string | undefined): IconGlow {
