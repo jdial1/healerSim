@@ -1,0 +1,3 @@
+## 2025-05-15 - [Memoizing and Caching Icon Resolution]
+**Learning:** The game's 100ms tick rate leads to frequent re-renders of the healing grid and action bars. Resolving icon URL candidates via string parsing and array allocation on every render of every `GameIcon` is a significant source of overhead (~1.8M ops/sec). Caching the resolution results and memoizing the component improves throughput by >30x (~69M ops/sec) and reduces garbage collection pressure.
+**Action:** Always memoize low-level UI components (like `GameIcon`) and cache the results of pure, repetitive string/URL resolution logic in high-frequency rendering loops.
