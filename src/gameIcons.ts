@@ -6,13 +6,16 @@ export type { IconGlow };
 
 const WOW_ICON_BASE = 'https://wow.zamimg.com/images/wow/icons/large';
 const GAME_ICONS_BASE = 'https://game-icons.net/icons';
-const LOCAL_ICON_BASE = `${import.meta.env.BASE_URL}icons`;
+const LOCAL_ICON_BASE = `${import.meta.env?.BASE_URL ?? '/'}icons`;
 
 const WOW_ICON_EXTS = ['jpg', 'png'] as const;
 const GAME_ICON_CANDIDATE_PATHS = ['ffffff/transparent', 'ffffff/000000'] as const;
 const FALLBACK_WOW_ICON = 'inv_misc_questionmark';
 
 export const LOCKED_DUNGEON_ICON = 'lorc/padlock';
+
+// Cache to prevent redundant string parsing and array allocations on every render
+const urlCandidatesCache = new Map<string, readonly string[]>();
 
 type IconSource =
   | { kind: 'wow'; icon: string }
@@ -37,22 +40,30 @@ export function getIconUrl(iconPath: string): string {
 }
 
 export function getIconUrlCandidates(iconPath: string): readonly string[] {
+  const cached = urlCandidatesCache.get(iconPath);
+  if (cached) return cached;
+
   const source = parseIconSource(iconPath);
+  let result: readonly string[];
+
   if (source.kind === 'wow') {
     const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${source.icon}.${ext}`);
     const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${source.icon}.${ext}`);
-    return [...local, ...remote];
-  }
-  if (source.kind === 'game-icons') {
+    result = [...local, ...remote];
+  } else if (source.kind === 'game-icons') {
     const local = [`${LOCAL_ICON_BASE}/game-icons/${source.author}/${source.icon}.png`];
     const remote = GAME_ICON_CANDIDATE_PATHS.map(
       (palette) => `${GAME_ICONS_BASE}/${palette}/1x1/${source.author}/${source.icon}.png`,
     );
-    return [...local, ...remote];
+    result = [...local, ...remote];
+  } else {
+    const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${FALLBACK_WOW_ICON}.${ext}`);
+    const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${FALLBACK_WOW_ICON}.${ext}`);
+    result = [...local, ...remote];
   }
-  const local = WOW_ICON_EXTS.map((ext) => `${LOCAL_ICON_BASE}/wow/${FALLBACK_WOW_ICON}.${ext}`);
-  const remote = WOW_ICON_EXTS.map((ext) => `${WOW_ICON_BASE}/${FALLBACK_WOW_ICON}.${ext}`);
-  return [...local, ...remote];
+
+  urlCandidatesCache.set(iconPath, result);
+  return result;
 }
 
 export function getSpellGlow(spellId: string | undefined): IconGlow {
