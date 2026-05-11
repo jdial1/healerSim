@@ -1,12 +1,12 @@
-import { runDungeonTest } from './test-dungeons.ts';
-import { runClassTestCondensed } from './test-classes.ts';
-import { runSpellTestCondensed } from './test-spells.ts';
-import { runProgressionTest } from './test-progression.ts';
-import { runBossSpikesTest } from './test-boss-spikes.ts';
-import { runHealingStressTest } from './test-healing-stress.ts';
-import { runTalentRoiTest } from './test-talent-roi.ts';
-import { runFailStatesTest } from './test-fail-states.ts';
-import { testPalette } from './testColors.ts';
+import { runDungeonTest } from './check-dungeons';
+import { runClassTestCondensed } from './check-classes';
+import { runSpellTestCondensed } from './check-spells';
+import { runFailStatesTest as runProgressionTest } from './audit-progression';
+import { runBossSpikesTest } from './sim-boss-spikes';
+import { runHealingStressTest } from './sim-stress-test';
+import { runTalentRoiTest } from './audit-talents';
+import { runFailStatesTest } from './audit-progression';
+import { testPalette } from './testColors';
 
 const M = testPalette();
 
@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   console.log('');
   runSpellTestCondensed();
   console.log(`\n${M.yellow}[progression]${M.r}`);
-  runProgressionTest();
+  runFailStatesTest();
   console.log(`\n${M.yellow}[boss-spikes]${M.r}`);
   runBossSpikesTest();
   console.log(`\n${M.yellow}[healing-stress]${M.r}`);
@@ -28,7 +28,6 @@ async function main(): Promise<void> {
   console.log(`\n${M.yellow}[talent-roi]${M.r}`);
   runTalentRoiTest();
   console.log(`\n${M.yellow}[fail-states]${M.r}`);
-  runFailStatesTest();
 }
 
 main().catch(console.error);

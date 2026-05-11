@@ -6,6 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
-/public/icons/game-icons
-/public/icons/wow
+/public/icons
 /icon_maker

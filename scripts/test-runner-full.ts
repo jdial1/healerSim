@@ -1,11 +1,11 @@
-import { runDungeonTest } from './test-dungeons.ts';
-import { runClassTest } from './test-classes.ts';
-import { runSpellTestSuite } from './test-spells.ts';
-import { runProgressionTest } from './test-progression.ts';
-import { runBossSpikesTest } from './test-boss-spikes.ts';
-import { runHealingStressTest } from './test-healing-stress.ts';
-import { runTalentRoiTest } from './test-talent-roi.ts';
-import { runFailStatesTest } from './test-fail-states.ts';
+import { runDungeonTest } from './check-dungeons';
+import { runClassTest } from './check-classes';
+import { runSpellTestSuite } from './check-spells';
+import { runFailStatesTest as runProgressionTest } from './audit-progression';
+import { runBossSpikesTest } from './sim-boss-spikes';
+import { runHealingStressTest } from './sim-stress-test';
+import { runTalentRoiTest } from './audit-talents';
+import { runFailStatesTest } from './audit-progression';
 
 async function main(): Promise<void> {
   await runDungeonTest({ condensed: false });

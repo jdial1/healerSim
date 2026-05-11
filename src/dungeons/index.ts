@@ -1,6 +1,6 @@
-import type { Dungeon } from '../types.ts';
-import dungeonsData from '../data/dungeons.json';
-import { getEndlessMultiplier } from '../constants.ts';
+﻿import type { Dungeon } from '../types';
+import dungeonsData from '../data/world/dungeons.json' with { type: 'json' };
+import { getEndlessMultiplier } from '../formulas';
 
 export const DUNGEONS = dungeonsData as Dungeon[];
 

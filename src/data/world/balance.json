@@ -1,0 +1,128 @@
+{
+  "boss": {
+    "damageMultiplierPerDifficultyStep": 1.08
+  },
+  "endless": {
+    "scalingPerCycle": 1.07,
+    "bossKillXpFraction": 0.22
+  },
+  "partyDamageFromDungeonLevelGap": {
+    "multiplierPerPartyLevelOverDungeonMax": 0.62
+  },
+  "partyDps": {
+    "base": 5,
+    "levelExponent": 1.25,
+    "levelMultiplier": 2
+  },
+  "environmentalDamage": {
+    "tankProcChance": 0.35,
+    "tankDamageRandomMax": 8,
+    "nonTankProcChance": 0.08,
+    "nonTankDamageRandomMax": 5,
+    "ambientChipEveryTicks": 7,
+    "ambientChipDamageMultiplier": 2.4
+  },
+  "trash": {
+    "maxHealthFractionOfBoss": 0.16667,
+    "pullCount": 3
+  },
+  "progression": {
+    "rankHealMult": 1.15,
+    "rankCostMult": 1.1
+  },
+  "dungeonCombat": {
+    "defaultMechanicIntervalTicksMin": 20,
+    "defaultMechanicIntervalTicksMax": 50
+  },
+  "allyHealth": {
+    "TANK": { "base": 100, "perLevel": 15 },
+    "DPS": { "base": 80, "perLevel": 10 }
+  },
+  "xp": {
+    "dungeonTierAdditivePerDifficultyOver1": 0.25,
+    "dungeonBaseAmount": 115,
+    "dungeonBaseDifficultyPowBase": 1.2,
+    "overlevelDiminishingBase": 0.6,
+    "failureFractionWhenAllTrashCleared": 0.5,
+    "failureFractionWhenTwoPullsCleared": 0.35,
+    "failureFractionWhenOnePullCleared": 0.2
+  },
+  "playerStats": {
+    "manaPerIntellect": 12,
+    "healingPctPerSpirit": 0.5,
+    "manaRegenMultPerSpirit": 0.02
+  },
+  "combat": {
+    "shared": {
+      "shieldDefaultTicks": 100,
+      "directHealSynergyMultiplierDefault": 1.15,
+      "hotPandemicDurationCapMultDefault": 1.3,
+      "cleanseProcPerRank": 0.08,
+      "floatingCombatTextLifetimeTicks": 22,
+      "spiritRedemptionAmpTicks": 100
+    },
+    "priest": {
+      "divinityOverhealToShieldRating": 0.0045,
+      "divinityAegisMultRating": 0.004,
+      "echoOfLightHealFraction": 0.08,
+      "passiveEchoOfLightDurationTicks": 50,
+      "pathMoonMaxManaReturnPerRank": 0.0175,
+      "meditativeManaPerTick": 0.003,
+      "divineAegisShieldFractionPerRank": 0.3,
+      "luminousAegisMultiplierPerRank": 0.1,
+      "bindingHealSelfFraction": 0.06,
+      "bindingHealMaxRanksForCap": 2,
+      "surgeOfLightProcChancePerRank": 0.16,
+      "gleamingProclamationFlashHealCritBonusPct": 2,
+      "shieldMaintenanceHastePerRank": 2.5,
+      "selfShieldDamageReductionPerRank": 0.03,
+      "archangelEchoShieldConsumeBonusFraction": 0.25,
+      "aegisBurstHealPerAbsorbPerRank": 0.15
+    },
+    "paladin": {
+      "illuminationManaRefundFraction": 1.06,
+      "radianceMultPerRating": 0.0035,
+      "radianceHealMultBonusCap": 0.3,
+      "passiveLightbringerSplashFraction": 0.2,
+      "envManaPerHp": 0.07,
+      "envHolyPowerChance": 0.09,
+      "devotionDamageReductionPerRank": 0.04,
+      "devotionDamageTakenFloor": 0.72,
+      "vowProtectorCritManaRefundFraction": 0.15,
+      "emergCritBonusPerRank": 4,
+      "emergencyCritHealthThreshold": 0.4,
+      "emergencyHasteFromMissingHealthMax": 10,
+      "beaconEchoBaseMultiplier": 0.65,
+      "beaconEchoVowBonusPerRank": 0.06,
+      "purifyTowerOfRadianceMultiplier": 1.35,
+      "vowCrusaderAoEBonusPerRank": 0.2,
+      "avengingWrathSplashFraction": 0.3
+    },
+    "druid": {
+      "naturalPerfectionCritBonusPerStack": 2,
+      "vitalityBloomChancePerRating": 0.0018,
+      "vitalityBloomChanceCap": 0.26,
+      "vitalityBloomHealFractionOfTick": 0.42,
+      "vitalityBloomManaRefundChance": 0.16,
+      "vitalityBloomManaRefundAmount": 0.55,
+      "omenProcPerTickRating": 0.00035,
+      "passiveOmenProcChanceCap": 0.055,
+      "passiveOmenClearcastingTicks": 70,
+      "treeOfLifeHotManaCostFactor": 0.7,
+      "treeOfLifeBigDirectManaCostFactor": 1.2,
+      "treeOfLifeFlashHealHealingThreshold": 20,
+      "livingSeedPoolFraction": 0.15,
+      "livingSeedNaturalPerfectionBonusFraction": 0.03,
+      "harmonyBonusPerRank": 0.06,
+      "cultivationBonusPerRank": 0.08,
+      "deepRootsBonusPerRank": 0.12,
+      "photosynthesisDoubleTickChancePerRank": 0.02,
+      "photosynthesisHastePerRankWhenSelfHoT": 3,
+      "hotTickManaReturnPerRank": 0.6,
+      "rampHastePerHotPerRank": 0.12,
+      "rampCritPerHotPerRank": 0.08,
+      "naturesGraceHotTickRateMultiplier": 1.5,
+      "barkskinSelfHealFractionPerRank": 0.08
+    }
+  }
+}

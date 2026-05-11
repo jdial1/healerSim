@@ -1,0 +1,42 @@
+{
+  "allyHealthDefaults": {
+    "TANK": { "base": 130, "perLevel": 26 },
+    "DPS": { "base": 65, "perLevel": 12 }
+  },
+  "tankPool": [
+    { "name": "Tanky McShield", "role": "TANK" },
+    { "name": "Ironheart Bear", "role": "TANK" },
+    { "name": "Sunbreaker", "role": "TANK" },
+    { "name": "Stonekin", "role": "TANK" },
+    { "name": "Bulwark Bastion", "role": "TANK" },
+    { "name": "Thunder Guardian", "role": "TANK" },
+    { "name": "Elder Oak", "role": "TANK" },
+    { "name": "Gravewarden", "role": "TANK" }
+  ],
+  "dpsPool": [
+    { "name": "Zappy Mage", "role": "DPS" },
+    { "name": "Sneaky Rogue", "role": "DPS" },
+    { "name": "Shadow Warlock", "role": "DPS" },
+    { "name": "Wildfire Mage", "role": "DPS" },
+    { "name": "Frostweaver", "role": "DPS" },
+    { "name": "Blade Dancer", "role": "DPS" },
+    { "name": "Hunter Mark", "role": "DPS" },
+    { "name": "Demon Hunter", "role": "DPS" },
+    { "name": "Retri Pally", "role": "DPS" },
+    { "name": "Shadow Priest", "role": "DPS" },
+    { "name": "Windwalker", "role": "DPS" },
+    { "name": "Feral Kitty", "role": "DPS" },
+    { "name": "Arcane Sniper", "role": "DPS" },
+    { "name": "Poison Alchemist", "role": "DPS" },
+    { "name": "Stormcaller", "role": "DPS" },
+    { "name": "Void Assassin", "role": "DPS" },
+    { "name": "Blood Reaver", "role": "DPS" },
+    { "name": "Ember Archer", "role": "DPS" },
+    { "name": "Tidal Sorcerer", "role": "DPS" },
+    { "name": "Savage Barbarian", "role": "DPS" },
+    { "name": "Cursed Duelist", "role": "DPS" },
+    { "name": "Lightning Striker", "role": "DPS" },
+    { "name": "Plague Doctor", "role": "DPS" },
+    { "name": "Soul Reaper", "role": "DPS" }
+  ]
+}
