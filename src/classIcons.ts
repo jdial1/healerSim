@@ -8,7 +8,7 @@ function classIconFile(cls: ClassType): string {
 
 export function getIconUrl(cls: ClassType): string {
   const iconFile = classIconFile(cls);
-  return `${import.meta.env.BASE_URL}icons/class-icons/${iconFile}.png`;
+  return `${import.meta.env?.BASE_URL ?? '/'}icons/class-icons/${iconFile}.png`;
 }
 
 export function getBorderClass(cls: ClassType): string {
