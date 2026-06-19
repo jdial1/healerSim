@@ -1,0 +1,504 @@
+import React from "react";
+import { useState, useEffect, useCallback, useRef, Fragment, useMemo } from "react";
+import { registerSW } from "virtual:pwa-register";
+import { useGameEngine } from "./hooks/useGameEngine.js";
+import { useIntroTutorial } from "./hooks/useIntroTutorial.js";
+import {
+  useKeyboardCombatKeys
+} from "./hooks/useKeyboardCombatKeys.js";
+import { HealGrid } from "./components/HealGrid.jsx";
+import { ActionBars } from "./components/ActionBars.jsx";
+import { CharacterRoster } from "./components/CharacterRoster.jsx";
+import { SplashScreen } from "./components/SplashScreen.jsx";
+import { DungeonSelector } from "./components/DungeonSelector.jsx";
+import { maxLevelAcrossRoster } from "./gameStorage.js";
+import { GameHUD } from "./components/GameHUD.jsx";
+import { TRASH_PACK_COUNT, TICKS_PER_SECOND, MANA_POTION_USES_PER_DUNGEON } from "./constants.js";
+import {
+  PLAYER_BUFF_MANA_REGEN_POTION,
+  PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT,
+  getBuffTicks,
+  getPotionDrip
+} from "./talentMechanics.js";
+import { partyWithHealerManaRegenDisplayBuff } from "./buffDisplay.js";
+import { TalentTree } from "./components/TalentTree.jsx";
+import { DungeonOutcomeModal } from "./components/DungeonOutcomeModal.jsx";
+import { getHealingMultiplier, getPrimaryStats } from "./playerStats.js";
+import { PlayerStatsModal } from "./components/PlayerStatsModal.jsx";
+import { TutorialOverlay } from "./components/TutorialOverlay.jsx";
+import { INTRO_TUTORIAL_DEBUFF_DATA_ID, TUTORIAL_STEP_NAV_PRIMER } from "./tutorialConfig.js";
+import { NavPrimerModal } from "./components/NavPrimerModal.jsx";
+import { LayoutEnvironmentBanner } from "./components/LayoutEnvironmentBanner.jsx";
+import { useLayoutEnvironmentCheck } from "./hooks/useLayoutEnvironmentCheck.js";
+import { motion, AnimatePresence } from "motion/react";
+import { Trophy, Star, LogOut, Settings, ScrollText, Swords } from "lucide-react";
+const REPO_URL = "https://github.com/jdial1/healerSim";
+const COMMUNITY_URL = "https://github.com/jdial1/healerSim";
+function App() {
+  const {
+    state,
+    roster,
+    loadCharacter,
+    startNewClass,
+    returnToRoster,
+    startDungeon,
+    abandonDungeon,
+    castSpell,
+    addXpNextLevel,
+    unlockTalent,
+    decrementTalent,
+    respecTalents,
+    reorderActionBar,
+    cooldowns,
+    dungeonOutcome,
+    dismissDungeonOutcome,
+    actionBarHighlights,
+    setTutorialPaused,
+    completeIntroTutorial,
+    markTutorialComplete,
+    persistRosterNow
+  } = useGameEngine();
+  const [targetId, setTargetId] = useState(null);
+  const [castTutorialSignal, setCastTutorialSignal] = useState(null);
+  const [reorderTutorialSignal, setReorderTutorialSignal] = useState(0);
+  const [showRoster, setShowRoster] = useState(true);
+  const [splashDismissed, setSplashDismissed] = useState(false);
+  const [menuView, setMenuView] = useState("dungeons");
+  const paladinUnlocked = maxLevelAcrossRoster(roster) >= 25;
+  const [pwaNeedsRefresh, setPwaNeedsRefresh] = useState(false);
+  const { issues: layoutEnvironmentIssues, dismiss: dismissLayoutEnvironmentBanner } = useLayoutEnvironmentCheck();
+  const swUpdate = useRef(void 0);
+  const keyboardRef = useRef({
+    party: [],
+    currentDungeon: null,
+    activeActionBars: [],
+    targetId: null,
+    castSpell: () => {
+    }
+  });
+  useEffect(() => {
+    swUpdate.current = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        setPwaNeedsRefresh(true);
+      }
+    });
+  }, []);
+  const clearCastTutorialSignal = useCallback(() => {
+    setCastTutorialSignal(null);
+  }, []);
+  const castSpellWithTutorialSignal = useCallback(
+    (spellId, targetIdForSpell) => {
+      setCastTutorialSignal((prev) => ({
+        id: spellId,
+        nonce: (prev?.nonce ?? 0) + 1
+      }));
+      castSpell(spellId, targetIdForSpell);
+    },
+    [castSpell]
+  );
+  const handleCast = useCallback(
+    (spellId) => {
+      if (!state.currentDungeon) return;
+      if (!targetId && state.party.length > 0) {
+        const tank = state.party.find((u) => u.role === "TANK");
+        if (tank) castSpellWithTutorialSignal(spellId, tank.id);
+      } else if (targetId) {
+        castSpellWithTutorialSignal(spellId, targetId);
+      }
+    },
+    [state.currentDungeon, targetId, state.party, castSpellWithTutorialSignal]
+  );
+  const reorderActionBarWithSignal = useCallback(
+    (from, to) => {
+      reorderActionBar(from, to);
+      setReorderTutorialSignal((v) => v + 1);
+    },
+    [reorderActionBar]
+  );
+  const {
+    overlay: introTutorialOverlay,
+    onTapContinue: introTutorialTapContinue,
+    highlightTalentIdForTree,
+    tutorialActionBarDropSlotDataId
+  } = useIntroTutorial({
+    state,
+    actionBarHighlights,
+    targetId,
+    menuView,
+    showRoster,
+    castSpellIdSignal: castTutorialSignal,
+    clearCastSpellSignal: clearCastTutorialSignal,
+    setTutorialPaused,
+    completeIntroTutorial,
+    markTutorialStepCompleted: markTutorialComplete,
+    reorderSignal: reorderTutorialSignal
+  });
+  const introDebuffTutorialStep = introTutorialOverlay.open && introTutorialOverlay.targetDataId === INTRO_TUTORIAL_DEBUFF_DATA_ID;
+  useEffect(() => {
+    if (!targetId) return;
+    const alive = state.party.some((m) => m.id === targetId && m.health > 0);
+    if (!alive) setTargetId(null);
+  }, [state.party, targetId]);
+  const manaRegenTicksForUi = useMemo(
+    () => state.currentDungeon ? getBuffTicks(state.playerCombatBuffs, PLAYER_BUFF_MANA_REGEN_POTION) : 0,
+    [state.currentDungeon, state.playerCombatBuffs]
+  );
+  const spiritLockTicksForUi = useMemo(
+    () => state.currentDungeon ? getBuffTicks(state.playerCombatBuffs, PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT) : 0,
+    [state.currentDungeon, state.playerCombatBuffs]
+  );
+  const partyForHealGrid = useMemo(
+    () => partyWithHealerManaRegenDisplayBuff(state.party, manaRegenTicksForUi, state.level),
+    [state.party, manaRegenTicksForUi, state.level]
+  );
+  const playerCombatStats = useMemo(() => {
+    if (!state.playerClass) return null;
+    return {
+      playerClass: state.playerClass,
+      level: state.level,
+      xp: state.xp,
+      mana: state.currentDungeon ? state.mana : state.maxMana,
+      maxMana: state.maxMana,
+      manaRegenBuffTicksRemaining: manaRegenTicksForUi,
+      manaPotionDripPerSec: getPotionDrip(state.playerCombatBuffs) * TICKS_PER_SECOND,
+      spiritRegenLockoutTicksRemaining: spiritLockTicksForUi,
+      spirit: getPrimaryStats(state.playerClass, state.level).spirit,
+      spellsEnabled: !!state.currentDungeon,
+      manaPotionChargesRemaining: Math.max(
+        0,
+        MANA_POTION_USES_PER_DUNGEON - state.manaPotionsUsedThisDungeon
+      ),
+      spellHealingMultiplier: getHealingMultiplier(
+        state.playerClass,
+        state.level,
+        state.talents
+      ),
+      unlockedSpells: state.unlockedSpells,
+      actionBarHighlights
+    };
+  }, [
+    state.playerClass,
+    state.xp,
+    state.mana,
+    state.maxMana,
+    state.currentDungeon,
+    state.level,
+    state.unlockedSpells,
+    state.manaPotionsUsedThisDungeon,
+    state.talents,
+    manaRegenTicksForUi,
+    spiritLockTicksForUi,
+    state.playerCombatBuffs,
+    actionBarHighlights
+  ]);
+  keyboardRef.current = {
+    party: state.party,
+    currentDungeon: state.currentDungeon,
+    activeActionBars: state.activeActionBars,
+    targetId,
+    castSpell: castSpellWithTutorialSignal
+  };
+  useKeyboardCombatKeys(keyboardRef, setTargetId);
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (!e.ctrlKey || !e.shiftKey || e.key.toLowerCase() !== "l") return;
+      if (e.repeat) return;
+      const t = e.target;
+      if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) {
+        return;
+      }
+      if (t instanceof HTMLElement && (t.isContentEditable || t.closest('[contenteditable="true"]'))) {
+        return;
+      }
+      if (!state.playerClass) return;
+      e.preventDefault();
+      addXpNextLevel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [state.playerClass, addXpNextLevel]);
+  const showCombatUi = !!state.playerClass && !showRoster;
+  const showGlobalMenuNav = state.playerClass && !showRoster && !state.currentDungeon;
+  const goToCharacter = () => {
+    setMenuView("character");
+  };
+  const goToTalents = () => {
+    setMenuView("talents");
+  };
+  const goToDungeons = () => {
+    persistRosterNow();
+    setMenuView("dungeons");
+  };
+  const navTab = menuView;
+  const showNavPrimerModal = !showRoster && !!state.playerClass && !state.currentDungeon && !state.introTutorialComplete && !state.tutorialCompletedSteps.includes("intro_core") && !state.tutorialCompletedSteps.includes(TUTORIAL_STEP_NAV_PRIMER);
+  const dismissNavPrimerModal = useCallback(() => {
+    markTutorialComplete(TUTORIAL_STEP_NAV_PRIMER);
+  }, [markTutorialComplete]);
+  return React.createElement(
+    "div",
+    {
+      className: `bg-slate-950 font-sans selection:bg-amber-500 selection:text-slate-950 ${state.playerClass && !showRoster ? "min-h-dvh max-h-dvh overflow-hidden" : "min-h-dvh"}`
+    },
+    React.createElement(AnimatePresence, { mode: "wait" }, menuView === "talents" && state.playerClass && !showRoster ? React.createElement(
+      TalentTree,
+      {
+        key: "talents",
+        talents: state.talents,
+        talentPoints: state.talentPoints,
+        onUnlock: unlockTalent,
+        onDecrement: decrementTalent,
+        onRespec: respecTalents,
+        onClose: goToDungeons,
+        playerLevel: state.level,
+        playerClass: state.playerClass,
+        tutorialHighlightTalentId: highlightTalentIdForTree
+      }
+    ) : showRoster || !state.playerClass ? React.createElement(AnimatePresence, { key: "roster-flow", mode: "wait" }, !splashDismissed ? React.createElement(Fragment, { key: "splash" }, React.createElement(
+      SplashScreen,
+      {
+        onEnter: () => setSplashDismissed(true),
+        version: __APP_VERSION__,
+        communityUrl: COMMUNITY_URL
+      }
+    )) : React.createElement(
+      motion.div,
+      {
+        key: "character-roster",
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0, x: -100 }
+      },
+      React.createElement(
+        CharacterRoster,
+        {
+          roster,
+          paladinUnlocked,
+          onContinue: (cls) => {
+            loadCharacter(cls);
+            setShowRoster(false);
+            setMenuView("dungeons");
+          },
+          onCreate: (cls) => {
+            startNewClass(cls);
+            setShowRoster(false);
+            setMenuView("dungeons");
+          }
+        }
+      )
+    )) : !state.currentDungeon ? React.createElement(
+      motion.div,
+      {
+        key: "dungeon-select",
+        initial: { opacity: 0, x: 100 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, y: -100 },
+        className: "relative flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden"
+      },
+      React.createElement("div", { className: "fixed left-3 right-3 top-3 z-[60] flex items-center justify-between gap-2" }, React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            returnToRoster();
+            setShowRoster(true);
+          },
+          className: "ui-panel ui-state-frame ui-state-hover flex h-8 items-center gap-1.5 px-2.5 backdrop-blur-md transition-colors",
+          "aria-label": "Options"
+        },
+        React.createElement(Settings, { size: 12, strokeWidth: 2.4, className: "-translate-y-px shrink-0 text-amber-200", "aria-hidden": true }),
+        React.createElement("span", { className: "-translate-y-px block text-[11px] font-semibold uppercase leading-none tracking-[0.14em] text-amber-100 sm:text-[10px]" }, "Options")
+      ), React.createElement("div", { className: "ui-panel flex h-8 items-center gap-3 px-3 backdrop-blur-md" }, React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: goToCharacter,
+          className: "flex h-full items-center gap-1.5 text-amber-100 transition-colors hover:text-amber-300"
+        },
+        React.createElement(Trophy, { size: 10, className: "-translate-y-px text-amber-400" }),
+        React.createElement("span", { className: "-translate-y-px block text-[11px] font-semibold uppercase leading-none tracking-[0.14em] sm:text-[10px]" }, "Lvl ", React.createElement("span", { className: "text-white" }, state.level))
+      ))),
+      React.createElement(
+        DungeonSelector,
+        {
+          onSelect: startDungeon,
+          level: state.level,
+          completedDungeonIds: state.completedDungeonIds
+        }
+      )
+    ) : React.createElement(
+      motion.div,
+      {
+        key: "game-active",
+        initial: { opacity: 0, scale: 0.95 },
+        animate: { opacity: 1, scale: 1 },
+        className: "relative flex h-dvh max-h-dvh min-h-0 flex-col"
+      },
+      React.createElement("div", { className: "fixed top-3 right-3 z-[60]" }, React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: abandonDungeon,
+          className: "ui-state-frame ui-state-hover flex items-center gap-1.5 rounded bg-slate-900/90 px-2.5 py-1.5 text-slate-300 shadow-sm transition-colors hover:text-red-300 sm:px-3 sm:py-2",
+          "aria-label": "Leave dungeon"
+        },
+        React.createElement(LogOut, { size: 16, strokeWidth: 2.5, className: "shrink-0", "aria-hidden": true }),
+        React.createElement("span", { className: "text-[10px] font-black uppercase tracking-widest sm:text-[9px]" }, "Leave")
+      )),
+      React.createElement(
+        GameHUD,
+        {
+          combatPhase: state.combatPhase,
+          trashPullsRemaining: state.trashPullsRemaining,
+          enemyHealth: state.enemyHealth,
+          enemyMaxHealth: state.enemyMaxHealth,
+          bossName: state.currentDungeon.bossName,
+          trashEnemyName: state.currentDungeon.enemies[TRASH_PACK_COUNT - state.trashPullsRemaining]?.name ?? "",
+          bossSelfBuffs: state.combatPhase === "BOSS" ? state.bossSelfBuffs : [],
+          endlessStacks: state.currentDungeon.endless ? state.endlessStacks : void 0
+        }
+      ),
+      React.createElement("main", { className: "flex min-h-0 flex-1 flex-col overflow-hidden pt-[9.5rem] pb-[10.5rem] sm:pt-[10.5rem] sm:pb-[11.5rem]" }, React.createElement("div", { className: "flex min-h-0 flex-1 w-full max-w-xl flex-col justify-center gap-0 self-center overflow-visible px-1 pb-1" }, React.createElement(
+        HealGrid,
+        {
+          party: partyForHealGrid,
+          selectedId: targetId,
+          onTargetSelect: setTargetId,
+          floatingCombatTexts: state.floatingCombatTexts,
+          syncIntroTutorialDebuffTip: introDebuffTutorialStep,
+          debuffTipZIndex: introDebuffTutorialStep ? 10200 : 400,
+          holdTutorialDebuffTip: introDebuffTutorialStep
+        }
+      )))
+    )),
+    React.createElement(AnimatePresence, null, menuView === "character" && state.playerClass && !showRoster ? React.createElement(
+      PlayerStatsModal,
+      {
+        playerClass: state.playerClass,
+        level: state.level,
+        xp: state.xp,
+        talents: state.talents,
+        onClose: goToDungeons
+      }
+    ) : null),
+    showCombatUi && state.playerClass && !showRoster && playerCombatStats ? React.createElement(
+      ActionBars,
+      {
+        playerCombatStats,
+        spellIds: state.activeActionBars,
+        cooldowns,
+        onCast: handleCast,
+        allowReorder: !state.currentDungeon,
+        onReorderSlots: reorderActionBarWithSignal,
+        hideResourcePanels: !state.currentDungeon,
+        tutorialFirstEmptyDropDataId: tutorialActionBarDropSlotDataId ?? void 0
+      }
+    ) : null,
+    showGlobalMenuNav ? React.createElement(
+      "div",
+      {
+        className: "ui-frame-divider-top fixed bottom-0 left-0 right-0 z-[130] bg-slate-950/95 px-3 py-2 shadow-[0_-10px_24px_rgba(0,0,0,0.45)] backdrop-blur-md",
+        style: { paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }
+      },
+      React.createElement("div", { className: "mx-auto flex w-full max-w-md items-center gap-2" }, React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: goToCharacter,
+          "data-tutorial-id": "nav-character",
+          className: `ui-state-frame flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-semibold tracking-[0.04em] transition-colors active:scale-[0.97] sm:text-sm ${navTab === "character" ? "ui-state-selected bg-amber-900/35 text-amber-100" : "ui-state-hover bg-slate-900/70 text-slate-200 hover:text-amber-200"}`,
+          "aria-current": navTab === "character" ? "page" : void 0
+        },
+        React.createElement(ScrollText, { size: 16, strokeWidth: 2.25, className: "ui-nav-icon-flat shrink-0 text-amber-300" }),
+        "Character"
+      ), React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: goToTalents,
+          "data-tutorial-id": "nav-talents",
+          className: `ui-state-frame relative flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-semibold tracking-[0.04em] transition-colors active:scale-[0.97] sm:text-sm ${navTab === "talents" ? "ui-state-selected bg-amber-900/35 text-amber-100" : state.talentPoints > 0 ? "ui-state-hover bg-slate-900/80 text-sky-100 hover:text-sky-50" : "ui-state-hover bg-slate-900/70 text-slate-200 hover:text-amber-200"}`,
+          "aria-current": navTab === "talents" ? "page" : void 0
+        },
+        React.createElement(Star, { size: 16, strokeWidth: 2.25, className: "ui-nav-icon-flat shrink-0 text-amber-300" }),
+        "Talents",
+        state.talentPoints > 0 ? React.createElement("span", { className: "absolute -right-1 -top-1 inline-flex min-h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded-full border border-red-200/85 bg-red-600 px-1 font-mono text-[10px] font-black leading-none text-white shadow-[0_0_12px_rgba(239,68,68,0.65)] sm:text-[11px]" }, state.talentPoints) : null
+      ), React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: goToDungeons,
+          "data-tutorial-id": "nav-dungeons",
+          className: `ui-state-frame flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-semibold tracking-[0.04em] transition-colors active:scale-[0.97] sm:text-sm ${navTab === "dungeons" ? "ui-state-selected bg-amber-900/35 text-amber-100" : "ui-state-hover bg-slate-900/70 text-slate-200 hover:text-amber-200"}`,
+          "aria-current": navTab === "dungeons" ? "page" : void 0
+        },
+        React.createElement(Swords, { size: 16, strokeWidth: 2.25, className: "ui-nav-icon-flat shrink-0 text-amber-300" }),
+        "Dungeons"
+      ))
+    ) : null,
+    React.createElement(AnimatePresence, null, dungeonOutcome ? React.createElement(Fragment, { key: `${dungeonOutcome.kind}-${dungeonOutcome.dungeonName}` }, React.createElement(DungeonOutcomeModal, { outcome: dungeonOutcome, onDismiss: dismissDungeonOutcome })) : null),
+    showNavPrimerModal ? React.createElement(NavPrimerModal, { onDismiss: dismissNavPrimerModal, talentPoints: state.talentPoints }) : null,
+    React.createElement(AnimatePresence, null, layoutEnvironmentIssues.length > 0 ? React.createElement(
+      LayoutEnvironmentBanner,
+      {
+        issues: layoutEnvironmentIssues,
+        onDismiss: dismissLayoutEnvironmentBanner
+      }
+    ) : null),
+    pwaNeedsRefresh ? React.createElement(
+      "div",
+      {
+        className: "ui-frame-divider-top fixed bottom-0 left-0 right-0 z-[100] flex flex-wrap items-center justify-center gap-3 bg-slate-950/95 px-4 py-3 text-center backdrop-blur-md",
+        style: { paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }
+      },
+      React.createElement("span", { className: "text-xs font-bold uppercase tracking-wide text-slate-300" }, "Update ready \xB7 v", __APP_VERSION__),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          className: "rounded bg-blue-600 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white",
+          onClick: () => void swUpdate.current?.(true)
+        },
+        "Reload"
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          className: "rounded border border-slate-700 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-400",
+          onClick: () => setPwaNeedsRefresh(false)
+        },
+        "Later"
+      )
+    ) : null,
+    !state.currentDungeon && showRoster && splashDismissed ? React.createElement(
+      "a",
+      {
+        href: REPO_URL,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        className: "fixed right-3 top-3 z-[25] block text-right font-mono text-[10px] tracking-wide text-slate-600 transition-colors hover:text-slate-400"
+      },
+      "v",
+      __APP_VERSION__
+    ) : null,
+    React.createElement(
+      TutorialOverlay,
+      {
+        open: introTutorialOverlay.open,
+        targetDataId: introTutorialOverlay.targetDataId,
+        message: introTutorialOverlay.message,
+        showTapCatcher: introTutorialOverlay.showTapCatcher,
+        showResumeButton: introTutorialOverlay.showResumeButton,
+        anchorMessageBelowTarget: introDebuffTutorialStep,
+        tone: introTutorialOverlay.tone,
+        resumeLabel: introTutorialOverlay.resumeLabel,
+        ghostHand: introTutorialOverlay.ghostHand,
+        onTapContinue: introTutorialTapContinue
+      }
+    )
+  );
+}
+export {
+  App as default
+};

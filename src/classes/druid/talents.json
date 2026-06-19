@@ -22,7 +22,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_nature_moon glow",
+    "icon": "wow/spell_nature_moonglow",
     "gridX": 1,
     "gridY": 0,
     "statBonus": {

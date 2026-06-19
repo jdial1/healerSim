@@ -1,7 +1,7 @@
 {
   "name": "aegis",
   "private": true,
-  "version": "0.1.109",
+  "version": "0.1.118",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -9,18 +9,17 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit",
     "icons:verify": "node scripts/verify-wow-icons.mjs",
-    "test": "tsx scripts/test-meta.ts",
-    "test:dungeons": "tsx scripts/test-dungeons.ts",
-    "test:class": "tsx scripts/test-classes.ts",
-    "test:spells": "tsx scripts/test-spells.ts",
-    "test:progression": "tsx scripts/test-progression.ts",
-    "test:boss-spikes": "tsx scripts/test-boss-spikes.ts",
-    "test:healing-stress": "tsx scripts/test-healing-stress.ts",
-    "test:talent-roi": "tsx scripts/test-talent-roi.ts",
-    "test:fail-states": "tsx scripts/test-fail-states.ts",
-    "tests": "tsx scripts/test-runner-full.ts"
+    "test": "node scripts/test-meta.js",
+    "test:dungeons": "node scripts/test-dungeons.js",
+    "test:class": "node scripts/test-classes.js",
+    "test:spells": "node scripts/test-spells.js",
+    "test:progression": "node scripts/test-progression.js",
+    "test:boss-spikes": "node scripts/test-boss-spikes.js",
+    "test:healing-stress": "node scripts/test-healing-stress.js",
+    "test:talent-roi": "node scripts/test-talent-roi.js",
+    "test:fail-states": "node scripts/test-fail-states.js",
+    "tests": "node scripts/test-runner-full.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -34,13 +33,9 @@
     "motion": "^12.23.24"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
     "vite": "^6.2.0",
-    "@types/express": "^4.17.21",
     "vite-plugin-pwa": "^1.1.0"
   }
 }
