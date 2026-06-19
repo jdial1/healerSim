@@ -18,49 +18,7 @@ interface PlayerStatsModalProps {
   onClose: () => void;
 }
 
-interface ResourceBarRowProps {
-  value: number;
-  fillClass: string;
-  trackClass: string;
-  valueClassName: string;
-  label: string;
-  max?: number;
-  percent?: number;
-}
 
-function ResourceBarRow({
-  value,
-  fillClass,
-  trackClass,
-  valueClassName,
-  label,
-  max,
-  percent,
-}: ResourceBarRowProps) {
-  const displayValue = Math.max(0, Math.floor(value));
-  const displayMax = max === undefined ? null : Math.max(0, Math.floor(max));
-  const fillPercent =
-    percent === undefined ? 100 : Math.min(100, Math.max(0, percent));
-  return (
-    <div className="flex w-full min-w-0 flex-col gap-2">
-      <div className="flex items-start justify-between gap-2">
-        <div className="pt-0.5 text-xs font-semibold tracking-wide text-slate-400 sm:text-sm">{label}</div>
-        <span className={`shrink-0 whitespace-nowrap font-mono text-base font-black tabular-nums tracking-tight sm:text-lg ${valueClassName}`}>
-          {displayValue}
-          {displayMax !== null ? <span className="text-slate-400">/{displayMax}</span> : null}
-        </span>
-      </div>
-      <div className={`relative h-3 w-full overflow-hidden rounded-sm ${trackClass}`}>
-        <motion.div
-          className={`h-full ${fillClass}`}
-          initial={false}
-          animate={{ width: `${fillPercent}%` }}
-          transition={{ type: 'tween', duration: 0.3 }}
-        />
-      </div>
-    </div>
-  );
-}
 
 function formatCritChance(pct: number): string {
   const r = Math.round(pct * 100) / 100;
@@ -143,7 +101,7 @@ export function PlayerStatsModal({
   const b = getStatBreakdown(playerClass, level, talents);
   const regenSec = getManaRegenPerSecond(0, b.spirit);
   const { into: xpIntoLevel, needed: xpForNextLevel } = xpProgressWithinLevel(xp);
-  const xpRingPct = xpForNextLevel > 0 ? Math.min(1, Math.max(0, xpIntoLevel / xpForNextLevel)) : 0;
+  const pctLabel = xpForNextLevel > 0 ? Math.min(100, Math.max(0, (xpIntoLevel / xpForNextLevel) * 100)) : 100;
 
   return (
     <motion.div
@@ -177,59 +135,49 @@ export function PlayerStatsModal({
           >
             <div className="flex w-full max-w-xl flex-col items-stretch gap-3 sm:max-w-2xl sm:gap-4">
               <div className="flex w-full shrink-0 flex-col items-stretch gap-2 self-stretch sm:gap-2.5">
-                <div className="flex w-full min-w-0 flex-col gap-4 rounded-md bg-slate-900/70 px-4 pt-4 pb-3 sm:px-5 sm:pt-5 sm:pb-3">
-                  <div className="flex w-full min-w-0 flex-col gap-3">
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3">
-                      <div className="pt-0.5 text-xs font-semibold tracking-wide text-slate-400">Level</div>
-                      <div className="row-span-2 justify-self-center rounded-xl bg-transparent p-0 text-white shadow-none">
-                        <div className={getWrapperTransformClass()}>
-                          <img
-                            src={getIconUrl(playerClass)}
-                            alt=""
-                            draggable={false}
-                            className={`h-[76px] w-[76px] select-none object-contain [filter:drop-shadow(0_3px_3px_rgba(0,0,0,0.65))] sm:h-[84px] sm:w-[84px] ${getTransformClass(playerClass)}`}
+                <div className="flex w-full min-w-0 flex-col gap-5 rounded-xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-950 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-6">
+                  <div className="flex w-full flex-col items-center gap-4 sm:flex-row sm:items-stretch sm:justify-center sm:gap-10">
+                    <div className="flex shrink-0 flex-col items-center gap-3">
+                      <div className={getWrapperTransformClass()}>
+                        <img
+                          src={getIconUrl(playerClass)}
+                          alt=""
+                          draggable={false}
+                          className={`h-[92px] w-[92px] select-none object-contain [filter:drop-shadow(0_4px_6px_rgba(0,0,0,0.7))] sm:h-[104px] sm:w-[104px] ${getTransformClass(playerClass)}`}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3 text-center sm:items-stretch sm:text-left">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Level</p>
+                        <p className="mt-1 text-5xl font-black tabular-nums leading-none tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] sm:text-6xl">
+                          {level}
+                        </p>
+                      </div>
+                      <div className="w-full space-y-2 pt-1">
+                        <div className="flex items-end justify-between gap-3 border-b border-slate-700/70 pb-1.5">
+                          <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                            Experience
+                          </span>
+                          <span className="font-mono text-xs font-black tabular-nums text-slate-200">
+                            <span>{xpIntoLevel}</span>
+                            <span className="text-slate-500">/</span>
+                            <span className="text-slate-400">{xpForNextLevel}</span>
+                          </span>
+                        </div>
+                        <div className="relative h-4 w-full overflow-hidden rounded-full bg-slate-950 ring-1 ring-inset ring-slate-800/90">
+                          <motion.div
+                            className="h-full bg-gradient-to-r from-indigo-800 via-violet-500 to-amber-300"
+                            initial={false}
+                            animate={{ width: `${pctLabel}%` }}
+                            transition={{ type: 'spring', stiffness: 120, damping: 20 }}
                           />
                         </div>
+                        <p className="text-[11px] font-medium tabular-nums text-slate-500">
+                          {pctLabel.toFixed(1)}% into next level
+                        </p>
                       </div>
-                      <span className="justify-self-end shrink-0 whitespace-nowrap font-mono text-lg font-black tabular-nums tracking-tight text-slate-100 sm:text-xl">
-                        {level}
-                      </span>
-
-                      <div className="pt-0.5 text-xs font-semibold tracking-wide text-slate-400">XP</div>
-                      <span className="justify-self-end shrink-0 whitespace-nowrap font-mono text-lg font-black tabular-nums tracking-tight text-slate-100 sm:text-xl">
-                        {xpIntoLevel}
-                        <span className="text-slate-400">/</span>
-                        {xpForNextLevel}
-                      </span>
                     </div>
-                    <div className="relative h-3 w-full overflow-hidden rounded-sm bg-slate-950">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-amber-800 via-amber-500 to-amber-300"
-                        initial={false}
-                        animate={{ width: `${xpRingPct * 100}%` }}
-                        transition={{ type: 'tween', duration: 0.3 }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3 pt-3">
-                    <ResourceBarRow
-                      value={b.maxHealth}
-                      max={b.maxHealth}
-                      percent={100}
-                      label="Health"
-                      fillClass="bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-400"
-                      trackClass="bg-slate-950"
-                      valueClassName="text-emerald-300"
-                    />
-                    <ResourceBarRow
-                      value={b.maxMana}
-                      max={b.maxMana}
-                      percent={100}
-                      label="Mana"
-                      fillClass="bg-gradient-to-r from-cyan-950 via-cyan-800 to-sky-400"
-                      trackClass="bg-slate-950"
-                      valueClassName="text-sky-200"
-                    />
                   </div>
                 </div>
               </div>
@@ -239,39 +187,57 @@ export function PlayerStatsModal({
 
         <div className="grid grid-cols-2 gap-3 p-4 sm:gap-4 sm:p-5">
           <StatPanel title="Attributes">
-            <BaseStatRow label="Intellect" value={b.intellect} />
-            <BaseStatRow label="Spirit" value={b.spirit} />
-            <BaseStatRow label="Health" value={b.maxHealth} />
-            <BaseStatRow label="Mana" value={b.maxMana} />
+            <BaseStatRow label="Intellect" value={Math.round(b.intellect)} />
+            <BaseStatRow label="Spirit" value={Math.round(b.spirit)} />
+            <BaseStatRow label="Max Health" value={b.maxHealth} />
+            <BaseStatRow label="Max Mana" value={b.maxMana} />
           </StatPanel>
           <StatPanel title="Affinities">
-            <SpellStatRow label="Bonus Healing" value={b.bonusHealing} />
-            <SpellStatRow label="Crit Chance" value={formatCritChance(b.critChancePct)} />
+            <div className="border-b border-slate-800/80 px-0.5 py-2.5 last:border-b-0">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold text-slate-200">Bonus Healing</span>
+                <span className="ml-3 shrink-0 text-right font-mono font-bold tabular-nums text-emerald-200">
+                  +{formatStatValue(b.totalHealingBonusPct)}%
+                </span>
+              </div>
+              <p className="mt-1 text-[13px] text-slate-500">
+                {formatStatValue(b.healingBonusPctFromSpirit)}% from Spirit ·{' '}
+                {formatStatValue(b.healingBonusPctFromTalents)}% from talents
+              </p>
+            </div>
             <SpellStatRow label="Mana Regen" value={`${formatManaRegen(regenSec)}/s`} />
+            <SpellStatRow label="Crit Chance" value={formatCritChance(b.critChancePct)} />
             <SpellStatRow label="Haste" value={formatCritChance(b.hastePct)} />
           </StatPanel>
         </div>
         <div className="space-y-3 px-4 pb-4 sm:px-5 sm:pb-5">
           <StatPanel title="">
-            <div className="flex gap-3 px-0.5 py-1">
+            <div className="flex gap-3 px-0.5 py-2">
               <GameIcon iconPath={b.passiveTraitIcon} glow="spell" size="md" />
               <div className="min-w-0 flex-1">
-                <p className="text-base font-semibold tracking-tight text-slate-100">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-200/95">Class mastery</p>
+                <p className="mt-2 text-base font-semibold tracking-tight text-slate-100">
                   {sentenceCaseLabel(b.passiveTraitName)}
                 </p>
-                <p className="ui-body mt-1.5 text-sm leading-snug text-slate-300">
+                <p className="ui-body mt-2 text-sm leading-relaxed text-slate-300">
                   {sentenceCaseBlock(b.passiveTraitDescription)}
                 </p>
               </div>
             </div>
           </StatPanel>
           <StatPanel title="">
-            <div className="px-0.5 py-1">
-              <SpellStatRow label={b.uniqueStatLabel} value={String(b.uniqueStatRating)} />
-              <p className="ui-body mt-2 px-0.5 text-sm leading-snug text-slate-300">
-                {sentenceCaseBlock(b.uniqueStatDescription)}
+            <div className="border-b border-amber-500/15 px-0.5 pb-3">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-200/95">
+                Unique · {sentenceCaseLabel(b.uniqueStatLabel)}
               </p>
+              <div className="mt-3 flex items-baseline justify-between gap-2">
+                <span className="text-sm font-semibold text-slate-300">Rating</span>
+                <span className="font-mono text-lg font-black tabular-nums text-white">{formatStatValue(b.uniqueStatRating)}</span>
+              </div>
             </div>
+            <p className="ui-body px-0.5 pt-3 text-sm leading-relaxed text-slate-200">
+              {sentenceCaseBlock(b.uniqueStatDescription)}
+            </p>
           </StatPanel>
         </div>
       </div>

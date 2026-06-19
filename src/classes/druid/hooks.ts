@@ -1,7 +1,12 @@
-import { GameState, Spell, Unit } from '../../types.ts';
+import { GameState, Spell, Unit, PlayerCombatBuff } from '../../types.ts';
 import { getRanks, hasBuff, addBuff, isDirectHeal } from '../../talentMechanics.ts';
 import { SPELLS, SPELL_TAG_DRUID_CULTIVATION_HOT, SPELL_TAG_DRUID_HOT, spellHasTag } from '../../constants.ts';
-import type { HealManaCostContext, ManaAfterHealContext } from '../../combatHookRegistry.ts';
+import type {
+  HealLandContext,
+  HealManaCostContext,
+  ManaAfterHealContext,
+  PostHealAccumulator,
+} from '../../combatHookRegistry.ts';
 import { generateCombatUid } from '../../combatUid.ts';
 import { mapEntityById } from '../../mapEntityById.ts';
 import balanceData from '../../data/balance.json';
@@ -103,6 +108,26 @@ export function druidRampCritBonus(s: GameState): number {
   const ranks = s.talents.find((t) => t.id === 'd_r5c4')?.points ?? 0;
   if (ranks <= 0) return 0;
   return druidActiveHotCount(s) * DRUID.rampCritPerHotPerRank * ranks;
+}
+
+export function onHealLand(
+  s: GameState,
+  ctx: HealLandContext,
+  party: Unit[],
+  playerCombatBuffs: PlayerCombatBuff[],
+): PostHealAccumulator {
+  const seeded = applyLivingSeed(
+    s,
+    party,
+    ctx.targetId,
+    ctx.isCrit,
+    ctx.spell,
+    ctx.healMultB,
+    ctx.critH,
+    ctx.tMod,
+    ctx.rankHealMult,
+  );
+  return { party: seeded, playerCombatBuffs, healEff: 0, healOh: 0 };
 }
 
 // Self heal on damage

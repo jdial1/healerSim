@@ -1,7 +1,12 @@
-import { GameState, Spell, Unit, PartyDebuff } from '../../types.ts';
+import { GameState, Spell, Unit, PlayerCombatBuff, PartyDebuff } from '../../types.ts';
 import { getRanks, hasBuff, addBuff, isDirectHeal } from '../../talentMechanics.ts';
 import { SPELLS } from '../../constants.ts';
-import type { HealManaCostContext, ManaAfterHealContext } from '../../combatHookRegistry.ts';
+import type {
+  HealLandContext,
+  HealManaCostContext,
+  ManaAfterHealContext,
+  PostHealAccumulator,
+} from '../../combatHookRegistry.ts';
 import { generateCombatUid } from '../../combatUid.ts';
 import { mapEntityById } from '../../mapEntityById.ts';
 import balanceData from '../../data/balance.json';
@@ -64,15 +69,14 @@ export function applyBeaconEcho(
   targetId: string,
   spell: Spell,
   spellId: string,
-  healMultB: number,
-  critH: number,
-  tMod: number,
-  rankHealMult: number,
+  primaryHealToTarget: number,
 ): { party: Unit[]; eff: number; oh: number } {
   if (getRanks(s.talents, 'beacon_of_light') <= 0) return { party: newParty, eff: 0, oh: 0 };
   const tankId = s.beaconTargetId;
-  if (targetId === tankId || spell.type === 'AOE') return { party: newParty, eff: 0, oh: 0 };
-  const amount = spell.healing * rankHealMult * healMultB * critH * tMod * beaconEchoMultiplier(s);
+  if (targetId === tankId || spell.type === 'AOE' || spellId === 'mana_potion') return { party: newParty, eff: 0, oh: 0 };
+  const amount =
+    isDirectHeal(spell, spellId) && primaryHealToTarget > 0 ? primaryHealToTarget * beaconEchoMultiplier(s) : 0;
+  if (amount <= 0) return { party: newParty, eff: 0, oh: 0 };
   const tank = newParty.find((u) => u.id === tankId);
   if (!tank || tank.health <= 0) return { party: newParty, eff: 0, oh: 0 };
   const { eff, oh } = getHealSplit(tank.health, tank.maxHealth, amount);
@@ -82,6 +86,34 @@ export function applyBeaconEcho(
     ),
     eff,
     oh,
+  };
+}
+
+export function onHealLand(
+  s: GameState,
+  ctx: HealLandContext,
+  party: Unit[],
+  playerCombatBuffs: PlayerCombatBuff[],
+): PostHealAccumulator {
+  let healEff = 0;
+  let healOh = 0;
+  let p = party;
+  if (ctx.spell.type !== 'AOE' && ctx.spellId !== 'mana_potion') {
+    const bef = ctx.partyBeforeCast.find((x) => x.id === ctx.targetId);
+    const aft = p.find((x) => x.id === ctx.targetId);
+    const primaryHealed =
+      bef && aft && aft.health > 0 ? Math.max(0, aft.health - bef.health) : 0;
+    const be = applyBeaconEcho(s, p, ctx.targetId, ctx.spell, ctx.spellId, primaryHealed);
+    p = be.party;
+    healEff += be.eff;
+    healOh += be.oh;
+  }
+  const lb = applyLightbringerResolveSplash(s, ctx.partyBeforeCast, p, ctx.spell, ctx.spellId, ctx.targetId);
+  return {
+    party: lb.party,
+    playerCombatBuffs,
+    healEff: healEff + lb.eff,
+    healOh: healOh + lb.oh,
   };
 }
 

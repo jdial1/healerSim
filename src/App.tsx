@@ -57,6 +57,7 @@ export default function App() {
     setTutorialPaused,
     completeIntroTutorial,
     markTutorialComplete,
+    persistRosterNow,
   } = useGameEngine();
   const [targetId, setTargetId] = useState<string | null>(null);
   const [castTutorialSignal, setCastTutorialSignal] = useState<{
@@ -123,8 +124,12 @@ export default function App() {
     [reorderActionBar],
   );
 
-  const { overlay: introTutorialOverlay, onTapContinue: introTutorialTapContinue, highlightTalentIdForTree } =
-    useIntroTutorial({
+  const {
+    overlay: introTutorialOverlay,
+    onTapContinue: introTutorialTapContinue,
+    highlightTalentIdForTree,
+    tutorialActionBarDropSlotDataId,
+  } = useIntroTutorial({
       state,
       actionBarHighlights,
       targetId,
@@ -134,7 +139,7 @@ export default function App() {
       clearCastSpellSignal: clearCastTutorialSignal,
       setTutorialPaused,
       completeIntroTutorial,
-      markTutorialComplete,
+      markTutorialStepCompleted: markTutorialComplete,
       reorderSignal: reorderTutorialSignal,
     });
 
@@ -251,6 +256,7 @@ export default function App() {
     setMenuView('talents');
   };
   const goToDungeons = () => {
+    persistRosterNow();
     setMenuView('dungeons');
   };
   const navTab = menuView;
@@ -434,6 +440,7 @@ export default function App() {
           allowReorder={!state.currentDungeon}
           onReorderSlots={reorderActionBarWithSignal}
           hideResourcePanels={!state.currentDungeon}
+          tutorialFirstEmptyDropDataId={tutorialActionBarDropSlotDataId ?? undefined}
         />
       ) : null}
 
@@ -504,7 +511,9 @@ export default function App() {
         ) : null}
       </AnimatePresence>
 
-      {showNavPrimerModal ? <NavPrimerModal onDismiss={dismissNavPrimerModal} /> : null}
+      {showNavPrimerModal ? (
+        <NavPrimerModal onDismiss={dismissNavPrimerModal} talentPoints={state.talentPoints} />
+      ) : null}
 
       {pwaNeedsRefresh ? (
         <div

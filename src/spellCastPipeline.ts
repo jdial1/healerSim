@@ -46,6 +46,10 @@ import { getHealSplit } from './healMath.ts';
 import { archangelEchoShieldBonusFraction, archangelSkipsSpell, graceHealMultiplierOnTarget, isPriestSurgeFinisher, PLAYER_BUFF_OMEN_CLEARCASTING, priestDivinityOverhealAbsorb } from './classes/priest/hooks.ts';
 import { paladinAvengingWrathSplashFraction, paladinRadianceHealMultiplier } from './classes/paladin/hooks.ts';
 
+function priestSpellLeavesHoTs(spell: Spell): boolean {
+  return spell.type === 'HOT' || Boolean(spell.hotDuration && spell.hotDuration > 0);
+}
+
 export type CastRuntime = {
   scheduleCooldown: (p: {
     spellId: string;
@@ -445,7 +449,7 @@ function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRunti
   let weaveDirectMult = 1;
   let weaveHotMult = 1;
   if (s.playerClass === 'PRIEST') {
-    if (spell.type === 'HOT' && hasBuff(castBuffs, 'priest_weave_hot')) {
+    if (priestSpellLeavesHoTs(spell) && hasBuff(castBuffs, 'priest_weave_hot')) {
       weaveHotMult += 0.2;
       castBuffs = removeBuff(castBuffs, 'priest_weave_hot');
     }
@@ -480,12 +484,20 @@ function applyStandardHealCast(s: GameState, ready: StandardReady, rt: CastRunti
   let newParty2 = postHeal.party;
   let pbuffs = postHeal.playerCombatBuffs;
   onCrit(s, landCtx);
-  if (isCritH && getRanks(s.talents, 'power_infusion') > 0) {
+  if (
+    isCritH &&
+    isHeal(spell, spellId) &&
+    getRanks(s.talents, 'power_infusion') > 0
+  ) {
     pbuffs = addPiCharges(pbuffs, 3);
   }
-  if (s.playerClass === 'PRIEST' && spell.type === 'HOT') {
+  if (s.playerClass === 'PRIEST' && priestSpellLeavesHoTs(spell)) {
     pbuffs = addBuff(pbuffs, 'priest_weave_direct', 80, 1);
-  } else if (s.playerClass === 'PRIEST' && isDirectHeal(spell, spellId) && spell.type !== 'AOE') {
+  } else if (
+    s.playerClass === 'PRIEST' &&
+    isDirectHeal(spell, spellId) &&
+    spell.type !== 'AOE'
+  ) {
     pbuffs = addBuff(pbuffs, 'priest_weave_hot', 80, 1);
   }
   if (

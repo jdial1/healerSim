@@ -28,17 +28,39 @@ export function getSynergyMultiplierByIds(unit: Unit, spellId: string): number {
   return sp?.balance?.directHealSynergyMultiplier ?? SHARED.directHealSynergyMultiplierDefault;
 }
 
-/**
- * SHARED UTILITY: Debuff stripping
- * Moved from deleted combatHooks.ts
- */
+function unitBuffIdMatch(b: Buff, spellId: string): boolean {
+  return b.sourceSpellId === spellId || b.id === spellId;
+}
+
+export function getPartyBuffStacks(unit: Unit, spellId: string): number {
+  const b = unit.buffs.find(
+    (x) => unitBuffIdMatch(x, spellId) && (x.category ?? 'helpful') === 'helpful',
+  );
+  if (!b) return 0;
+  if ((b.stacks ?? 0) > 0) return b.stacks!;
+  return b.remainingTicks > 0 ? 1 : 0;
+}
+
+function debuffIdMatch(d: PartyDebuff, abilityId: string): boolean {
+  return d.sourceAbilityId === abilityId || d.id === abilityId;
+}
+
+export function getPartyDebuffStacks(unit: Unit, abilityOrDebuffId: string): number {
+  const d = unit.debuffs.find(
+    (x) =>
+      debuffIdMatch(x, abilityOrDebuffId) && (x.category ?? 'harmful') === 'harmful',
+  );
+  if (!d) return 0;
+  return d.remainingTicks > 0 ? 1 : 0;
+}
+
 export function dispelOne(debuffs: PartyDebuff[]): PartyDebuff[] {
-  for (let i = debuffs.length - 1; i >= 0; i--) {
-    if (debuffs[i].dispellable) {
-      return debuffs.filter((_, j) => j !== i);
-    }
-  }
-  return debuffs;
+  const i = debuffs.findIndex(
+    (d) =>
+      (d.category ?? 'harmful') === 'harmful' && (d.isDispellable ?? d.dispellable),
+  );
+  if (i < 0) return debuffs;
+  return debuffs.filter((_, j) => j !== i);
 }
 
 export function getSynergyMultiplier(unit: Unit, spellId: string): number {

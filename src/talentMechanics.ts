@@ -5,7 +5,6 @@ import {
   SPELL_TAG_SWIFTMEND_CONSUMABLE,
   SPELL_TAG_SWIFTMEND_PREFER,
   spellHasTag,
-  TICKS_PER_SECOND,
 } from './constants.ts';
 import type { MechanicId } from './data/index.ts';
 import { CLASS_PROGRESSION } from './playerStats.ts';
@@ -26,22 +25,7 @@ export const ICD_SPIRIT_REDEMPTION = 120 * TICKS_1S;
 export const SURGE_OF_LIGHT_TICKS = 6 * TICKS_1S;
 export const HEALER_UNIT_ID = '5';
 
-const MENTAL_FORTITUDE_MANA_FRACTION_PER_5S = 0.01;
 
-
-export function getGeneralManaReturn(
-  maxMana: number,
-  talents: Talent[],
-  spiritRegenLockoutTicksRemaining: number,
-): number {
-  if (spiritRegenLockoutTicksRemaining > 0) return 0;
-
-  // Search for the Meditative Wellspring mechanic regardless of class
-  const t = talents.find((x) => x.mechanicId === 'priest_meditative_wellspring');
-  if (!t || t.points < t.maxPoints) return 0;
-
-  return (maxMana * MENTAL_FORTITUDE_MANA_FRACTION_PER_5S) / (5 * TICKS_PER_SECOND);
-}
 
 export function getRanks(talents: Talent[], mechanicId: MechanicId): number {
   return talents
@@ -216,9 +200,17 @@ export function hasHot(unit: Unit): boolean {
  * Dynamic consumable detection for Swiftmend-like mechanics
  */
 export function getConsumableHotIndex(unit: Unit): number {
-  const prefer = unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_PREFER));
+  const prefer = unit.buffs.findIndex(
+    (b) =>
+      (b.category ?? 'helpful') === 'helpful' &&
+      spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_PREFER),
+  );
   if (prefer >= 0) return prefer;
-  return unit.buffs.findIndex((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_CONSUMABLE));
+  return unit.buffs.findIndex(
+    (b) =>
+      (b.category ?? 'helpful') === 'helpful' &&
+      spellHasTag(b.sourceSpellId, SPELL_TAG_SWIFTMEND_CONSUMABLE),
+  );
 }
 
 export function isHeal(spell: { type: string }, spellId: string): boolean {

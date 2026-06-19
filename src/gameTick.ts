@@ -40,7 +40,6 @@ import {
   getNaturalPerfectionStacks,
   getCapstoneAfterTick,
   addNaturalPerfection,
-  getGeneralManaReturn,
 } from './talentMechanics.ts';
 import { getPrimaryStats } from './playerStats.ts';
 import { T_SPIRIT_AMP } from './combatHelper.ts';
@@ -109,6 +108,8 @@ function applyDebuffTemplate(
         icon: template.icon,
         sourceAbilityId: template.abilityId,
         dispellable: template.dispellable,
+        category: 'harmful',
+        isDispellable: template.dispellable,
       };
       return { ...u, debuffs: [debuff] };
     });
@@ -517,6 +518,9 @@ function processEnvironmentalTick(
         (buff.tickAccumulator ?? 0) +
         (buff.tickIntervalScale ?? 1) * getHotTickRateMultiplier({ state, unit, buff, healPerTick: hpTick });
       let rem = buff.remainingTicks;
+      const bloomAtLastTickTick =
+        buff.sourceSpellId === 'lifebloom' &&
+        Boolean(buff.bloomBurstHeal && buff.bloomBurstHeal > 0 && rem === 1);
       while (tickAcc >= 1 && rem > 0 && hpTick > 0) {
         tickAcc -= 1;
         const tickCtx = {
@@ -547,8 +551,14 @@ function processEnvironmentalTick(
           );
         }
       }
+      if (bloomAtLastTickTick && buff.bloomBurstHeal && currentHealth > 0) {
+        const bl = getHealSplit(currentHealth, unit.maxHealth, buff.bloomBurstHeal);
+        envHealEff += bl.eff;
+        envHealOh += bl.oh;
+        currentHealth = Math.min(unit.maxHealth, currentHealth + buff.bloomBurstHeal);
+      }
       rem -= 1;
-      if (rem <= 0 && buff.bloomBurstHeal && currentHealth > 0) {
+      if (rem <= 0 && buff.bloomBurstHeal && currentHealth > 0 && buff.sourceSpellId !== 'lifebloom') {
         const bl = getHealSplit(currentHealth, unit.maxHealth, buff.bloomBurstHeal);
         envHealEff += bl.eff;
         envHealOh += bl.oh;
@@ -707,7 +717,6 @@ function resolvePlayerSystems(
   const regenThisTick =
     manaRegenAmountPerTick(lockTicksPre, spirit) +
     potionDrip +
-    getGeneralManaReturn(state.maxMana, state.talents, lockTicksPre) +
     getManaReturn(state, lockTicksPre);
   const newMana = Math.min(
     state.maxMana,

@@ -88,10 +88,33 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
       : null;
 
   const renderTooltipDiffText = (text: string) => {
+    const tokenRe = /\[\[(\d+(?:\.\d+)?)\|(\d+(?:\.\d+)?)\]\]/g;
+
+    function tokenTone(
+      line: string,
+      tokenIndex: number,
+      oldNum: number,
+      newNum: number,
+    ): { oldCls: string; arrowCls: string; newCls: string } {
+      const head = line.slice(0, tokenIndex).toLowerCase();
+      const isMana =
+        /\bmana\b/.test(head) ||
+        /\bmana\b/.test(line.slice(tokenIndex).toLowerCase()) ||
+        /cost/.test(head);
+      const increased = newNum > oldNum;
+      if (isMana) {
+        return increased
+          ? { oldCls: 'text-slate-300', arrowCls: 'text-amber-300', newCls: 'text-rose-300' }
+          : { oldCls: 'text-slate-300', arrowCls: 'text-amber-300', newCls: 'text-emerald-300' };
+      }
+      return increased
+        ? { oldCls: 'text-slate-400', arrowCls: 'text-amber-300', newCls: 'text-emerald-300' }
+        : { oldCls: 'text-slate-400', arrowCls: 'text-amber-300', newCls: 'text-rose-300' };
+    }
+
     const lines = text.split('\n');
     return lines.map((line, lineIdx) => {
       const parts: ReactNode[] = [];
-      const tokenRe = /\[\[(\d+(?:\.\d+)?)\|(\d+(?:\.\d+)?)\]\]/g;
       let cursor = 0;
       let m = tokenRe.exec(line);
       let key = 0;
@@ -101,17 +124,14 @@ export function DungeonOutcomeModal({ outcome, onDismiss }: DungeonOutcomeModalP
         }
         const oldValue = Number(m[1]);
         const newValue = Number(m[2]);
-        const manaLine = /mana/i.test(line);
-        const newValueClass = manaLine
-          ? newValue > oldValue
-            ? 'text-rose-300'
-            : 'text-emerald-300'
-          : 'text-emerald-300';
+        const tone = tokenTone(line, m.index, oldValue, newValue);
         parts.push(
-          <span key={`d-${lineIdx}-${key++}`} className="inline-flex items-center gap-1">
-            <span className="text-slate-300">{m[1]}</span>
-            <span className="text-amber-300">→</span>
-            <span className={newValueClass}>{m[2]}</span>
+          <span key={`d-${lineIdx}-${key++}`} className="inline-flex flex-wrap items-baseline gap-1">
+            <span className={tone.oldCls}>{m[1]}</span>
+            <span className={`${tone.arrowCls} font-semibold`} aria-hidden>
+              →
+            </span>
+            <span className={`${tone.newCls} font-semibold`}>{m[2]}</span>
           </span>,
         );
         cursor = m.index + m[0].length;

@@ -1,4 +1,4 @@
-
+﻿
 import type { MechanicId } from './data/index.ts';
 
 export type ClassType = 'DRUID' | 'PRIEST' | 'PALADIN';
@@ -40,6 +40,8 @@ export interface Spell {
   };
 }
 
+export type StatusEffectCategory = 'helpful' | 'harmful';
+
 export interface Buff {
   id: string;
   name: string;
@@ -47,6 +49,7 @@ export interface Buff {
   healingPerTick: number;
   icon: string;
   sourceSpellId: string;
+  category?: StatusEffectCategory;
   durationTicksMax?: number;
   stacks?: number;
   tickIntervalScale?: number;
@@ -64,6 +67,8 @@ export interface PartyDebuff {
   icon: string;
   sourceAbilityId: string;
   dispellable: boolean;
+  category?: StatusEffectCategory;
+  isDispellable?: boolean;
 }
 
 export interface BossSelfBuff {

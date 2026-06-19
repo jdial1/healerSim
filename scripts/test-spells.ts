@@ -27,7 +27,6 @@ import {
   getManaReturn,
   onManaAfterHeal
 } from '../src/combatHookRegistry.ts';
-import { getGeneralManaReturn } from '../src/talentMechanics.ts';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getTalents } from '../src/talents/index.ts';
@@ -148,7 +147,9 @@ export function simulateSecondsToOom(
     ticks += 1;
     mana = Math.min(
       maxMana,
-      mana + manaRegenAmountPerTick(lockout, spirit) + getGeneralManaReturn(maxMana, talents, lockout)
+      mana +
+        manaRegenAmountPerTick(lockout, spirit) +
+        getManaReturn({ ...sBase, mana }, lockout),
     );
     lockout = Math.max(0, lockout - 1);
     gcd = Math.max(0, gcd - 1);

@@ -1,6 +1,6 @@
 import { useState, useReducer, useEffect, useCallback, useRef, useMemo } from 'react';
 import { GameState, ClassType, Dungeon, DungeonPace } from '../types.ts';
-import { TICK_RATE } from '../constants.ts';
+import { SUSPEND_SNAPSHOT_TICK_INTERVAL, TICK_RATE } from '../constants.ts';
 import {
   readRoster,
   readTutorialCompletedSteps,
@@ -28,6 +28,10 @@ export function useGameEngine() {
   stateRef.current = state;
   const rosterRef = useRef(roster);
   rosterRef.current = roster;
+  const prevDungeonOutcomeRef = useRef<GameState['dungeonOutcome']>(null);
+  const prevIntroTutorialCompleteRef = useRef(false);
+  const suspendSnapshotTickRef = useRef<number | null>(null);
+  const suspendHpBracketRef = useRef<number | null>(null);
 
   const persistActiveSessionIfAny = useCallback((): RosterV2 => {
     const s = stateRef.current;
@@ -40,40 +44,45 @@ export function useGameEngine() {
     return r;
   }, []);
 
+  const syncPersistGuardsAfterSet = useCallback((next: GameState) => {
+    prevDungeonOutcomeRef.current = next.dungeonOutcome;
+    prevIntroTutorialCompleteRef.current = next.introTutorialComplete;
+  }, []);
+
   const loadCharacter = useCallback(
     (cls: ClassType) => {
       const r = persistActiveSessionIfAny();
       const suspended = getSuspendedRun(cls);
-      const next = suspended ?? getInitialState(cls, r.byClass[cls]);
-      dispatch({
-        type: 'SET',
-        state: { ...next, tutorialCompletedSteps: tutorialStepsRef.current },
-      });
+      suspendSnapshotTickRef.current = null;
+      const next = {
+        ...(suspended ?? getInitialState(cls, r.byClass[cls])),
+        tutorialCompletedSteps: tutorialStepsRef.current,
+      };
+      syncPersistGuardsAfterSet(next);
+      dispatch({ type: 'SET', state: next });
     },
-    [persistActiveSessionIfAny],
+    [persistActiveSessionIfAny, syncPersistGuardsAfterSet],
   );
 
   const startNewClass = useCallback(
     (cls: ClassType) => {
       persistActiveSessionIfAny();
-      dispatch({
-        type: 'SET',
-        state: {
-          ...getInitialState(cls, undefined),
-          tutorialCompletedSteps: tutorialStepsRef.current,
-        },
-      });
+      const next = {
+        ...getInitialState(cls, undefined),
+        tutorialCompletedSteps: tutorialStepsRef.current,
+      };
+      syncPersistGuardsAfterSet(next);
+      dispatch({ type: 'SET', state: next });
     },
-    [persistActiveSessionIfAny],
+    [persistActiveSessionIfAny, syncPersistGuardsAfterSet],
   );
 
   const returnToRoster = useCallback(() => {
     persistActiveSessionIfAny();
-    dispatch({
-      type: 'SET',
-      state: { ...emptyGameBase(), tutorialCompletedSteps: tutorialStepsRef.current },
-    });
-  }, [persistActiveSessionIfAny]);
+    const next = { ...emptyGameBase(), tutorialCompletedSteps: tutorialStepsRef.current };
+    syncPersistGuardsAfterSet(next);
+    dispatch({ type: 'SET', state: next });
+  }, [persistActiveSessionIfAny, syncPersistGuardsAfterSet]);
 
   const reorderActionBar = useCallback((from: number, to: number) => {
     dispatch({ type: 'REORDER_ACTION_BAR', from, to });
@@ -84,12 +93,19 @@ export function useGameEngine() {
   }, []);
 
   const abandonDungeon = useCallback(() => {
+    persistActiveSessionIfAny();
+    suspendSnapshotTickRef.current = null;
+    clearSuspendedRun();
     dispatch({ type: 'ABANDON_DUNGEON' });
-  }, []);
+  }, [persistActiveSessionIfAny]);
 
-  const startDungeon = useCallback((dungeon: Dungeon, pace: DungeonPace) => {
-    dispatch({ type: 'START_DUNGEON', dungeon, pace, random: Math.random });
-  }, []);
+  const startDungeon = useCallback(
+    (dungeon: Dungeon, pace: DungeonPace) => {
+      persistActiveSessionIfAny();
+      dispatch({ type: 'START_DUNGEON', dungeon, pace, random: Math.random });
+    },
+    [persistActiveSessionIfAny],
+  );
 
   const unlockTalent = useCallback((talentId: string) => {
     dispatch({ type: 'UNLOCK_TALENT', talentId });
@@ -158,6 +174,50 @@ export function useGameEngine() {
 
   useEffect(() => {
     if (!state.playerClass) return;
+    const prev = prevDungeonOutcomeRef.current;
+    prevDungeonOutcomeRef.current = state.dungeonOutcome;
+    if (state.dungeonOutcome !== null && prev === null) {
+      persistActiveSessionIfAny();
+      clearSuspendedRun();
+    }
+  }, [state.dungeonOutcome, state.playerClass, persistActiveSessionIfAny]);
+
+  useEffect(() => {
+    if (!state.playerClass) return;
+    const prevIntro = prevIntroTutorialCompleteRef.current;
+    prevIntroTutorialCompleteRef.current = state.introTutorialComplete;
+    if (state.introTutorialComplete && prevIntro !== true) {
+      persistActiveSessionIfAny();
+    }
+  }, [state.introTutorialComplete, state.playerClass, persistActiveSessionIfAny]);
+
+  useEffect(() => {
+    if (!state.playerClass) return;
+    if (!state.isCombatActive || state.currentDungeon === null || state.combatPhase !== 'BOSS') {
+      suspendSnapshotTickRef.current = null;
+      suspendHpBracketRef.current = null;
+      clearSuspendedRun();
+      return;
+    }
+    const tick = state.combatElapsedTicks;
+    const maxHp = state.enemyMaxHealth;
+    const hpFrac = maxHp > 0 ? state.enemyHealth / maxHp : 1;
+    const bracket =
+      Number.isFinite(hpFrac) && hpFrac >= 0
+        ? Math.min(3, Math.max(0, Math.floor((1 - hpFrac) * 4)))
+        : 0;
+    const prevTick = suspendSnapshotTickRef.current;
+    const prevBracket = suspendHpBracketRef.current;
+    const intervalElapsed = prevTick === null || tick - prevTick >= SUSPEND_SNAPSHOT_TICK_INTERVAL;
+    const bracketChanged = prevBracket === null || bracket !== prevBracket;
+    if (!intervalElapsed && !bracketChanged) return;
+    writeSuspendedRun(state);
+    suspendSnapshotTickRef.current = tick;
+    suspendHpBracketRef.current = bracket;
+  }, [state]);
+
+  useEffect(() => {
+    if (!state.playerClass || state.currentDungeon) return;
     setRoster((r) => {
       const next = mergeRosterWithCharacter(r, state);
       rosterRef.current = next;
@@ -165,23 +225,16 @@ export function useGameEngine() {
       return next;
     });
   }, [
+    state.currentDungeon,
+    state.playerClass,
     state.xp,
     state.level,
     state.talentPoints,
     state.talents,
-    state.playerClass,
     state.completedDungeonIds,
     state.activeActionBars,
+    state.introTutorialComplete,
   ]);
-
-  useEffect(() => {
-    if (!state.playerClass) return;
-    if (state.isCombatActive && state.currentDungeon && state.combatPhase === 'BOSS') {
-      writeSuspendedRun(state);
-      return;
-    }
-    clearSuspendedRun();
-  }, [state]);
 
   useEffect(() => {
     tutorialStepsRef.current = state.tutorialCompletedSteps;
@@ -196,6 +249,10 @@ export function useGameEngine() {
     }),
     [state.playerCombatBuffs],
   );
+
+  const persistRosterNow = useCallback(() => {
+    persistActiveSessionIfAny();
+  }, [persistActiveSessionIfAny]);
 
   return {
     state,
@@ -218,5 +275,6 @@ export function useGameEngine() {
     setTutorialPaused,
     completeIntroTutorial,
     markTutorialComplete,
+    persistRosterNow,
   };
 }

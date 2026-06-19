@@ -11,6 +11,7 @@ export const TUTORIAL_STEP_MANA_POTION = 'mana_potion_tip';
 export const TUTORIAL_STEP_AOE = 'aoe_heal_tip';
 export const TUTORIAL_STEP_REORDER = 'reorder_tip';
 export const TUTORIAL_STEP_NAV_PRIMER = 'nav_primer';
+export const TUTORIAL_ACTION_BAR_DROP_DATA_ID = 'tutorial-action-bar-drop';
 
 const HEAL_SPELL_BY_CLASS: Record<ClassType, string> = {
   PRIEST: 'flash_heal',

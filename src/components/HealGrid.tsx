@@ -134,30 +134,34 @@ function healthTierClasses(percent: number) {
   if (percent < 25) {
     return {
       fill: `${baseTexture} from-red-400 via-red-600 to-red-800 animate-pulse`,
-      edge: 'border-r-red-300 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]', 
+      edge: 'border-r-red-300 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]',
+      ghost: `${baseTexture} from-red-300/65 via-red-600/55 to-red-900/55 opacity-[0.6] brightness-125 saturate-[0.85]`,
     };
   }
-  
+
   // LOW (Under 50%) - Vibrant warning orange
   if (percent < 50) {
     return {
       fill: `${baseTexture} from-orange-300 via-orange-500 to-orange-700`,
       edge: 'border-r-orange-200 drop-shadow-[0_0_5px_rgba(249,115,22,0.5)]',
+      ghost: `${baseTexture} from-orange-300/60 via-orange-500/55 to-orange-900/50 opacity-[0.58] brightness-125 saturate-75`,
     };
   }
-  
+
   // MEDIUM (Under 75%) - Yellow/Gold
   if (percent < 75) {
     return {
       fill: `${baseTexture} from-yellow-200 via-yellow-400 to-yellow-600`,
       edge: 'border-r-yellow-100',
+      ghost: `${baseTexture} from-yellow-200/60 via-yellow-400/55 to-yellow-700/55 opacity-[0.55] brightness-125 saturate-80`,
     };
   }
-  
+
   // HIGH (75% and above) - Classic bright "Healthy" WoW Green
   return {
     fill: `${baseTexture} from-green-300 via-green-500 to-green-700`,
     edge: 'border-r-green-200',
+    ghost: `${baseTexture} from-green-400/65 via-green-500/55 to-green-700/50 opacity-[0.55] brightness-125 saturate-75`,
   };
 }
 function healGridRowClass(isSelected: boolean, isDead: boolean, edgeClass: string) {
@@ -286,6 +290,7 @@ export function HealGrid({
               shieldWedge={shieldWedge}
               hpBarTop={hpBarTop}
               tierFill={tier.fill}
+              tierGhostFill={tier.ghost}
               hpCur={hpCur}
               hpMax={hpMax}
               rowFloats={rowFloats}
@@ -340,6 +345,7 @@ interface HealGridUnitRowProps {
   shieldWedge: number;
   hpBarTop: string;
   tierFill: string;
+  tierGhostFill: string;
   hpCur: number;
   hpMax: number;
   rowFloats: FloatingCombatTextEntry[];
@@ -357,6 +363,7 @@ function HealGridUnitRow(props: HealGridUnitRowProps) {
     shieldWedge,
     hpBarTop,
     tierFill,
+    tierGhostFill,
     hpCur,
     hpMax,
     rowFloats,
@@ -406,19 +413,19 @@ function HealGridUnitRow(props: HealGridUnitRowProps) {
                   />
                 </div>
               ) : null}
-              <div className="absolute inset-0 bg-red-950/20" />
+              <div className="pointer-events-none absolute inset-0 z-0 bg-red-950/20" />
               <motion.div
-                className={`absolute top-0 left-0 h-full transition-all duration-300 ease-out border-r-[1px] ${tierFill} ${tierEdge}`}
+                className={`pointer-events-none absolute top-0 left-0 z-[1] h-full border-r-[1px] ${tierGhostFill}`}
                 initial={false}
                 animate={{ width: `${ghostPercent}%` }}
                 transition={{
                   duration: ghostEaseDuration,
-                  ease: ghostEaseDuration > 0 ? [0.4, 0, 0.2, 1] : 'linear',
+                  ease: ghostEaseDuration > 0 ? [0.33, 1, 0.68, 1] : 'linear',
                 }}
                 style={{ originX: 0 }}
               />
               <motion.div
-                className={`absolute top-0 left-0 h-full transition-all duration-300 ease-out border-r-[1px] ${tierFill} ${tierEdge}`}
+                className={`pointer-events-none absolute top-0 left-0 z-[2] h-full border-r-[1px] shadow-sm ${tierFill} ${tierEdge}`}
                 initial={false}
                 animate={{ width: `${healthPercent}%` }}
                 transition={{ duration: 0 }}

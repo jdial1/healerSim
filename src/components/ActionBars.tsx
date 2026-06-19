@@ -68,6 +68,7 @@ interface ActionBarsProps {
   allowReorder?: boolean;
   onReorderSlots?: (fromIndex: number, toIndex: number) => void;
   hideResourcePanels?: boolean;
+  tutorialFirstEmptyDropDataId?: string | null;
 }
 
 export function ActionBars({
@@ -78,6 +79,7 @@ export function ActionBars({
   allowReorder = false,
   onReorderSlots,
   hideResourcePanels = false,
+  tutorialFirstEmptyDropDataId = null,
 }: ActionBarsProps) {
   const {
     xp,
@@ -95,6 +97,7 @@ export function ActionBars({
     playerClass,
     level,
   } = playerCombatStats;
+  const firstEmptyTutorialBarIndex = tutorialFirstEmptyDropDataId ? spellIds.indexOf('') : -1;
   const barRootRef = useRef<HTMLDivElement>(null);
   const spellTipRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const suppressPreviewClickUntilRef = useRef(0);
@@ -105,8 +108,8 @@ export function ActionBars({
   const [castBlockShake, setCastBlockShake] = useState<Record<number, number>>({});
   const touchReorderFromRef = useRef<number | null>(null);
   const touchReorderPointerIdRef = useRef<number | null>(null);
-  const touchReorderMovedRef = useRef(false);
-  const touchReorderStartRef = useRef({ x: 0, y: 0 });
+  const reorderPointerCleanupRef = useRef<(() => void) | null>(null);
+  const reorderPointerClientRef = useRef({ x: 0, y: 0 });
 
   const actionBarIndexAtPoint = useCallback((clientX: number, clientY: number) => {
     const root = barRootRef.current;
@@ -121,62 +124,100 @@ export function ActionBars({
     return Number.isNaN(i) ? null : i;
   }, []);
 
-  const handleTouchReorderPointerDown = useCallback(
-    (index: number, e: ReactPointerEvent<HTMLDivElement>) => {
+  const clearReorderGestureListeners = useCallback(() => {
+    reorderPointerCleanupRef.current?.();
+    reorderPointerCleanupRef.current = null;
+  }, []);
+
+  useEffect(() => () => clearReorderGestureListeners(), [clearReorderGestureListeners]);
+
+  const attachSpellSlotReorderHold = useCallback(
+    (slotIndex: number, activate: () => void, e: ReactPointerEvent<HTMLDivElement>) => {
       if (!allowReorder || !onReorderSlots) return;
-      if (touchReorderFromRef.current !== null) return;
-      touchReorderFromRef.current = index;
-      touchReorderPointerIdRef.current = e.pointerId;
-      touchReorderMovedRef.current = false;
-      touchReorderStartRef.current = { x: e.clientX, y: e.clientY };
-      setDraggingBarIndex(index);
-      setReorderHoverIndex(index);
-      e.currentTarget.setPointerCapture(e.pointerId);
-    },
-    [allowReorder, onReorderSlots],
-  );
+      clearReorderGestureListeners();
+      let dragStarted = false;
+      const el = e.currentTarget;
+      const pid = e.pointerId;
+      const ptype = e.pointerType;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      reorderPointerClientRef.current = { x: startX, y: startY };
 
-  const handleTouchReorderPointerMove = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      if (touchReorderFromRef.current === null) return;
-      if (e.pointerId !== touchReorderPointerIdRef.current) return;
-      if (!isTouchLikePointer(e.pointerType)) return;
-      const dx = e.clientX - touchReorderStartRef.current.x;
-      const dy = e.clientY - touchReorderStartRef.current.y;
-      if (dx * dx + dy * dy > 36) touchReorderMovedRef.current = true;
-      e.preventDefault();
-      const hi = actionBarIndexAtPoint(e.clientX, e.clientY);
-      if (hi !== null) setReorderHoverIndex(hi);
-    },
-    [actionBarIndexAtPoint],
-  );
+      const armDrag = () => {
+        if (dragStarted) return;
+        dragStarted = true;
+        touchReorderFromRef.current = slotIndex;
+        touchReorderPointerIdRef.current = pid;
+        setDraggingBarIndex(slotIndex);
+        setReorderHoverIndex(slotIndex);
+        try {
+          el.setPointerCapture(pid);
+        } catch {
+          /* ignore */
+        }
+      };
 
-  const handleTouchReorderPointerEnd = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      if (touchReorderFromRef.current === null) return;
-      if (e.pointerId !== touchReorderPointerIdRef.current) return;
-      if (!isTouchLikePointer(e.pointerType)) return;
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {}
-      const from = touchReorderFromRef.current;
-      const moved = touchReorderMovedRef.current;
-      touchReorderFromRef.current = null;
-      touchReorderPointerIdRef.current = null;
-      touchReorderMovedRef.current = false;
-      setDraggingBarIndex(null);
-      setReorderHoverIndex(null);
-      let to = from;
-      const hi = actionBarIndexAtPoint(e.clientX, e.clientY);
-      if (hi !== null) to = hi;
-      if (moved && from !== to && onReorderSlots) {
-        suppressPreviewClickUntilRef.current = performance.now() + 450;
-        onReorderSlots(from, to);
-      } else if (moved) {
-        suppressPreviewClickUntilRef.current = performance.now() + 450;
-      }
+      const longMs = isTouchLikePointer(ptype) ? 200 : 220;
+      const timer = window.setTimeout(armDrag, longMs);
+
+      const teardown = () => {
+        window.clearTimeout(timer);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+        reorderPointerCleanupRef.current = null;
+      };
+
+      const onMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== pid) return;
+        reorderPointerClientRef.current = { x: ev.clientX, y: ev.clientY };
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (dx * dx + dy * dy > 36) {
+          window.clearTimeout(timer);
+          armDrag();
+        }
+        if (dragStarted) {
+          ev.preventDefault();
+          const hi = actionBarIndexAtPoint(ev.clientX, ev.clientY);
+          if (hi !== null) setReorderHoverIndex(hi);
+        }
+      };
+
+      const onUp = (ev: PointerEvent) => {
+        if (ev.pointerId !== pid) return;
+        teardown();
+        if (!dragStarted) {
+          activate();
+          return;
+        }
+        try {
+          el.releasePointerCapture(pid);
+        } catch {
+          /* ignore */
+        }
+        const from = touchReorderFromRef.current ?? slotIndex;
+        touchReorderFromRef.current = null;
+        touchReorderPointerIdRef.current = null;
+        setDraggingBarIndex(null);
+        setReorderHoverIndex(null);
+        const { x, y } = reorderPointerClientRef.current;
+        const hi = actionBarIndexAtPoint(x, y);
+        const to = hi !== null ? hi : from;
+        if (from !== to) {
+          suppressPreviewClickUntilRef.current = performance.now() + 450;
+          onReorderSlots(from, to);
+        } else {
+          suppressPreviewClickUntilRef.current = performance.now() + 450;
+        }
+      };
+
+      reorderPointerCleanupRef.current = teardown;
+      window.addEventListener('pointermove', onMove, { passive: false });
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
     },
-    [actionBarIndexAtPoint, onReorderSlots],
+    [actionBarIndexAtPoint, allowReorder, clearReorderGestureListeners, onReorderSlots],
   );
 
   useEffect(() => {
@@ -251,8 +292,6 @@ export function ActionBars({
   const regenBuffActive = manaRegenBuffTicksRemaining > 0;
   const totalRegenPerSec = regenPerSec + manaPotionDripPerSec;
   const fmtRegen = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-  const spiritRegenPaused =
-    spiritRegenLockoutTicksRemaining > 0 && manaRegenBuffTicksRemaining <= 0;
 
   return (
     <div ref={barRootRef} className="ui-action-bar-root">
@@ -302,30 +341,30 @@ export function ActionBars({
           aria-hidden
         />
         <div className="ui-mana-pool-row">
-        <div className="flex min-w-0 flex-col gap-0 leading-tight">
+        <div className="flex min-w-0 flex-col gap-1 leading-tight">
           <span className="text-sm font-black uppercase tracking-wide text-slate-400">Mana Pool</span>
-          <span className="ui-numeric text-sm font-mono font-bold tracking-tight">
-            {regenBuffActive ? (
+          <div className="ui-numeric flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-sm font-bold tracking-tight">
+            {regenBuffActive && spiritRegenLockoutTicksRemaining > 0 ? (
               <>
                 <span className="text-sky-100">+{fmtRegen(totalRegenPerSec)}/s</span>
-                <span className="ml-1.5 text-xs font-black uppercase text-sky-200/90">
-                  +{fmtRegen(manaPotionDripPerSec)}/s potion
-                </span>
-                <span className="ml-1.5 text-xs text-slate-600 line-through decoration-slate-600">
-                  +{fmtRegen(baseRegenPerSec)}/s
+                <span className="text-xs font-semibold text-sky-300/95">(+{fmtRegen(manaPotionDripPerSec)} potion)</span>
+                <span className="text-[11px] font-semibold text-slate-500">(5SR)</span>
+              </>
+            ) : regenBuffActive ? (
+              <>
+                <span className="text-sky-100">+{fmtRegen(totalRegenPerSec)}/s</span>
+                <span className="text-xs font-semibold text-sky-300/95">
+                  (+{fmtRegen(manaPotionDripPerSec)} potion)
                 </span>
               </>
-            ) : spiritRegenPaused ? (
-              <span className="text-slate-100">
-                +0/s
-                <span className="ml-1.5 text-xs font-black uppercase tracking-wide text-slate-200/95">5SR</span>
+            ) : spiritRegenLockoutTicksRemaining > 0 ? (
+              <span className="font-semibold text-slate-500">
+                +{fmtRegen(totalRegenPerSec)}/s <span className="text-[11px]">(5SR)</span>
               </span>
             ) : (
-              <span className="text-slate-500">
-                +{Number.isInteger(baseRegenPerSec) ? baseRegenPerSec : baseRegenPerSec.toFixed(1)}/s
-              </span>
+              <span className="text-emerald-200/90">+{fmtRegen(baseRegenPerSec)}/s</span>
             )}
-          </span>
+          </div>
         </div>
         <span className="ui-mana-pool-readout">
           {Math.floor(mana)}<span className="ui-mana-pool-readout-max">/ {maxMana}</span>
@@ -349,6 +388,11 @@ export function ActionBars({
               <div key={`bar-${index}`} data-action-bar-index={index} className="relative group">
                 <div
                   role="presentation"
+                  data-tutorial-id={
+                    tutorialFirstEmptyDropDataId && index === firstEmptyTutorialBarIndex
+                      ? tutorialFirstEmptyDropDataId
+                      : undefined
+                  }
                   draggable={false}
                   onDragOver={
                     reordering
@@ -418,8 +462,10 @@ export function ActionBars({
               setPreviewTooltipSpellId((prev) => (prev === id ? null : id));
               return;
             }
+            const oomLike =
+              cooldown <= 0 && spellsEnabled && (isLowMana || noPotionCharges);
             if (disabled) {
-              setCastBlockShake((m) => ({ ...m, [index]: (m[index] ?? 0) + 1 }));
+              if (oomLike) setCastBlockShake((m) => ({ ...m, [index]: (m[index] ?? 0) + 1 }));
               return;
             }
             onCast(id);
@@ -429,7 +475,7 @@ export function ActionBars({
             <div
               key={`bar-${index}`}
               data-action-bar-index={index}
-              className="relative group"
+              className={`relative group${reordering ? ' touch-none' : ''}`}
               onPointerEnter={() => setTooltipHoverSpellId(id)}
               onPointerLeave={() => {
                 setTooltipHoverSpellId((cur) => (cur === id ? null : cur));
@@ -442,11 +488,15 @@ export function ActionBars({
                 role="button"
                 tabIndex={disabled ? -1 : 0}
                 aria-disabled={disabled || undefined}
-                onPointerDown={reordering ? (e) => handleTouchReorderPointerDown(index, e) : undefined}
-                onPointerMove={reordering ? handleTouchReorderPointerMove : undefined}
-                onPointerUp={reordering ? handleTouchReorderPointerEnd : undefined}
-                onPointerCancel={reordering ? handleTouchReorderPointerEnd : undefined}
-                onClick={activateSlot}
+                onPointerDown={
+                  reordering
+                    ? (ev) => {
+                        if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+                        attachSpellSlotReorderHold(index, activateSlot, ev);
+                      }
+                    : undefined
+                }
+                onClick={reordering ? undefined : activateSlot}
                 onKeyDown={(e) => {
                   if (e.key !== 'Enter' && e.key !== ' ') return;
                   e.preventDefault();

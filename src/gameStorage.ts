@@ -137,12 +137,24 @@ export function readRoster(): RosterV2 {
     if (legacyRaw) {
       const p = JSON.parse(legacyRaw) as SavedShape;
       if (p.v === 1 && p.playerClass) {
+        const cls = p.playerClass;
         const migrated: RosterV2 = {
           v: 2,
-          lastPlayedClass: p.playerClass,
-          byClass: { [p.playerClass]: { ...p, playerClass: p.playerClass } },
+          lastPlayedClass: cls,
+          byClass: {
+            [cls]: {
+              v: 1,
+              xp: p.xp,
+              talentRanks: p.talentRanks,
+              completedDungeonIds: p.completedDungeonIds,
+              playerClass: cls,
+              actionBarSpellIds: p.actionBarSpellIds,
+              introTutorialComplete: p.introTutorialComplete,
+            },
+          },
         };
         writeRoster(migrated);
+        localStorage.removeItem(LEGACY_SAVE_KEY);
         return migrated;
       }
     }
@@ -166,12 +178,12 @@ function isSuspendedRun(x: unknown): x is SuspendedRun {
   return true;
 }
 
-function isSuspendableBossState(state: GameState): boolean {
+export function isSuspendableBossState(state: GameState): boolean {
   return (
-    !!state.playerClass &&
-    state.isCombatActive &&
-    !!state.currentDungeon &&
-    state.combatPhase === 'BOSS'
+    state.isCombatActive === true &&
+    state.combatPhase === 'BOSS' &&
+    state.currentDungeon !== null &&
+    state.playerClass !== null
   );
 }
 

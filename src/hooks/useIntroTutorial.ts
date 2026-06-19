@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { GameState } from '../types.ts';
 import { getTutorialCopy } from '../playerStats.ts';
 import {
@@ -6,6 +6,7 @@ import {
   INTRO_TUTORIAL_DEBUFF_DATA_ID,
   INTRO_TUTORIAL_DUNGEON_ID,
   INTRO_TUTORIAL_SUCCESS_DUNGEON_NAME,
+  TUTORIAL_ACTION_BAR_DROP_DATA_ID,
   TUTORIAL_SPOTLIGHT_TANK_DATA_ID,
   TUTORIAL_STEP_AOE,
   TUTORIAL_STEP_MANA_POTION,
@@ -87,6 +88,9 @@ export function useIntroTutorial({
   const prevHadDungeonRef = useRef(!!state.currentDungeon);
   const potionBaselineRef = useRef<number | null>(null);
   const prevCompletedDungeonCountRef = useRef(state.completedDungeonIds.length);
+  const coreHealNonceBaselineRef = useRef<number | null>(null);
+  const masteryAoeNonceBaselineRef = useRef<number | null>(null);
+  const reorderNonceBaselineRef = useRef<number | null>(null);
 
   const coreEnabledBase =
     !!state.playerClass &&
@@ -105,9 +109,24 @@ export function useIntroTutorial({
     const inDeadmines = state.currentDungeon?.id === INTRO_TUTORIAL_DUNGEON_ID;
     if (inDeadmines && !prevHadDungeonRef.current && !state.introTutorialComplete) {
       setCoreStep(0);
+      coreHealNonceBaselineRef.current = null;
     }
     prevHadDungeonRef.current = !!state.currentDungeon;
   }, [state.currentDungeon, state.introTutorialComplete]);
+
+  useLayoutEffect(() => {
+    const inHealStep =
+      coreEnabledBase &&
+      state.currentDungeon?.id === INTRO_TUTORIAL_DUNGEON_ID &&
+      coreStep === 1;
+    if (inHealStep) {
+      if (coreHealNonceBaselineRef.current === null) {
+        coreHealNonceBaselineRef.current = castSpellIdSignal?.nonce ?? 0;
+      }
+    } else if (coreStep !== 1) {
+      coreHealNonceBaselineRef.current = null;
+    }
+  }, [coreEnabledBase, coreStep, state.currentDungeon?.id, castSpellIdSignal?.nonce]);
 
   useEffect(() => {
     if (!coreEnabledBase) return;
@@ -123,11 +142,33 @@ export function useIntroTutorial({
     if (coreStep !== 1) return;
     if (state.currentDungeon?.id !== INTRO_TUTORIAL_DUNGEON_ID) return;
     if (!castSpellIdSignal || !state.playerClass) return;
-    if (castSpellIdSignal.id === introTutorialPrimaryHealSpellId(state.playerClass)) {
-      setCoreStep(2);
-      clearCastSpellSignal();
-    }
+    const startNonce = coreHealNonceBaselineRef.current;
+    if (startNonce === null) return;
+    if (castSpellIdSignal.nonce <= startNonce) return;
+    if (castSpellIdSignal.id !== introTutorialPrimaryHealSpellId(state.playerClass)) return;
+    setCoreStep(2);
+    clearCastSpellSignal();
   }, [coreEnabledBase, coreStep, castSpellIdSignal, clearCastSpellSignal, state.currentDungeon?.id, state.playerClass]);
+
+  useLayoutEffect(() => {
+    if (activeMasteryStep === 'aoe') {
+      if (masteryAoeNonceBaselineRef.current === null) {
+        masteryAoeNonceBaselineRef.current = castSpellIdSignal?.nonce ?? 0;
+      }
+    } else {
+      masteryAoeNonceBaselineRef.current = null;
+    }
+  }, [activeMasteryStep, castSpellIdSignal?.nonce]);
+
+  useLayoutEffect(() => {
+    if (activeMasteryStep === 'reorder') {
+      if (reorderNonceBaselineRef.current === null) {
+        reorderNonceBaselineRef.current = reorderSignal;
+      }
+    } else {
+      reorderNonceBaselineRef.current = null;
+    }
+  }, [activeMasteryStep, reorderSignal]);
 
   useEffect(() => {
     if (!coreEnabledBase) return;
@@ -232,12 +273,14 @@ export function useIntroTutorial({
 
   useEffect(() => {
     if (activeMasteryStep !== 'aoe' || !aoeSpellId || !castSpellIdSignal) return;
-    if (castSpellIdSignal.id === aoeSpellId) {
-      markTutorialStepCompleted(TUTORIAL_STEP_AOE);
-      setActiveMasteryStep(null);
-      setTutorialPaused(false);
-      clearCastSpellSignal();
-    }
+    const startNonce = masteryAoeNonceBaselineRef.current;
+    if (startNonce === null) return;
+    if (castSpellIdSignal.nonce <= startNonce) return;
+    if (castSpellIdSignal.id !== aoeSpellId) return;
+    markTutorialStepCompleted(TUTORIAL_STEP_AOE);
+    setActiveMasteryStep(null);
+    setTutorialPaused(false);
+    clearCastSpellSignal();
   }, [activeMasteryStep, aoeSpellId, castSpellIdSignal, markTutorialStepCompleted, setTutorialPaused, clearCastSpellSignal]);
 
   useEffect(() => {
@@ -253,7 +296,9 @@ export function useIntroTutorial({
 
   useEffect(() => {
     if (activeMasteryStep !== 'reorder') return;
-    if (reorderSignal <= 0) return;
+    const baseline = reorderNonceBaselineRef.current;
+    if (baseline === null) return;
+    if (reorderSignal <= baseline) return;
     markTutorialStepCompleted(TUTORIAL_STEP_REORDER);
     setActiveMasteryStep(null);
   }, [activeMasteryStep, reorderSignal, markTutorialStepCompleted]);
@@ -281,6 +326,9 @@ export function useIntroTutorial({
     const i = state.activeActionBars.findIndex((id) => id !== '');
     return i >= 0 ? state.activeActionBars[i] : null;
   }, [state.activeActionBars]);
+
+  const tutorialActionBarDropSlotDataId =
+    activeMasteryStep === 'reorder' && !!filledSlotIdForReorder ? TUTORIAL_ACTION_BAR_DROP_DATA_ID : null;
 
   const masteryOverlay: IntroTutorialOverlay | null = (() => {
     if (!state.introTutorialComplete || showRoster || !activeMasteryStep) return null;
@@ -320,7 +368,7 @@ export function useIntroTutorial({
         message: MASTERY.reorder,
         showTapCatcher: false,
         tone: 'benefit',
-        ghostHand: { fromDataId: `spell-${filledSlotIdForReorder}`, toDataId: 'spell-mana_potion' },
+        ghostHand: { fromDataId: `spell-${filledSlotIdForReorder}`, toDataId: TUTORIAL_ACTION_BAR_DROP_DATA_ID },
       };
     }
     return null;
@@ -331,6 +379,7 @@ export function useIntroTutorial({
       overlay: masteryOverlay,
       onTapContinue: activeMasteryStep === 'passive' ? onTapMasteryPassive : undefined,
       highlightTalentIdForTree: null,
+      tutorialActionBarDropSlotDataId,
     };
   }
 
@@ -387,5 +436,6 @@ export function useIntroTutorial({
     overlay: coreOverlay,
     onTapContinue: coreTapContinue,
     highlightTalentIdForTree: coreStep === 6 && menuView === 'talents' ? firstPickableTalentId : null,
+    tutorialActionBarDropSlotDataId,
   };
 }

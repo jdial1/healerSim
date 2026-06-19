@@ -1,10 +1,11 @@
-import { GameState, Spell, Unit } from '../../types.ts';
+import { GameState, Spell, Unit, PlayerCombatBuff } from '../../types.ts';
 import { getRanks, hasBuff, HEALER_UNIT_ID, isDirectHeal, addBuff } from '../../talentMechanics.ts';
 import { spellHasTag } from '../../constants.ts';
 import { generateCombatUid } from '../../combatUid.ts';
 import { mapEntityById } from '../../mapEntityById.ts';
 import { getUniqueStatRating } from '../../playerStats.ts';
 import { getHealSplit } from '../../healMath.ts';
+import type { HealLandContext, PostHealAccumulator } from '../../combatHookRegistry.ts';
 
 // Break circular dependency
 import balanceData from '../../data/balance.json';
@@ -56,10 +57,48 @@ export function manaAfterHeal(
 }
 
 export function priestMeditativeManaReturnPerTick(s: GameState, spiritRegenLockoutTicksRemaining: number): number {
-  if (s.playerClass !== 'PRIEST' || spiritRegenLockoutTicksRemaining > 0) return 0;
+  if (s.playerClass !== 'PRIEST' || spiritRegenLockoutTicksRemaining <= 0) return 0;
   const ranks = s.talents.find((t) => t.id === 'p_r0c4')?.points ?? 0;
   if (ranks <= 0) return 0;
   return s.maxMana * PRIEST.meditativeManaReturnPerRankPerTick * ranks;
+}
+
+export function manaReturnOnTick(
+  s: GameState,
+  spiritRegenLockoutTicksRemaining: number,
+): number {
+  return priestMeditativeManaReturnPerTick(s, spiritRegenLockoutTicksRemaining);
+}
+
+export function onHealLand(
+  s: GameState,
+  ctx: HealLandContext,
+  party: Unit[],
+  playerCombatBuffs: PlayerCombatBuff[],
+): PostHealAccumulator {
+  let healEff = 0;
+  let healOh = 0;
+  let p = applyDivineAegis(s, ctx.partyBeforeCast, party, ctx.isCrit);
+  p = applyEchoOfLightPriest(s, ctx.partyBeforeCast, p, ctx.spell, ctx.spellId, ctx.targetId);
+  p = applyGraceStacksFromDirectHeal(s, p, ctx.targetId, ctx.spell, ctx.spellId);
+  const bind = applyBindingHealSelf(
+    s,
+    p,
+    ctx.targetId,
+    ctx.spell,
+    ctx.healMultB,
+    ctx.critH,
+    ctx.tMod,
+    ctx.rankHealMult,
+  );
+  p = bind.party;
+  healEff += bind.eff;
+  healOh += bind.oh;
+  const bursts = applyAegisBurstsFromShieldTransitions(s, ctx.partyBeforeCast, p);
+  p = bursts.party;
+  healEff += bursts.eff;
+  healOh += bursts.oh;
+  return { party: p, playerCombatBuffs, healEff, healOh };
 }
 
 // Shield bonuses

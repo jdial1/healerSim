@@ -1,4 +1,4 @@
-import {
+﻿import {
   Spell,
   ClassType,
   Dungeon,
@@ -16,6 +16,7 @@ import {
 import { SPELLS as spellsData, NPC_POOLS as npcPoolsData, BALANCE as balanceData, PACING as pacingData, MECHANICS } from './data/index.ts';
 
 export const TICK_RATE = 100; // ms per tick
+export const SUSPEND_SNAPSHOT_TICK_INTERVAL = 8;
 export const MANA_REGEN_PER_TICK = 0.5;
 export const MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE;
 export const MANA_POTION_USES_PER_DUNGEON = 2;
