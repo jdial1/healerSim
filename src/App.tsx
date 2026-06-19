@@ -29,6 +29,8 @@ import { PlayerStatsModal } from './components/PlayerStatsModal.tsx';
 import { TutorialOverlay } from './components/TutorialOverlay.tsx';
 import { INTRO_TUTORIAL_DEBUFF_DATA_ID, TUTORIAL_STEP_NAV_PRIMER } from './tutorialConfig.ts';
 import { NavPrimerModal } from './components/NavPrimerModal.tsx';
+import { LayoutEnvironmentBanner } from './components/LayoutEnvironmentBanner.tsx';
+import { useLayoutEnvironmentCheck } from './hooks/useLayoutEnvironmentCheck.ts';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Star, LogOut, Settings, ScrollText, Swords } from 'lucide-react';
 
@@ -70,6 +72,8 @@ export default function App() {
   const [menuView, setMenuView] = useState<'dungeons' | 'talents' | 'character'>('dungeons');
   const paladinUnlocked = maxLevelAcrossRoster(roster) >= 25;
   const [pwaNeedsRefresh, setPwaNeedsRefresh] = useState(false);
+  const { issues: layoutEnvironmentIssues, dismiss: dismissLayoutEnvironmentBanner } =
+    useLayoutEnvironmentCheck();
   const swUpdate = useRef<((reload?: boolean) => Promise<void>) | undefined>(undefined);
   const keyboardRef = useRef<KeyboardCombatSnapshot>({
     party: [],
@@ -514,6 +518,15 @@ export default function App() {
       {showNavPrimerModal ? (
         <NavPrimerModal onDismiss={dismissNavPrimerModal} talentPoints={state.talentPoints} />
       ) : null}
+
+      <AnimatePresence>
+        {layoutEnvironmentIssues.length > 0 ? (
+          <LayoutEnvironmentBanner
+            issues={layoutEnvironmentIssues}
+            onDismiss={dismissLayoutEnvironmentBanner}
+          />
+        ) : null}
+      </AnimatePresence>
 
       {pwaNeedsRefresh ? (
         <div
