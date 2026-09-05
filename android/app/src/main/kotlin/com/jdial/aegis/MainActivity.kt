@@ -36,6 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -315,7 +320,14 @@ private fun MenuTabs(
                             if (selected) accent.core else Gilt.deep.copy(alpha = 0.5f),
                             RoundedCornerShape(5.dp),
                         )
-                        .clickable { onSelect(target) }
+                        .clickable(onClickLabel = "Open $label") { onSelect(target) }
+                        .semantics {
+                            role = Role.Tab
+                            this.selected = selected
+                            if (target == Screen.Talents && talentPoints > 0) {
+                                stateDescription = "$talentPoints unspent talent points"
+                            }
+                        }
                         .padding(vertical = 9.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -325,7 +337,7 @@ private fun MenuTabs(
                         BasicText(
                             label.uppercase(),
                             style = AegisType.label.copy(
-                                fontSize = 10.sp,
+                                fontSize = 11.sp,
                                 color = if (selected) Ink.primary else Ink.muted,
                             ),
                         )
@@ -340,7 +352,7 @@ private fun MenuTabs(
                             ) {
                                 BasicText(
                                     talentPoints.toString(),
-                                    style = AegisType.label.copy(fontSize = 8.sp, color = Obsidian.abyss),
+                                    style = AegisType.label.copy(fontSize = 11.sp, color = Obsidian.abyss),
                                 )
                             }
                         }

@@ -36,6 +36,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.data.PlayerClass
@@ -97,7 +101,8 @@ fun TalentScreen(
                         style = AegisType.label.copy(color = Ink.muted),
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
-                            .clickable { onRespec(); selectedId = null }
+                            .clickable(onClickLabel = "Refund all talent points") { onRespec(); selectedId = null }
+                    .semantics { role = Role.Button }
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                     )
                 }
@@ -247,7 +252,22 @@ private fun TalentNode(
         else -> Gilt.deep.copy(alpha = 0.35f)
     }
 
-    Box(Modifier.size(56.dp).clickable(onClick = onClick)) {
+    Box(
+        Modifier
+            .size(56.dp)
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = "${rank.talent.name}, " +
+                    "${rank.points} of ${rank.talent.maxPoints} points" +
+                    when {
+                        maxed -> ", fully learned"
+                        available -> ", available to learn"
+                        invested -> ""
+                        else -> ", locked"
+                    }
+            },
+    ) {
         GameIcon(
             iconPath = rank.talent.icon,
             size = 56.dp,
@@ -266,7 +286,7 @@ private fun TalentNode(
             BasicText(
                 "${rank.points}/${rank.talent.maxPoints}",
                 style = AegisType.label.copy(
-                    fontSize = 8.sp,
+                    fontSize = 11.sp,
                     color = if (maxed) Obsidian.abyss else Ink.secondary,
                 ),
             )
@@ -332,7 +352,8 @@ private fun TalentDetail(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
                             .border(1.dp, Gilt.deep.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                            .clickable { onRefund(rank.id) }
+                            .clickable(onClickLabel = "Refund one point") { onRefund(rank.id) }
+                    .semantics { role = Role.Button }
                             .padding(horizontal = 16.dp, vertical = 13.dp),
                     )
                 }
@@ -392,7 +413,7 @@ fun CharacterScreen(state: GameState, engine: Engine, onChangeClass: () -> Unit)
                 Spacer(Modifier.height(4.dp))
                 BasicText(
                     "${progress.into} / ${progress.needed} XP",
-                    style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted),
+                    style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
                 )
 
                 Spacer(Modifier.height(18.dp))
@@ -434,10 +455,11 @@ fun CharacterScreen(state: GameState, engine: Engine, onChangeClass: () -> Unit)
                 Spacer(Modifier.height(16.dp))
                 BasicText(
                     "CREDITS",
-                    style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted),
+                    style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .clickable { showCredits = true }
+                        .clickable(onClickLabel = "Open credits") { showCredits = true }
+                    .semantics { role = Role.Button }
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 )
                 Spacer(Modifier.height(20.dp))

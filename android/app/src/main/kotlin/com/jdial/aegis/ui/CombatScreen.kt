@@ -51,6 +51,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.data.GameData
@@ -90,17 +95,23 @@ fun CombatScreen(
     onLeave: () -> kotlin.Unit,
 ) {
     ObsidianBackdrop {
-        Column(
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
-            EncounterHud(state, onLeave)
-            Spacer(Modifier.height(10.dp))
+            // Stacked, a landscape phone leaves about 200dp for five 48dp rows,
+            // so the healer — the last row, and the one you die without — ends up
+            // off-screen. Wide and short means side by side instead: the party
+            // gets the full height, the HUD and action bar take a column.
+            // Tablets and unfolded foldables land here too, since targetSdk 36+
+            // ignores a portrait lock above 600dp.
+            val wide = maxWidth > maxHeight
 
-            BoxWithConstraints(
-                Modifier.weight(1f).fillMaxWidth(),
+            @Composable
+            fun PartyGrid(modifier: Modifier) = BoxWithConstraints(
+                modifier,
                 contentAlignment = Alignment.Center,
             ) {
                 // All five rows must always be visible — the healer is the last
@@ -130,8 +141,27 @@ fun CombatScreen(
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
-            ActionBar(state, data, onCast, onReorder)
+            if (wide) {
+                Row(Modifier.fillMaxSize()) {
+                    PartyGrid(Modifier.weight(1f).fillMaxHeight())
+                    Spacer(Modifier.width(12.dp))
+                    Column(
+                        Modifier.width(360.dp).fillMaxHeight(),
+                        verticalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        EncounterHud(state, onLeave)
+                        ActionBar(state, data, onCast, onReorder)
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    EncounterHud(state, onLeave)
+                    Spacer(Modifier.height(10.dp))
+                    PartyGrid(Modifier.weight(1f).fillMaxWidth())
+                    Spacer(Modifier.height(10.dp))
+                    ActionBar(state, data, onCast, onReorder)
+                }
+            }
         }
     }
 }
@@ -171,7 +201,8 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
                     style = AegisType.label.copy(color = Ink.muted),
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .clickable(onClick = onLeave)
+                        .clickable(onClickLabel = "Leave the dungeon", onClick = onLeave)
+                        .semantics { role = Role.Button }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
             }
@@ -283,7 +314,36 @@ private fun PartyRow(
             // Fixed height: auras coming and going must not make the grid jump,
             // because a moving target is a mis-tap under pressure.
             .height(rowHeight)
-            .clickable(enabled = !dead, onClick = onClick),
+            .clickable(enabled = !dead, onClick = onClick)
+            .semantics {
+                role = Role.Button
+                val pct = if (unit.maxHealth > 0) {
+                    (unit.health / unit.maxHealth * 100).roundToInt()
+                } else {
+                    0
+                }
+                // Named roleLabel, not role: `role` is a semantics property here.
+                val roleLabel = when (unit.role) {
+                    UnitRole.TANK -> "tank"
+                    UnitRole.DPS -> "damage"
+                    UnitRole.HEALER -> "healer"
+                }
+                // Aura rings carry a 9sp countdown that is too small to read and
+                // has no text equivalent, so the auras are spoken here instead.
+                val auras = buildList {
+                    if (unit.debuffs.isNotEmpty()) add("${unit.debuffs.size} debuffs")
+                    if (unit.buffs.isNotEmpty()) add("${unit.buffs.size} heal over time")
+                    if (unit.shield > 0) add("shielded")
+                }
+                contentDescription = if (dead) {
+                    "${unit.name}, $roleLabel, dead"
+                } else {
+                    "${unit.name}, $roleLabel, $pct percent health" +
+                        (if (auras.isEmpty()) "" else ", " + auras.joinToString(", ")) +
+                        (if (selected) ", targeted" else "")
+                }
+                if (dead) disabled()
+            },
         selected = selected,
         accent = accent.core,
         contentPadding = PaddingValues(0.dp),
@@ -387,9 +447,9 @@ private fun PartyRow(
                         UnitRole.DPS -> "DPS"
                         UnitRole.HEALER -> "HEALER"
                     },
-                    style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted),
+                    style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
                 )
-                BasicText("LV ${unit.level}", style = AegisType.label.copy(fontSize = 9.sp))
+                BasicText("LV ${unit.level}", style = AegisType.label.copy(fontSize = 11.sp))
             }
         }
 
@@ -442,7 +502,7 @@ private fun AuraRing(icon: String, remainingTicks: Int, maxTicks: Int, tint: Col
         BasicText(
             "$seconds",
             style = AegisType.label.copy(
-                fontSize = 7.sp,
+                fontSize = 9.sp,
                 color = if (urgent) Vital.hurt else tint,
             ),
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -635,6 +695,19 @@ private fun SpellSlot(
                 shape = shape,
             )
             .clickable(enabled = spell != null, onClick = onClick)
+            // The action bar is pure iconography: without this a spell is an
+            // unlabelled box and the game cannot be played by ear at all.
+            .semantics {
+                role = Role.Button
+                contentDescription = when {
+                    spell == null -> "Empty action slot $index"
+                    onCooldown -> "${spell.name}, slot $index, " +
+                        "ready in ${ceil(cooldownTicks / 10.0).toInt()} seconds"
+                    !affordable -> "${spell.name}, slot $index, not enough mana"
+                    else -> "${spell.name}, slot $index, ${spell.manaCost} mana"
+                }
+                if (!usable) disabled()
+            }
             .pointerInput(spell?.id, index) {
                 if (spell == null) return@pointerInput
                 detectDragGesturesAfterLongPress(
@@ -671,12 +744,12 @@ private fun SpellSlot(
 
             BasicText(
                 "$index",
-                style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted),
+                style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
                 modifier = Modifier.align(Alignment.TopStart).padding(3.dp),
             )
             BasicText(
                 "${spell.manaCost}",
-                style = AegisType.label.copy(fontSize = 9.sp, color = Vital.mana),
+                style = AegisType.label.copy(fontSize = 11.sp, color = Vital.mana),
                 modifier = Modifier.align(Alignment.BottomEnd).padding(3.dp),
             )
         } else {

@@ -46,9 +46,26 @@ class SaveStore(
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
+    /**
+     * A corrupt or schema-broken save used to be swallowed silently, resetting
+     * the player's entire roster with no way to tell what happened or to get it
+     * back. Keep the bad file instead: the loss is then recoverable and the
+     * failure is diagnosable, which matters because this is also exactly how an
+     * R8 breakage would present.
+     */
     fun load(): Roster =
         runCatching { json.decodeFromString<Roster>(file.readText()) }
-            .getOrElse { Roster() }
+            .getOrElse { cause ->
+                if (file.exists()) {
+                    runCatching { file.renameTo(File(file.parentFile, "${file.name}.corrupt")) }
+                    lastLoadFailure = cause
+                }
+                Roster()
+            }
+
+    /** Non-null when the last load found a save it could not read. */
+    var lastLoadFailure: Throwable? = null
+        private set
 
     /** Atomic: write beside the target, then rename over it. */
     fun save(roster: Roster) {

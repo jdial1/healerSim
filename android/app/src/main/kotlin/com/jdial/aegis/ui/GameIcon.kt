@@ -97,6 +97,10 @@ fun GameIcon(
     size: Dp = 40.dp,
     accent: Color = Gilt.deep,
     dimmed: Boolean = false,
+    // Null is correct wherever the icon sits beside its own label — repeating it
+    // just makes a screen reader say everything twice. Pass a description only
+    // when the icon is the sole content of a control.
+    contentDescription: String? = null,
 ) {
     val context = LocalContext.current
     val image = remember(iconPath) { IconLoader.load(context, iconPath) }
@@ -123,7 +127,7 @@ fun GameIcon(
         } else {
             Image(
                 bitmap = image,
-                contentDescription = null,
+                contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
                 alpha = if (dimmed) 0.45f else 1f,
                 // Locked content is drained of colour as well as dimmed, so it

@@ -30,6 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.data.Dungeon
@@ -157,7 +160,8 @@ fun DungeonQueueSheet(
                     style = AegisType.label.copy(color = Ink.muted),
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .clickable(onClick = onClose)
+                        .clickable(onClickLabel = "Cancel", onClick = onClose)
+                    .semantics { role = Role.Button }
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 )
             }
@@ -196,7 +200,7 @@ private fun PaceOption(
         // The trade the player is actually making: speed against experience.
         BasicText(
             "${trimZeros(xpMultiplier)}× XP",
-            style = AegisType.label.copy(fontSize = 9.sp, color = if (selected) accent.bright else Ink.muted),
+            style = AegisType.label.copy(fontSize = 11.sp, color = if (selected) accent.bright else Ink.muted),
         )
     }
 }
@@ -294,7 +298,8 @@ fun ConfirmDialog(
                         style = AegisType.label.copy(color = Ink.muted),
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
-                            .clickable(onClick = onDismiss)
+                            .clickable(onClickLabel = "Stay in the dungeon", onClick = onDismiss)
+                            .semantics { role = Role.Button }
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                     )
                 }

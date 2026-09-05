@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -44,6 +46,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.R
@@ -200,6 +207,7 @@ fun GiltButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
             .clip(shape)
             .background(Brush.verticalGradient(listOf(Gilt.bright, Gilt.mid, Gilt.deep)))
             .clickable(onClick = onClick)
+            .semantics { role = Role.Button }
             .padding(horizontal = 30.dp, vertical = 13.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -223,6 +231,11 @@ fun ClassSelectScreen(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
+                // Three class cards do not fit a landscape phone, and this was
+                // the one screen with no scroll — the third class was simply
+                // unreachable. Tablets already hit this, since targetSdk 36+
+                // ignores the portrait lock above 600dp.
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp, vertical = 22.dp),
             verticalArrangement = Arrangement.Center,
         ) {
@@ -255,7 +268,17 @@ private fun ClassCard(
 ) {
     val accent = accentFor(cls)
     ForgedPanel(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = !locked, onClick = onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !locked, onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = if (locked) {
+                    "${bundle.meta.name}, locked, reach level $unlockLevel to unlock"
+                } else {
+                    "${bundle.meta.name}. ${bundle.meta.passiveTraitName}. ${bundle.meta.description}"
+                }
+            },
         accent = accent.core,
         contentPadding = PaddingValues(0.dp),
     ) {
@@ -366,7 +389,14 @@ private fun DungeonCard(dungeon: Dungeon, locked: Boolean, onClick: () -> Unit) 
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (locked) 0.55f else 1f)
-            .clickable(enabled = !locked, onClick = onClick),
+            .clickable(enabled = !locked, onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = "${dungeon.name}, levels ${dungeon.levelMin} to " +
+                    "${dungeon.levelMax}, tier ${dungeon.difficulty}, " +
+                    "boss ${dungeon.bossName}" + if (locked) ", locked" else ""
+                if (locked) disabled()
+            },
         accent = accent.core,
     ) {
         Column {

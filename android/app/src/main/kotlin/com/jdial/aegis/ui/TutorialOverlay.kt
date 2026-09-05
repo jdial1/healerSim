@@ -131,7 +131,7 @@ fun TutorialOverlay(step: TutorialStep, onDismiss: () -> Unit) {
                 ) {
                     BasicText(
                         "TAP ANYWHERE TO DISMISS",
-                        style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted),
+                        style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
                     )
                     BasicText(
                         "GOT IT",
