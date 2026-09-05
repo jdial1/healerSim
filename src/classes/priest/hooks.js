@@ -129,7 +129,9 @@ function priestFlashCritBonusFromSynergy(s) {
   if (getRanks(s.talents, "surge_of_light") <= 0) return 0;
   return PRIEST.gleamingProclamationFlashHealCritBonusPct;
 }
-const ECHO_DURATION_TICKS = 6 * 10;
+// balance.json said 50 while this said 60; the engines won. Read the key so
+// the knob is real, and so the two engines cannot drift again.
+const ECHO_DURATION_TICKS = PRIEST.passiveEchoOfLightDurationTicks;
 function appendEchoOfLightBuff(unit, echoTotal) {
   const dur = ECHO_DURATION_TICKS;
   const hpt = echoTotal / dur;

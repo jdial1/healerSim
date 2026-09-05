@@ -220,7 +220,7 @@
   {
     "id": "d_r2c3",
     "name": "Photosynthesis",
-    "description": "While one of your own HoTs is on you, haste 3% per point. Allies carrying your HoTs have a 2% chance per point for those HoTs to tick twice. A critical Healing Touch extends your heal-over-time effects on the party.",
+    "description": "A critical Healing Touch extends your heal-over-time effects on the party.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 9,

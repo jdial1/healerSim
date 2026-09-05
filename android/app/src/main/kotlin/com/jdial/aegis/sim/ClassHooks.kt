@@ -105,7 +105,6 @@ const val GRACE_SOURCE_ID = "priest_grace"
 const val BUFF_OMEN_CLEARCASTING = "omen_clearcasting"
 const val BUFF_SURGE_OF_LIGHT = "surge_of_light"
 const val BUFF_ARCHANGEL = "archangel"
-const val ECHO_DURATION_TICKS = 60
 const val DRUID_HARMONY_HOT_BUFF = "druid_harmony_for_hot"
 
 object PriestHooks : ClassHooks {
@@ -187,6 +186,9 @@ object PriestHooks : ClassHooks {
     ): List<Unit> {
         if (ctx.cls != PlayerClass.PRIEST || land.spellId == MANA_POTION_ID || !land.spell.isDirectHeal()) return party
         val fraction = ctx.data.balance.combat.priest.passiveEchoOfLightHealFraction
+        // balance.json said 50 while this was hardcoded to 60; the engines won,
+        // so the key now holds 60 and both read it rather than drifting again.
+        val echoTicks = ctx.data.balance.combat.priest.passiveEchoOfLightDurationTicks
 
         fun withEcho(unit: Unit, total: Double): Unit {
             val kept = unit.buffs.filterNot { it.sourceSpellId == ECHO_OF_LIGHT_SOURCE }
@@ -194,8 +196,8 @@ object PriestHooks : ClassHooks {
                 buffs = kept + UnitBuff(
                     id = "$ECHO_OF_LIGHT_SOURCE-${unit.id}",
                     name = "Echo of Light",
-                    remainingTicks = ECHO_DURATION_TICKS,
-                    healingPerTick = total / ECHO_DURATION_TICKS,
+                    remainingTicks = echoTicks,
+                    healingPerTick = total / echoTicks,
                     icon = "wow/spell_holy_surgeoflight",
                     sourceSpellId = ECHO_OF_LIGHT_SOURCE,
                 ),
