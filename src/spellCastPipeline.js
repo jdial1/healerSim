@@ -309,11 +309,11 @@ function applyStandardHealCast(s, ready, rt) {
   let weaveHotMult = 1;
   if (s.playerClass === "PRIEST") {
     if (priestSpellLeavesHoTs(spell) && hasBuff(castBuffs, "priest_weave_hot")) {
-      weaveHotMult += 0.2;
+      weaveHotMult += BALANCE.combat.priest.weaveHotBonus;
       castBuffs = removeBuff(castBuffs, "priest_weave_hot");
     }
     if (isDirectHeal(spell, spellId) && hasBuff(castBuffs, "priest_weave_direct")) {
-      weaveDirectMult += 0.15;
+      weaveDirectMult += BALANCE.combat.priest.weaveDirectBonus;
       castBuffs = removeBuff(castBuffs, "priest_weave_direct");
     }
   }

@@ -148,7 +148,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- the loop ------------------------------------------------------------
 
-    fun startTicking() {
+    private fun startTicking() {
         if (tickJob?.isActive == true) return
         lastTickMs = System.currentTimeMillis()
         tickJob = viewModelScope.launch(Dispatchers.Default) {
@@ -197,7 +197,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         store.writeSuspendedRun(state)
     }
 
-    fun stopTicking() {
+    private fun stopTicking() {
         tickJob?.cancel()
         tickJob = null
     }

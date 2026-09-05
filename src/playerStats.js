@@ -78,8 +78,8 @@ const CLASS_PROGRESSION = {
 const CAPSTONE_PLAYER_BUFF_IDS = Array.from(
   new Set(Object.values(CLASS_PROGRESSION).map((p) => p.capstonePlayerBuffId))
 );
-const RANK_HEAL_MULT = 1.15;
-const RANK_COST_MULT = 1.1;
+const RANK_HEAL_MULT = BALANCE.playerStats.spellRankHealMultiplier;
+const RANK_COST_MULT = BALANCE.playerStats.spellRankCostMultiplier;
 function getRankHealMult(rank) {
   return Math.pow(RANK_HEAL_MULT, Math.max(0, rank - 1));
 }

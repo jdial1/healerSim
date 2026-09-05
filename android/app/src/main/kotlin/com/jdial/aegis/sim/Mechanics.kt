@@ -144,10 +144,10 @@ fun List<UnitDebuff>.dispelOne(): List<UnitDebuff> {
 // --- spell classification ---------------------------------------------------
 
 /** Every spell in the game is a heal; the mana potion is the sole exception. */
-fun Spell.isHeal(): Boolean = id != "mana_potion"
+fun Spell.isHeal(): Boolean = id != MANA_POTION_ID
 
 fun Spell.isDirectHeal(): Boolean = when {
-    id == "mana_potion" -> false
+    id == MANA_POTION_ID -> false
     type == com.jdial.aegis.data.SpellType.AOE -> true
     type == com.jdial.aegis.data.SpellType.DIRECT -> true
     type == com.jdial.aegis.data.SpellType.HOT && healing > 0 -> true

@@ -185,7 +185,7 @@ object PriestHooks : ClassHooks {
         party: List<Unit>,
         land: LandContext,
     ): List<Unit> {
-        if (ctx.cls != PlayerClass.PRIEST || land.spellId == "mana_potion" || !land.spell.isDirectHeal()) return party
+        if (ctx.cls != PlayerClass.PRIEST || land.spellId == MANA_POTION_ID || !land.spell.isDirectHeal()) return party
         val fraction = ctx.data.balance.combat.priest.passiveEchoOfLightHealFraction
 
         fun withEcho(unit: Unit, total: Double): Unit {
@@ -528,7 +528,7 @@ object PaladinHooks : ClassHooks {
         var eff = 0.0
         var oh = 0.0
 
-        if (land.spell.type != SpellType.AOE && land.spellId != "mana_potion") {
+        if (land.spell.type != SpellType.AOE && land.spellId != MANA_POTION_ID) {
             val before = land.partyBeforeCast.firstOrNull { it.id == land.targetId }
             val after = p.firstOrNull { it.id == land.targetId }
             val primaryHealed =
@@ -551,7 +551,7 @@ object PaladinHooks : ClassHooks {
     ): LandResult {
         if (ctx.ranks("beacon_of_light") <= 0) return LandResult(party, emptyList(), 0.0, 0.0)
         val beaconId = ctx.state.beaconTargetId
-        if (land.targetId == beaconId || land.spell.type == SpellType.AOE || land.spellId == "mana_potion") {
+        if (land.targetId == beaconId || land.spell.type == SpellType.AOE || land.spellId == MANA_POTION_ID) {
             return LandResult(party, emptyList(), 0.0, 0.0)
         }
         val pal = ctx.data.balance.combat.paladin
@@ -578,7 +578,7 @@ object PaladinHooks : ClassHooks {
         party: List<Unit>,
         land: LandContext,
     ): LandResult {
-        if (ctx.cls != PlayerClass.PALADIN || land.spellId == "mana_potion" || !land.spell.isDirectHeal()) {
+        if (ctx.cls != PlayerClass.PALADIN || land.spellId == MANA_POTION_ID || !land.spell.isDirectHeal()) {
             return LandResult(party, emptyList(), 0.0, 0.0)
         }
         if (land.spell.type == SpellType.AOE) return LandResult(party, emptyList(), 0.0, 0.0)
@@ -651,7 +651,7 @@ object PaladinHooks : ClassHooks {
         }
         val vow = ctx.ranks("paladin_vow_protector")
         if (ctx.ranks("beacon_of_light") > 0 && vow > 0 &&
-            land.spellId != "mana_potion" && land.spell.type != SpellType.AOE &&
+            land.spellId != MANA_POTION_ID && land.spell.type != SpellType.AOE &&
             land.targetId == ctx.state.beaconTargetId
         ) {
             m = min(ctx.maxMana.toDouble(), m + land.needMana * pal.vowProtectorCritManaRefundFraction * vow)

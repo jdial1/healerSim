@@ -13,8 +13,10 @@ import kotlinx.serialization.Serializable
 const val TICK_RATE_MS = 100
 const val TICKS_PER_SECOND = 1000 / TICK_RATE_MS
 const val HEALER_UNIT_ID = "5"
+
+/** The only consumable, referenced from the pipeline, the UI and the loadout. */
+const val MANA_POTION_ID = "mana_potion"
 const val SUSPEND_SNAPSHOT_TICK_INTERVAL = 8
-const val MANA_REGEN_PER_TICK = 0.5
 const val MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE_MS
 
 const val TICKS_1S = 10

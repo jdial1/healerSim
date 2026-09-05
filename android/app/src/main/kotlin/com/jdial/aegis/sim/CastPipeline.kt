@@ -91,7 +91,7 @@ class CastPipeline(
         val spell = data.spell(spellId) ?: return null
         if (s.playerClass == null) return null
         if ((s.spellCooldowns[spellId] ?: 0) > 0) return null
-        if (spellId == "mana_potion" && s.manaPotionsUsedThisDungeon >= MANA_POTION_USES_PER_DUNGEON) return null
+        if (spellId == MANA_POTION_ID && s.manaPotionsUsedThisDungeon >= MANA_POTION_USES_PER_DUNGEON) return null
         s.healer ?: return null
 
         val eff = effectiveStats(ctx) ?: return null
@@ -102,7 +102,7 @@ class CastPipeline(
         val target = s.party.firstOrNull { it.id == targetId }
         if (spell.type != SpellType.AOE && spell.isHeal() && target != null && target.health <= 0) return null
 
-        if (spellId == "mana_potion") return Ready.ManaPotion(spell, eff)
+        if (spellId == MANA_POTION_ID) return Ready.ManaPotion(spell, eff)
 
         val hooks = hooksFor(ctx.cls)
 
@@ -165,8 +165,8 @@ class CastPipeline(
         if (ticks > 0) this + (spellId to ticks) else this
 
     private fun potionTier(level: Int) =
-        data.consumables.getValue("mana_potion").tiers.firstOrNull { level <= it.maxLevel }
-            ?: data.consumables.getValue("mana_potion").tiers.last()
+        data.consumables.getValue(MANA_POTION_ID).tiers.firstOrNull { level <= it.maxLevel }
+            ?: data.consumables.getValue(MANA_POTION_ID).tiers.last()
 
     private fun applyManaPotion(ctx: CastContext, ready: Ready.ManaPotion): GameState {
         val s = ctx.state
@@ -347,11 +347,11 @@ class CastPipeline(
         val leavesHots = spell.type == SpellType.HOT || (spell.hotDuration ?: 0) > 0
         if (ctx.cls == PlayerClass.PRIEST) {
             if (leavesHots && castBuffs.hasBuff("priest_weave_hot")) {
-                weaveHot += 0.2
+                weaveHot += ctx.data.balance.combat.priest.weaveHotBonus
                 castBuffs = castBuffs.removeBuff("priest_weave_hot")
             }
             if (spell.isDirectHeal() && castBuffs.hasBuff("priest_weave_direct")) {
-                weaveDirect += 0.15
+                weaveDirect += ctx.data.balance.combat.priest.weaveDirectBonus
                 castBuffs = castBuffs.removeBuff("priest_weave_direct")
             }
         }

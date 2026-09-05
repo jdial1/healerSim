@@ -14,7 +14,8 @@ function nominalClearXpForDifficulty(difficulty) {
 }
 function needXpToReachNextLevel(currentLevel) {
   const tier = Math.floor((currentLevel - 1) / 3);
-  const runsMultiplier = 1.8 + tier + (currentLevel - 1) % 3 * 0.8;
+  const runsMultiplier =
+    balanceData.xp.levelCurveRunsBase + tier + (currentLevel - 1) % 3 * balanceData.xp.levelCurveRunsPerStep;
   const perClear = nominalClearXpForDifficulty(tier + 1);
   return Math.max(1, Math.round(perClear * runsMultiplier));
 }

@@ -18,8 +18,6 @@ import kotlin.math.roundToInt
  * — crit comes only from talents and Natural Perfection stacks.
  */
 
-const val RANK_HEAL_MULT = 1.15
-const val RANK_COST_MULT = 1.10
 
 /** A talent with its invested points; the JSON `points` field is runtime state. */
 @Serializable
@@ -106,9 +104,9 @@ class PlayerStats(private val data: GameData) {
 
     // --- spell ranks ---------------------------------------------------------
 
-    fun rankHealMult(rank: Int): Double = RANK_HEAL_MULT.pow(max(0, rank - 1))
+    fun rankHealMult(rank: Int): Double = ps.spellRankHealMultiplier.pow(max(0, rank - 1))
 
-    fun rankCostMult(rank: Int): Double = RANK_COST_MULT.pow(max(0, rank - 1))
+    fun rankCostMult(rank: Int): Double = ps.spellRankCostMultiplier.pow(max(0, rank - 1))
 
     fun spellRank(spellId: String, cls: PlayerClass, level: Int): Int {
         val order = data.bundle(cls).meta.progression.spellOrder

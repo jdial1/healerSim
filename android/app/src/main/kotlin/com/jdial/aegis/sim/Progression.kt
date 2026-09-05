@@ -57,7 +57,8 @@ class Progression(private val data: GameData, private val stats: PlayerStats) {
 
     fun xpToReachNextLevel(currentLevel: Int): Int {
         val tier = (currentLevel - 1) / 3
-        val runsMultiplier = 1.8 + tier + ((currentLevel - 1) % 3) * 0.8
+        val runsMultiplier = xpB.levelCurveRunsBase + tier +
+            ((currentLevel - 1) % 3) * xpB.levelCurveRunsPerStep
         return max(1, (nominalClearXp(tier + 1) * runsMultiplier).roundToInt())
     }
 
@@ -138,8 +139,8 @@ class Progression(private val data: GameData, private val stats: PlayerStats) {
         while (healRow.size < 3) healRow += ""
 
         return Loadout(
-            unlockedSpells = (listOf("mana_potion") + merged).distinct(),
-            actionBar = listOf(healRow[0], healRow[1], healRow[2], "mana_potion", ""),
+            unlockedSpells = (listOf(MANA_POTION_ID) + merged).distinct(),
+            actionBar = listOf(healRow[0], healRow[1], healRow[2], MANA_POTION_ID, ""),
         )
     }
 

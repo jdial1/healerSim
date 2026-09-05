@@ -7,7 +7,8 @@ import {
 import { SPELLS as spellsData, NPC_POOLS as npcPoolsData, BALANCE as balanceData, PACING as pacingData, MECHANICS } from "./data/index.js";
 const TICK_RATE = 100;
 const SUSPEND_SNAPSHOT_TICK_INTERVAL = 8;
-const MANA_REGEN_PER_TICK = 0.5;
+// Tuning scalars live in balance.json so the two engines cannot drift.
+const MANA_REGEN_PER_TICK = BALANCE.playerStats.manaRegenPerTick;
 const MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5e3 / TICK_RATE;
 const MANA_POTION_USES_PER_DUNGEON = 2;
 function getBossDamageMultiplier(difficulty) {

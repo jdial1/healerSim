@@ -370,12 +370,12 @@ class GameTick(
 
                 // Lifebloom bursts one tick early; other bloom HoTs burst on expiry.
                 if (bloomEligible && buff.sourceSpellId == "lifebloom" && rem == 1) {
-                    val applied = applyHealToUnit(unit.copy(health = health), buff.bloomBurstHeal!!)
+                    val applied = applyHealToUnit(unit.copy(health = health), buff.bloomBurstHeal)
                     healEff += applied.effective; healOh += applied.overheal; health = applied.health
                 }
                 rem -= 1
                 if (rem <= 0 && bloomEligible && buff.sourceSpellId != "lifebloom") {
-                    val applied = applyHealToUnit(unit.copy(health = health), buff.bloomBurstHeal!!)
+                    val applied = applyHealToUnit(unit.copy(health = health), buff.bloomBurstHeal)
                     healEff += applied.effective; healOh += applied.overheal; health = applied.health
                 }
                 if (rem > 0) activeBuffs += buff.copy(remainingTicks = rem, tickAccumulator = acc)
@@ -461,7 +461,7 @@ class GameTick(
     /** Mana regen is suppressed for five seconds after any spend. */
     private fun manaRegenPerTick(spiritLockoutTicks: Int, spirit: Double): Double {
         if (spiritLockoutTicks > 0) return 0.0
-        val rawPerTick = MANA_REGEN_PER_TICK * stats.spiritRegenMultiplier(spirit)
+        val rawPerTick = data.balance.playerStats.manaRegenPerTick * stats.spiritRegenMultiplier(spirit)
         val perSec = (rawPerTick * TICKS_PER_SECOND * 10).roundToInt() / 10.0
         return (perSec / TICKS_PER_SECOND * 1000).roundToInt() / 1000.0
     }
@@ -500,7 +500,7 @@ class GameTick(
         if (s.capstoneForm == "druid_natures_grace" &&
             s.playerCombatBuffs.hasBuff("natures_grace_aura") && ctx.cls != null
         ) {
-            val amount = 0.4 * s.level
+            val amount = data.balance.combat.druid.naturesGraceHealPerLevelPerTick * s.level
             party = party.map { u ->
                 if (u.health <= 0) return@map u
                 val applied = applyHealToUnit(u, amount)

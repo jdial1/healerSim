@@ -272,7 +272,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                 vm.setTutorialPaused(tutorialBlocking && state.isCombatActive)
             }
 
-            if (tutorialBlocking && tutorialStep != null) {
+            if (tutorialBlocking) {
                 TutorialOverlay(
                     step = tutorialStep,
                     onDismiss = { vm.completeTutorialStep(tutorialStep.id) },

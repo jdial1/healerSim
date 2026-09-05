@@ -539,7 +539,7 @@ function resolvePlayerSystems(state, partyAfterEnv, dmgNaturalPerfectionStacks, 
   let natureGraceOh = 0;
   if (state.capstoneForm === "druid_natures_grace" && hasBuff(state.playerCombatBuffs, "natures_grace_aura") && state.playerClass) {
     const beforeGrace = newParty;
-    const ngh = 0.4 * state.level;
+    const ngh = BALANCE.combat.druid.naturesGraceHealPerLevelPerTick * state.level;
     newParty = newParty.map((u) => {
       if (u.health <= 0) return u;
       const { health, eff, oh } = applyHealToUnit(u, ngh);

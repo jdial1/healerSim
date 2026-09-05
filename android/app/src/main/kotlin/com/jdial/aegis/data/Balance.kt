@@ -72,12 +72,17 @@ data class XpBalance(
     val failureFractionWhenAllTrashCleared: Double,
     val failureFractionWhenTwoPullsCleared: Double,
     val failureFractionWhenOnePullCleared: Double,
+    val levelCurveRunsBase: Double,
+    val levelCurveRunsPerStep: Double,
 )
 
 @Serializable
 data class PlayerStatsBalance(
     val manaPerIntellect: Double,
     val healingPctPerSpirit: Double,
+    val spellRankHealMultiplier: Double,
+    val spellRankCostMultiplier: Double,
+    val manaRegenPerTick: Double,
     val manaRegenMultPerSpirit: Double,
 )
 
@@ -115,6 +120,8 @@ data class PriestCombat(
     val selfShieldDamageReductionPerRank: Double,
     val archangelEchoShieldConsumeBonusFraction: Double,
     val aegisBurstHealPerAbsorbPerRank: Double,
+    val weaveHotBonus: Double,
+    val weaveDirectBonus: Double,
 )
 
 @Serializable
@@ -163,4 +170,5 @@ data class DruidCombat(
     val rampCritPerHotPerRank: Double,
     val naturesGraceHotTickRateMultiplier: Double,
     val barkskinSelfHealFractionPerRank: Double,
+    val naturesGraceHealPerLevelPerTick: Double,
 )

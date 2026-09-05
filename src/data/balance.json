@@ -33,12 +33,17 @@
     "overlevelDiminishingBase": 0.6,
     "failureFractionWhenAllTrashCleared": 0.5,
     "failureFractionWhenTwoPullsCleared": 0.35,
-    "failureFractionWhenOnePullCleared": 0.2
+    "failureFractionWhenOnePullCleared": 0.2,
+    "levelCurveRunsBase": 1.8,
+    "levelCurveRunsPerStep": 0.8
   },
   "playerStats": {
     "manaPerIntellect": 12,
     "healingPctPerSpirit": 0.5,
-    "manaRegenMultPerSpirit": 0.02
+    "manaRegenMultPerSpirit": 0.02,
+    "spellRankHealMultiplier": 1.15,
+    "spellRankCostMultiplier": 1.1,
+    "manaRegenPerTick": 0.5
   },
   "combat": {
     "shared": {
@@ -63,7 +68,9 @@
       "shieldMaintenanceHastePerRank": 2.5,
       "selfShieldDamageReductionPerRank": 0.03,
       "archangelEchoShieldConsumeBonusFraction": 0.25,
-      "aegisBurstHealPerAbsorbPerRank": 0.15
+      "aegisBurstHealPerAbsorbPerRank": 0.15,
+      "weaveHotBonus": 0.2,
+      "weaveDirectBonus": 0.15
     },
     "paladin": {
       "illuminationManaRefundFraction": 1.06,
@@ -107,7 +114,8 @@
       "rampHastePerHotPerRank": 0.12,
       "rampCritPerHotPerRank": 0.08,
       "naturesGraceHotTickRateMultiplier": 1.5,
-      "barkskinSelfHealFractionPerRank": 0.08
+      "barkskinSelfHealFractionPerRank": 0.08,
+      "naturesGraceHealPerLevelPerTick": 0.4
     }
   },
   "progression": {
