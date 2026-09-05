@@ -1,4 +1,5 @@
-import { getRanks, hasBuff, addBuff } from "../../talentMechanics.js";
+import { getRanks, hasBuff, addBuff, getConsumableHotIndex, addSpiritLockoutIfSpent, applyPiAfterCd, getBuffStacks, PLAYER_BUFF_POWER_INFUSION } from "../../talentMechanics.js";
+import { applyHealToUnit } from "../../healMath.js";
 import { SPELL_TAG_DRUID_CULTIVATION_HOT, SPELL_TAG_DRUID_HOT, spellHasTag } from "../../constants.js";
 import { mapEntityById } from "../../mapEntityById.js";
 import balanceData from "../../data/balance.json" with { type: "json" };
@@ -107,17 +108,20 @@ function applyLivingSeed(s, newParty, targetId, isCritH, spell, healMultB, critH
   const am = spell.healing * rankHealMult * healMultB * critH * tMod * pct;
   return mapEntityById(newParty, targetId, (x) => ({ ...x, livingSeedPool: am }));
 }
-function druidVitalityBloomTickExtras(s, tickAmtAfterModifiers) {
+function druidVitalityBloomTickExtras(s, tickAmtAfterModifiers, random) {
   if (s.playerClass !== "DRUID" || tickAmtAfterModifiers <= 0) return { extraHeal: 0, mana: 0 };
   const r = getUniqueStatRating(s.playerClass, s.level, s.talents);
   if (r <= 0) return { extraHeal: 0, mana: 0 };
   const p = Math.min(DRUID.vitalityBloomChanceCap, r * DRUID.vitalityBloomChancePerRating);
-  if (Math.random() >= p) return { extraHeal: 0, mana: 0 };
+  if (random() >= p) return { extraHeal: 0, mana: 0 };
   let mana = 0;
-  if (Math.random() < DRUID.vitalityBloomManaRefundChance) {
+  if (random() < DRUID.vitalityBloomManaRefundChance) {
     mana = DRUID.vitalityBloomManaRefundAmount;
   }
   return { extraHeal: tickAmtAfterModifiers * DRUID.vitalityBloomHealFractionOfTick, mana };
+}
+function vitalityBloomTickExtras(s, tickAmt, random) {
+  return druidVitalityBloomTickExtras(s, tickAmt, random);
 }
 function rollOmenOfClarityOnHotTick(s, tickAmt, sourceSpellId, playerCombatBuffs, random) {
   if (s.playerClass !== "DRUID" || tickAmt <= 0 || !spellHasTag(sourceSpellId, SPELL_TAG_DRUID_HOT)) {
@@ -134,8 +138,85 @@ function partyHasDruidHotOnAnyAlly(s) {
     (u) => u.health > 0 && u.buffs.some((b) => spellHasTag(b.sourceSpellId, SPELL_TAG_DRUID_HOT))
   );
 }
+/**
+ * Swiftmend: consumes a Rejuvenation or Regrowth on the target to burst-heal.
+ *
+ * This is the `trySpecialHealCast` hook the cast pipeline looks for. Without it
+ * the spell fell through to a standard cast that consumed no HoT and healed
+ * nothing at all.
+ */
+function trySpecialHealCast(s, ctx) {
+  if (s.playerClass !== "DRUID" || ctx.spellId !== "swiftmend") return null;
+  const idx = s.party.findIndex((u) => u.id === ctx.targetId);
+  if (idx < 0) return null;
+  const target = s.party[idx];
+  if (!target || target.health <= 0) return null;
+  const hotIdx = getConsumableHotIndex(target);
+  if (hotIdx < 0) return null;
+
+  const isCrit = ctx.critRoll < ctx.eff.critChancePercent(0, 0);
+  const critMod = isCrit ? 1.5 : 1;
+  const raw = ctx.spell.healing * ctx.eff.baseHealingMultiplier * critMod;
+  const { health, eff, oh } = applyHealToUnit(target, raw);
+
+  const party = s.party.map((u, i) => {
+    if (i !== idx) return u;
+    return { ...u, health, buffs: u.buffs.filter((_, j) => j !== hotIdx) };
+  });
+
+  const piLeft = Math.max(0, getBuffStacks(s.playerCombatBuffs, PLAYER_BUFF_POWER_INFUSION) - 1);
+  ctx.runCooldown(ctx.spell.cooldown, piLeft);
+  let buffs = addSpiritLockoutIfSpent(s.playerCombatBuffs, ctx.needMana > 0);
+  buffs = applyPiAfterCd(buffs, piLeft);
+
+  return {
+    ...s,
+    party,
+    mana: Math.max(0, s.mana - ctx.needMana),
+    playerCombatBuffs: buffs,
+    dungeonRunHealEffective: s.dungeonRunHealEffective + eff,
+    dungeonRunHealOverheal: s.dungeonRunHealOverheal + oh,
+    dungeonRunManaSpentHealing: s.dungeonRunManaSpentHealing + ctx.needMana
+  };
+}
+function hasteBonusSum(s) {
+  return druidRampHasteBonus(s);
+}
+function critBonusForHealRoll(s) {
+  return druidRampCritBonus(s);
+}
+function castDirectHealMultiplier(s) {
+  return druidHarmonyDirectMultiplier(s);
+}
+function hotTickRateMultiplier(s, sourceSpellId) {
+  return druidHotTickRateMultiplier(s, sourceSpellId);
+}
+function hotTickManaReturn(s, sourceSpellId) {
+  return druidHotTickManaReturn(s, sourceSpellId);
+}
+function selfHealOnDamage(s, damageTaken) {
+  return druidBarkskinSelfHealOnDamage(s, damageTaken);
+}
+function hotTickAmount(ctx) {
+  const { state, unit, buff, healPerTick } = ctx;
+  const src = buff.sourceSpellId;
+  let amt = healPerTick;
+  amt *= cultivationHotMultiplier(state, src);
+  amt *= deepRootsHotMultiplier(state, unit, src);
+  amt *= druidHarmonyHotTickMultiplier(state, state.playerCombatBuffs);
+  return amt;
+}
 export {
   DRUID_HARMONY_HOT_BUFF,
+  vitalityBloomTickExtras,
+  trySpecialHealCast,
+  castDirectHealMultiplier,
+  critBonusForHealRoll,
+  hasteBonusSum,
+  hotTickAmount,
+  hotTickManaReturn,
+  hotTickRateMultiplier,
+  selfHealOnDamage,
   DRUID_HARMONY_HOT_TICKS,
   PLAYER_BUFF_OMEN_CLEARCASTING,
   applyLivingSeed,

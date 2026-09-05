@@ -146,8 +146,33 @@ function dispellableCurseCleanseProcChance(s) {
   }
   return p;
 }
+function damageTakenMultiplier(s) {
+  return devotionDamageTakenMultiplier(s);
+}
+function emergencyHasteBonus(s, targetId) {
+  const target = s.party.find((u) => u.id === targetId);
+  return paladinEmergencyHasteBonusForTarget(s, target);
+}
+function critBonusForHealRoll(s, spellId, targetId) {
+  const target = s.party.find((u) => u.id === targetId);
+  return paladinEmergencyCritBonusForTarget(s, target);
+}
+function castDirectHealMultiplier(s, spell, spellId) {
+  return vowCrusaderAoEMultiplier(s, spellId);
+}
+function manaAfterHeal(s, spellId, needMana, surgeFree, isCritH, healTargetId, initialMana) {
+  const ctx = { spell: { type: "DIRECT", healing: 1 }, spellId, isCritH, needMana, healTargetId };
+  let m = manaAfterHealPaladinIllumination(s, ctx, initialMana);
+  m = manaAfterHealPaladinBeaconVow(s, ctx, m);
+  return m;
+}
 export {
   PLAYER_BUFF_OMEN_CLEARCASTING,
+  castDirectHealMultiplier,
+  critBonusForHealRoll,
+  damageTakenMultiplier,
+  emergencyHasteBonus,
+  manaAfterHeal,
   applyBeaconEcho,
   applyLightbringerResolveSplash,
   beaconEchoMultiplier,

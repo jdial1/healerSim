@@ -257,8 +257,27 @@ function priestDivinityOverhealAbsorb(overheal, rating) {
   if (overheal <= 0 || rating <= 0) return 0;
   return overheal * Math.min(0.45, rating * PRIEST.divinityOverhealToShieldPerRating);
 }
+function hasteBonusSum(s) {
+  return priestShieldMaintenanceHasteBonus(s);
+}
+function critBonusForHealRoll(s, spellId) {
+  if (spellId !== "flash_heal") return 0;
+  return priestFlashCritBonusFromSynergy(s);
+}
+function damageTakenMultiplier(s, ctx) {
+  const unit = ctx?.unit;
+  if (!unit || unit.role !== "HEALER") return 1;
+  return Math.max(0, 1 - priestSelfShieldDamageReduction(s));
+}
+function onShieldTransition(s, partyBefore, partyAfter) {
+  return applyAegisBurstsFromShieldTransitions(s, partyBefore, partyAfter);
+}
 export {
   ECHO_OF_LIGHT_SOURCE,
+  critBonusForHealRoll,
+  damageTakenMultiplier,
+  hasteBonusSum,
+  onShieldTransition,
   GRACE_SOURCE_ID,
   PLAYER_BUFF_OMEN_CLEARCASTING,
   aegisBurstHealFromAbsorb,

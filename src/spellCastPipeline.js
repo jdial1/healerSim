@@ -3,6 +3,7 @@ import { manaPotionInstantMana, manaPotionOverTimeTotal } from "./manaPotionIcon
 import { spellHasTag } from "./constants.js";
 import { getSpellRank, getUniqueStatRating, getRankHealMult } from "./playerStats.js";
 import {
+  SURGE_OF_LIGHT_TICKS,
   getRanks,
   hasBuff,
   removeBuff,
@@ -41,7 +42,7 @@ import {
 } from "./combatHookRegistry.js";
 import { diffFloats, mergeFloats } from "./floatingCombatText.js";
 import { applyHealToUnit } from "./healMath.js";
-import { archangelEchoShieldBonusFraction, archangelSkipsSpell, graceHealMultiplierOnTarget, isPriestSurgeFinisher, PLAYER_BUFF_OMEN_CLEARCASTING, priestDivinityOverhealAbsorb } from "./classes/priest/hooks.js";
+import { archangelEchoShieldBonusFraction, archangelSkipsSpell, graceHealMultiplierOnTarget, isPriestSurgeFinisher, PLAYER_BUFF_OMEN_CLEARCASTING, priestDivinityOverhealAbsorb, rollSurgeOfLight } from "./classes/priest/hooks.js";
 import { paladinAvengingWrathSplashFraction, paladinRadianceHealMultiplier } from "./classes/paladin/hooks.js";
 function priestSpellLeavesHoTs(spell) {
   return spell.type === "HOT" || Boolean(spell.hotDuration && spell.hotDuration > 0);
@@ -379,6 +380,11 @@ function applyStandardHealCast(s, ready, rt) {
   }
   if (tower2) {
     hp2 = 0;
+  }
+  // Surge of Light: a Flash Heal can proc a free finisher. Nothing granted this
+  // buff before, so the consumption path below was unreachable.
+  if (s.playerClass === "PRIEST" && rollSurgeOfLight(s, spellId)) {
+    pbuffs = addBuff(pbuffs, "surge_of_light", SURGE_OF_LIGHT_TICKS, 1);
   }
   const spentManaForSpiritRegen = needMana > 0 && !(surgeFree && isPriestSurgeFinisher(spellId));
   pbuffs = addSpiritLockoutIfSpent(pbuffs, spentManaForSpiritRegen);

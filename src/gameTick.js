@@ -181,12 +181,13 @@ function applyAttackTemplate(party, template, dungeon, partyDamageMult, talents,
   if (targetIds.size === 0) return { party, naturalPerfectionAdd: 0 };
   const tank = party.find((u) => u.role === "TANK");
   const tankDead = !tank || tank.health <= 0;
-  const baseMult = getBossDamageMultiplier(dungeon.difficulty) * (dungeon.endless ? getEndlessMultiplier(state.endlessStacks) : 1) * partyDamageMult * getDamageTakenMultiplier(state, { source: "boss_attack" });
+  const baseMult = getBossDamageMultiplier(dungeon.difficulty) * (dungeon.endless ? getEndlessMultiplier(state.endlessStacks) : 1) * partyDamageMult;
   const natRank = getRanks(talents, "natural_perfection");
   let naturalPerfectionAdd = 0;
   const next = party.map((u) => {
     if (u.health <= 0 || !targetIds.has(u.id)) return u;
     let dmg = template.damage * baseMult * getLevelGapDamageMultiplier(u.level, dungeon.levelMax);
+    dmg *= getDamageTakenMultiplier(state, { source: "boss_attack", unit: u });
     if (tankDead && (u.role === "DPS" || u.role === "HEALER")) dmg *= 2;
     const out = applyDamageToUnit(u, dmg, natRank);
     if (out.naturalPerfectionTick) naturalPerfectionAdd = 1;
@@ -338,7 +339,7 @@ function processEnvironmentalTick(state, partyAfterBossAI, bossSelfBuffsForParty
       if (state.currentDungeon) {
         damage *= getLevelGapDamageMultiplier(unit.level, state.currentDungeon.levelMax);
       }
-      damage *= getDamageTakenMultiplier(state, { source: "trash_tick" });
+      damage *= getDamageTakenMultiplier(state, { source: "trash_tick", unit });
     }
     const tankHealthNow = tankIndex < 0 ? 1 : newParty[tankIndex] !== void 0 ? newParty[tankIndex].health : partyAfterBossAI[tankIndex].health;
     if (tankHealthNow <= 0 && (unit.role === "DPS" || unit.role === "HEALER")) {
@@ -395,8 +396,20 @@ function processEnvironmentalTick(state, partyAfterBossAI, bossSelfBuffsForParty
           envHealOh += oh;
           currentHealth = health;
         }
-        manaFromHotTicks += getHotTickManaReturn({ state, unit, buff, healPerTick: buff.healingPerTick, appliedTickHeal: tickAmt });
         const hooks = state.playerClass ? ClassRegistry.getHooks(state.playerClass) : null;
+        // Vitality Bloom: a tick can bloom for extra healing and refund mana.
+        let bloomMana = 0;
+        if (hooks?.vitalityBloomTickExtras) {
+          const extras = hooks.vitalityBloomTickExtras(state, tickAmt, random);
+          if (extras.extraHeal > 0 && currentHealth > 0) {
+            const bl = applyHealToUnit({ health: currentHealth, maxHealth: unit.maxHealth }, extras.extraHeal);
+            envHealEff += bl.eff;
+            envHealOh += bl.oh;
+            currentHealth = bl.health;
+          }
+          bloomMana = extras.mana;
+        }
+        manaFromHotTicks += getHotTickManaReturn({ state, unit, buff, healPerTick: buff.healingPerTick, appliedTickHeal: tickAmt, vitalityBloomMana: bloomMana });
         if (hooks?.rollOmenOfClarityOnHotTick) {
           envPlayerCombatBuffs = hooks.rollOmenOfClarityOnHotTick(state, tickAmt, buff.sourceSpellId, envPlayerCombatBuffs, random);
         }
