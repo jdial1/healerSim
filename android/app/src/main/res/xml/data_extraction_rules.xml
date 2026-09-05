@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+. Same intent as backup_rules.xml, declared for both transports:
+  cloud backup and direct device-to-device transfer. Without this file the
+  platform defaults apply and the mid-fight suspend snapshot travels too.
+
+  The includes are exhaustive, so the suspend file is excluded by omission.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="aegis.roster.v2.json" />
+        <include domain="file" path="aegis.tutorial.v1.json" />
+        </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="aegis.roster.v2.json" />
+        <include domain="file" path="aegis.tutorial.v1.json" />
+        </device-transfer>
+</data-extraction-rules>

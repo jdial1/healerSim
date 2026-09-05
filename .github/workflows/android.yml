@@ -39,6 +39,13 @@ jobs:
         working-directory: android
         run: ./gradlew --no-daemon :app:testDebugUnitTest
 
+      # The minified build is what ships, and nothing used to exercise it. This
+      # runs R8 and asserts no enum constant was renamed — the failure that
+      # silently wipes every player's save. Needs no signing secrets.
+      - name: Verify minified release contract
+        working-directory: android
+        run: ./gradlew --no-daemon :app:minifyReleaseWithR8
+
       - name: Assemble debug APK
         working-directory: android
         run: ./gradlew --no-daemon :app:assembleDebug

@@ -2,6 +2,7 @@ package com.jdial.aegis
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -44,6 +45,7 @@ import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.sim.HEALER_UNIT_ID
 import com.jdial.aegis.ui.CharacterScreen
 import com.jdial.aegis.ui.ClassSelectScreen
+import com.jdial.aegis.ui.ConfirmDialog
 import com.jdial.aegis.ui.GameIcon
 import com.jdial.aegis.ui.TalentScreen
 import com.jdial.aegis.ui.CombatScreen
@@ -118,6 +120,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
     var screen: Screen by remember { mutableStateOf(Screen.Splash) }
     var queued: Dungeon? by remember { mutableStateOf(null) }
+    var confirmAbandon by remember { mutableStateOf(false) }
     var targetId: String? by remember { mutableStateOf(HEALER_UNIT_ID) }
     val seenTutorial by vm.tutorialSteps.collectAsStateWithLifecycle()
 
@@ -140,6 +143,40 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
     AegisTheme(cls = state.playerClass) {
         Box(Modifier.fillMaxSize().background(Obsidian.abyss)) {
+            // System back used to quit the app from every screen, including
+            // mid-boss. Overlays unwind first — they can be up on any screen —
+            // then the screen stack.
+            //
+            // `enabled` is computed rather than always true: on Dungeons with
+            // nothing open, back must reach the system and exit, because that is
+            // the app's home. A handler that is enabled and does nothing swallows
+            // the gesture and traps the user.
+            // A wipe can end the run while the confirm is open, so it is only
+            // live while there is still a run to abandon.
+            val abandoning = confirmAbandon && state.isCombatActive
+
+            BackHandler(
+                enabled = abandoning ||
+                    state.dungeonOutcome != null ||
+                    queued != null ||
+                    tutorialStep != null ||
+                    screen == Screen.Combat ||
+                    screen == Screen.Talents ||
+                    screen == Screen.Character ||
+                    screen == Screen.ClassSelect,
+            ) {
+                when {
+                    abandoning -> confirmAbandon = false
+                    state.dungeonOutcome != null -> vm.dismissOutcome()
+                    queued != null -> queued = null
+                    tutorialStep != null -> vm.completeTutorialStep(tutorialStep.id)
+                    // Ask, never act: a run is too expensive to lose to a swipe.
+                    screen == Screen.Combat -> confirmAbandon = true
+                    screen == Screen.ClassSelect -> screen = Screen.Splash
+                    else -> screen = Screen.Dungeons
+                }
+            }
+
             val tabbed = screen == Screen.Dungeons || screen == Screen.Talents || screen == Screen.Character
 
             Column(Modifier.fillMaxSize()) {
@@ -191,7 +228,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                             onTarget = { targetId = it },
                             onCast = { spellId -> vm.castSpell(spellId, targetId) },
                             onReorder = vm::reorderActionBar,
-                            onLeave = { vm.abandonDungeon() },
+                            onLeave = { confirmAbandon = true },
                         )
                     }
                 }
@@ -231,6 +268,18 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                     outcome = outcome,
                     data = vm.data,
                     onDismiss = { vm.dismissOutcome() },
+                )
+            }
+
+            if (abandoning) {
+                ConfirmDialog(
+                    headline = "Abandon Run",
+                    body = "Leaving now forfeits this dungeon. No experience is awarded.",
+                    confirmLabel = "Abandon",
+                    // Only close the run — the isCombatActive effect above does
+                    // the navigation, so setting `screen` here would race it.
+                    onConfirm = { confirmAbandon = false; vm.abandonDungeon() },
+                    onDismiss = { confirmAbandon = false },
                 )
             }
         }

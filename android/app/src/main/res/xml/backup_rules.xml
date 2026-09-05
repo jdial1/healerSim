@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cloud backup (Android 11 and below). The roster and tutorial progress are
+  worth restoring onto a new device; the suspended run is not.
+
+  Listing includes makes the set exhaustive — anything not named is excluded —
+  so aegis.suspend.v1.json is left out by omission. It is a snapshot of one live
+  boss fight, read once and deleted; restoring it onto another device would drop
+  the player into a fight they are not in.
+-->
+<full-backup-content>
+    <include domain="file" path="aegis.roster.v2.json" />
+    <include domain="file" path="aegis.tutorial.v1.json" />
+</full-backup-content>

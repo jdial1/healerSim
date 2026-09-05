@@ -260,3 +260,45 @@ private fun StatRow(label: String, value: String) {
         BasicText(value, style = AegisType.numeric.copy(fontSize = 14.sp))
     }
 }
+
+// --- confirmation -----------------------------------------------------------
+
+/**
+ * Two-button confirm, used for anything that throws away a run in progress.
+ *
+ * Leaving mid-dungeon used to be a single unguarded tap, and system back now
+ * reaches the same action — a stray edge swipe should not cost a boss fight.
+ */
+@Composable
+fun ConfirmDialog(
+    headline: String,
+    body: String,
+    confirmLabel: String,
+    onConfirm: () -> kotlin.Unit,
+    onDismiss: () -> kotlin.Unit,
+) {
+    Scrim(onDismiss = onDismiss) {
+        ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(20.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                BasicText(
+                    headline.uppercase(),
+                    style = AegisType.title.copy(fontSize = 17.sp, color = Vital.critical),
+                )
+                Spacer(Modifier.height(12.dp))
+                BasicText(body, style = AegisType.body.copy(color = Ink.secondary))
+                Spacer(Modifier.height(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GiltButton(confirmLabel, onClick = onConfirm)
+                    BasicText(
+                        "STAY",
+                        style = AegisType.label.copy(color = Ink.muted),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable(onClick = onDismiss)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
+                }
+            }
+        }
+    }
+}
