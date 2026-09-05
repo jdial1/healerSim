@@ -96,8 +96,14 @@ class Engine(val data: GameData) {
         val cls = state.playerClass ?: return state
         if (dungeon.endless && state.level < dungeon.levelMin) return state
 
+        // One roll per run, so a dungeon does not clear in exactly the same time
+        // twice. Rolled here (not per tick) to keep pacing steady within a run.
+        val jitter = data.balance.partyDps.runJitter
+        val runDpsJitter = 1 - jitter + rng.nextDouble() * (jitter * 2)
+
         val trashHp = max(1.0, progression.trashMaxHealth(dungeon))
         return state.clearedCombat().copy(
+            runDpsJitter = runDpsJitter,
             currentDungeon = dungeon,
             dungeonPace = pace,
             combatPhase = CombatPhase.TRASH,

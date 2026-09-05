@@ -632,7 +632,7 @@ class GameTick(
         val deadDps = sys.party.count { it.role == UnitRole.DPS && it.health <= 0 }
         // Losing DPS only slows the boss, not trash.
         val bossDpsMult = if (s.combatPhase == CombatPhase.BOSS) 0.7.pow(deadDps) else 1.0
-        var enemyHealth = s.enemyHealth - partyDps * bossDpsMult * dpsPaceMultiplier
+        var enemyHealth = s.enemyHealth - partyDps * bossDpsMult * dpsPaceMultiplier * s.runDpsJitter
 
         val base = s.copy(
             party = sys.party,

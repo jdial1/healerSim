@@ -193,7 +193,7 @@ function snapshot(st) {
   };
 }
 
-function buildScenarioState(cls, dungeonId, phase, talentRanks, level) {
+function buildScenarioState(cls, dungeonId, phase, talentRanks, level, jitter) {
   const dungeon = DUNGEONS.find((d) => d.id === dungeonId);
   const talents = zeroTalents(cls).map((t) => ({
     ...t,
@@ -234,6 +234,7 @@ function buildScenarioState(cls, dungeonId, phase, talentRanks, level) {
     mechanicCooldown: 5,
     mechanicOrdinal: 0,
     combatElapsedTicks: 0,
+    runDpsJitter: jitter ?? 1,
     endlessStacks: 0,
     manaPotionsUsedThisDungeon: 0,
     floatingCombatTexts: [],
@@ -271,12 +272,14 @@ const TICK_SCENARIOS = [
   {
     name: "paladin-talented-devotion",
     cls: "PALADIN", dungeon: "deadmines", phase: "BOSS", seed: 777, ticks: 500, level: 4,
+    // Off-default so the per-run damage jitter is actually exercised.
+    jitter: 0.97,
     rotation: { everyTicks: 10, spells: ["flash_heal", "holy_light"] },
   },
 ];
 
 out.tickScenarios = TICK_SCENARIOS.map((sc) => {
-  const initial = buildScenarioState(sc.cls, sc.dungeon, sc.phase, sc.talents, sc.level ?? 3);
+  const initial = buildScenarioState(sc.cls, sc.dungeon, sc.phase, sc.talents, sc.level ?? 3, sc.jitter);
   const rng = new Rng(sc.seed);
   const random = rng.fn();
   let st = initial;
@@ -316,6 +319,7 @@ out.tickScenarios = TICK_SCENARIOS.map((sc) => {
     level: initial.level,
     maxMana: initial.maxMana,
     talents: sc.talents ?? {},
+    jitter: sc.jitter ?? 1,
     rotation: sc.rotation ?? null,
     xp: initial.xp,
     party: initial.party.map((u) => ({

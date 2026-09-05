@@ -82,6 +82,7 @@ class TickParityTest {
             enemyHealth = enemyHp,
             enemyMaxHealth = enemyHp,
             isCombatActive = true,
+            runDpsJitter = sc.num("jitter"),
             mechanicCooldown = sc.i("mechanicCooldown"),
         )
     }

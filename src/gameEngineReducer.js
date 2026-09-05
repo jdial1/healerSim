@@ -5,6 +5,7 @@ import {
   getTrashMaxHealth
 } from "./constants.js";
 import { buildEndlessWaveDungeon, endlessBossPool, getEndlessTemplate } from "./dungeons/index.js";
+import { BALANCE } from "./data/index.js";
 import { INTRO_TUTORIAL_DUNGEON_ID } from "./tutorialConfig.js";
 import { getTalents } from "./talents/index.js";
 import {
@@ -40,6 +41,7 @@ function getBaseCombatState() {
     mechanicOrdinal: 0,
     spellCooldowns: {},
     combatElapsedTicks: 0,
+    runDpsJitter: 1,
     floatingCombatTexts: [],
     endlessStacks: 0,
     dungeonRunHealEffective: 0,
@@ -139,10 +141,15 @@ function gameReducer(state, action) {
           (u) => u.id === "1" ? { ...u, health: Math.max(1, Math.floor(u.maxHealth * 0.34)) } : u
         );
       }
+      // One roll per run, so a dungeon does not clear in exactly the same time
+      // twice. Rolled here (not per tick) to keep pacing steady within a run.
+      const jitter = BALANCE.partyDps.runJitter ?? 0;
+      const runDpsJitter = 1 - jitter + rnd() * (jitter * 2);
       const now = Date.now();
       return {
         ...state,
         ...getBaseCombatState(),
+        runDpsJitter,
         currentDungeon: dungeon,
         dungeonPace: pace,
         enemyHealth: trashHp,

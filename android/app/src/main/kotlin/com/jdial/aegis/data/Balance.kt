@@ -37,6 +37,8 @@ data class PartyDpsBalance(
     val base: Double,
     val levelExponent: Double,
     val levelMultiplier: Double,
+    /** Per-run variance, +/- this fraction, so runs are not identical. */
+    val runJitter: Double = 0.0,
 )
 
 @Serializable

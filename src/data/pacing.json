@@ -2,9 +2,9 @@
   "paces": {
     "fast": {
       "label": "Fast",
-      "trashSec": 11,
-      "bossSec": 23,
-      "dpsMultiplier": 1.3333,
+      "trashSec": 8,
+      "bossSec": 15,
+      "dpsMultiplier": 2.0,
       "xpMultiplier": 0.5,
       "icon": "Zap",
       "theme": "emerald"
@@ -13,7 +13,7 @@
       "label": "Normal",
       "trashSec": 15,
       "bossSec": 30,
-      "dpsMultiplier": 1,
+      "dpsMultiplier": 1.0,
       "xpMultiplier": 1,
       "icon": "Gauge",
       "theme": "amber"

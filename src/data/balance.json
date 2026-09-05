@@ -12,7 +12,8 @@
   "partyDps": {
     "base": 16,
     "levelExponent": 1.55,
-    "levelMultiplier": 1.0
+    "levelMultiplier": 1.0,
+    "runJitter": 0.05
   },
   "environmentalDamage": {
     "tankProcChance": 0.35,

@@ -638,7 +638,7 @@ function resolveOngoingCombat(state, sys, boss, bossBuffsNext, random, dpsPaceMu
   const partyDps = pd.base + Math.pow(state.level, pd.levelExponent) * pd.levelMultiplier;
   const inactiveDpsCount = newParty.filter((u) => u.role === "DPS" && u.health <= 0).length;
   const bossDpsMult = state.combatPhase === "BOSS" ? Math.pow(0.7, inactiveDpsCount) : 1;
-  const effectivePartyDps = partyDps * bossDpsMult * dpsPaceMultiplier;
+  const effectivePartyDps = partyDps * bossDpsMult * dpsPaceMultiplier * (state.runDpsJitter ?? 1);
   let currentEnemyHealth = state.enemyHealth - effectivePartyDps;
   let newTrashPulls = state.trashPullsRemaining;
   let newPhase = state.combatPhase;

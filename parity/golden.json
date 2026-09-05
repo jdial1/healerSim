@@ -2217,6 +2217,7 @@
       "level": 3,
       "maxMana": 444,
       "talents": {},
+      "jitter": 1,
       "rotation": null,
       "xp": 506,
       "party": [
@@ -2610,7 +2611,7 @@
           "party": [
             {
               "id": "1",
-              "health": 156,
+              "health": 208,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -2624,7 +2625,7 @@
             },
             {
               "id": "3",
-              "health": 89,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -2656,6 +2657,7 @@
       "level": 3,
       "maxMana": 444,
       "talents": {},
+      "jitter": 1,
       "rotation": null,
       "xp": 506,
       "party": [
@@ -3778,14 +3780,14 @@
           "party": [
             {
               "id": "1",
-              "health": 182,
+              "health": 156,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "2",
-              "health": 101,
+              "health": 89,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -3824,6 +3826,7 @@
       "level": 3,
       "maxMana": 444,
       "talents": {},
+      "jitter": 1,
       "rotation": null,
       "xp": 506,
       "party": [
@@ -4403,28 +4406,28 @@
           "party": [
             {
               "id": "1",
-              "health": 182,
+              "health": 156,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "2",
-              "health": 101,
+              "health": 89,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "3",
-              "health": 101,
+              "health": 77,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "4",
-              "health": 101,
+              "health": 89,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -4454,6 +4457,7 @@
         "d_r4c3": 1,
         "d_r5c4": 1
       },
+      "jitter": 1,
       "rotation": {
         "everyTicks": 12,
         "spells": [
@@ -5431,21 +5435,21 @@
           "party": [
             {
               "id": "1",
-              "health": 234,
+              "health": 182,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "2",
-              "health": 101,
+              "health": 89,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "3",
-              "health": 89,
+              "health": 113,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -5481,6 +5485,7 @@
         "p_r3c3": 2,
         "p_r5c3": 1
       },
+      "jitter": 1,
       "rotation": {
         "everyTicks": 10,
         "spells": [
@@ -6613,6 +6618,7 @@
       "level": 4,
       "maxMana": 546,
       "talents": {},
+      "jitter": 0.97,
       "rotation": {
         "everyTicks": 10,
         "spells": [
@@ -6664,9 +6670,9 @@
           "tick": 20,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 4658.516246,
+          "enemyHealth": 4673.260759,
           "mana": 489,
-          "progress": 77.385843,
+          "progress": 77.314268,
           "combatActive": true,
           "mechanicCooldown": 12,
           "mechanicOrdinal": 1,
@@ -6737,9 +6743,9 @@
           "tick": 40,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 4167.032492,
+          "enemyHealth": 4196.521517,
           "mana": 469,
-          "progress": 79.771687,
+          "progress": 79.628536,
           "combatActive": true,
           "mechanicCooldown": 41,
           "mechanicOrdinal": 2,
@@ -6815,9 +6821,9 @@
           "tick": 60,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 3675.548738,
+          "enemyHealth": 3719.782276,
           "mana": 449.27905,
-          "progress": 82.15753,
+          "progress": 81.942804,
           "combatActive": true,
           "mechanicCooldown": 21,
           "mechanicOrdinal": 2,
@@ -6893,9 +6899,9 @@
           "tick": 80,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 3184.064984,
+          "enemyHealth": 3243.043034,
           "mana": 392.43432,
-          "progress": 84.543374,
+          "progress": 84.257073,
           "combatActive": true,
           "mechanicCooldown": 1,
           "mechanicOrdinal": 2,
@@ -6971,9 +6977,9 @@
           "tick": 100,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 2692.58123,
+          "enemyHealth": 2766.303793,
           "mana": 372.43432,
-          "progress": 86.929217,
+          "progress": 86.571341,
           "combatActive": true,
           "mechanicCooldown": 23,
           "mechanicOrdinal": 3,
@@ -7049,9 +7055,9 @@
           "tick": 120,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 2201.097476,
+          "enemyHealth": 2289.564552,
           "mana": 353.049105,
-          "progress": 89.315061,
+          "progress": 88.885609,
           "combatActive": true,
           "mechanicCooldown": 3,
           "mechanicOrdinal": 3,
@@ -7127,9 +7133,9 @@
           "tick": 140,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 1709.613722,
+          "enemyHealth": 1812.82531,
           "mana": 296.049105,
-          "progress": 91.700904,
+          "progress": 91.199877,
           "combatActive": true,
           "mechanicCooldown": 30,
           "mechanicOrdinal": 4,
@@ -7200,9 +7206,9 @@
           "tick": 160,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 1218.129968,
+          "enemyHealth": 1336.086069,
           "mana": 276.049105,
-          "progress": 94.086748,
+          "progress": 93.514145,
           "combatActive": true,
           "mechanicCooldown": 10,
           "mechanicOrdinal": 4,
@@ -7273,9 +7279,9 @@
           "tick": 180,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 726.646214,
+          "enemyHealth": 859.346828,
           "mana": 256.049105,
-          "progress": 96.472591,
+          "progress": 95.828413,
           "combatActive": true,
           "mechanicCooldown": 25,
           "mechanicOrdinal": 5,
@@ -7351,9 +7357,9 @@
           "tick": 200,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 235.16246,
+          "enemyHealth": 382.607586,
           "mana": 199.049105,
-          "progress": 98.858435,
+          "progress": 98.142682,
           "combatActive": true,
           "mechanicCooldown": 5,
           "mechanicOrdinal": 5,
@@ -7426,11 +7432,11 @@
           ]
         },
         {
-          "tick": 210,
+          "tick": 217,
           "phase": "BOSS",
           "trashPullsRemaining": 0,
-          "enemyHealth": 13.994771,
-          "mana": 199.049105,
+          "enemyHealth": 1.216193,
+          "mana": 179.049105,
           "progress": 100,
           "combatActive": false,
           "mechanicCooldown": 0,
@@ -7438,8 +7444,8 @@
           "cooldowns": [],
           "playerBuffs": [],
           "bossBuffs": [],
-          "healEffective": 306.62218,
-          "healOverheal": 1502.534851,
+          "healEffective": 338.73818,
+          "healOverheal": 1560.822295,
           "xp": 966,
           "level": 4,
           "outcome": "success",
@@ -7454,7 +7460,7 @@
             },
             {
               "id": "2",
-              "health": 113,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -7468,7 +7474,7 @@
             },
             {
               "id": "4",
-              "health": 89,
+              "health": 113,
               "shield": 0,
               "buffs": [],
               "debuffs": []

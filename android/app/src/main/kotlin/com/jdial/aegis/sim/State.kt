@@ -187,6 +187,8 @@ data class GameState(
     val mechanicCooldown: Int = 0,
     val mechanicOrdinal: Int = 0,
     val combatElapsedTicks: Int = 0,
+    /** Rolled once at run start; scales party damage so clear times vary. */
+    val runDpsJitter: Double = 1.0,
     val endlessStacks: Int = 0,
     val manaPotionsUsedThisDungeon: Int = 0,
     val floatingCombatTexts: List<FloatingText> = emptyList(),
@@ -220,6 +222,7 @@ data class GameState(
         mechanicCooldown = 0,
         mechanicOrdinal = 0,
         combatElapsedTicks = 0,
+        runDpsJitter = 1.0,
         endlessStacks = 0,
         manaPotionsUsedThisDungeon = 0,
         floatingCombatTexts = emptyList(),
