@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -98,16 +99,31 @@ fun CombatScreen(
             EncounterHud(state, onLeave)
             Spacer(Modifier.height(10.dp))
 
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            BoxWithConstraints(
+                Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                // All five rows must always be visible — the healer is the last
+                // one, and a run is lost when you cannot see or tap yourself. So
+                // the row height is derived from the space available and the bar
+                // shrinks with it, rather than rows keeping a size that clips.
+                val gap = 7.dp
+                val rowHeight = ((maxHeight - gap * 4) / 5).coerceIn(48.dp, PartyRowMaxHeight)
+                val barHeight = (rowHeight * 0.40f).coerceIn(16.dp, HealthBarHeight)
+                val auraSize = (rowHeight * 0.30f).coerceIn(16.dp, AuraStripHeight)
+
                 Column(
                     Modifier.widthIn(max = 480.dp).fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalArrangement = Arrangement.spacedBy(gap),
                 ) {
                     state.party.forEach { unit ->
                         PartyRow(
                             unit = unit,
                             state = state,
                             selected = unit.id == targetId,
+                            rowHeight = rowHeight,
+                            barHeight = barHeight,
+                            auraSize = auraSize,
                             onClick = { if (unit.isAlive) onTarget(unit.id) },
                         )
                     }
@@ -227,6 +243,12 @@ private fun EncounterPip(filled: Boolean, active: Boolean, boss: Boolean = false
 
 // --- heal grid --------------------------------------------------------------
 
+// Row geometry. The row height is fixed and derived from these, so adding an
+// aura can never change it: 5 + 18 (name) + 3 + bar + 3 + strip + 5.
+private val HealthBarHeight = 32.dp
+private val AuraStripHeight = 24.dp
+private val PartyRowMaxHeight = 90.dp
+
 /** Health colour is a hard signal, not decoration: four bands, no blending. */
 private fun healthColor(pct: Float): Color = when {
     pct < 0.25f -> Vital.critical
@@ -240,6 +262,9 @@ private fun PartyRow(
     unit: Unit,
     state: GameState,
     selected: Boolean,
+    rowHeight: Dp,
+    barHeight: Dp,
+    auraSize: Dp,
     onClick: () -> kotlin.Unit,
 ) {
     val pct = if (unit.maxHealth > 0) (unit.health / unit.maxHealth).toFloat().coerceIn(0f, 1f) else 0f
@@ -253,35 +278,59 @@ private fun PartyRow(
     val dead = !unit.isAlive
 
     ForgedPanel(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = !dead, onClick = onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            // Fixed height: auras coming and going must not make the grid jump,
+            // because a moving target is a mis-tap under pressure.
+            .height(rowHeight)
+            .clickable(enabled = !dead, onClick = onClick),
         selected = selected,
         accent = accent.core,
         contentPadding = PaddingValues(0.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            // The role stripe doubles as the selection marker: it widens and
+            // brightens, so selection reads from the edge of the screen.
             Box(
                 Modifier
-                    .width(4.dp)
-                    .height(64.dp)
+                    .width(if (selected) 7.dp else 4.dp)
+                    .fillMaxHeight()
                     .background(
                         when {
                             dead -> Ink.muted.copy(alpha = 0.3f)
+                            selected -> accent.bright
                             unit.role == UnitRole.TANK -> Vital.shield
                             unit.role == UnitRole.HEALER -> accent.core
                             else -> Gilt.deep
                         },
                     ),
             )
-            Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Row(
+                    Modifier.height(auraSize),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     BasicText(
                         unit.name,
+                        maxLines = 1,
                         style = AegisType.numeric.copy(
                             fontSize = 13.sp,
                             color = if (dead) Ink.muted else Ink.primary,
                         ),
-                        modifier = Modifier.weight(1f),
                     )
+                    Spacer(Modifier.weight(1f))
+                    // Auras sit on the name line: present or absent, the row is
+                    // the same height either way.
+                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        unit.buffs.take(4).forEach { HotRing(it, auraSize) }
+                        unit.debuffs.take(2).forEach {
+                            AuraRing(it.icon, it.remainingTicks, it.remainingTicks, Vital.critical, auraSize)
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
                     if (dead) {
                         BasicText("DEAD", style = AegisType.label.copy(color = Vital.critical))
                     } else {
@@ -292,11 +341,11 @@ private fun PartyRow(
                     }
                 }
 
-                Spacer(Modifier.height(5.dp))
+                Spacer(Modifier.height(3.dp))
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(16.dp)
+                        .height(barHeight)
                         .clip(RoundedCornerShape(3.dp))
                         .background(Obsidian.abyss)
                         .border(1.dp, Gilt.deep.copy(alpha = 0.45f), RoundedCornerShape(3.dp)),
@@ -330,15 +379,6 @@ private fun PartyRow(
                     }
                 }
 
-                if (unit.buffs.isNotEmpty() || unit.debuffs.isNotEmpty()) {
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        unit.buffs.take(4).forEach { HotRing(it) }
-                        unit.debuffs.take(2).forEach {
-                            AuraRing(it.icon, it.remainingTicks, it.remainingTicks, Vital.critical)
-                        }
-                    }
-                }
             }
             Column(Modifier.padding(end = 10.dp), horizontalAlignment = Alignment.End) {
                 BasicText(
@@ -359,9 +399,9 @@ private fun PartyRow(
 }
 
 @Composable
-private fun HotRing(buff: UnitBuff) {
+private fun HotRing(buff: UnitBuff, ringSize: Dp) {
     val max = if (buff.durationTicksMax > 0) buff.durationTicksMax else buff.remainingTicks
-    AuraRing(buff.icon, buff.remainingTicks, max, Vital.healthy)
+    AuraRing(buff.icon, buff.remainingTicks, max, Vital.healthy, ringSize)
 }
 
 /**
@@ -369,12 +409,12 @@ private fun HotRing(buff: UnitBuff) {
  * read at a glance from the arc, with the seconds beneath for precision.
  */
 @Composable
-private fun AuraRing(icon: String, remainingTicks: Int, maxTicks: Int, tint: Color) {
+private fun AuraRing(icon: String, remainingTicks: Int, maxTicks: Int, tint: Color, ringSize: Dp) {
     val sweep = if (maxTicks > 0) (remainingTicks.toFloat() / maxTicks).coerceIn(0f, 1f) else 0f
     val seconds = ceil(remainingTicks / 10.0).toInt()
     val urgent = remainingTicks <= 30
 
-    Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(ringSize), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val stroke = 2.5f * density
             val inset = stroke / 2
@@ -398,7 +438,7 @@ private fun AuraRing(icon: String, remainingTicks: Int, maxTicks: Int, tint: Col
                 style = Stroke(width = stroke),
             )
         }
-        GameIcon(icon, size = 17.dp, accent = Color.Transparent)
+        GameIcon(icon, size = ringSize * 0.62f, accent = Color.Transparent)
         BasicText(
             "$seconds",
             style = AegisType.label.copy(
@@ -416,7 +456,8 @@ private fun AuraRing(icon: String, remainingTicks: Int, maxTicks: Int, tint: Col
  */
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.FloatingLayer(state: GameState, unitId: String) {
-    val entries = state.floatingCombatTexts.filter { it.unitId == unitId }
+    // Cap the stack: a rolling HoT can otherwise queue two dozen numbers at once.
+    val entries = state.floatingCombatTexts.filter { it.unitId == unitId }.takeLast(3)
     if (entries.isEmpty()) return
 
     entries.forEachIndexed { i, f ->
@@ -430,8 +471,10 @@ private fun androidx.compose.foundation.layout.BoxScope.FloatingLayer(state: Gam
                 color = if (f.kind == FloatingKind.ABSORB) Vital.shield else Vital.healthy,
             ),
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = (-70 + i * 26).dp, y = (-30 * progress).dp)
+                // Centred over the row rather than pinned to an edge, so it never
+                // lands on the role label on a narrow screen.
+                .align(Alignment.Center)
+                .offset(x = (i * 30 - 30).dp, y = (-10 - 26 * progress).dp)
                 .alpha((1f - progress * progress).coerceIn(0f, 1f)),
         )
     }

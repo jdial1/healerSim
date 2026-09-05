@@ -428,13 +428,14 @@ class GameTick(
             val b = before.firstOrNull { it.id == a.id } ?: return@forEach
             val healed = a.health - b.health
             val absorbed = a.shield - b.shield
-            if (healed > 0) {
+            // A fractional HoT tick rounds to zero; showing "0" is just noise.
+            if (healed.roundToInt() > 0) {
                 out += FloatingText(
                     id++, a.id, healed.roundToInt(), FloatingKind.HEAL, crit,
                     combatTick + FLOATING_TEXT_LIFETIME_TICKS,
                 )
             }
-            if (absorbed > 0) {
+            if (absorbed.roundToInt() > 0) {
                 out += FloatingText(
                     id++, a.id, absorbed.roundToInt(), FloatingKind.ABSORB, false,
                     combatTick + FLOATING_TEXT_LIFETIME_TICKS,

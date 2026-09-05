@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -164,17 +165,35 @@ fun ForgedPanel(
     contentPadding: PaddingValues = PaddingValues(14.dp),
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val edge = if (selected) accent else Gilt.deep.copy(alpha = 0.55f)
+    // Selection has to survive a glance mid-fight, so it is carried by three
+    // cues at once: a thicker edge, the accent at full strength, and a warmer
+    // interior — not by a single faint border colour.
     Box(
         modifier = modifier
             .clip(FrameShape)
-            .background(Brush.verticalGradient(listOf(Gilt.shadow.copy(alpha = 0.9f), edge.copy(alpha = 0.35f))))
-            .padding(1.dp)
+            .background(
+                if (selected) {
+                    Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.75f)))
+                } else {
+                    Brush.verticalGradient(
+                        listOf(Gilt.shadow.copy(alpha = 0.9f), Gilt.deep.copy(alpha = 0.2f)),
+                    )
+                },
+            )
+            .padding(if (selected) 2.dp else 1.dp)
             .clip(FrameShape)
             .background(
-                Brush.verticalGradient(
-                    listOf(Obsidian.panelHigh, Obsidian.panel, Obsidian.deep),
-                ),
+                if (selected) {
+                    Brush.verticalGradient(
+                        listOf(
+                            Obsidian.raised,
+                            Obsidian.panelHigh,
+                            accent.copy(alpha = 0.10f).compositeOver(Obsidian.panel),
+                        ),
+                    )
+                } else {
+                    Brush.verticalGradient(listOf(Obsidian.panelHigh, Obsidian.panel, Obsidian.deep))
+                },
             )
             .padding(contentPadding),
         content = content,

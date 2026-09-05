@@ -449,7 +449,7 @@ class CastPipeline(
         val floats = s.floatingCombatTexts + party.mapIndexedNotNull { i, a ->
             val b = s.party.getOrNull(i) ?: return@mapIndexedNotNull null
             val healed = a.health - b.health
-            if (healed <= 0) null else FloatingText(
+            if (healed.roundToInt() <= 0) null else FloatingText(
                 id = s.combatElapsedTicks.toLong() * 100 + 50 + i,
                 unitId = a.id,
                 amount = healed.roundToInt(),
