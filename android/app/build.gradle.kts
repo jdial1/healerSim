@@ -112,8 +112,6 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.foundation)
-    implementation(libs.compose.ui.tooling.preview)
-    debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.viewmodel.compose)
@@ -135,12 +133,9 @@ tasks.matching { it.name.contains("lint", ignoreCase = true) }.configureEach {
     dependsOn(syncGameData)
 }
 
+// Tests need the synced content, and the parity goldens live outside the module.
 tasks.withType<Test>().configureEach {
     dependsOn(syncGameData)
-}
-
-// The parity golden file lives outside the module; expose its path to tests.
-tasks.withType<Test>().configureEach {
     systemProperty("aegis.parityDir", rootProject.file("../parity").absolutePath)
     systemProperty("aegis.assetsDir", generatedAssetsDir.absolutePath)
 }

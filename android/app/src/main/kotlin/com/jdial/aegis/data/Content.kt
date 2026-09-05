@@ -32,8 +32,6 @@ data class Spell(
     val hotHealingPerTick: Double? = null,
     val manaRegenBuffDurationTicks: Int? = null,
     val icon: String = "",
-    val glowType: String = "spell",
-    val staticEffectDescription: String? = null,
     val tags: List<String> = emptyList(),
     val balance: SpellBalance? = null,
 ) {
@@ -99,8 +97,6 @@ data class ClassMeta(
     val id: String,
     val name: String,
     val description: String = "",
-    val portraitIcon: String = "",
-    val portraitGlow: String = "spell",
     val passiveTraitName: String = "",
     val passiveTraitDescription: String = "",
     val passiveTraitIcon: String = "",
@@ -191,8 +187,6 @@ data class NpcPools(
 @Serializable
 data class Pace(
     val label: String,
-    val trashSec: Int,
-    val bossSec: Int,
     val dpsMultiplier: Double,
     val xpMultiplier: Double,
 )

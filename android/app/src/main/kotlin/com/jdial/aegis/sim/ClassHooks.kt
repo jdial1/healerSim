@@ -682,9 +682,12 @@ object PaladinHooks : ClassHooks {
     }
 }
 
+/** Every hook defaulted: used before a class is chosen. */
+object NoHooks : ClassHooks
+
 fun hooksFor(cls: PlayerClass?): ClassHooks = when (cls) {
     PlayerClass.PRIEST -> PriestHooks
     PlayerClass.DRUID -> DruidHooks
     PlayerClass.PALADIN -> PaladinHooks
-    null -> object : ClassHooks {}
+    null -> NoHooks
 }

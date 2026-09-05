@@ -1,10 +1,10 @@
 package com.jdial.aegis.data
 
+import com.jdial.aegis.sim.Fixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Parses the real content JSON synced out of the web app. This is the guard
@@ -13,14 +13,10 @@ import java.io.File
  */
 class GameDataTest {
 
-    private val data: GameData by lazy {
-        val root = File("build/generated/gameAssets")
-        assertTrue(
-            "Content assets missing at ${root.absolutePath}. Run :app:syncGameData.",
-            root.isDirectory,
-        )
-        GameData.load { path -> File(root, path).readText() }
-    }
+    // Was a second hand-rolled loader that hardcoded build/generated/gameAssets
+    // and ignored the aegis.assetsDir property the build actually sets, so it
+    // only worked when the CWD happened to line up. Fixtures already does this.
+    private val data: GameData get() = Fixtures.data
 
     @Test
     fun `parses every content file`() {
