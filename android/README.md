@@ -14,9 +14,11 @@ which copies into `app/build/generated/gameAssets`:
 | `src/classes/*/{class,spells,talents}.json` | `classes/` |
 | `public/icons/**` | `icons/` |
 
-Editing `src/data/balance.json` therefore retunes **both** apps. Run
-`npm run prebuild` in the repo root first so the icons exist on disk — they are
-downloaded, not committed.
+Editing `src/data/balance.json` therefore retunes **both** apps. Everything the
+sync copies is tracked, so no setup step is needed — the Android build does not
+require Node. To pull fresh artwork from upstream, run `npm run icons:refresh`
+deliberately and review the diff; it is not wired into any build, so a release
+binary never depends on a CDN.
 
 ## Building
 

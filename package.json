@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "prebuild": "node scripts/download-icons.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
+    "icons:refresh": "node scripts/download-icons.mjs",
     "icons:verify": "node scripts/verify-wow-icons.mjs",
     "test": "node scripts/test-meta.js",
     "test:dungeons": "node scripts/test-dungeons.js",

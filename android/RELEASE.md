@@ -7,7 +7,7 @@ Three failures used to be silent and are now build errors:
 | Guard | Catches |
 |---|---|
 | `requireReleaseSigning` | A release build with no keystore. It used to emit an **unsigned** AAB that Play rejects at upload. |
-| `verifyGameAssets` | A checkout that never ran `npm run prebuild`. Icons are downloaded, not committed, and `IconLoader` falls back to a placeholder — so the build succeeded and the app merely looked broken. |
+| `verifyGameAssets` | A checkout missing the content or icons that `syncGameData` copies. `IconLoader` falls back to a placeholder, so the build used to succeed and the app merely looked broken. |
 | `verifyMinifiedSaveContract` | R8 renaming an enum constant. `SaveStore` writes the class as `cls.name` and reads it back with `PlayerClass.valueOf`; if R8 renames `PRIEST`, `load()` throws, falls back to an empty `Roster`, and **every player silently loses their character**. Verified: removing the keep rule in `app/proguard-rules.pro` makes R8 rename all of them. The break is invisible on a fresh install and appears only on the second launch. |
 
 The last of these needs no secrets — it runs on `:app:minifyReleaseWithR8` — so

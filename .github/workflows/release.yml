@@ -16,15 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      # Icons are downloaded, not committed, so the web install runs first.
-      - run: npm ci
-      - run: npm run prebuild
-
+      # No Node step: everything syncGameData copies is tracked, so the
+      # released binary is reproducible from the tag alone.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

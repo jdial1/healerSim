@@ -1,3 +1,7 @@
+// Refreshes public/icons from upstream. NOT part of the build: the icons are
+// committed, so a release binary is reproducible and does not depend on
+// wow.zamimg.com or game-icons.net being reachable. Run `npm run icons:refresh`
+// deliberately, then review the diff before committing.
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -230,10 +234,17 @@ async function main() {
   const downloaded = total - wowFailures.length - gameFailures.length;
   console.log(`Icon download complete: ${downloaded}/${total}`);
 
+  // The icons are committed, so a refresh that half-fails would otherwise be
+  // staged as a set of deletions and never noticed. Exit non-zero instead.
   if (wowFailures.length || gameFailures.length) {
     for (const icon of wowFailures) console.error(`Missing wow icon: wow/${normalizeSlash(icon)}`);
     for (const entry of gameFailures) console.error(`Missing game icon: ${normalizeSlash(`${entry.author}/${entry.icon}`)}`);
-    console.warn(`Icon download warnings: ${wowFailures.length + gameFailures.length} unresolved icon(s).`);
+    console.error(
+      `${wowFailures.length + gameFailures.length} icon(s) unresolved. ` +
+        `public/icons is now incomplete — restore it with \`git checkout -- public/icons\` ` +
+        `before committing.`,
+    );
+    process.exitCode = 1;
   }
 }
 

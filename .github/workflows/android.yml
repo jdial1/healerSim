@@ -16,16 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      # Icons are downloaded, not committed, and the Android assets are synced
-      # from the web app's JSON — so the web install has to run first.
-      - run: npm ci
-      - run: npm run prebuild
-
+      # No Node step: the icons and content JSON that syncGameData copies are
+      # all tracked, so the Android build no longer depends on a web install
+      # or on two CDNs being reachable.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

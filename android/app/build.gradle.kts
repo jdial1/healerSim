@@ -165,8 +165,8 @@ val requireReleaseSigning = tasks.register("requireReleaseSigning") {
     }
 }
 
-// 2. syncGameData is a Sync task with no content assertion, so a checkout that
-//    never ran `npm run prebuild` produces a release with no icons and exit 0 —
+// 2. syncGameData is a Sync task with no content assertion, so a truncated or
+//    partially-synced checkout produces a release with no icons and exit 0 —
 //    IconLoader falls back to a placeholder, so it runs, it just looks broken.
 val verifyGameAssets = tasks.register("verifyGameAssets") {
     dependsOn(syncGameData)
@@ -176,7 +176,8 @@ val verifyGameAssets = tasks.register("verifyGameAssets") {
         val data = File(dir, "data").listFiles()?.count { it.extension == "json" } ?: 0
         check(icons >= 150 && data >= 5) {
             "Game assets are incomplete (icons=$icons, data=$data). " +
-                "Run `npm ci && npm run prebuild` in the repo root before a release build."
+                "public/icons and src/data are tracked, so this usually means a partial " +
+                "checkout. Restore them with `git checkout -- public/icons src/data`."
         }
     }
 }
