@@ -45,6 +45,9 @@ function dungeonPaceBossSec(pace) {
   return pacingData.paces[pace].bossSec;
 }
 import { BALANCE } from "./data/index.js";
+// One source for the Paladin gate. The check and the label used to be written
+// out separately and had drifted apart (25 vs 30).
+const PALADIN_UNLOCK_LEVEL = BALANCE.progression.paladinUnlockLevel;
 function dungeonXpTierMultiplier(difficulty) {
   return 1 + balanceData.xp.dungeonTierAdditivePerDifficultyOver1 * Math.max(0, difficulty - 1);
 }
@@ -158,6 +161,7 @@ function generateRandomParty(playerLevel, playerClass) {
 }
 export {
   BALANCE,
+  PALADIN_UNLOCK_LEVEL,
   DPS_POOL,
   DUNGEON_PACES,
   MANA_POTION_USES_PER_DUNGEON,

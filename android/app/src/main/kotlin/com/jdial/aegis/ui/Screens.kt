@@ -230,10 +230,14 @@ fun ClassSelectScreen(
                 SectionHeading("The Order", "Select your path")
                 Spacer(Modifier.height(24.dp))
 
+                // The gate used to read a `locked` flag in class.json and compare
+                // against a hardcoded 30, while the web app compared against 25.
+                // Both now read the same number out of balance.json.
+                val unlockLevel = data.balance.progression.paladinUnlockLevel
                 PlayerClass.entries.forEachIndexed { i, cls ->
                     val bundle = data.bundle(cls)
-                    val locked = bundle.meta.locked && maxLevel < 30
-                    ClassCard(cls, bundle, locked) { if (!locked) onPick(cls) }
+                    val locked = cls == PlayerClass.PALADIN && maxLevel < unlockLevel
+                    ClassCard(cls, bundle, locked, unlockLevel) { if (!locked) onPick(cls) }
                     if (i < PlayerClass.entries.lastIndex) Spacer(Modifier.height(12.dp))
                 }
             }
@@ -246,6 +250,7 @@ private fun ClassCard(
     cls: PlayerClass,
     bundle: ClassBundle,
     locked: Boolean,
+    unlockLevel: Int,
     onClick: () -> Unit,
 ) {
     val accent = accentFor(cls)
@@ -279,7 +284,10 @@ private fun ClassCard(
                 )
                 Spacer(Modifier.height(4.dp))
                 if (locked) {
-                    BasicText("REACH LVL 30 TO UNLOCK", style = AegisType.label.copy(color = Gilt.mid))
+                    BasicText(
+                        "REACH LVL $unlockLevel TO UNLOCK",
+                        style = AegisType.label.copy(color = Gilt.mid),
+                    )
                 } else {
                     BasicText(bundle.meta.passiveTraitName, style = AegisType.body.copy(color = accent.bright))
                     Spacer(Modifier.height(3.dp))

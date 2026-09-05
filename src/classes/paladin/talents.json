@@ -2,7 +2,7 @@
   {
     "id": "h_r0c0",
     "name": "Critical and Mana Focus I",
-    "description": "Crit 1.2% per point. Mana sustain favors critical heals.",
+    "description": "Crit 0.5% and max mana +15 per point.",
     "points": 0,
     "maxPoints": 3,
     "levelReq": 1,
@@ -48,7 +48,7 @@
   {
     "id": "h_r0c3",
     "name": "Critical Focus I",
-    "description": "Crit 1.5% per point.",
+    "description": "Crit 1% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -78,7 +78,7 @@
   {
     "id": "h_r1c0",
     "name": "Critical and Mana Focus II",
-    "description": "Crit 2% and max mana 40 per point.",
+    "description": "Crit 1% and max mana +40 per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -254,7 +254,7 @@
   {
     "id": "h_r3c2",
     "name": "Critical and Healing Focus I",
-    "description": "Crit 2% and healing 2% per point.",
+    "description": "Crit 1% and healing 2% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 13,
@@ -314,7 +314,7 @@
   {
     "id": "h_r4c0",
     "name": "Critical and Mana Focus III",
-    "description": "Crit 3% and max mana 80. Also gain bonus crit healing targets below 40% health.",
+    "description": "Crit 1.5% and max mana +80 per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -351,7 +351,7 @@
   {
     "id": "h_r4c2",
     "name": "Haste and Healing Focus I",
-    "description": "Haste 4% and healing 3%.",
+    "description": "Haste 2% and healing 3% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -411,7 +411,7 @@
   {
     "id": "h_r5c0",
     "name": "Haste and Critical Focus",
-    "description": "Haste 5% and crit 3%.",
+    "description": "Haste 2% and crit 1.5% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -449,7 +449,7 @@
   {
     "id": "h_r5c2",
     "name": "Healing and Haste Focus",
-    "description": "Healing 3% and haste 4%.",
+    "description": "Healing 3% and haste 2% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -468,7 +468,7 @@
   {
     "id": "h_r5c3",
     "name": "Critical and Healing Focus II",
-    "description": "Crit 3% and healing 3%.",
+    "description": "Crit 1.5% and healing 3% per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,

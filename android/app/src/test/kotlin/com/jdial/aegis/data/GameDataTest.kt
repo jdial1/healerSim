@@ -27,7 +27,9 @@ class GameDataTest {
         assertNotNull(data.balance)
         assertEquals(17, data.dungeons.size)
         assertEquals(3, data.classes.size)
-        assertEquals(31, data.mechanics.size)
+        // 32 since druid_verdant_reservoir was registered; it was referenced by
+        // talent d_r0c4 but missing from the registry.
+        assertEquals(32, data.mechanics.size)
     }
 
     @Test

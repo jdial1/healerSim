@@ -109,5 +109,8 @@
       "naturesGraceHotTickRateMultiplier": 1.5,
       "barkskinSelfHealFractionPerRank": 0.08
     }
+  },
+  "progression": {
+    "paladinUnlockLevel": 25
   }
 }

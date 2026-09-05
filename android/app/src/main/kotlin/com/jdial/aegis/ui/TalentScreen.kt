@@ -506,8 +506,12 @@ private fun CreditsDialog(onDismiss: () -> Unit) {
                     )
                     Spacer(Modifier.height(10.dp))
                     BasicText(
-                        "Ability icons are World of Warcraft artwork by Blizzard " +
-                            "Entertainment, used here for personal, non-commercial play.",
+                        // The app is distributed publicly, so it cannot describe
+                        // itself as personal, non-commercial use.
+                        "Ability icons are World of Warcraft artwork. World of Warcraft " +
+                            "and Blizzard Entertainment are trademarks of Blizzard " +
+                            "Entertainment, Inc. This game is unofficial and is not " +
+                            "affiliated with or endorsed by Blizzard Entertainment.",
                         style = AegisType.body.copy(color = Ink.muted),
                     )
                     Spacer(Modifier.height(16.dp))

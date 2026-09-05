@@ -99,7 +99,6 @@ data class ClassMeta(
     val id: String,
     val name: String,
     val description: String = "",
-    val locked: Boolean = false,
     val portraitIcon: String = "",
     val portraitGlow: String = "spell",
     val passiveTraitName: String = "",

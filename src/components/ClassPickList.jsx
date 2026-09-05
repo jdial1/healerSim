@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "motion/react";
 import { classUiRows } from "../classUiData.js";
+import { PALADIN_UNLOCK_LEVEL } from "../constants.js";
 import { getTransformClass, getIconUrl, getWrapperTransformClass } from "../classIcons.js";
 function ClassPickList({
   title,
@@ -53,7 +54,7 @@ function ClassPickList({
         }
       ))),
       React.createElement("div", { className: "min-w-0 flex-1 self-center" }, React.createElement("h3", { className: "ui-heading text-xl leading-tight tracking-[0.05em] text-slate-100 sm:text-2xl" }, row.name), showDescription ? React.createElement("div", { className: "mt-2 max-w-md space-y-2" }, React.createElement("p", { className: "max-w-xs text-base font-medium leading-tight text-slate-400 sm:text-sm" }, row.description), extra ? React.createElement("div", { className: "text-slate-400" }, extra) : null) : extra ? React.createElement("div", { className: "mt-2 font-mono text-sm font-bold text-slate-400" }, extra) : null),
-      locked ? React.createElement("div", { className: "absolute right-4 top-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-300 sm:text-[9px]" }, React.createElement("span", { "aria-hidden": true }, "\u{1F512}"), React.createElement("span", null, "Reach lvl 30 to unlock")) : null
+      locked ? React.createElement("div", { className: "absolute right-4 top-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-300 sm:text-[9px]" }, React.createElement("span", { "aria-hidden": true }, "\u{1F512}"), React.createElement("span", null, `Reach lvl ${PALADIN_UNLOCK_LEVEL} to unlock`)) : null
     );
   })));
 }

@@ -840,7 +840,7 @@
     "name": "Endless",
     "endless": true,
     "difficulty": 1,
-    "levelMin": 50,
+    "levelMin": 48,
     "levelMax": 50,
     "bossName": "The Timeless One",
     "bossHealth": 50000,

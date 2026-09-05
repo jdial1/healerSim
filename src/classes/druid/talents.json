@@ -32,7 +32,7 @@
   {
     "id": "d_r0c2",
     "name": "Haste Focus I",
-    "description": "Haste 2% per point.",
+    "description": "Haste 1% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -47,7 +47,7 @@
   {
     "id": "d_r0c3",
     "name": "Critical Focus I",
-    "description": "Crit 2% per point.",
+    "description": "Crit 1.2% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -62,7 +62,7 @@
   {
     "id": "d_r0c4",
     "name": "Verdant Reservoir",
-    "description": "Your HoT ticks return 0.4 mana per point each tick.",
+    "description": "Your HoT ticks return 0.6 mana per point each tick.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 1,
@@ -130,7 +130,7 @@
   {
     "id": "d_r1c3",
     "name": "Critical Focus II",
-    "description": "Crit 2% per point.",
+    "description": "Crit 1.2% per point.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 5,
@@ -167,7 +167,7 @@
   {
     "id": "d_r2c0",
     "name": "Haste Focus II",
-    "description": "Haste 2.5% per point. When you take damage, restore a small amount of your own health.",
+    "description": "Haste 1.5% per point. When you take damage, you recover 8% of it per point as health.",
     "points": 0,
     "maxPoints": 2,
     "levelReq": 9,
@@ -220,7 +220,7 @@
   {
     "id": "d_r2c3",
     "name": "Photosynthesis",
-    "description": "While you have a HoT on yourself, haste 3% per point. Allies with your HoT have 2% more chance per point for HoT double ticks.",
+    "description": "While one of your own HoTs is on you, haste 3% per point. Allies carrying your HoTs have a 2% chance per point for those HoTs to tick twice. A critical Healing Touch extends your heal-over-time effects on the party.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 9,
@@ -432,7 +432,7 @@
   {
     "id": "d_r4c4",
     "name": "Critical and Mana Focus",
-    "description": "Crit 4% and mana +45.",
+    "description": "Crit 2% and max mana +45 per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 17,
@@ -507,7 +507,7 @@
   {
     "id": "d_r5c3",
     "name": "Haste and Mana Focus",
-    "description": "Sustained HoT upkeep rewards smoother throughput. Haste 5% and max mana 54.",
+    "description": "Sustained HoT upkeep rewards smoother throughput. Haste 2.5% and max mana +54 per point.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,
@@ -526,7 +526,7 @@
   {
     "id": "d_r5c4",
     "name": "Healing and Critical Focus",
-    "description": "Healing 4% and crit 3%. Gain additional crit for each active party HoT.",
+    "description": "Healing 4% and crit 1.5% per point, plus a further 0.08% crit per point for each active party HoT.",
     "points": 0,
     "maxPoints": 1,
     "levelReq": 21,

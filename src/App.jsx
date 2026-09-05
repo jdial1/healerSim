@@ -64,7 +64,7 @@ function App() {
   const [showRoster, setShowRoster] = useState(true);
   const [splashDismissed, setSplashDismissed] = useState(false);
   const [menuView, setMenuView] = useState("dungeons");
-  const paladinUnlocked = maxLevelAcrossRoster(roster) >= 25;
+  const paladinUnlocked = maxLevelAcrossRoster(roster) >= PALADIN_UNLOCK_LEVEL;
   const [pwaNeedsRefresh, setPwaNeedsRefresh] = useState(false);
   const { issues: layoutEnvironmentIssues, dismiss: dismissLayoutEnvironmentBanner } = useLayoutEnvironmentCheck();
   const swUpdate = useRef(void 0);

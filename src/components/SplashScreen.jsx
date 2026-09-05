@@ -66,6 +66,17 @@ function SplashScreen({
     )), React.createElement("div", { className: "flex items-end justify-between" }, React.createElement("span", { className: "ui-splash-meta" }, "v", version), React.createElement(
       "a",
       {
+        // CC BY 3.0 requires attribution wherever the work is distributed, and
+        // the web app had none anywhere.
+        href: `${import.meta.env.BASE_URL}credits.html`,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        className: "ui-splash-meta underline underline-offset-2"
+      },
+      "Credits"
+    ), React.createElement(
+      "a",
+      {
         href: communityUrl,
         target: "_blank",
         rel: "noopener noreferrer",

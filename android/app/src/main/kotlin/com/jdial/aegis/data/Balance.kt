@@ -18,10 +18,19 @@ data class Balance(
     val xp: XpBalance,
     val playerStats: PlayerStatsBalance,
     val combat: CombatBalance,
+    val progression: ProgressionBalance,
 )
 
 @Serializable
 data class BossBalance(val damageMultiplierPerDifficultyStep: Double)
+
+/**
+ * The Paladin unlock lived in four places that disagreed: the web gate said 25,
+ * both labels said 30, the Android gate said 30, and paladin/class.json said 5.
+ * It is one number here so the two apps cannot drift again.
+ */
+@Serializable
+data class ProgressionBalance(val paladinUnlockLevel: Int)
 
 @Serializable
 data class EndlessBalance(

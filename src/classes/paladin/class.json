@@ -1,12 +1,11 @@
 {
   "id": "PALADIN",
   "name": "Holy Paladin",
-  "description": "Frontline healer using light to infuse allies. (Unlock at Level 5)",
+  "description": "Frontline healer using light to infuse allies.",
   "iconKey": "shield",
   "color": "bg-pink-600",
   "textColor": "text-fuchsia-200",
   "hoverBorderClass": "hover:border-fuchsia-300",
-  "locked": true,
   "portraitUrl": "",
   "portraitIcon": "paladin",
   "portraitGlow": "spell",
