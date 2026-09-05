@@ -10,9 +10,9 @@
     "multiplierPerPartyLevelOverDungeonMax": 0.62
   },
   "partyDps": {
-    "base": 5,
-    "levelExponent": 1.25,
-    "levelMultiplier": 2
+    "base": 16,
+    "levelExponent": 1.55,
+    "levelMultiplier": 1.0
   },
   "environmentalDamage": {
     "tankProcChance": 0.35,
