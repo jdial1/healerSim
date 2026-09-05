@@ -6,7 +6,13 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
-    <style name="Theme.Aegis.Splash" parent="Theme.Aegis">
-        <item name="android:windowSplashScreenBackground">@color/obsidian</item>
+    <!--
+      The androidx splash theme backports the API 31 system splash to API 26+.
+      installSplashScreen() swaps to postSplashScreenTheme on first frame.
+    -->
+    <style name="Theme.Aegis.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/obsidian</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_fg</item>
+        <item name="postSplashScreenTheme">@style/Theme.Aegis</item>
     </style>
 </resources>

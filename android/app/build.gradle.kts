@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -27,6 +29,15 @@ val syncGameData = tasks.register<Sync>("syncGameData") {
     }
 }
 
+// Release signing is opt-in: drop a keystore.properties next to this file with
+// storeFile / storePassword / keyAlias / keyPassword and the release build picks
+// it up. Without it, release still assembles (unsigned) so CI never needs secrets.
+// The file is gitignored — no signing key is ever generated or committed here.
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { stream -> load(stream) }
+}
+
 android {
     namespace = "com.jdial.aegis"
     compileSdk = 37
@@ -50,8 +61,20 @@ android {
         }
     }
 
+    signingConfigs {
+        if (keystoreProps.getProperty("storeFile") != null) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
@@ -59,6 +82,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -85,8 +109,23 @@ dependencies {
     testImplementation(libs.junit)
 }
 
-// AGP 9 rejects task providers as source dirs, so the directory is static and the
-// dependency is declared explicitly against the tasks that consume assets.
+// AGP 9 rejects task providers as source dirs, so the asset directory is static
+// and every task that reads it declares the dependency explicitly. Asset merging
+// is the obvious consumer; lint also scans the source sets, and without this it
+// fails validation with an implicit-dependency error.
 tasks.withType<com.android.build.gradle.tasks.MergeSourceSetFolders>().configureEach {
     dependsOn(syncGameData)
+}
+tasks.matching { it.name.contains("lint", ignoreCase = true) }.configureEach {
+    dependsOn(syncGameData)
+}
+
+tasks.withType<Test>().configureEach {
+    dependsOn(syncGameData)
+}
+
+// The parity golden file lives outside the module; expose its path to tests.
+tasks.withType<Test>().configureEach {
+    systemProperty("aegis.parityDir", rootProject.file("../parity").absolutePath)
+    systemProperty("aegis.assetsDir", generatedAssetsDir.absolutePath)
 }
