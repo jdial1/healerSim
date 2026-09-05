@@ -36,6 +36,7 @@ size Play wants.
 - **`applicationId` is `com.jdial.aegis`.** It cannot be changed after
   publishing without shipping a different app that existing users do not
   upgrade to.
-- **The listing name "Aegis" collides with established apps** on Play (Aegis
-  Authenticator among them). The store name can differ from the package id, so
-  a more specific name is worth considering even if the id stays.
+- ~~The listing name "Aegis" collides with established apps.~~ **Settled: the
+  app is now "Overheal: Healer Sim"**, applied across both apps. See
+  `listing.md`. The package id stays `com.jdial.aegis` and does not need to
+  match.

@@ -43,7 +43,7 @@ function SplashScreen({
           id: "app-splash-title",
           className: "ui-heading text-5xl leading-[0.95] tracking-[0.04em] text-white sm:text-7xl md:text-8xl"
         },
-        "AEGIS"
+        "OVERHEAL"
       ),
       React.createElement("p", { className: "ui-splash-subtitle" }, "THE HEALER'S OATH")
     ), React.createElement(

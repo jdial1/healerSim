@@ -45,10 +45,13 @@ var stdin_default = defineConfig(({ command }) => {
         registerType: "prompt",
         includeAssets: ["game_icon.svg", "game_icon-192.png", "game_icon-512.png"],
         manifest: {
+          // Deliberately unchanged: the manifest id is the PWA's identity, so
+          // renaming it makes every installed copy a different app rather than
+          // an update. Same reasoning as the Android applicationId.
           id: "aegis",
-          name: "AEGIS",
-          short_name: "AEGIS",
-          description: "Healer dungeon simulator",
+          name: "Overheal: Healer Sim",
+          short_name: "Overheal",
+          description: "Raid-frame healing, mana triage, no tank to hide behind.",
           categories: ["games", "entertainment"],
           iarc_rating_id: "e10f9f4f-8f15-41f8-a8f6-d3a1576db6e5",
           theme_color: "#020617",

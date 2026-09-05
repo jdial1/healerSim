@@ -187,7 +187,7 @@ fun SplashScreen(version: String, onBegin: () -> Unit) {
                 .padding(bottom = 56.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            BasicText("AEGIS", style = AegisType.display.copy(fontSize = 44.sp, letterSpacing = 10.sp))
+            BasicText("OVERHEAL", style = AegisType.display.copy(fontSize = 34.sp, letterSpacing = 8.sp))
             Spacer(Modifier.height(10.dp))
             BasicText("THE HEALER'S OATH", style = AegisType.label)
             Spacer(Modifier.height(36.dp))

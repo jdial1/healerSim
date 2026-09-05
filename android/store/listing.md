@@ -15,21 +15,31 @@ these players actually describe what they miss.
 
 ## App name (max 30 characters)
 
-**Recommended: `Overheal: Healer Simulator`** (26)
+**Chosen: `Overheal: Healer Sim`** (20 characters) — applied across both apps.
 
 "Overheal" is a word nobody outside the role knows or cares about. A healer
 reads it instantly and knows the game is for them; everyone else scrolls past,
-which is the correct filter for a game this specific. It is also distinctive
-enough to own, unlike "Aegis", which collides with Aegis Authenticator and
-several other established apps.
+which is the correct filter for a game this specific. It also avoids the
+collision with Aegis Authenticator and the several other apps called Aegis.
 
-Alternatives:
+Where the name now lives:
 
-| Name | Chars | Trade-off |
-|---|---|---|
-| `Triage: Healer Simulator` | 24 | Triage is the exact mental model. Slightly clinical; also a common word. |
-| `Aegis: Healer Simulator` | 23 | Keeps continuity with the current build and the package id. Weakest for search. |
-| `Overheal` | 8 | Cleanest brand, worst discoverability — no category word for the store to match on. |
+| Surface | Value |
+|---|---|
+| Play listing / launcher | `Overheal` (`app_name` in `strings.xml`) |
+| Android splash wordmark | `OVERHEAL` (`Screens.kt`) |
+| Web title and splash | `Overheal` / `OVERHEAL` |
+| PWA manifest | name `Overheal: Healer Sim`, short_name `Overheal` |
+
+Two identifiers deliberately keep the old name, because both are permanent and
+neither is user-facing:
+
+- `applicationId` — `com.jdial.aegis`. Fixed after first publish; the store name
+  does not have to match it.
+- PWA manifest `id` — `aegis`. Changing it makes every installed copy a
+  different app rather than an update.
+
+Internal `Theme.Aegis` style names are untouched; they are resource ids.
 
 ## Short description (max 80 characters)
 

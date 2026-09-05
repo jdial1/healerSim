@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Aegis</string>
+    <!-- Store name. The applicationId stays com.jdial.aegis: it is permanent
+         after publish and does not have to match. -->
+    <string name="app_name">Overheal</string>
 </resources>
