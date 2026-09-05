@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,7 +53,7 @@ import kotlin.random.Random
 
 /** A dimmed, tap-to-dismiss ground for anything modal. */
 @Composable
-private fun Scrim(onDismiss: (() -> kotlin.Unit)?, content: @Composable () -> kotlin.Unit) {
+internal fun Scrim(onDismiss: (() -> kotlin.Unit)?, content: @Composable () -> kotlin.Unit) {
     Box(
         Modifier
             .fillMaxSize()
@@ -246,6 +247,47 @@ fun OutcomeDialog(
                 StatRow("HPS", String.format("%.1f", outcome.stats.hps))
                 StatRow("Overheal", "${outcome.stats.overhealPct.toInt()}%")
                 StatRow("Healing per mana", String.format("%.2f", outcome.stats.hpm))
+
+                // Levelling up can unlock a spell rank or a stronger potion. The
+                // web app shows this; Android computed it and dropped it.
+                val rewards = outcome.upgradedSpellIds
+                if (outcome.leveledUp && (rewards.isNotEmpty() || outcome.upgradedPotion)) {
+                    Spacer(Modifier.height(14.dp))
+                    GiltRule(Modifier.fillMaxWidth().height(1.dp))
+                    Spacer(Modifier.height(12.dp))
+                    BasicText(
+                        "REWARDS UNLOCKED",
+                        style = AegisType.label.copy(color = Gilt.core),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    rewards.forEach { id ->
+                        val spell = data.spell(id)
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            GameIcon(spell?.icon ?: "", size = 26.dp, accent = Gilt.deep)
+                            Spacer(Modifier.width(8.dp))
+                            BasicText(
+                                "${spell?.name ?: id} rank up",
+                                style = AegisType.body.copy(color = Ink.secondary),
+                            )
+                        }
+                    }
+                    if (outcome.upgradedPotion) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            GameIcon("wow/inv_potion_70", size = 26.dp, accent = Gilt.deep)
+                            Spacer(Modifier.width(8.dp))
+                            BasicText(
+                                "Mana potion improved",
+                                style = AegisType.body.copy(color = Ink.secondary),
+                            )
+                        }
+                    }
+                }
 
                 Spacer(Modifier.height(20.dp))
                 GiltButton("Continue", onClick = onDismiss)

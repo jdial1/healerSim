@@ -465,6 +465,11 @@ fun CharacterScreen(state: GameState, engine: Engine, onChangeClass: () -> Unit)
                 Spacer(Modifier.height(20.dp))
             }
         }
+
+        // Was declared and never called: the button set the flag and nothing
+        // rendered. This is the app's only attribution surface, which CC BY
+        // requires, so a dead button here is a licence problem too.
+        if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
     }
 }
 
@@ -502,14 +507,12 @@ private fun StatLine(label: String, value: String) {
  */
 @Composable
 private fun CreditsDialog(onDismiss: () -> Unit) {
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.75f))
-            .clickable(onClick = onDismiss),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(Modifier.padding(24.dp)) {
+    // Third hand-rolled copy of the same dim-and-dismiss scaffold; the one in
+    // Dialogs.kt does exactly this. (TutorialOverlay's looks similar but anchors
+    // its card top/centre/bottom, so it stays its own thing rather than growing
+    // this one an alignment parameter used once.)
+    Scrim(onDismiss = onDismiss) {
+        Box(Modifier.padding(4.dp)) {
             ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
                 Column {
                     BasicText("CREDITS", style = AegisType.title.copy(fontSize = 16.sp))

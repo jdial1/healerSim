@@ -37,7 +37,6 @@ interface ClassHooks {
     fun castDirectHealMultiplier(ctx: CastContext, spell: Spell, spellId: String): Double = 1.0
 
     /** Swiftmend consumes a HoT for a burst heal; only Druid implements it. */
-    fun trySpecialHealCast(ctx: CastContext, spell: Spell, spellId: String, targetId: String?): GameState? = null
 
     fun hotTickAmount(ctx: CastContext, buff: UnitBuff, unit: Unit, healPerTick: Double): Double = healPerTick
 

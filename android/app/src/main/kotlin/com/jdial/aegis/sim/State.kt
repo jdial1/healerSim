@@ -149,6 +149,12 @@ data class DungeonOutcome(
     val dungeonId: String,
     val xpGained: Int,
     val stats: RunStats = RunStats(),
+    // The web app's outcome modal shows what a level-up unlocked. Progression
+    // computed exactly this and nothing carried it, so Android silently threw
+    // it away. Defaulted, so older suspend snapshots still decode.
+    val leveledUp: Boolean = false,
+    val upgradedSpellIds: List<String> = emptyList(),
+    val upgradedPotion: Boolean = false,
 )
 
 @Serializable

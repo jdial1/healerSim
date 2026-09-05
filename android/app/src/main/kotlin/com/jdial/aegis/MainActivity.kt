@@ -261,7 +261,18 @@ private fun AegisApp(onReady: () -> Unit = {}) {
             }
 
             // The tutorial sits above everything except a run outcome.
-            if (tutorialStep != null && state.dungeonOutcome == null && queued == null) {
+            // The engine already honours isTutorialPaused and stops advancing
+            // combat, but nothing ever set it — so the combat tutorial card
+            // appeared while the boss kept swinging, unlike the web app. The
+            // whole mechanism was one call away from working.
+            val tutorialBlocking = tutorialStep != null &&
+                state.dungeonOutcome == null &&
+                queued == null
+            LaunchedEffect(tutorialBlocking, state.isCombatActive) {
+                vm.setTutorialPaused(tutorialBlocking && state.isCombatActive)
+            }
+
+            if (tutorialBlocking && tutorialStep != null) {
                 TutorialOverlay(
                     step = tutorialStep,
                     onDismiss = { vm.completeTutorialStep(tutorialStep.id) },

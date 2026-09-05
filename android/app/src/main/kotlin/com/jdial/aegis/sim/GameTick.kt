@@ -594,6 +594,7 @@ class GameTick(
 
         val stats0 = runStats(s)
         val advanced = withPostRunProgress(s, xpGained)
+        val rewards = progression.levelUpRewards(ctx.cls, s.talents, s.level, advanced.level)
         return advanced.endedRun().copy(
             party = ctx.cls?.let { generateParty(it, advanced.level, rng) } ?: party,
             dungeonOutcome = DungeonOutcome(
@@ -601,6 +602,9 @@ class GameTick(
                 dungeonId = dungeon.id,
                 xpGained = xpGained,
                 stats = stats0,
+                leveledUp = advanced.level > s.level,
+                upgradedSpellIds = rewards.upgradedSpellIds,
+                upgradedPotion = rewards.upgradedPotion,
             ),
         )
     }
@@ -690,6 +694,7 @@ class GameTick(
         // On a clear the web app keeps the mana it had entering this tick, so the
         // final tick's regen is deliberately discarded.
         val advanced = withPostRunProgress(base.copy(mana = s.mana), xpGained)
+        val rewards = progression.levelUpRewards(ctx.cls, s.talents, s.level, advanced.level)
 
         return advanced.endedRun().copy(
             dungeonProgress = 100.0,
@@ -702,6 +707,9 @@ class GameTick(
                 dungeonId = dungeon.id,
                 xpGained = xpGained,
                 stats = stats0,
+                leveledUp = advanced.level > s.level,
+                upgradedSpellIds = rewards.upgradedSpellIds,
+                upgradedPotion = rewards.upgradedPotion,
             ),
         )
     }
