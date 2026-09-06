@@ -37,6 +37,55 @@ class ThreatInDungeonTest {
     }
 
     @Test
+    fun `spamming heals puts the healer on the threat table`() {
+        // The bug this pins: cast heals reached the threat table through
+        // nothing at all. Only HoT ticks and passive healing were fed to
+        // accrueThreat, because those flow through the tick while a cast does
+        // not -- so a healer could spam their biggest heal for a whole fight
+        // and stay at zero threat.
+        var s = start(PlayerClass.PRIEST)
+        val rng = Rng(4)
+        val heal = s.activeActionBars.first { it.isNotEmpty() }
+        repeat(120) {
+            if (!s.isCombatActive) return@repeat
+            // Keep someone hurt, or every heal is overheal and correctly free.
+            s = s.copy(party = s.party.map { u -> if (u.id == "1") u.copy(health = 1.0) else u })
+            s = engine.reduce(s, Action.CastSpell(heal, "1", 0.99), rng)
+            s = engine.reduce(s, Action.Tick(1), rng)
+        }
+        val self = s.party.first { it.id == PLAYER_UNIT_ID }
+        val coefficient = Fixtures.data.balance.threat.healingCoefficient
+        assertTrue("the healer healed nothing, so this proves nothing", s.runHealEffective > 0.0)
+        // Half of what landed, as in WotLK. Not a rough correlation.
+        assertEquals(s.runHealEffective * coefficient, self.threat, 1e-6)
+    }
+
+    @Test
+    fun `an ai healer can pull the enemy off a player tank`() {
+        // The other half of the same bug: healing threat was credited to the
+        // player's slot whoever did the healing, so the AI healer worked all
+        // fight for nothing and a tank could never be out-threatened by it.
+        var s = start(PlayerClass.WARRIOR)
+        val rng = Rng(4)
+        var healerLed = false
+        repeat(150) {
+            if (!s.isCombatActive) return@repeat
+            // Damage the DPS so the AI healer has something to do.
+            s = s.copy(
+                party = s.party.map { u ->
+                    if (u.role == UnitRole.DPS) u.copy(health = u.maxHealth * 0.3) else u
+                },
+            )
+            s = engine.reduce(s, Action.Tick(1), rng)
+            val healer = s.party.firstOrNull { it.role == UnitRole.HEALER } ?: return@repeat
+            if (s.enemyTargetId == healer.id) healerLed = true
+        }
+        val healer = s.party.first { it.role == UnitRole.HEALER }
+        assertTrue("the ai healer generated no threat at all", healer.threat > 0.0)
+        assertTrue("the ai healer never pulled despite out-threatening the tank", healerLed)
+    }
+
+    @Test
     fun `the whole table moves, not just one unit`() {
         val s = run(start(PlayerClass.WARRIOR), 60)
         val moved = s.party.count { it.threat > 0.0 }

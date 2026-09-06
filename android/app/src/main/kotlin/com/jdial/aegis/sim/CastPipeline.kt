@@ -334,11 +334,26 @@ class CastPipeline(
             mana = max(0.0, s.mana - ready.needMana),
             playerCombatBuffs = buffs,
             spellCooldowns = s.spellCooldowns.withCooldown(ready.spell.id, cd),
+            pendingPlayerThreat = s.pendingPlayerThreat + healThreat(ready.spell, applied.effective),
             runHealEffective = s.runHealEffective + applied.effective,
             runHealOverheal = s.runHealOverheal + applied.overheal,
             runManaSpentHealing = s.runManaSpentHealing + ready.needMana,
         )
     }
+
+    /**
+     * Threat from a heal that landed.
+     *
+     * Half the healing done, as in WotLK, and only what actually landed --
+     * overheal is free, which is the one piece of threat a healer can play
+     * around. Direct heals reached the threat table through nothing at all
+     * before this existed: only HoT ticks and passive healing were counted,
+     * because those flow through the tick's healEffective while a cast does
+     * not. A healer could spam their biggest heal all fight and stay off the
+     * table entirely.
+     */
+    private fun healThreat(spell: Spell, effective: Double): Double =
+        effective * data.balance.threat.healingCoefficient * spell.threatMultiplier
 
     private data class PartyPatch(val party: List<Unit>, val healEff: Double, val healOh: Double)
 
@@ -579,6 +594,7 @@ class CastPipeline(
             holyPower = holyPower,
             floatingCombatTexts = floats,
             spellCooldowns = s.spellCooldowns.withCooldown(ready.spellId, cd),
+            pendingPlayerThreat = s.pendingPlayerThreat + healThreat(spell, healEff),
             runHealEffective = s.runHealEffective + healEff,
             runHealOverheal = s.runHealOverheal + healOh,
             runManaSpentHealing = s.runManaSpentHealing + manaSpent,

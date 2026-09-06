@@ -90,6 +90,14 @@ class GameTick(
          * GameState.pendingPlayerThreat.
          */
         playerThreat: Double = 0.0,
+        /**
+         * Effective healing done by the party's AI healer this tick, credited to
+         * whichever healer slot is not the player's. Without this the AI healer
+         * is the one unit in the game that can heal all fight and never appear
+         * on the table, so a player tank could never lose aggro to their healer
+         * -- exactly the situation the coefficient exists to create.
+         */
+        aiHealerHealing: Double = 0.0,
     ): List<Unit> {
         val cfg = data.balance.threat
         val living = party.filter { it.isAlive }
@@ -114,10 +122,16 @@ class GameTick(
                     u.role == UnitRole.DPS -> perDps
                     else -> 0.0
                 }
-                // The player is the only source of healing in the game today,
-                // so all of it is theirs. That stops being true when an AI
-                // healer exists.
-                val healing = if (u.id == PLAYER_UNIT_ID) healEffective * cfg.healingCoefficient else 0.0
+                // Healing is worth half its landed value in threat, as in
+                // WotLK, and overheal is worth nothing -- the caller only ever
+                // passes effective healing. The player's own cast heals arrive
+                // via playerThreat with the coefficient already applied; what
+                // reaches healEffective here is passive and HoT healing.
+                val healing = when {
+                    u.id == PLAYER_UNIT_ID -> healEffective * cfg.healingCoefficient
+                    u.role == UnitRole.HEALER -> aiHealerHealing * cfg.healingCoefficient
+                    else -> 0.0
+                }
                 // The player's own threat is theirs alone, and is what lets a
                 // DPS pull off a tank that only generates scripted threat.
                 val own = if (u.id == PLAYER_UNIT_ID) playerThreat else 0.0
@@ -859,6 +873,7 @@ class GameTick(
         dpsPaceMultiplier: Double,
         rng: Rng,
         healEffectiveThisTick: Double,
+        aiHealerHealingThisTick: Double,
     ): GameState {
         val pd = data.balance.partyDps
         val partyDps = pd.base + s.level.toDouble().pow(pd.levelExponent) * pd.levelMultiplier
@@ -895,6 +910,7 @@ class GameTick(
                 healEffective = healEffectiveThisTick,
                 scriptedPartyDamage = scriptedDamage,
                 playerThreat = playerThreat,
+                aiHealerHealing = aiHealerHealingThisTick,
             ),
             // Drained every tick: what the player dealt has now landed.
             pendingEnemyDamage = 0.0,
@@ -1115,9 +1131,11 @@ class GameTick(
 
         return resolveOngoingCombat(
             ctx, acc, sys.copy(party = partyAfterAi), boss, bossBuffsNext, dpsPace, rng,
-            // The AI healer's output is deliberately excluded: threat from
-            // healing is credited to the player, and this is not theirs.
+            // The AI healer's output is kept separate rather than excluded: it
+            // is threat, but it belongs to the AI healer's slot, not the
+            // player's.
             healEffectiveThisTick = env.healEffective + sys.healEffective,
+            aiHealerHealingThisTick = ai.healed,
         )
             .let { if (it.isCombatActive) it.copy(floatingCombatTexts = floats) else it }
     }

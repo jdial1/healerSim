@@ -149,6 +149,21 @@ class ThreatTest {
     }
 
     @Test
+    fun `the ai healer earns its own threat rather than the player's`() {
+        // Whoever is healing is on the table. Before this, healing threat was
+        // credited to slot 5 unconditionally, so the AI healer could heal an
+        // entire fight and never appear -- a player tank could not lose aggro
+        // to their own healer no matter how hard it worked.
+        val party = listOf(unit(PLAYER_UNIT_ID, UnitRole.TANK), unit("4", UnitRole.HEALER))
+        val after = tick.accrueThreat(
+            party, healEffective = 0.0, scriptedPartyDamage = 0.0, aiHealerHealing = 200.0,
+        )
+        val cfg = Fixtures.data.balance.threat
+        assertEquals(0.0, after.first { it.id == PLAYER_UNIT_ID }.threat, 0.0)
+        assertEquals(200.0 * cfg.healingCoefficient, after.first { it.id == "4" }.threat, 1e-9)
+    }
+
+    @Test
     fun `the damage pool is split across living dps only`() {
         val three = listOf(unit("2", UnitRole.DPS), unit("3", UnitRole.DPS), unit("4", UnitRole.DPS))
         val two = listOf(unit("2", UnitRole.DPS), unit("3", UnitRole.DPS), unit("4", UnitRole.DPS, hp = 0.0))
