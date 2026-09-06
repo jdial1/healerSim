@@ -42,9 +42,23 @@
 
 <h2>Data sent off your device</h2>
 <p>
-  None. The Android app requests no permissions at all and contains no
-  networking code; it works fully in airplane mode. The web version is a static
-  page and sends your progress nowhere.
+  None, unless you choose to play with other people. Single player never opens a
+  network connection and works fully in airplane mode; the web version is a
+  static page and sends your progress nowhere.
+</p>
+<p>
+  The Android app now requests <code>INTERNET</code> for the optional public
+  queue, and the Firebase libraries it uses add three more of their own:
+  <code>ACCESS_NETWORK_STATE</code> (whether you are online),
+  <code>READ_GSERVICES</code> and a private receiver permission. None of them
+  grants access to your files, contacts, location or anything else personal.
+  Nothing is sent until you join a queue. When you do,
+  the app signs in anonymously &mdash; an account with no email, no name and no
+  password, identified only by a random id &mdash; and publishes the role you
+  are queueing as, which dungeon, and the time you joined, so that other players
+  can be matched with you. That entry is deleted when you leave the queue or the
+  group forms. While you are in a group, the state of the fight is relayed
+  between the players in it. There is no chat and no way to send anything else.
 </p>
 <p>
   One indirect exception is worth naming: if you have Android's system backup

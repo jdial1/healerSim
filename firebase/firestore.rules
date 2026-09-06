@@ -1,0 +1,71 @@
+rules_version = '2';
+
+// Overheal — public queue and room documents.
+//
+// The queue is public by design: strangers matching with strangers. What these
+// rules exist to stop is one signed-in stranger acting *as* another — queue
+// sniping, hijacking a room, or forging somebody else's actions.
+//
+// What they deliberately do NOT stop, because v1 is host-authoritative and no
+// rule can express it: the host lying about the simulation, including about
+// everyone's XP. That trade is recorded in the multiplayer plan.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // A player waiting for a group. The document id *is* the uid, so a player
+    // can only ever hold one queue entry and can only hold their own.
+    match /queue/{uid} {
+      // Every signed-in client reads the queue: matchmaking is done on the
+      // clients, so they each need the same snapshot to agree on a group.
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role in ['TANK', 'DPS', 'HEALER']
+        && request.resource.data.dungeonId is string
+        && request.resource.data.enqueuedAtMs is int;
+      // Leaving the queue is yours alone. Without the uid check any signed-in
+      // stranger could empty the queue and nobody would ever be matched.
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /rooms/{roomId} {
+      function isMember() {
+        return signedIn() && request.auth.uid in resource.data.memberUids;
+      }
+      function isHost() {
+        return signedIn() && request.auth.uid == resource.data.hostUid;
+      }
+
+      // Only members see the room. memberUids exists purely so this is
+      // expressible -- rules cannot index into the members array of maps.
+      allow read: if isMember();
+      // You may only create a room you host, and only one you are in.
+      allow create: if signedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.auth.uid in request.resource.data.memberUids;
+      // The host owns the room, and cannot hand the host seat to someone who
+      // is not in it. Phase 4's host migration writes through here.
+      allow update: if isHost()
+        && request.resource.data.hostUid in request.resource.data.memberUids;
+      allow delete: if isHost();
+
+      // A guest's action stream. The document id is the guest's uid, so a
+      // client can only ever write its own actions -- forging a cast as
+      // another player is refused here rather than trusted to the host.
+      match /actions/{uid} {
+        function room() {
+          return get(/databases/$(database)/documents/rooms/$(roomId)).data;
+        }
+        allow read: if signedIn() && request.auth.uid in room().memberUids;
+        allow write: if signedIn()
+          && request.auth.uid == uid
+          && request.auth.uid in room().memberUids;
+      }
+    }
+  }
+}

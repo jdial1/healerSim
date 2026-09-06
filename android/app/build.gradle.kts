@@ -4,6 +4,18 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services) apply false
+}
+
+// google-services generates its resource values from google-services.json, and
+// hard-fails the build when that file is missing. It is missing on purpose:
+// it is per-project configuration nobody should commit, and a fresh clone has
+// to build without it. Applying it only when the file is present means the app
+// still compiles for anyone -- multiplayer is simply unavailable at runtime,
+// which is what FirebaseBackend.isConfigured reports.
+val hasFirebaseConfig = file("google-services.json").exists()
+if (hasFirebaseConfig) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 // The web app under ../../ is the single source of truth for all game content.
@@ -72,6 +84,7 @@ android {
         targetSdk = 37
         versionCode = versionCodeFromCi ?: 1
         versionName = versionNameFromCi ?: "1.0.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     sourceSets {
@@ -81,6 +94,9 @@ android {
         }
         getByName("test") {
             kotlin.directories.add("src/test/kotlin")
+        }
+        getByName("androidTest") {
+            kotlin.directories.add("src/androidTest/kotlin")
         }
     }
 
@@ -127,7 +143,15 @@ dependencies {
     implementation(libs.core.splashscreen)
     implementation(libs.kotlinx.serialization.json)
 
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.kotlinx.coroutines.play.services)
+
     testImplementation(libs.junit)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
 }
 
 // AGP 9 rejects task providers as source dirs, so the asset directory is static

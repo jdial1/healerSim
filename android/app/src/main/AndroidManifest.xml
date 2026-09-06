@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- The app's first permission, and the moment "works fully in airplane
+         mode" stopped being unconditionally true. Single player still never
+         opens a socket; this is here for the opt-in public queue, which does
+         nothing until you choose it. public/privacy.html says the same thing,
+         and was updated in the same commit rather than two phases later. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- No screenOrientation lock. targetSdk 36+ ignores it above 600dp anyway,
          so tablets and unfolded foldables already ran landscape and the manifest
          was simply claiming otherwise. The layout is width-constrained and

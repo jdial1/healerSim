@@ -48,6 +48,61 @@ slot 5; passive and HoT healing (`resolvePlayerSystems`) resolves for this
 client's participant only; and `UnitDebuff` records the ability that applied a
 DoT but not who cast it, so enemy DoT threat is credited to the local slot.
 
+## Multiplayer: the queue
+
+Optional and opt-in. Single player never opens a socket.
+
+The design splits deliberately into a part that is decided and a part that is
+enforced:
+
+- **`mp/Matchmaking.kt` decides who plays with whom.** Pure: no Firebase, no
+  Android, no clock. Every client runs the same function over the same queue
+  snapshot and therefore agrees on the group, the slots and the host without
+  coordinating. The room id is derived from the members, so only the host needs
+  to create the document and everyone else waits for that exact id.
+- **`firebase/firestore.rules` enforces identity.** A client that lies about
+  matchmaking gets itself a worse game; a client that could delete other
+  people's queue entries or forge their casts would be everyone else's problem.
+  Those are the cases the rules cover and the cases `rules.test.mjs` pins.
+- **`mp/FirebaseBackend.kt` is the thin part between them** — reads documents,
+  writes documents, drops anything that does not parse. `mp/Wire.kt` treats every
+  document as untrusted input, because every one of them was written by a
+  stranger's client, and returns null rather than throwing.
+
+**A group never fails to form.** Past the deadline the room starts with whoever
+turned up and the AI fills the rest, so a queue nobody else is in still produces
+a dungeon. That is the same code path single player already takes.
+
+### Running it without a Firebase project
+
+Everything below runs against the local emulator suite. No Google account, no
+project, no `google-services.json`:
+
+```
+cd firebase && npm install
+npm run test:rules            # security rules, ~10s, needs no device
+```
+
+For the client half, with a device or AVD attached:
+
+```
+cd firebase && npm run emulators                            # leave running
+adb reverse tcp:9099 tcp:9099 && adb reverse tcp:8080 tcp:8080
+cd android && ./gradlew :app:connectedDebugAndroidTest
+```
+
+`adb reverse` rather than the usual `10.0.2.2`: an app process could not reach
+the host through the emulator NAT on this setup even though `adb shell` could,
+and a forwarded port removes the NAT from the path. Cleartext to `127.0.0.1` is
+permitted by `src/debug/res/xml/network_security_config.xml`, which is in
+`src/debug` and is **not** merged into a release build — verified by reading the
+merged release manifest, not assumed.
+
+`google-services.json` is gitignored and absent. The `google-services` plugin is
+applied only when the file exists, so a fresh clone builds; multiplayer is then
+simply unavailable rather than crashing, which is what
+`FirebaseBackend.createOrNull` returning null means.
+
 ## Building
 
 ```
