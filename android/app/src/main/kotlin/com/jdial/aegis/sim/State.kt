@@ -191,38 +191,40 @@ data class DungeonOutcome(
     val upgradedPotion: Boolean = false,
 )
 
+/**
+ * Everything that describes one *player* rather than the world.
+ *
+ * These fields all lived on [GameState] directly, which quietly asserted that
+ * exactly one human exists: two people casting in the same tick would have
+ * shared a mana pool, a cooldown table and a set of buffs. Keyed by party unit
+ * id ("1".."5") so a participant and their [Unit] are the same slot.
+ *
+ * Single player is a map of one. There is deliberately no second code path --
+ * the whole point is that the solo game runs the multi-participant engine, so
+ * the multiplayer case cannot rot.
+ *
+ * Progression (xp, talent points, completed dungeons) stays on [GameState]: it
+ * is the local player's account, awarded once at the end of a run, and moving it
+ * here would drag the save format and the XP curve into a refactor that is
+ * already the riskiest in the project.
+ */
 @Serializable
-data class GameState(
-    // --- character (persisted) ---
+data class Participant(
+    val unitId: String,
     val playerClass: PlayerClass? = null,
     val level: Int = 1,
-    val xp: Int = 0,
-    val talentPoints: Int = 0,
     val talents: List<TalentRank> = emptyList(),
     val unlockedSpells: List<String> = emptyList(),
     val activeActionBars: List<String> = emptyList(),
-    val completedDungeonIds: List<String> = emptyList(),
-    val introTutorialComplete: Boolean = false,
-    val tutorialCompletedSteps: List<String> = emptyList(),
-
-    // --- combat ---
-    val party: List<Unit> = emptyList(),
+    /** Derived from the class's ClassMeta.role. */
+    val role: UnitRole = UnitRole.HEALER,
     val mana: Double = 0.0,
     val maxMana: Int = 100,
-    val currentDungeon: Dungeon? = null,
-    val dungeonPace: String? = null,
-    val dungeonProgress: Double = 0.0,
-    val combatPhase: CombatPhase = CombatPhase.TRASH,
-    val trashPullsRemaining: Int = TRASH_PACK_COUNT,
-    val enemyHealth: Double = 0.0,
-    val enemyMaxHealth: Double = 0.0,
-    val isCombatActive: Boolean = false,
-    val bossSelfBuffs: List<BossBuff> = emptyList(),
     val playerCombatBuffs: List<PlayerBuff> = emptyList(),
     val internalCooldowns: Map<String, Int> = emptyMap(),
     val spellCooldowns: Map<String, Int> = emptyMap(),
     /**
-     * Ticks until the next cast is allowed, from any spell.
+     * Ticks until this participant's next cast is allowed, from any spell.
      *
      * Stops the bar being spammed, and bounds how many actions a client can
      * produce per second -- which is what makes a relayed action stream
@@ -232,13 +234,9 @@ data class GameState(
     val capstoneForm: String? = null,
     val holyPower: Int = 0,
     val beaconTargetId: String = "1",
-    val mechanicCooldown: Int = 0,
-    val mechanicOrdinal: Int = 0,
-    /** Who the enemy is currently on. Null until the first threat is generated. */
-    /** What the player is doing. Derived from their class's ClassMeta.role. */
-    val playerRole: UnitRole = UnitRole.HEALER,
     /**
-     * Damage the player's abilities have dealt since the last tick consumed it.
+     * Damage this participant's abilities have dealt since the last tick
+     * consumed it.
      *
      * A plain accumulator, not a queue: casts already resolve synchronously
      * before the next Tick action, so there is never more than a tick's worth
@@ -246,7 +244,8 @@ data class GameState(
      */
     val pendingEnemyDamage: Double = 0.0,
     /**
-     * Threat the player's casts have generated since the last tick consumed it.
+     * Threat this participant's casts have generated since the last tick
+     * consumed it.
      *
      * Separate from [pendingEnemyDamage] because threat is not proportional to
      * damage: a tank's Shield Slam is worth three times its damage in threat and
@@ -254,6 +253,59 @@ data class GameState(
      * is what made `Spell.threatMultiplier` inert.
      */
     val pendingPlayerThreat: Double = 0.0,
+    val manaPotionsUsedThisDungeon: Int = 0,
+    /**
+     * False for a slot the AI is driving. Nothing reads it yet -- the AI party
+     * is still scripted rather than participant-driven -- but the queue fills
+     * empty slots with AI, and that is the flag it will set.
+     */
+    val isHuman: Boolean = true,
+) {
+    /** Combat-scoped fields reset between runs; character fields are preserved. */
+    fun clearedCombat(): Participant = copy(
+        playerCombatBuffs = emptyList(),
+        internalCooldowns = emptyMap(),
+        spellCooldowns = emptyMap(),
+        globalCooldownRemaining = 0,
+        capstoneForm = null,
+        holyPower = 0,
+        pendingEnemyDamage = 0.0,
+        pendingPlayerThreat = 0.0,
+        manaPotionsUsedThisDungeon = 0,
+    )
+}
+
+@Serializable
+data class GameState(
+    /**
+     * Every player in the run, keyed by party unit id. One entry in single
+     * player -- see [Participant] for why there is no separate solo path.
+     */
+    val participants: Map<String, Participant> = emptyMap(),
+    /** Which participant this client is driving. */
+    val localUnitId: String = PLAYER_UNIT_ID,
+
+    // --- character (persisted) ---
+    val xp: Int = 0,
+    val talentPoints: Int = 0,
+    val completedDungeonIds: List<String> = emptyList(),
+    val introTutorialComplete: Boolean = false,
+    val tutorialCompletedSteps: List<String> = emptyList(),
+
+    // --- combat ---
+    val party: List<Unit> = emptyList(),
+    val currentDungeon: Dungeon? = null,
+    val dungeonPace: String? = null,
+    val dungeonProgress: Double = 0.0,
+    val combatPhase: CombatPhase = CombatPhase.TRASH,
+    val trashPullsRemaining: Int = TRASH_PACK_COUNT,
+    val enemyHealth: Double = 0.0,
+    val enemyMaxHealth: Double = 0.0,
+    val isCombatActive: Boolean = false,
+    val bossSelfBuffs: List<BossBuff> = emptyList(),
+    val mechanicCooldown: Int = 0,
+    val mechanicOrdinal: Int = 0,
+    /** Who the enemy is currently on. Null until the first threat is generated. */
     /**
      * The AI healer's mana. Zero and unused while the player is the healer.
      *
@@ -274,7 +326,6 @@ data class GameState(
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
     val endlessStacks: Int = 0,
-    val manaPotionsUsedThisDungeon: Int = 0,
     val floatingCombatTexts: List<FloatingText> = emptyList(),
     val isTutorialPaused: Boolean = false,
     val dungeonOutcome: DungeonOutcome? = null,
@@ -284,12 +335,74 @@ data class GameState(
     val runHealOverheal: Double = 0.0,
     val runManaSpentHealing: Double = 0.0,
 ) {
+    /**
+     * The participant this client drives.
+     *
+     * The accessors below exist so the several hundred read sites that said
+     * `state.mana` still say `state.mana`. Only *writes* had to move, and those
+     * the compiler found by deleting the constructor parameters. A default is
+     * returned rather than throwing because GameState() with no character is a
+     * real state -- the main menu.
+     */
+    val me: Participant get() = participants[localUnitId] ?: Participant(localUnitId)
+
+    val playerClass: PlayerClass? get() = me.playerClass
+    val level: Int get() = me.level
+    val talents: List<TalentRank> get() = me.talents
+    val unlockedSpells: List<String> get() = me.unlockedSpells
+    val activeActionBars: List<String> get() = me.activeActionBars
+    val playerRole: UnitRole get() = me.role
+    val mana: Double get() = me.mana
+    val maxMana: Int get() = me.maxMana
+    val playerCombatBuffs: List<PlayerBuff> get() = me.playerCombatBuffs
+    val internalCooldowns: Map<String, Int> get() = me.internalCooldowns
+    val spellCooldowns: Map<String, Int> get() = me.spellCooldowns
+    val globalCooldownRemaining: Int get() = me.globalCooldownRemaining
+    val capstoneForm: String? get() = me.capstoneForm
+    val holyPower: Int get() = me.holyPower
+    val beaconTargetId: String get() = me.beaconTargetId
+    val manaPotionsUsedThisDungeon: Int get() = me.manaPotionsUsedThisDungeon
+
+    /** Damage every participant has dealt since the last tick consumed it. */
+    val pendingEnemyDamage: Double get() = participants.values.sumOf { it.pendingEnemyDamage }
+
+    /** True when a real person is driving this party slot. */
+    fun isHuman(unitId: String): Boolean = participants[unitId]?.isHuman == true
+
+    /** Rewrites one participant. */
+    fun withParticipant(id: String, f: (Participant) -> Participant): GameState =
+        copy(participants = participants + (id to f(participants[id] ?: Participant(id))))
+
+    /** Rewrites the participant this client drives. */
+    fun withMe(f: (Participant) -> Participant): GameState = withParticipant(localUnitId, f)
+
+    /**
+     * The same state seen from another participant's seat.
+     *
+     * The cast pipeline and the class hooks read the acting player through
+     * several dozen sites -- `state.mana`, `state.talents`, `state.capstoneForm`,
+     * `state.level` -- and every one of them means "whoever is casting". Rather
+     * than thread an actor parameter through all of them and rely on nobody
+     * forgetting one, [Engine] points [localUnitId] at the actor for the
+     * duration of the cast and points it back afterwards. Miss a site and it
+     * still resolves to the right participant.
+     *
+     * This is the only place localUnitId means anything other than "this
+     * client": treat it as a scope, and always restore it.
+     */
+    fun actingAs(unitId: String): GameState =
+        if (unitId == localUnitId) this else copy(localUnitId = unitId)
+
+    /** Rewrites every participant. */
+    fun withEachParticipant(f: (Participant) -> Participant): GameState =
+        copy(participants = participants.mapValues { (_, p) -> f(p) })
+
     val healer: Unit? get() = party.firstOrNull { it.role == UnitRole.HEALER }
 
     fun unit(id: String): Unit? = party.firstOrNull { it.id == id }
 
     /** Combat-scoped fields reset between runs; character fields are preserved. */
-    fun clearedCombat(): GameState = copy(
+    fun clearedCombat(): GameState = withEachParticipant { it.clearedCombat() }.copy(
         currentDungeon = null,
         dungeonPace = null,
         dungeonProgress = 0.0,
@@ -298,25 +411,16 @@ data class GameState(
         enemyHealth = 0.0,
         enemyMaxHealth = 0.0,
         bossSelfBuffs = emptyList(),
-        playerCombatBuffs = emptyList(),
-        internalCooldowns = emptyMap(),
-        spellCooldowns = emptyMap(),
-        globalCooldownRemaining = 0,
-        capstoneForm = null,
-        holyPower = 0,
         mechanicCooldown = 0,
         mechanicOrdinal = 0,
         enemyTargetId = null,
         tauntLockTicks = 0,
         tauntedById = null,
-        pendingEnemyDamage = 0.0,
-        pendingPlayerThreat = 0.0,
         enemyDebuffs = emptyList(),
         aiHealerMana = 0.0,
         combatElapsedTicks = 0,
         runDpsJitter = 1.0,
         endlessStacks = 0,
-        manaPotionsUsedThisDungeon = 0,
         floatingCombatTexts = emptyList(),
         runHealEffective = 0.0,
         runHealOverheal = 0.0,
@@ -332,15 +436,15 @@ data class GameState(
  * screen reads some of them, and [clearedCombat] (used when *starting* a run)
  * is what actually wipes the slate.
  */
-fun GameState.endedRun(): GameState = copy(
+fun GameState.endedRun(): GameState = withEachParticipant {
+    it.copy(playerCombatBuffs = emptyList(), spellCooldowns = emptyMap(), globalCooldownRemaining = 0)
+}.copy(
     isCombatActive = false,
     currentDungeon = null,
     dungeonPace = null,
-    playerCombatBuffs = emptyList(),
     bossSelfBuffs = emptyList(),
     mechanicCooldown = 0,
     mechanicOrdinal = 0,
-    spellCooldowns = emptyMap(),
     floatingCombatTexts = emptyList(),
     endlessStacks = 0,
 )

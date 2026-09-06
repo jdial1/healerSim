@@ -108,7 +108,7 @@ class DamageTest {
     @Test
     fun `clearing combat drops damage state`() {
         val dirty = GameState(
-            pendingEnemyDamage = 99.0,
+            participants = mapOf(PLAYER_UNIT_ID to Participant(PLAYER_UNIT_ID, pendingEnemyDamage = 99.0)),
             enemyDebuffs = listOf(
                 UnitDebuff(id = "x", name = "X", remainingTicks = 3, damagePerTick = 1.0),
             ),

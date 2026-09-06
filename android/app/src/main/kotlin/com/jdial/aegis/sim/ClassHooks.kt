@@ -245,7 +245,10 @@ object PriestHooks : ClassHooks {
         val ranks = ctx.ranks("binding_heal")
         if (ctx.cls == null || ranks <= 0) return LandResult(party, emptyList(), 0.0, 0.0)
         val priest = ctx.data.balance.combat.priest
-        val healer = party.firstOrNull { it.id == PLAYER_UNIT_ID }
+        // Binding Heal heals *the caster*, so it follows the acting participant
+        // rather than the slot the single-player healer happens to occupy.
+        val casterId = ctx.state.localUnitId
+        val healer = party.firstOrNull { it.id == casterId }
         val target = ctx.party.firstOrNull { it.id == land.targetId }
         if (healer == null || target == null || target.id == healer.id) {
             return LandResult(party, emptyList(), 0.0, 0.0)
@@ -254,7 +257,7 @@ object PriestHooks : ClassHooks {
             priest.bindingHealSelfFraction * min(priest.bindingHealMaxRanksForCap, ranks)
         val applied = applyHealToUnit(healer, bind)
         return LandResult(
-            party.map { if (it.id == PLAYER_UNIT_ID) it.copy(health = applied.health) else it },
+            party.map { if (it.id == casterId) it.copy(health = applied.health) else it },
             emptyList(), applied.effective, applied.overheal,
         )
     }

@@ -165,12 +165,12 @@ class ThreatInDungeonTest {
         assertEquals(
             "threat banked must be damage times the declared multiplier, plus any flat",
             out.pendingEnemyDamage * slam.threatMultiplier + slam.flatThreat,
-            out.pendingPlayerThreat,
+            out.me.pendingPlayerThreat,
             1e-9,
         )
         assertTrue(
             "and must therefore exceed the damage, or the multiplier is inert",
-            out.pendingPlayerThreat > out.pendingEnemyDamage,
+            out.me.pendingPlayerThreat > out.pendingEnemyDamage,
         )
     }
 

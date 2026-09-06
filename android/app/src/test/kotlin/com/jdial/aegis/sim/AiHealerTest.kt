@@ -19,7 +19,17 @@ class AiHealerTest {
     private fun unit(id: String, role: UnitRole, hp: Double, maxHp: Double = 100.0, lvl: Int = 10) =
         Unit(id = id, name = "u$id", role = role, level = lvl, health = hp, maxHealth = maxHp)
 
-    private fun state(mana: Double) = GameState(aiHealerMana = mana, isCombatActive = true)
+    /**
+     * A human occupies [PLAYER_UNIT_ID]. That is now what "the player is in this
+     * slot" means -- the AI healer used to exclude slot 5 by id, and excludes
+     * any slot with a human participant instead, so a second human healing from
+     * slot 4 is not also driven by the AI.
+     */
+    private fun state(mana: Double) = GameState(
+        participants = mapOf(PLAYER_UNIT_ID to Participant(PLAYER_UNIT_ID)),
+        aiHealerMana = mana,
+        isCombatActive = true,
+    )
 
     private fun dpsParty(vararg hp: Double) = listOf(
         unit("1", UnitRole.TANK, hp[0]),
@@ -38,6 +48,26 @@ class AiHealerTest {
         val r = tick.aiHealerTick(state(999.0), party)
         assertEquals(party, r.party)
         assertEquals(0.0, r.healed, 0.0)
+    }
+
+    @Test
+    fun `an ai healer in any slot works, not just slot 4`() {
+        // The exclusion is "a human is driving this slot", not "this is not
+        // slot 5". Put the human in slot 1 and the healer in slot 5, and slot 5
+        // must act.
+        val party = listOf(
+            unit(PLAYER_UNIT_ID, UnitRole.HEALER, 100.0),
+            unit("1", UnitRole.TANK, 10.0),
+        )
+        val s = GameState(
+            participants = mapOf("1" to Participant("1")),
+            localUnitId = "1",
+            aiHealerMana = 999.0,
+            isCombatActive = true,
+        )
+        val r = tick.aiHealerTick(s, party)
+        assertTrue("slot 5 has no human and should have healed", r.healed > 0)
+        assertTrue(r.party.first { it.id == "1" }.health > 10.0)
     }
 
     @Test

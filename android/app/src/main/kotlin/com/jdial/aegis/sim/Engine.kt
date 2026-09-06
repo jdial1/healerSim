@@ -75,35 +75,60 @@ class Engine(val data: GameData) {
     fun roleOf(cls: PlayerClass): UnitRole =
         runCatching { UnitRole.valueOf(data.bundle(cls).meta.role) }.getOrDefault(UnitRole.HEALER)
 
+    /**
+     * Resolves a cast as [Action.CastSpell.actorId] rather than as "the player".
+     *
+     * The whole pipeline -- and the class hooks under it -- reads the caster
+     * through GameState's participant accessors, so pointing the state at the
+     * actor for the duration is enough to make every one of those sites address
+     * the right person. The seat is always handed back, including when the cast
+     * is rejected and tryCast returns the state unchanged.
+     *
+     * A cast from a participant who is not in the run is dropped rather than
+     * silently creating one: that is the shape a malformed relayed action takes.
+     */
+    private fun castAs(state: GameState, action: Action.CastSpell, rng: Rng): GameState {
+        if (action.actorId !in state.participants) return state
+        val seat = state.localUnitId
+        val acting = state.actingAs(action.actorId)
+        val out = casts.tryCast(
+            CastContext(acting, data, stats, rng),
+            action.spellId,
+            action.targetId,
+            action.critRoll,
+        )
+        return out.actingAs(seat)
+    }
+
     /** A fresh character of [cls] at level 1. */
     fun newCharacter(cls: PlayerClass, rng: Rng): GameState {
         val talents = data.bundle(cls).talents.map { TalentRank(it, 0) }
         val loadout = progression.buildSpellLoadout(cls, talents)
         val maxMana = stats.maxMana(cls, 1, talents)
         return GameState(
-            playerClass = cls,
-            level = 1,
+            participants = mapOf(
+                PLAYER_UNIT_ID to Participant(
+                    unitId = PLAYER_UNIT_ID,
+                    playerClass = cls,
+                    level = 1,
+                    talents = talents,
+                    unlockedSpells = loadout.unlockedSpells,
+                    activeActionBars = loadout.actionBar,
+                    role = roleOf(cls),
+                    maxMana = maxMana,
+                    mana = maxMana.toDouble(),
+                ),
+            ),
             xp = 0,
             talentPoints = progression.talentPoints(1, talents),
-            talents = talents,
-            unlockedSpells = loadout.unlockedSpells,
-            activeActionBars = loadout.actionBar,
-            maxMana = maxMana,
-            mana = maxMana.toDouble(),
             party = tick.generateParty(cls, 1, rng),
-            playerRole = roleOf(cls),
         )
     }
 
     fun reduce(state: GameState, action: Action, rng: Rng): GameState = when (action) {
         is Action.Tick -> applyTicks(state, action.ticks, rng)
         is Action.StartDungeon -> startDungeon(state, action.dungeon, action.pace, rng)
-        is Action.CastSpell -> casts.tryCast(
-            CastContext(state, data, stats, rng),
-            action.spellId,
-            action.targetId,
-            action.critRoll,
-        )
+        is Action.CastSpell -> castAs(state, action, rng)
         is Action.Taunt -> taunt(state, action.actorId, action.ticks)
         is Action.UnlockTalent -> unlockTalent(state, action.talentId)
         is Action.DecrementTalent -> decrementTalent(state, action.talentId)
@@ -128,18 +153,25 @@ class Engine(val data: GameData) {
         return s
     }
 
-    /** Cooldowns decrement every tick; entries reaching zero are dropped. */
-    private fun tickCooldowns(s: GameState): GameState {
-        val gcd = if (s.globalCooldownRemaining > 0) s.globalCooldownRemaining - 1 else 0
-        if (s.spellCooldowns.isEmpty()) {
-            return if (gcd == s.globalCooldownRemaining) s else s.copy(globalCooldownRemaining = gcd)
+    /**
+     * Cooldowns decrement every tick; entries reaching zero are dropped.
+     *
+     * Every participant's, not just this client's. A remote player whose
+     * cooldowns only advanced on their own device would be able to cast
+     * whenever their machine said so.
+     */
+    private fun tickCooldowns(s: GameState): GameState = s.withEachParticipant { p ->
+        val gcd = if (p.globalCooldownRemaining > 0) p.globalCooldownRemaining - 1 else 0
+        if (p.spellCooldowns.isEmpty()) {
+            if (gcd == p.globalCooldownRemaining) p else p.copy(globalCooldownRemaining = gcd)
+        } else {
+            p.copy(
+                globalCooldownRemaining = gcd,
+                spellCooldowns = p.spellCooldowns
+                    .mapValues { (_, v) -> v - 1 }
+                    .filterValues { it > 0 },
+            )
         }
-        return s.copy(
-            globalCooldownRemaining = gcd,
-            spellCooldowns = s.spellCooldowns
-                .mapValues { (_, v) -> v - 1 }
-                .filterValues { it > 0 },
-        )
     }
 
     private fun startDungeon(state: GameState, dungeon: Dungeon, pace: String, rng: Rng): GameState {
@@ -152,7 +184,14 @@ class Engine(val data: GameData) {
         val runDpsJitter = 1 - jitter + rng.nextDouble() * (jitter * 2)
 
         val trashHp = max(1.0, progression.trashMaxHealth(dungeon))
-        return state.clearedCombat().copy(
+        return state.clearedCombat().withEachParticipant {
+            it.copy(
+                mana = it.maxMana.toDouble(),
+                // Re-derived per run: a save written before roles existed decodes
+                // with the HEALER default, and this corrects it on the next pull.
+                role = it.playerClass?.let(::roleOf) ?: it.role,
+            )
+        }.copy(
             runDpsJitter = runDpsJitter,
             currentDungeon = dungeon,
             dungeonPace = pace,
@@ -162,11 +201,7 @@ class Engine(val data: GameData) {
             enemyMaxHealth = trashHp,
             isCombatActive = true,
             party = tick.generateParty(cls, state.level, rng),
-            mana = state.maxMana.toDouble(),
             dungeonOutcome = null,
-            // Re-derived per run: a save written before roles existed decodes
-            // with the HEALER default, and this corrects it on the next pull.
-            playerRole = roleOf(cls),
             // The AI healer starts a run full, like the player does. Zero while
             // the player is the healer, where there is no AI one.
             aiHealerMana = if (roleOf(cls) == UnitRole.HEALER) 0.0 else {
@@ -208,13 +243,14 @@ class Engine(val data: GameData) {
             s.activeActionBars.sorted() == loadout.actionBar.sorted()
         ) s.activeActionBars else loadout.actionBar
 
-        return s.copy(
-            talentPoints = progression.talentPoints(s.level, s.talents),
-            unlockedSpells = loadout.unlockedSpells,
-            activeActionBars = bar,
-            maxMana = maxMana,
-            mana = min(s.mana, maxMana.toDouble()),
-        )
+        return s.withMe {
+            it.copy(
+                unlockedSpells = loadout.unlockedSpells,
+                activeActionBars = bar,
+                maxMana = maxMana,
+                mana = min(it.mana, maxMana.toDouble()),
+            )
+        }.copy(talentPoints = progression.talentPoints(s.level, s.talents))
     }
 
     private fun unlockTalent(state: GameState, talentId: String): GameState {
@@ -233,7 +269,7 @@ class Engine(val data: GameData) {
                 else -> t
             }
         }
-        return refreshMeta(state.copy(talents = talents)).let { withCapstone(it, row.talent.mechanicId) }
+        return refreshMeta(state.withMe { it.copy(talents = talents) }).let { withCapstone(it, row.talent.mechanicId) }
     }
 
     private fun decrementTalent(state: GameState, talentId: String): GameState {
@@ -244,12 +280,12 @@ class Engine(val data: GameData) {
         if (dependent) return state
 
         val talents = state.talents.map { if (it.id == talentId) it.copy(points = it.points - 1) else it }
-        return refreshMeta(state.copy(talents = talents)).let { withCapstone(it, row.talent.mechanicId) }
+        return refreshMeta(state.withMe { it.copy(talents = talents) }).let { withCapstone(it, row.talent.mechanicId) }
     }
 
     private fun respec(state: GameState): GameState {
         val talents = state.talents.map { it.copy(points = 0) }
-        return refreshMeta(state.copy(talents = talents, capstoneForm = null))
+        return refreshMeta(state.withMe { it.copy(talents = talents, capstoneForm = null) })
     }
 
     /** A capstone talent sets (or clears) the player's form. */
@@ -258,7 +294,7 @@ class Engine(val data: GameData) {
         val prog = data.bundle(cls).meta.progression
         if (mechanicId != prog.capstoneMechanicId) return s
         val invested = s.talents.ranksOf(prog.capstoneMechanicId) > 0
-        return s.copy(capstoneForm = if (invested) prog.capstoneForm else null)
+        return s.withMe { it.copy(capstoneForm = if (invested) prog.capstoneForm else null) }
     }
 
     private fun reorderActionBar(state: GameState, from: Int, to: Int): GameState {
@@ -267,7 +303,7 @@ class Engine(val data: GameData) {
         val bar = state.activeActionBars.toMutableList()
         if (from !in bar.indices || to !in bar.indices) return state
         bar.add(to, bar.removeAt(from))
-        return state.copy(activeActionBars = bar)
+        return state.withMe { it.copy(activeActionBars = bar) }
     }
 
     /**
@@ -289,6 +325,6 @@ class Engine(val data: GameData) {
         }
         val bar = state.activeActionBars.toMutableList()
         bar[index] = spellId
-        return state.copy(activeActionBars = bar)
+        return state.withMe { it.copy(activeActionBars = bar) }
     }
 }

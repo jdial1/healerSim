@@ -161,10 +161,10 @@ class CastPipeline(
             critH = if (isCrit) 1.5 else 1.0,
             tower2 = tower2,
             tMod = if (tower2) 2.0 else 1.0,
-            archangel = s.capstoneForm == "priest_archangel" && s.playerCombatBuffs.hasBuff(BUFF_ARCHANGEL),
+            archangel = s.me.capstoneForm == "priest_archangel" && s.playerCombatBuffs.hasBuff(BUFF_ARCHANGEL),
             emergencyHaste = hooks.emergencyHasteBonus(ctx, targetId),
             buffsBaseline = baseline,
-            rankHealMult = stats.rankHealMult(stats.spellRank(spellId, s.playerClass, s.level)),
+            rankHealMult = stats.rankHealMult(stats.spellRank(spellId, s.playerClass!!, s.level)),
         )
     }
 
@@ -183,7 +183,7 @@ class CastPipeline(
         return if (ready is Ready.ManaPotion) {
             out
         } else {
-            out.copy(globalCooldownRemaining = data.balance.combat.shared.globalCooldownTicks)
+            out.withMe { it.copy(globalCooldownRemaining = data.balance.combat.shared.globalCooldownTicks) }
         }
     }
 
@@ -241,20 +241,23 @@ class CastPipeline(
         // as any other spell of the same size.
         val threat = dealt * spell.threatMultiplier + spell.flatThreat
 
-        val out = s.copy(
-            mana = max(0.0, s.mana - ready.needMana),
-            playerCombatBuffs = buffs,
-            pendingEnemyDamage = s.pendingEnemyDamage + dealt,
-            pendingPlayerThreat = s.pendingPlayerThreat + threat,
-            enemyDebuffs = dots,
-            spellCooldowns = s.spellCooldowns.withCooldown(
-                ready.spellId,
-                cooldownTicks(spell.cooldown, ready.eff.hastePercent, 0),
-            ),
-        )
+        val out = s.withMe {
+            it.copy(
+                mana = max(0.0, it.mana - ready.needMana),
+                playerCombatBuffs = buffs,
+                pendingEnemyDamage = it.pendingEnemyDamage + dealt,
+                pendingPlayerThreat = it.pendingPlayerThreat + threat,
+                spellCooldowns = it.spellCooldowns.withCooldown(
+                    ready.spellId,
+                    cooldownTicks(spell.cooldown, ready.eff.hastePercent, 0),
+                ),
+            )
+        }.copy(enemyDebuffs = dots)
+        // The caster's slot, not slot 5: a taunt is inherently "this unit".
+        val caster = s.localUnitId
         return if (spell.tauntTicks == null) out else out.copy(
             party = out.party.map {
-                if (it.id != PLAYER_UNIT_ID) it
+                if (it.id != caster) it
                 else it.copy(
                     threat = max(
                         it.threat,
@@ -263,8 +266,8 @@ class CastPipeline(
                     ),
                 )
             },
-            enemyTargetId = PLAYER_UNIT_ID,
-            tauntedById = PLAYER_UNIT_ID,
+            enemyTargetId = caster,
+            tauntedById = caster,
             tauntLockTicks = spell.tauntTicks,
         )
     }
@@ -296,12 +299,14 @@ class CastPipeline(
         var buffs = s.playerCombatBuffs.addBuff(BUFF_MANA_REGEN_POTION, durTicks, 1, drip)
         buffs = buffs.applyPowerInfusionAfterCast(piLeft)
 
-        return s.copy(
-            mana = min(s.maxMana.toDouble(), s.mana + instant),
-            manaPotionsUsedThisDungeon = s.manaPotionsUsedThisDungeon + 1,
-            playerCombatBuffs = buffs,
-            spellCooldowns = s.spellCooldowns.withCooldown(spell.id, cd),
-        )
+        return s.withMe {
+            it.copy(
+                mana = min(it.maxMana.toDouble(), it.mana + instant),
+                manaPotionsUsedThisDungeon = it.manaPotionsUsedThisDungeon + 1,
+                playerCombatBuffs = buffs,
+                spellCooldowns = it.spellCooldowns.withCooldown(spell.id, cd),
+            )
+        }
     }
 
     /** Consumes a HoT on the target and converts it into an instant burst heal. */
@@ -329,12 +334,15 @@ class CastPipeline(
         var buffs = s.playerCombatBuffs.addSpiritLockoutIfSpent(ready.needMana > 0)
         buffs = buffs.applyPowerInfusionAfterCast(max(0, piStacks - 1))
 
-        return s.copy(
+        return s.withMe {
+            it.copy(
+                mana = max(0.0, it.mana - ready.needMana),
+                playerCombatBuffs = buffs,
+                spellCooldowns = it.spellCooldowns.withCooldown(ready.spell.id, cd),
+                pendingPlayerThreat = it.pendingPlayerThreat + healThreat(ready.spell, applied.effective),
+            )
+        }.copy(
             party = party,
-            mana = max(0.0, s.mana - ready.needMana),
-            playerCombatBuffs = buffs,
-            spellCooldowns = s.spellCooldowns.withCooldown(ready.spell.id, cd),
-            pendingPlayerThreat = s.pendingPlayerThreat + healThreat(ready.spell, applied.effective),
             runHealEffective = s.runHealEffective + applied.effective,
             runHealOverheal = s.runHealOverheal + applied.overheal,
             runManaSpentHealing = s.runManaSpentHealing + ready.needMana,
@@ -587,14 +595,17 @@ class CastPipeline(
             )
         }
 
-        return s.copy(
+        return s.withMe {
+            it.copy(
+                mana = manaOut,
+                playerCombatBuffs = buffs,
+                holyPower = holyPower,
+                spellCooldowns = it.spellCooldowns.withCooldown(ready.spellId, cd),
+                pendingPlayerThreat = it.pendingPlayerThreat + healThreat(spell, healEff),
+            )
+        }.copy(
             party = party,
-            mana = manaOut,
-            playerCombatBuffs = buffs,
-            holyPower = holyPower,
             floatingCombatTexts = floats,
-            spellCooldowns = s.spellCooldowns.withCooldown(ready.spellId, cd),
-            pendingPlayerThreat = s.pendingPlayerThreat + healThreat(spell, healEff),
             runHealEffective = s.runHealEffective + healEff,
             runHealOverheal = s.runHealOverheal + healOh,
             runManaSpentHealing = s.runManaSpentHealing + manaSpent,

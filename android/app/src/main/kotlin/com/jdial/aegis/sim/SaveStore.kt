@@ -49,9 +49,17 @@ data class UiSettings(
     val largeFrames: Boolean = false,
 )
 
-/** Mirrors the web app's `aegis.suspend.v1`: one boss-phase run, read once. */
+/**
+ * Mirrors the web app's `aegis.suspend.v1`: one boss-phase run, read once.
+ *
+ * v2 because the player's own fields moved off GameState into
+ * [Participant]. A v1 file decodes without error -- ignoreUnknownKeys drops the
+ * old keys and `participants` defaults to empty -- and would resume a boss fight
+ * with no class, no spells and no mana. Rejecting it loses at most one
+ * in-progress fight; accepting it looks like the game eating a character.
+ */
 @Serializable
-data class SuspendedRun(val v: Int = 1, val playerClass: String, val state: GameState)
+data class SuspendedRun(val v: Int = 2, val playerClass: String, val state: GameState)
 
 class SaveStore(
     private val file: File,
@@ -134,15 +142,18 @@ class SaveStore(
             it.size == loadout.actionBar.size && it.sorted() == loadout.actionBar.sorted()
         } ?: loadout.actionBar
 
-        return base.copy(
+        return base.withMe {
+            it.copy(
+                level = level,
+                talents = talents,
+                unlockedSpells = loadout.unlockedSpells,
+                activeActionBars = bar,
+                maxMana = maxMana,
+                mana = maxMana.toDouble(),
+            )
+        }.copy(
             xp = blob.xp,
-            level = level,
-            talents = talents,
             talentPoints = engine.progression.talentPoints(level, talents),
-            unlockedSpells = loadout.unlockedSpells,
-            activeActionBars = bar,
-            maxMana = maxMana,
-            mana = maxMana.toDouble(),
             completedDungeonIds = blob.completedDungeonIds,
             introTutorialComplete = blob.introTutorialComplete,
             party = base.party,
@@ -182,7 +193,7 @@ class SaveStore(
     fun takeSuspendedRun(cls: PlayerClass): GameState? {
         val run = runCatching { json.decodeFromString<SuspendedRun>(suspendFile.readText()) }.getOrNull()
         clearSuspendedRun()
-        if (run == null || run.playerClass != cls.name) return null
+        if (run == null || run.v < 2 || run.playerClass != cls.name) return null
         if (!isSuspendable(run.state)) return null
         return run.state
     }

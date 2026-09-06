@@ -108,14 +108,19 @@ class TickParityTest {
         val maxMana = sc.i("maxMana")
 
         return GameState(
-            playerClass = cls,
-            level = level,
+            participants = mapOf(
+                PLAYER_UNIT_ID to Participant(
+                    unitId = PLAYER_UNIT_ID,
+                    playerClass = cls,
+                    level = level,
+                    talents = talents,
+                    mana = maxMana.toDouble(),
+                    maxMana = maxMana,
+                ),
+            ),
             xp = sc.i("xp"),
-            talents = talents,
             introTutorialComplete = true,
             party = party,
-            mana = maxMana.toDouble(),
-            maxMana = maxMana,
             currentDungeon = dungeon,
             dungeonPace = "normal",
             dungeonProgress = if (isBoss) 75.0 else 0.0,

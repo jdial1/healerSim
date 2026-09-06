@@ -20,6 +20,34 @@ require Node. To pull fresh artwork from upstream, run `npm run icons:refresh`
 deliberately and review the diff; it is not wired into any build, so a release
 binary never depends on a CDN.
 
+## The player is a map, not a field
+
+`GameState` used to carry the player's class, level, talents, mana, cooldowns,
+buffs and pending-damage accumulators directly, which asserted that exactly one
+player exists. Those fields live on `Participant` now, keyed by party unit id,
+and **single player is a map of one** — there is no separate solo path, so the
+multi-player path cannot rot while nobody is looking.
+
+Two things make the refactor survivable:
+
+- **`GameState` still answers `state.mana`, `state.level`, `state.talents`** and
+  the rest, as computed properties over `localUnitId`. Every read site compiled
+  unchanged; only writes moved, and deleting the constructor parameters is what
+  found them.
+- **`GameState.actingAs(unitId)`** points `localUnitId` at whoever is casting for
+  the duration of a cast. The cast pipeline and the class hooks read the caster
+  through those same accessors at several dozen sites, so this addresses all of
+  them at once instead of threading an actor parameter through each and hoping
+  nobody forgets one. `Engine.castAs` always hands the seat back.
+
+`parity/golden.json` is still byte-identical, which is the evidence that the
+map-of-one produces the numbers the JS engine did.
+
+Still single-player-shaped, deliberately: `generateParty` builds one human in
+slot 5; passive and HoT healing (`resolvePlayerSystems`) resolves for this
+client's participant only; and `UnitDebuff` records the ability that applied a
+DoT but not who cast it, so enemy DoT threat is credited to the local slot.
+
 ## Building
 
 ```

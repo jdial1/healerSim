@@ -208,8 +208,13 @@ class ThreatTest {
     @Test
     fun `a defensive cooldown only protects the player`() {
         val s = GameState(
-            playerCombatBuffs = listOf(
-                PlayerBuff(id = BUFF_ACTIVE_MITIGATION, remainingTicks = 50, magnitude = 0.5),
+            participants = mapOf(
+                PLAYER_UNIT_ID to Participant(
+                    PLAYER_UNIT_ID,
+                    playerCombatBuffs = listOf(
+                        PlayerBuff(id = BUFF_ACTIVE_MITIGATION, remainingTicks = 50, magnitude = 0.5),
+                    ),
+                ),
             ),
         )
         assertEquals(0.5, tick.activeMitigation(s, unit(PLAYER_UNIT_ID, UnitRole.TANK)), 1e-9)

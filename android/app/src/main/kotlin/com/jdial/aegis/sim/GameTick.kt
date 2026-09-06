@@ -85,11 +85,11 @@ class GameTick(
         healEffective: Double,
         scriptedPartyDamage: Double,
         /**
-         * Threat the player generated this tick from their own casts, already
-         * scaled by each spell's threatMultiplier. Not their damage -- see
-         * GameState.pendingPlayerThreat.
+         * Threat each participant generated this tick from their own casts,
+         * keyed by unit id and already scaled by each spell's threatMultiplier.
+         * Not their damage -- see Participant.pendingPlayerThreat.
          */
-        playerThreat: Double = 0.0,
+        threatByActor: Map<String, Double> = emptyMap(),
         /**
          * Effective healing done by the party's AI healer this tick, credited to
          * whichever healer slot is not the player's. Without this the AI healer
@@ -98,6 +98,8 @@ class GameTick(
          * -- exactly the situation the coefficient exists to create.
          */
         aiHealerHealing: Double = 0.0,
+        /** Which slot the passive and HoT healing in [healEffective] belongs to. */
+        localUnitId: String = PLAYER_UNIT_ID,
     ): List<Unit> {
         val cfg = data.balance.threat
         val living = party.filter { it.isAlive }
@@ -124,17 +126,18 @@ class GameTick(
                 }
                 // Healing is worth half its landed value in threat, as in
                 // WotLK, and overheal is worth nothing -- the caller only ever
-                // passes effective healing. The player's own cast heals arrive
-                // via playerThreat with the coefficient already applied; what
-                // reaches healEffective here is passive and HoT healing.
+                // passes effective healing. Cast heals arrive via
+                // threatByActor with the coefficient already applied; what
+                // reaches healEffective here is passive and HoT healing, which
+                // is still resolved for this client's participant only.
                 val healing = when {
-                    u.id == PLAYER_UNIT_ID -> healEffective * cfg.healingCoefficient
+                    u.id == localUnitId -> healEffective * cfg.healingCoefficient
                     u.role == UnitRole.HEALER -> aiHealerHealing * cfg.healingCoefficient
                     else -> 0.0
                 }
                 // The player's own threat is theirs alone, and is what lets a
                 // DPS pull off a tank that only generates scripted threat.
-                val own = if (u.id == PLAYER_UNIT_ID) playerThreat else 0.0
+                val own = threatByActor[u.id] ?: 0.0
                 val gained = (damage + healing + own) * mult(u.role)
                 if (gained == 0.0) u else u.copy(threat = u.threat + gained)
             }
@@ -150,8 +153,10 @@ class GameTick(
      * rather than code.
      */
     internal fun activeMitigation(s: GameState, u: Unit): Double {
-        if (u.id != PLAYER_UNIT_ID) return 1.0
-        val buff = s.playerCombatBuffs.firstOrNull { it.id == BUFF_ACTIVE_MITIGATION }
+        // Whoever occupies the slot, not slot 5: a defensive is the caster's own
+        // and every participant carries their own buff list.
+        val buff = s.participants[u.id]?.playerCombatBuffs
+            ?.firstOrNull { it.id == BUFF_ACTIVE_MITIGATION }
             ?: return 1.0
         val reduction = buff.magnitude ?: return 1.0
         return (1.0 - reduction).coerceIn(0.0, 1.0)
@@ -180,7 +185,11 @@ class GameTick(
     internal fun aiHealerTick(s: GameState, party: List<Unit>): AiHealResult {
         val cfg = data.balance.roles
         val healer = party.firstOrNull {
-            it.role == UnitRole.HEALER && it.id != PLAYER_UNIT_ID && it.isAlive
+            // Any healer slot no human is driving. Excluding only slot 5 was the
+            // same assumption everywhere else made: that the human is always
+            // there. A second human joining as the healer in slot 4 would have
+            // been played by the AI and by their owner at once.
+            it.role == UnitRole.HEALER && !s.isHuman(it.id) && it.isAlive
         } ?: return AiHealResult(party, s.aiHealerMana, 0.0)
 
         val mana = min(
@@ -755,12 +764,11 @@ class GameTick(
         val newXp = s.xp + xpGained
         val level = progression.levelFromTotalXp(newXp)
         val maxMana = stats.maxMana(s.playerClass, level, s.talents)
-        return s.copy(
+        return s.withMe {
+            it.copy(level = level, maxMana = maxMana, mana = min(maxMana.toDouble(), it.mana))
+        }.copy(
             xp = newXp,
-            level = level,
             talentPoints = progression.talentPoints(level, s.talents),
-            maxMana = maxMana,
-            mana = min(maxMana.toDouble(), s.mana),
         )
     }
 
@@ -901,28 +909,38 @@ class GameTick(
         val playerDamage = s.pendingEnemyDamage + enemyDots
         // DoT ticks are worth their damage in threat; direct casts carry
         // whatever their spell declared.
-        val playerThreat = s.pendingPlayerThreat + enemyDots
+        // Per caster, so a DPS pulls off the tank on their own threat and not
+        // on the party's. Enemy DoT ticks go to the local participant:
+        // UnitDebuff records the ability that applied it but not who cast it,
+        // which is the next thing a second damage-dealing human will need.
+        val threatByActor = s.participants.mapValues { (id, p) ->
+            p.pendingPlayerThreat + if (id == s.localUnitId) enemyDots else 0.0
+        }
         var enemyHealth = s.enemyHealth - (scriptedDamage + playerDamage)
 
-        val base = s.copy(
+        val base = s.withEachParticipant {
+            // Drained every tick: what each participant dealt has now landed.
+            it.copy(pendingEnemyDamage = 0.0, pendingPlayerThreat = 0.0)
+        }.withMe {
+            it.copy(
+                mana = sys.mana,
+                playerCombatBuffs = sys.playerCombatBuffs,
+                internalCooldowns = sys.internalCooldowns,
+                capstoneForm = sys.capstoneForm,
+                holyPower = sys.holyPower,
+            )
+        }.copy(
             party = accrueThreat(
                 sys.party,
                 healEffective = healEffectiveThisTick,
                 scriptedPartyDamage = scriptedDamage,
-                playerThreat = playerThreat,
+                threatByActor = threatByActor,
                 aiHealerHealing = aiHealerHealingThisTick,
+                localUnitId = s.localUnitId,
             ),
-            // Drained every tick: what the player dealt has now landed.
-            pendingEnemyDamage = 0.0,
-            pendingPlayerThreat = 0.0,
             enemyDebuffs = s.enemyDebuffs
                 .map { it.copy(remainingTicks = it.remainingTicks - 1) }
                 .filter { it.remainingTicks > 0 },
-            mana = sys.mana,
-            playerCombatBuffs = sys.playerCombatBuffs,
-            internalCooldowns = sys.internalCooldowns,
-            capstoneForm = sys.capstoneForm,
-            holyPower = sys.holyPower,
             mechanicCooldown = boss.mechanicCooldown,
             mechanicOrdinal = boss.mechanicOrdinal,
             bossSelfBuffs = if (s.combatPhase == CombatPhase.BOSS) bossBuffsNext else emptyList(),
@@ -970,7 +988,7 @@ class GameTick(
         val stats0 = runStats(s)
         // On a clear the web app keeps the mana it had entering this tick, so the
         // final tick's regen is deliberately discarded.
-        val advanced = withPostRunProgress(base.copy(mana = s.mana), xpGained)
+        val advanced = withPostRunProgress(base.withMe { it.copy(mana = s.mana) }, xpGained)
         val rewards = progression.levelUpRewards(ctx.cls, s.talents, s.level, advanced.level)
 
         return advanced.endedRun().copy(
@@ -1049,8 +1067,7 @@ class GameTick(
                 ),
                 mechanicOrdinal = 0,
                 isCombatActive = true,
-                mana = min(advanced.maxMana.toDouble(), sys.mana),
-            ),
+            ).withMe { it.copy(mana = min(it.maxMana.toDouble(), sys.mana)) },
         )
     }
 
