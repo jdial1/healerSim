@@ -254,14 +254,27 @@ function App() {
         playerClass: state.playerClass,
         tutorialHighlightTalentId: highlightTalentIdForTree
       }
-    ) : showRoster || !state.playerClass ? React.createElement(AnimatePresence, { key: "roster-flow", mode: "wait" }, !splashDismissed ? React.createElement(Fragment, { key: "splash" }, React.createElement(
+    ) : showRoster || !state.playerClass ? React.createElement(AnimatePresence, {
+      key: "roster-flow",
+      // No mode: "wait" here. The splash's "Tap to Begin" button pulses with
+      // repeat: Infinity, and mode="wait" holds the incoming screen until every
+      // animation in the outgoing subtree finishes — an infinite one never does,
+      // so the splash never handed over and the web app could not be entered at
+      // all. Crossfading costs a brief overlap and keeps the pulsing CTA.
+    }, !splashDismissed ? React.createElement(
       SplashScreen,
       {
+        // Keyed motion child, NOT wrapped in a Fragment. AnimatePresence with
+        // mode="wait" holds the incoming screen until the outgoing one reports
+        // its exit, and a Fragment can never report one — so the splash never
+        // handed over and the app could not be entered at all. SplashScreen is
+        // already a motion.div, so the wrapper only hid that.
+        key: "splash",
         onEnter: () => setSplashDismissed(true),
         version: __APP_VERSION__,
         communityUrl: COMMUNITY_URL
       }
-    )) : React.createElement(
+    ) : React.createElement(
       motion.div,
       {
         key: "character-roster",

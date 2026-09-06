@@ -172,20 +172,6 @@ function HealGrid({
     const healthPercent = unit.health / unit.maxHealth * 100;
     const hpCur = Math.round(Math.max(0, unit.health));
     const hpMax = Math.round(unit.maxHealth);
-    // Percent for urgency, deficit for which heal covers the gap — the pair
-    // every healing addon puts on the frame. "1240 / 1450" makes the player do
-    // arithmetic under pressure to get either one.
-    const hpPct = Math.round(Math.max(0, healthPercent));
-    const hpDeficit = Math.max(0, Math.round(unit.maxHealth - unit.health));
-    // Debuffs first: the alarm outranks the reassurance. HoTs by time left, so
-    // the one about to fall off is never the one that gets truncated.
-    const AURA_CAP = 6;
-    const shownDebuffs = unit.debuffs.slice(0, AURA_CAP);
-    const shownBuffs = [...unit.buffs]
-      .sort((a, b) => a.remainingTicks - b.remainingTicks)
-      .slice(0, Math.max(0, AURA_CAP - shownDebuffs.length));
-    const aurasHidden =
-      unit.buffs.length + unit.debuffs.length - shownBuffs.length - shownDebuffs.length;
     const isDead = unit.health <= 0;
     const isSelected = selectedId === unit.id;
     const tier = healthTierClasses(isDead ? 0 : healthPercent);
@@ -257,6 +243,20 @@ function HealGridUnitRow(props) {
     onTargetSelect,
     setDebuffTip
   } = props;
+  // Percent for urgency, deficit for which heal covers the gap — the pair
+  // every healing addon puts on the frame. "1240 / 1450" makes the player do
+  // arithmetic under pressure to get either one.
+  const hpPct = Math.round(Math.max(0, healthPercent));
+  const hpDeficit = Math.max(0, Math.round(unit.maxHealth - unit.health));
+  // Debuffs first: the alarm outranks the reassurance. HoTs by time left, so
+  // the one about to fall off is never the one that gets truncated.
+  const AURA_CAP = 6;
+  const shownDebuffs = unit.debuffs.slice(0, AURA_CAP);
+  const shownBuffs = [...unit.buffs]
+    .sort((a, b) => a.remainingTicks - b.remainingTicks)
+    .slice(0, Math.max(0, AURA_CAP - shownDebuffs.length));
+  const aurasHidden =
+    unit.buffs.length + unit.debuffs.length - shownBuffs.length - shownDebuffs.length;
   const [shakePulse, setShakePulse] = useState(0);
   const lastCritFloatId = useRef(null);
   const { ghostPercent, ghostEaseDuration } = useGhostBarPercent(healthPercent);
