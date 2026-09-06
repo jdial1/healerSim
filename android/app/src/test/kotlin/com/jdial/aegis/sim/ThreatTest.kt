@@ -7,12 +7,17 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * The threat model, which is dormant: no dungeon opts into
- * [Targeting.HIGHEST_THREAT], so nothing in the shipping game consults any of
- * this. These tests are what stop it rotting before a tank class needs it.
+ * The threat model. Live for a tank or DPS player, and still completely inert
+ * for a healer -- which is the property that keeps the parity corpus valid.
  *
- * The parity corpus proves threat changed nothing. It cannot prove threat
- * *works*, because the JS engine it records has no threat at all.
+ * Threat targeting is switched on by the player's role rather than by dungeon
+ * content, for exactly that reason: opting a dungeon in via its JSON would
+ * change how the boss picks victims for a healer too, removing an rng draw and
+ * desynchronising every recorded scenario.
+ *
+ * The corpus proves threat changed nothing for a healer. It cannot prove threat
+ * *works*, because the JS engine it records has no threat at all -- that is what
+ * these are for.
  */
 class ThreatTest {
     private val engine = Engine(Fixtures.data)
@@ -183,15 +188,33 @@ class ThreatTest {
         assertEquals(start, engine.reduce(start, Action.Taunt(ticks = 3, actorId = "1"), Rng(1)))
     }
 
+    // --- active mitigation ---------------------------------------------------
+
+    @Test
+    fun `a defensive cooldown only protects the player`() {
+        val s = GameState(
+            playerCombatBuffs = listOf(
+                PlayerBuff(id = BUFF_ACTIVE_MITIGATION, remainingTicks = 50, magnitude = 0.5),
+            ),
+        )
+        assertEquals(0.5, tick.activeMitigation(s, unit(PLAYER_UNIT_ID, UnitRole.TANK)), 1e-9)
+        assertEquals("an ally is not covered", 1.0, tick.activeMitigation(s, unit("1", UnitRole.TANK)), 1e-9)
+    }
+
+    @Test
+    fun `no defensive means no reduction`() {
+        assertEquals(1.0, tick.activeMitigation(GameState(), unit(PLAYER_UNIT_ID, UnitRole.TANK)), 1e-9)
+    }
+
     // --- the dormancy guarantee ---------------------------------------------
 
     @Test
     fun `no shipped dungeon uses threat targeting`() {
-        // The load-bearing claim of this increment. HIGHEST_THREAT consumes no
-        // rng, unlike every other targeting mode, so a dungeon opting in would
-        // remove draws from the seeded stream and desynchronise the parity
-        // corpus. New content may opt in; shipped content must not, until the
-        // goldens are regenerated for it.
+        // Still load-bearing. HIGHEST_THREAT consumes no rng, unlike every other
+        // targeting mode, so a dungeon opting in via JSON would remove draws
+        // from the seeded stream for *every* player including healers, and
+        // desynchronise the parity corpus. Threat targeting is switched on by
+        // role instead -- see GameTick.effectiveTargeting.
         val offenders = Fixtures.data.dungeons.flatMap { d ->
             val c = d.bossCombat ?: return@flatMap emptyList<String>()
             (c.attackTemplates.map { it.targeting to it.abilityId } +

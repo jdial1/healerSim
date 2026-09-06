@@ -284,6 +284,15 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
                 )
             }
 
+            // A non-healer needs two things a healer never did: what the enemy
+            // is doing to *them* (threat) and what they have running on it
+            // (DoTs). Both are omitted entirely for a healer rather than shown
+            // empty -- an inert widget is worse than no widget.
+            if (state.playerRole != UnitRole.HEALER) {
+                Spacer(Modifier.height(8.dp))
+                ThreatStrip(state)
+            }
+
             // The pre-damage warning a healer plans around. mechanicCooldown
             // has always been in the state and was never shown.
             // Reserved whatever the phase, so the telegraph appearing at the
@@ -342,6 +351,70 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
                 }
             }
 
+        }
+    }
+}
+
+/**
+ * Threat, and what the player has running on the enemy.
+ *
+ * The bar is the player's threat as a fraction of whoever leads the table, so
+ * "full" means you are about to take the boss off the tank. A tank wants it
+ * full; a DPS wants it near full and never over. That single number is the
+ * whole of what a WoW threat meter told you, without pretending to a precision
+ * this simulation does not have.
+ */
+@Composable
+private fun ThreatStrip(state: GameState) {
+    val living = state.party.filter { it.isAlive }
+    val self = living.firstOrNull { it.id == PLAYER_UNIT_ID } ?: return
+    val top = living.maxOfOrNull { it.threat } ?: 0.0
+    val frac = if (top > 0) (self.threat / top).toFloat().coerceIn(0f, 1f) else 0f
+    val hasAggro = state.enemyTargetId == PLAYER_UNIT_ID
+    // A tank being on top is the job; anyone else being on top is a problem.
+    val wantsAggro = state.playerRole == UnitRole.TANK
+    val bad = hasAggro != wantsAggro && top > 0
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        BasicText(
+            "THREAT",
+            style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted),
+        )
+        Spacer(Modifier.width(8.dp))
+        Box(
+            Modifier
+                .weight(1f)
+                .height(10.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Obsidian.abyss)
+                .border(1.dp, Gilt.deep.copy(alpha = 0.5f), RoundedCornerShape(2.dp)),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(frac)
+                    .fillMaxHeight()
+                    .background(if (bad) Vital.critical else if (wantsAggro) Vital.shield else Vital.healthy),
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        BasicText(
+            "${(frac * 100).roundToInt()}%",
+            style = AegisType.numeric.copy(
+                fontSize = 12.sp,
+                color = if (bad) Vital.critical else Ink.primary,
+            ),
+        )
+
+        // The player's own DoTs, so upkeep is visible without guessing.
+        state.enemyDebuffs.take(3).forEach { d ->
+            Spacer(Modifier.width(6.dp))
+            AuraSocket(
+                icon = d.icon,
+                remainingTicks = d.remainingTicks,
+                maxTicks = d.remainingTicks.coerceAtLeast(1),
+                hostile = false,
+                size = 22.dp,
+            )
         }
     }
 }
@@ -414,14 +487,24 @@ private fun nextMechanic(state: GameState): NextMechanic? {
     if (kinds.isEmpty()) return null
 
     val cycle = state.mechanicOrdinal / kinds.size
-    fun whom(t: Targeting) = when (t) {
-        Targeting.SINGLE_RANDOM -> "one of you"
-        Targeting.TWO_RANDOM -> "two of you"
-        Targeting.ALL_LIVING -> "everyone"
-        // Nameable, unlike the random modes: this one lands on whoever holds
-        // threat, and the engine has already decided who that is. Still phrased
-        // as a role rather than a name, because it can change before it fires.
-        Targeting.HIGHEST_THREAT -> "whoever has aggro"
+    // Must mirror GameTick.effectiveTargeting: for a threat role the engine
+    // converts single-target attacks to whoever holds aggro, so saying "one of
+    // you" here would be telling the player something the engine will not do.
+    fun whom(raw: Targeting): String {
+        val t = if (state.playerRole != UnitRole.HEALER && raw == Targeting.SINGLE_RANDOM) {
+            Targeting.HIGHEST_THREAT
+        } else {
+            raw
+        }
+        return when (t) {
+            Targeting.SINGLE_RANDOM -> "one of you"
+            Targeting.TWO_RANDOM -> "two of you"
+            Targeting.ALL_LIVING -> "everyone"
+            // Nameable, unlike the random modes: this one lands on whoever holds
+            // threat, and the engine has already decided who. Still phrased as a
+            // role rather than a name, because it can change before it fires.
+            Targeting.HIGHEST_THREAT -> "whoever has aggro"
+        }
     }
     return when (kinds[state.mechanicOrdinal % kinds.size]) {
         "debuff" -> c.debuffTemplates[cycle % c.debuffTemplates.size]

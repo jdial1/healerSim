@@ -7,6 +7,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +65,7 @@ import com.jdial.aegis.ui.theme.ForgedPanel
 import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.GiltRule
 import com.jdial.aegis.ui.theme.Ink
+import com.jdial.aegis.ui.theme.Vital
 import com.jdial.aegis.ui.theme.LocalAccent
 import com.jdial.aegis.ui.theme.Obsidian
 import com.jdial.aegis.ui.theme.accentFor
@@ -299,12 +302,25 @@ private fun ClassCard(
             )
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f).padding(vertical = 14.dp)) {
-                BasicText(
-                    bundle.meta.name.uppercase(),
-                    style = AegisType.title.copy(
-                        color = if (locked) Ink.muted else Ink.primary,
-                    ),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicText(
+                        bundle.meta.name.uppercase(),
+                        // weight(fill = false) so a long name yields space to the
+                        // badge rather than squeezing it into a vertical strip,
+                        // which is what "PROTECTION WARRIOR" did.
+                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = AegisType.title.copy(
+                            color = if (locked) Ink.muted else Ink.primary,
+                        ),
+                    )
+                    // Which job this class does. With five classes across three
+                    // roles the name alone no longer says it -- "Frost Mage"
+                    // tells a WoW player, but the game should not require that.
+                    Spacer(Modifier.width(8.dp))
+                    RoleBadge(bundle.meta.role, dimmed = locked)
+                }
                 Spacer(Modifier.height(4.dp))
                 if (locked) {
                     BasicText(
@@ -322,11 +338,31 @@ private fun ClassCard(
     }
 }
 
+/** TANK / DPS / HEALER, in the colour the rest of the UI uses for that idea. */
+@Composable
+private fun RoleBadge(role: String, dimmed: Boolean) {
+    val colour = when (role) {
+        "TANK" -> Vital.shield
+        "DPS" -> Vital.hurt
+        else -> Vital.healthy
+    }.let { if (dimmed) it.copy(alpha = 0.35f) else it }
+
+    BasicText(
+        role,
+        maxLines = 1,
+        style = AegisType.label.copy(fontSize = 10.sp, color = colour),
+        modifier = Modifier
+            .border(1.dp, colour.copy(alpha = 0.55f), RoundedCornerShape(3.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
 private fun classPortrait(cls: PlayerClass) = when (cls) {
     PlayerClass.PRIEST -> "class-icons/priest"
     PlayerClass.DRUID -> "class-icons/druid"
     PlayerClass.PALADIN -> "class-icons/paladin"
     PlayerClass.MAGE -> "class-icons/mage"
+    PlayerClass.WARRIOR -> "class-icons/warrior"
 }
 
 // --- dungeon list -----------------------------------------------------------

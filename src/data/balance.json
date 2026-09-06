@@ -134,6 +134,13 @@
   "roles": {
     "aiShareWhenHealer": 1.0,
     "aiShareWhenDps": 0.72,
-    "aiShareWhenTank": 0.86
+    "aiShareWhenTank": 0.86,
+    "aiHealerManaBase": 260.0,
+    "aiHealerManaPerLevel": 26.0,
+    "aiHealerManaRegenPerTick": 1.6,
+    "aiHealerHealBase": 9.0,
+    "aiHealerHealPerLevel": 3.4,
+    "aiHealerManaPerHealPoint": 0.34,
+    "aiHealerHealBelowFraction": 0.92
   }
 }

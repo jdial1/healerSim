@@ -3,6 +3,7 @@ package com.jdial.aegis.sim
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.Spell
+import com.jdial.aegis.data.SpellSchool
 import com.jdial.aegis.data.SpellType
 import kotlin.math.max
 import kotlin.math.min
@@ -116,7 +117,7 @@ class CastPipeline(
 
         if (spellId == MANA_POTION_ID) return Ready.ManaPotion(spell, eff)
 
-        if (spell.isDamage) {
+        if (spell.isDamage || spell.school == SpellSchool.UTILITY) {
             val crit = critRoll < eff.critChancePercent(s.playerCombatBuffs.naturalPerfectionStacks(), 0.0)
             return Ready.Damage(spell, spellId, eff, needMana, crit)
         }
@@ -193,7 +194,7 @@ class CastPipeline(
         val rank = stats.rankHealMult(stats.spellRank(ready.spellId, cls, s.level))
         val amount = spell.healing * ready.eff.baseHealingMultiplier * rank * crit
 
-        val dots = spell.hotDuration?.let { dur ->
+        val dots = spell.hotDuration?.takeIf { spell.school == SpellSchool.DAMAGE }?.let { dur ->
             val perTick = (spell.hotHealingPerTick ?: 0.0) * ready.eff.baseHealingMultiplier * rank
             // Refresh by ability rather than append, and never replace the whole
             // list -- the party-side equivalent of this does replace it, which
@@ -208,9 +209,23 @@ class CastPipeline(
             )
         } ?: s.enemyDebuffs
 
+        // A UTILITY spell has no magnitude -- a bare taunt or defensive should
+        // not quietly deal `healing` damage because the field is shared.
+        val dealt = if (spell.school == SpellSchool.DAMAGE) amount else 0.0
+
+        var buffs = s.playerCombatBuffs
+        if (spell.damageReduction != null) {
+            buffs = buffs.filterNot { it.id == BUFF_ACTIVE_MITIGATION } + PlayerBuff(
+                id = BUFF_ACTIVE_MITIGATION,
+                remainingTicks = spell.damageReductionTicks ?: 0,
+                magnitude = spell.damageReduction,
+            )
+        }
+
         val out = s.copy(
             mana = max(0.0, s.mana - ready.needMana),
-            pendingEnemyDamage = s.pendingEnemyDamage + amount,
+            playerCombatBuffs = buffs,
+            pendingEnemyDamage = s.pendingEnemyDamage + dealt,
             enemyDebuffs = dots,
             spellCooldowns = s.spellCooldowns.withCooldown(
                 ready.spellId,

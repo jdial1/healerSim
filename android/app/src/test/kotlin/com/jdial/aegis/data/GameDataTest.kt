@@ -42,12 +42,14 @@ class GameDataTest {
 
         assertEquals(4, data.bundle(PlayerClass.MAGE).spells.size)
         assertEquals(16, data.bundle(PlayerClass.MAGE).talents.size)
+        assertEquals(4, data.bundle(PlayerClass.WARRIOR).spells.size)
+        assertEquals(16, data.bundle(PlayerClass.WARRIOR).talents.size)
 
         // Priest and Paladin both define `flash_heal`, so the web app's 13 class
         // spells collapse to 12 unique ids, plus the shared mana_potion. The
         // Mage adds four more, none of which may collide -- ids are a flat
         // global namespace and the merged map silently lets one shadow another.
-        assertEquals(17, data.spells.size)
+        assertEquals(21, data.spells.size)
         val ids = PlayerClass.entries.flatMap { data.bundle(it).spells.keys }
         assertEquals(
             "spell ids must be unique except the known flash_heal duplicate",

@@ -135,7 +135,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
     val tutorialStep = when (screen) {
         Screen.ClassSelect -> Tutorial.CLASS_SELECT
         Screen.Dungeons -> Tutorial.DUNGEONS
-        Screen.Combat -> Tutorial.COMBAT
+        Screen.Combat -> Tutorial.combatFor(state.playerRole)
         else -> null
     }?.takeIf { it.id !in seenTutorial }
 

@@ -122,7 +122,92 @@ class GameTick(
         }
     }
 
+    /**
+     * A cast defensive cooldown's reduction, for the player's own unit only.
+     *
+     * Applied here rather than through damageTakenMultiplier because that hook
+     * is per-class and this is not: any class with a spell carrying
+     * `damageReduction` gets it, which is what makes active mitigation content
+     * rather than code.
+     */
+    internal fun activeMitigation(s: GameState, u: Unit): Double {
+        if (u.id != PLAYER_UNIT_ID) return 1.0
+        val buff = s.playerCombatBuffs.firstOrNull { it.id == BUFF_ACTIVE_MITIGATION }
+            ?: return 1.0
+        val reduction = buff.magnitude ?: return 1.0
+        return (1.0 - reduction).coerceIn(0.0, 1.0)
+    }
+
+    // --- the AI healer -------------------------------------------------------
+
+    internal data class AiHealResult(
+        val party: List<Unit>,
+        val manaLeft: Double,
+        val healed: Double,
+    )
+
+    /**
+     * One tick of the party's AI healer.
+     *
+     * Exists only when the player is not the healer -- when they are, slot "5"
+     * is them and there is no AI one. Triage, not a rotation: it tops up the
+     * unit furthest from full and stops there, so chip damage accumulates and
+     * a real spike still kills someone. When the budget runs dry, people die,
+     * which is the whole tension of the role the player just stopped playing.
+     *
+     * Draws nothing from the rng, for the same reason nothing else added since
+     * increment 1 does.
+     */
+    internal fun aiHealerTick(s: GameState, party: List<Unit>): AiHealResult {
+        val cfg = data.balance.roles
+        val healer = party.firstOrNull {
+            it.role == UnitRole.HEALER && it.id != PLAYER_UNIT_ID && it.isAlive
+        } ?: return AiHealResult(party, s.aiHealerMana, 0.0)
+
+        val mana = min(
+            cfg.aiHealerManaBase + cfg.aiHealerManaPerLevel * healer.level,
+            s.aiHealerMana + cfg.aiHealerManaRegenPerTick,
+        )
+
+        // Lowest health fraction, ties broken by id so the choice cannot depend
+        // on party order.
+        val hurt = party.filter { it.isAlive && it.maxHealth > 0 }
+            .filter { it.health / it.maxHealth < cfg.aiHealerHealBelowFraction }
+            .minWithOrNull(compareBy<Unit> { it.health / it.maxHealth }.thenBy { it.id })
+            ?: return AiHealResult(party, mana, 0.0)
+
+        val amount = cfg.aiHealerHealBase + cfg.aiHealerHealPerLevel * healer.level
+        val effective = min(amount, hurt.maxHealth - hurt.health)
+        val cost = effective * cfg.aiHealerManaPerHealPoint
+        if (effective <= 0 || cost > mana) return AiHealResult(party, mana, 0.0)
+
+        return AiHealResult(
+            party = party.map { if (it.id == hurt.id) it.copy(health = it.health + effective) else it },
+            manaLeft = mana - cost,
+            healed = effective,
+        )
+    }
+
     // --- targeting -----------------------------------------------------------
+
+    /**
+     * Threat targeting turns on when somebody is playing a threat role.
+     *
+     * No dungeon opts in via its JSON, deliberately: doing that would change
+     * how the boss picks victims for a *healer* too, removing an rng draw and
+     * desynchronising every recorded parity scenario. Gating on the player's
+     * role instead means the healer game the goldens describe is bit-identical,
+     * while a tank or DPS gets a boss that actually responds to the table.
+     *
+     * Only single-target attacks convert. A raid-wide hit lands on everyone
+     * whoever is holding aggro.
+     */
+    private fun effectiveTargeting(s: GameState, t: Targeting): Targeting =
+        if (s.playerRole != UnitRole.HEALER && t == Targeting.SINGLE_RANDOM) {
+            Targeting.HIGHEST_THREAT
+        } else {
+            t
+        }
 
     private fun selectTargets(
         party: List<Unit>,
@@ -221,7 +306,12 @@ class GameTick(
         when (kind) {
             "debuff" -> {
                 val tpl = profile.debuffTemplates[cycle % profile.debuffTemplates.size]
-                val targets = selectTargets(party, tpl.targeting, rng, ctx.state.enemyTargetId)
+                val targets = selectTargets(
+                    party,
+                    effectiveTargeting(ctx.state, tpl.targeting),
+                    rng,
+                    ctx.state.enemyTargetId,
+                )
                 if (targets.isNotEmpty()) {
                     // Note: a new debuff *replaces* the unit's whole debuff list.
                     party = party.map { u ->
@@ -283,7 +373,7 @@ class GameTick(
         rng: Rng,
     ): Pair<List<Unit>, Int> {
         val s = ctx.state
-        val targets = selectTargets(party, tpl.targeting, rng, s.enemyTargetId)
+        val targets = selectTargets(party, effectiveTargeting(s, tpl.targeting), rng, s.enemyTargetId)
         if (targets.isEmpty()) return party to 0
 
         val tank = party.firstOrNull { it.role == UnitRole.TANK }
@@ -299,6 +389,7 @@ class GameTick(
             if (u.health <= 0 || u.id !in targets) return@map u
             var dmg = tpl.damage * baseMult * progression.levelGapDamageMultiplier(u.level, dungeon.levelMax)
             dmg *= hooks.damageTakenMultiplier(ctx, "boss_attack", u)
+            dmg *= activeMitigation(s, u)
             // With the tank down, everyone else takes double.
             if (tankDead && (u.role == UnitRole.DPS || u.role == UnitRole.HEALER)) dmg *= 2
             val out = applyDamageToUnit(u, dmg, natRank)
@@ -379,6 +470,7 @@ class GameTick(
                     damage *= progression.levelGapDamageMultiplier(unit.level, s.currentDungeon.levelMax)
                 }
                 damage *= hooks.damageTakenMultiplier(ctx, "trash_tick", unit)
+                damage *= activeMitigation(ctx.state, unit)
             }
 
             val tankHealthNow =
@@ -999,19 +1091,27 @@ class GameTick(
             runHealOverheal = acc.runHealOverheal + sys.healOverheal,
         )
 
-        resolveFailure(ctx, acc, sys.party, rng)?.let { return it }
+        // Before the failure check, so a heal that lands this tick actually
+        // saves the unit rather than being applied to a corpse.
+        val ai = aiHealerTick(acc, sys.party)
+        acc = acc.copy(aiHealerMana = ai.manaLeft)
+        val partyAfterAi = ai.party
+
+        resolveFailure(ctx, acc, partyAfterAi, rng)?.let { return it }
 
         // Presentation: record what healing landed this tick so the UI can float it.
         val floats = (s.floatingCombatTexts + floatsFrom(
             before = s.party,
-            after = sys.party,
+            after = partyAfterAi,
             crit = false,
             combatTick = s.combatElapsedTicks,
             startId = s.combatElapsedTicks.toLong() * 100,
         )).filter { it.expiresAtCombatTick > s.combatElapsedTicks }
 
         return resolveOngoingCombat(
-            ctx, acc, sys, boss, bossBuffsNext, dpsPace, rng,
+            ctx, acc, sys.copy(party = partyAfterAi), boss, bossBuffsNext, dpsPace, rng,
+            // The AI healer's output is deliberately excluded: threat from
+            // healing is credited to the player, and this is not theirs.
             healEffectiveThisTick = env.healEffective + sys.healEffective,
         )
             .let { if (it.isCombatActive) it.copy(floatingCombatTexts = floats) else it }

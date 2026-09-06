@@ -42,6 +42,20 @@ data class RolesBalance(
     val aiShareWhenHealer: Double = 1.0,
     val aiShareWhenDps: Double = 0.72,
     val aiShareWhenTank: Double = 0.86,
+
+    // --- the AI healer -------------------------------------------------------
+    // Only exists while the player is not the healer. Deliberately a budget
+    // rather than a rotation: the player cannot observe an AI's spell choice,
+    // only whether the bars stayed up and whether it ran dry, so simulating the
+    // choice is cost without signal.
+    val aiHealerManaBase: Double = 260.0,
+    val aiHealerManaPerLevel: Double = 26.0,
+    val aiHealerManaRegenPerTick: Double = 1.6,
+    val aiHealerHealBase: Double = 9.0,
+    val aiHealerHealPerLevel: Double = 3.4,
+    val aiHealerManaPerHealPoint: Double = 0.34,
+    /** It triages: nobody gets topped off, so chip damage accumulates. */
+    val aiHealerHealBelowFraction: Double = 0.92,
 )
 
 /**

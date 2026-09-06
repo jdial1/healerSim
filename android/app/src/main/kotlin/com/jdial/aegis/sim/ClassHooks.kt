@@ -693,5 +693,6 @@ fun hooksFor(cls: PlayerClass?): ClassHooks = when (cls) {
     // applies. `healing` doubles as the damage magnitude, so healingBoost
     // scales a Frostbolt exactly as it scales a Flash Heal -- no hook code.
     PlayerClass.MAGE -> NoHooks
+    PlayerClass.WARRIOR -> NoHooks
     null -> NoHooks
 }

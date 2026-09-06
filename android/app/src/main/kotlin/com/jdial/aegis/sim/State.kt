@@ -45,6 +45,9 @@ const val BUFF_SPIRIT_REGEN_LOCKOUT = "spirit_regen_lockout"
 const val BUFF_POWER_INFUSION = "power_infusion"
 const val BUFF_NATURAL_PERFECTION = "natural_perfection"
 
+/** A cast defensive cooldown. Carries its own reduction in PlayerBuff.magnitude. */
+const val BUFF_ACTIVE_MITIGATION = "active_mitigation"
+
 /** These two track stacks rather than time, so they must not decay per tick. */
 val NO_TIME_DECAY_BUFFS = setOf(BUFF_POWER_INFUSION, BUFF_NATURAL_PERFECTION)
 
@@ -133,6 +136,11 @@ data class PlayerBuff(
     val remainingTicks: Int,
     val stacks: Int = 0,
     val potionDripPerTick: Double? = null,
+    /**
+     * A generic value carried by the buff. Used by defensive cooldowns for the
+     * fraction of damage they remove; null for buffs that only track time.
+     */
+    val magnitude: Double? = null,
 )
 
 @Serializable
@@ -230,6 +238,13 @@ data class GameState(
      */
     val pendingEnemyDamage: Double = 0.0,
     /**
+     * The AI healer's mana. Zero and unused while the player is the healer.
+     *
+     * Separate from [mana], which is the player's: the two must not share a
+     * pool or healing yourself would starve the party.
+     */
+    val aiHealerMana: Double = 0.0,
+    /**
      * DoTs the player has on the enemy. Reuses [UnitDebuff], which already
      * carries remainingTicks, damagePerTick, icon and sourceAbilityId.
      */
@@ -278,6 +293,7 @@ data class GameState(
         tauntedById = null,
         pendingEnemyDamage = 0.0,
         enemyDebuffs = emptyList(),
+        aiHealerMana = 0.0,
         combatElapsedTicks = 0,
         runDpsJitter = 1.0,
         endlessStacks = 0,

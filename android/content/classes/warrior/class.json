@@ -1,0 +1,40 @@
+{
+  "id": "WARRIOR",
+  "name": "Prot Warrior",
+  "role": "TANK",
+  "description": "Hold the line and hold the threat. Everything hits you, which is the point.",
+  "iconKey": "shield",
+  "color": "bg-amber-700",
+  "textColor": "text-amber-200",
+  "hoverBorderClass": "hover:border-amber-500",
+  "locked": false,
+  "portraitUrl": "",
+  "portraitIcon": "warrior",
+  "portraitGlow": "spell",
+  "passiveTraitName": "Vengeance",
+  "passiveTraitDescription": "Holding the enemy's attention sharpens your retaliation.",
+  "passiveTraitIcon": "wow/spell_holy_devotionaura",
+  "tutorial": {
+    "passiveDescription": "Vengeance: threat begets damage."
+  },
+  "statCurves": {
+    "baseIntellect": 18,
+    "baseSpirit": 12,
+    "intellectPerLevel": 2.0,
+    "spiritPerLevel": 1.0,
+    "baseUniqueStat": 12,
+    "uniqueStatPerLevel": 0.8
+  },
+  "progression": {
+    "starterSpells": [
+      "shield_slam",
+      "taunt"
+    ],
+    "spellOrder": [
+      "shield_slam",
+      "taunt",
+      "revenge",
+      "shield_wall"
+    ]
+  }
+}

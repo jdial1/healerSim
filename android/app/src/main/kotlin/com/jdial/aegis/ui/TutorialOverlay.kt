@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import com.jdial.aegis.sim.UnitRole
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,8 +59,9 @@ object Tutorial {
     val CLASS_SELECT = TutorialStep(
         id = "class-select",
         title = "Choose your path",
-        body = "Each healer plays differently. The Priest heals in bursts, the Druid " +
-            "keeps heals rolling over time. Your class colours the whole interface.",
+        body = "Every class plays a different job. Healers keep the party standing; " +
+            "the Frost Mage burns the enemy down and watches its threat. Your class " +
+            "colours the whole interface.",
         anchor = TutorialAnchor.CENTER,
     )
 
@@ -71,19 +73,37 @@ object Tutorial {
         anchor = TutorialAnchor.TOP,
     )
 
+    // Reordering is now an out-of-combat action, so neither card teaches it as
+    // a combat gesture. Both read the frame numbers, which are the point of the
+    // screen: percent for urgency, deficit for which heal fits.
     val COMBAT = TutorialStep(
         id = "combat",
         title = "Keep them alive",
-        // Reordering is now an out-of-combat action, so this card must not teach
-        // it as a combat gesture. It also reads the frame numbers, which are the
-        // point of the screen: percent for urgency, deficit for which heal fits.
         body = "Tap an ally to target them, then tap a spell to heal. Each frame shows " +
             "health percent and, when hurt, how much is missing. Watch the mana orb: " +
             "running dry is how runs are lost.",
         anchor = TutorialAnchor.BOTTOM,
     )
 
-    val ALL = listOf(CLASS_SELECT, DUNGEONS, COMBAT)
+    /**
+     * The same slot, for a class that does not heal. Telling a Mage to "tap an
+     * ally to target them, then tap a spell to heal" is simply wrong, and a
+     * first-run card that is wrong is worse than none.
+     */
+    val COMBAT_DAMAGE = TutorialStep(
+        id = "combat",
+        title = "Burn it down",
+        body = "Spells hit the enemy — no target needed. Watch the threat bar: pull " +
+            "ahead of the tank and the enemy comes for you. Your healer is one of the " +
+            "party frames, and their mana runs out too.",
+        anchor = TutorialAnchor.BOTTOM,
+    )
+
+    val ALL = listOf(CLASS_SELECT, DUNGEONS, COMBAT, COMBAT_DAMAGE)
+
+    /** The combat card that matches what this player actually does. */
+    fun combatFor(role: UnitRole): TutorialStep =
+        if (role == UnitRole.HEALER) COMBAT else COMBAT_DAMAGE
 }
 
 @Composable

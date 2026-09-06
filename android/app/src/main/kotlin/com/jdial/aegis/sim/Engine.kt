@@ -154,6 +154,12 @@ class Engine(val data: GameData) {
             // Re-derived per run: a save written before roles existed decodes
             // with the HEALER default, and this corrects it on the next pull.
             playerRole = roleOf(cls),
+            // The AI healer starts a run full, like the player does. Zero while
+            // the player is the healer, where there is no AI one.
+            aiHealerMana = if (roleOf(cls) == UnitRole.HEALER) 0.0 else {
+                val r = data.balance.roles
+                r.aiHealerManaBase + r.aiHealerManaPerLevel * state.level
+            },
         )
     }
 
