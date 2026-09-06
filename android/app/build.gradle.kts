@@ -201,10 +201,21 @@ tasks.matching { it.name == "validateSigningRelease" }.configureEach {
 //    general crash under R8. Add an instrumented smoke test if that ever bites.
 val verifyMinifiedSaveContract = tasks.register("verifyMinifiedSaveContract") {
     val srcDir = file("src/main/kotlin")
-    val mappingFile = layout.buildDirectory.file("outputs/mapping/release/mapping.txt")
+    // R8 writes here; the copy under outputs/mapping/release only appears once a
+    // packaging task runs. Reading outputs meant the check failed when only
+    // minifyReleaseWithR8 ran (as in CI) and — worse — could pass against a
+    // STALE mapping left by an earlier build, which is how it went green
+    // locally while being wrong.
+    val r8Mapping = layout.buildDirectory
+        .file("intermediates/mapping/release/minifyReleaseWithR8/mapping.txt")
+    val packagedMapping = layout.buildDirectory.file("outputs/mapping/release/mapping.txt")
     doLast {
-        val mapping = mappingFile.get().asFile
-        check(mapping.isFile) { "No R8 mapping at $mapping — did minification run?" }
+        val mapping = listOf(r8Mapping, packagedMapping)
+            .map { it.get().asFile }
+            .firstOrNull { it.isFile }
+        check(mapping != null) {
+            "No R8 mapping found under ${layout.buildDirectory.get()} — did minification run?"
+        }
 
         // "package com.x" + "enum class Foo" -> com.x.Foo
         val enums = srcDir.walkTopDown().filter { it.extension == "kt" }.flatMap { f ->
