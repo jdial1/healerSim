@@ -60,6 +60,13 @@ class Engine(val data: GameData) {
     private val tick = GameTick(data, stats, progression)
     private val casts = CastPipeline(data, stats)
 
+    /**
+     * What a class plays as. Read from its ClassMeta rather than stored on the
+     * character, so it cannot drift from the content and needs no migration.
+     */
+    fun roleOf(cls: PlayerClass): UnitRole =
+        runCatching { UnitRole.valueOf(data.bundle(cls).meta.role) }.getOrDefault(UnitRole.HEALER)
+
     /** A fresh character of [cls] at level 1. */
     fun newCharacter(cls: PlayerClass, rng: Rng): GameState {
         val talents = data.bundle(cls).talents.map { TalentRank(it, 0) }
@@ -76,6 +83,7 @@ class Engine(val data: GameData) {
             maxMana = maxMana,
             mana = maxMana.toDouble(),
             party = tick.generateParty(cls, 1, rng),
+            playerRole = roleOf(cls),
         )
     }
 
@@ -143,6 +151,9 @@ class Engine(val data: GameData) {
             party = tick.generateParty(cls, state.level, rng),
             mana = state.maxMana.toDouble(),
             dungeonOutcome = null,
+            // Re-derived per run: a save written before roles existed decodes
+            // with the HEALER default, and this corrects it on the next pull.
+            playerRole = roleOf(cls),
         )
     }
 

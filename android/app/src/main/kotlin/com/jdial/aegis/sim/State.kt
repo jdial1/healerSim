@@ -219,6 +219,21 @@ data class GameState(
     val mechanicCooldown: Int = 0,
     val mechanicOrdinal: Int = 0,
     /** Who the enemy is currently on. Null until the first threat is generated. */
+    /** What the player is doing. Derived from their class's ClassMeta.role. */
+    val playerRole: UnitRole = UnitRole.HEALER,
+    /**
+     * Damage the player's abilities have dealt since the last tick consumed it.
+     *
+     * A plain accumulator, not a queue: casts already resolve synchronously
+     * before the next Tick action, so there is never more than a tick's worth
+     * of it outstanding.
+     */
+    val pendingEnemyDamage: Double = 0.0,
+    /**
+     * DoTs the player has on the enemy. Reuses [UnitDebuff], which already
+     * carries remainingTicks, damagePerTick, icon and sourceAbilityId.
+     */
+    val enemyDebuffs: List<UnitDebuff> = emptyList(),
     val enemyTargetId: String? = null,
     /** While positive, [enemyTargetId] is held by a taunt regardless of the table. */
     val tauntLockTicks: Int = 0,
@@ -261,6 +276,8 @@ data class GameState(
         enemyTargetId = null,
         tauntLockTicks = 0,
         tauntedById = null,
+        pendingEnemyDamage = 0.0,
+        enemyDebuffs = emptyList(),
         combatElapsedTicks = 0,
         runDpsJitter = 1.0,
         endlessStacks = 0,

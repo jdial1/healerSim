@@ -84,6 +84,7 @@ class GameTick(
         party: List<Unit>,
         healEffective: Double,
         scriptedPartyDamage: Double,
+        playerDamage: Double = 0.0,
     ): List<Unit> {
         val cfg = data.balance.threat
         val living = party.filter { it.isAlive }
@@ -112,7 +113,10 @@ class GameTick(
                 // so all of it is theirs. That stops being true when an AI
                 // healer exists.
                 val healing = if (u.id == PLAYER_UNIT_ID) healEffective * cfg.healingCoefficient else 0.0
-                val gained = (damage + healing) * mult(u.role)
+                // The player's own damage is theirs alone, and is what will let
+                // a DPS pull off a tank that is only generating scripted threat.
+                val own = if (u.id == PLAYER_UNIT_ID) playerDamage else 0.0
+                val gained = (damage + healing + own) * mult(u.role)
                 if (gained == 0.0) u else u.copy(threat = u.threat + gained)
             }
         }
@@ -728,11 +732,39 @@ class GameTick(
         val deadDps = sys.party.count { it.role == UnitRole.DPS && it.health <= 0 }
         // Losing DPS only slows the boss, not trash.
         val bossDpsMult = if (s.combatPhase == CombatPhase.BOSS) 0.7.pow(deadDps) else 1.0
-        val scriptedDamage = partyDps * bossDpsMult * dpsPaceMultiplier * s.runDpsJitter
-        var enemyHealth = s.enemyHealth - scriptedDamage
+        // The scripted formula is not replaced, it is reinterpreted: it was
+        // always "what the party does to the enemy", and now it is "what the
+        // *AI* part of the party does", with the player making up the rest.
+        //
+        // The association here is load-bearing. aiShare is exactly 1.0 while the
+        // player heals, and pendingEnemyDamage is exactly 0.0 while no spell has
+        // school = DAMAGE, so this reduces to `x * 1.0 + 0.0` -- an exact
+        // IEEE-754 identity, not an approximation within some epsilon. That is
+        // what lets parity/golden.json still be compared byte-for-byte now that
+        // player damage exists. Do not "simplify" this into a form that
+        // reorders the multiply.
+        val aiShare = when (s.playerRole) {
+            UnitRole.HEALER -> data.balance.roles.aiShareWhenHealer
+            UnitRole.DPS -> data.balance.roles.aiShareWhenDps
+            UnitRole.TANK -> data.balance.roles.aiShareWhenTank
+        }
+        val scriptedDamage = partyDps * bossDpsMult * dpsPaceMultiplier * s.runDpsJitter * aiShare
+        val enemyDots = s.enemyDebuffs.sumOf { it.damagePerTick }
+        val playerDamage = s.pendingEnemyDamage + enemyDots
+        var enemyHealth = s.enemyHealth - (scriptedDamage + playerDamage)
 
         val base = s.copy(
-            party = accrueThreat(sys.party, healEffective = healEffectiveThisTick, scriptedPartyDamage = scriptedDamage),
+            party = accrueThreat(
+                sys.party,
+                healEffective = healEffectiveThisTick,
+                scriptedPartyDamage = scriptedDamage,
+                playerDamage = playerDamage,
+            ),
+            // Drained every tick: what the player dealt has now landed.
+            pendingEnemyDamage = 0.0,
+            enemyDebuffs = s.enemyDebuffs
+                .map { it.copy(remainingTicks = it.remainingTicks - 1) }
+                .filter { it.remainingTicks > 0 },
             mana = sys.mana,
             playerCombatBuffs = sys.playerCombatBuffs,
             internalCooldowns = sys.internalCooldowns,

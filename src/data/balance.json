@@ -130,5 +130,10 @@
     "tauntOvertakeMultiplier": 1.1,
     "tankDamageShare": 0.15,
     "aiTauntCooldownTicks": 80
+  },
+  "roles": {
+    "aiShareWhenHealer": 1.0,
+    "aiShareWhenDps": 0.72,
+    "aiShareWhenTank": 0.86
   }
 }

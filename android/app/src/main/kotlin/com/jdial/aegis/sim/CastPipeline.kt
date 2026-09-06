@@ -60,6 +60,18 @@ class CastPipeline(
 
     sealed interface Ready {
         data class ManaPotion(val spell: Spell, val eff: Effective) : Ready
+
+        /**
+         * A damage cast. No spell in the game is one yet -- this is the
+         * plumbing a DPS or tank class will be content on top of.
+         */
+        data class Damage(
+            val spell: Spell,
+            val spellId: String,
+            val eff: Effective,
+            val needMana: Int,
+            val isCrit: Boolean,
+        ) : Ready
         data class Swiftmend(
             val spell: Spell,
             val targetId: String?,
@@ -103,6 +115,11 @@ class CastPipeline(
         if (spell.type != SpellType.AOE && spell.isHeal() && target != null && target.health <= 0) return null
 
         if (spellId == MANA_POTION_ID) return Ready.ManaPotion(spell, eff)
+
+        if (spell.isDamage) {
+            val crit = critRoll < eff.critChancePercent(s.playerCombatBuffs.naturalPerfectionStacks(), 0.0)
+            return Ready.Damage(spell, spellId, eff, needMana, crit)
+        }
 
         val hooks = hooksFor(ctx.cls)
 
@@ -154,7 +171,68 @@ class CastPipeline(
             is Ready.ManaPotion -> applyManaPotion(ctx, ready)
             is Ready.Swiftmend -> applySwiftmend(ctx, ready)
             is Ready.Standard -> applyStandardHeal(ctx, ready)
+            is Ready.Damage -> applyDamageCast(ctx, ready)
         }
+
+    /**
+     * A damage cast: mana out, damage into the tick's accumulator, and a DoT on
+     * the enemy if the spell has one.
+     *
+     * `healing` is the magnitude -- see the note on Spell.threatMultiplier for
+     * why the field is reused rather than duplicated. Deliberately does not go
+     * through the healing hooks: those are all shaped around a target unit, and
+     * the enemy is not one.
+     */
+    private fun applyDamageCast(ctx: CastContext, ready: Ready.Damage): GameState {
+        val s = ctx.state
+        // Non-null by construction: validate() rejects a null class before it
+        // can produce a Ready.Damage.
+        val cls = s.playerClass ?: return s
+        val spell = ready.spell
+        val crit = if (ready.isCrit) 1.5 else 1.0
+        val rank = stats.rankHealMult(stats.spellRank(ready.spellId, cls, s.level))
+        val amount = spell.healing * ready.eff.baseHealingMultiplier * rank * crit
+
+        val dots = spell.hotDuration?.let { dur ->
+            val perTick = (spell.hotHealingPerTick ?: 0.0) * ready.eff.baseHealingMultiplier * rank
+            // Refresh by ability rather than append, and never replace the whole
+            // list -- the party-side equivalent of this does replace it, which
+            // is a bug this must not inherit.
+            s.enemyDebuffs.filterNot { it.sourceAbilityId == ready.spellId } + UnitDebuff(
+                id = ready.spellId,
+                name = spell.name,
+                remainingTicks = dur,
+                damagePerTick = perTick,
+                icon = spell.icon,
+                sourceAbilityId = ready.spellId,
+            )
+        } ?: s.enemyDebuffs
+
+        val out = s.copy(
+            mana = max(0.0, s.mana - ready.needMana),
+            pendingEnemyDamage = s.pendingEnemyDamage + amount,
+            enemyDebuffs = dots,
+            spellCooldowns = s.spellCooldowns.withCooldown(
+                ready.spellId,
+                cooldownTicks(spell.cooldown, ready.eff.hastePercent, 0),
+            ),
+        )
+        return if (spell.tauntTicks == null) out else out.copy(
+            party = out.party.map {
+                if (it.id != PLAYER_UNIT_ID) it
+                else it.copy(
+                    threat = max(
+                        it.threat,
+                        (out.party.filter { u -> u.isAlive }.maxOfOrNull { u -> u.threat } ?: 0.0) *
+                            data.balance.threat.tauntOvertakeMultiplier,
+                    ),
+                )
+            },
+            enemyTargetId = PLAYER_UNIT_ID,
+            tauntedById = PLAYER_UNIT_ID,
+            tauntLockTicks = spell.tauntTicks,
+        )
+    }
 
     /** Cooldowns are the one place haste applies; Power Infusion halves them. */
     private fun cooldownTicks(rawTicks: Int, hastePct: Double, piStacks: Int): Int =

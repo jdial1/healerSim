@@ -24,6 +24,24 @@ data class Balance(
     // engine still loads against a balance.json from before roles existed --
     // including the one a suspended run was saved under.
     val threat: ThreatBalance = ThreatBalance(),
+    val roles: RolesBalance = RolesBalance(),
+)
+
+/**
+ * How much of the scripted party damage the AI is credited with, by what the
+ * player is doing. The player makes up the rest with their own abilities.
+ *
+ * [aiShareWhenHealer] is 1.0 and must stay 1.0: with the player healing, the
+ * enemy-damage expression becomes `x * 1.0 + 0.0`, which is an exact IEEE
+ * identity rather than an approximation. That is what lets the parity corpus be
+ * compared byte-for-byte after damage exists -- see
+ * `com.jdial.aegis.sim.GameTick.resolveOngoingCombat`.
+ */
+@Serializable
+data class RolesBalance(
+    val aiShareWhenHealer: Double = 1.0,
+    val aiShareWhenDps: Double = 0.72,
+    val aiShareWhenTank: Double = 0.86,
 )
 
 /**

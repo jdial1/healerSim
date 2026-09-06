@@ -12,7 +12,25 @@ import kotlinx.serialization.Serializable
 
 // --- spells -----------------------------------------------------------------
 
+/**
+ * The *shape* of a spell: one target, over time, or the whole party. Dozens of
+ * branches key off this -- pandemic capping, HoT application, the aura socket
+ * renderer -- so it deliberately says nothing about whether the spell helps or
+ * hurts. [SpellSchool] carries that, orthogonally, which is what makes
+ * `DIRECT` + `DAMAGE` a nuke and `HOT` + `DAMAGE` a DoT with no new shape code.
+ */
 enum class SpellType { DIRECT, HOT, AOE }
+
+/**
+ * Who a spell is pointed at. Every spell in the game today is [HEAL]; the other
+ * two exist so a tank or DPS class is content rather than an engine change.
+ */
+@Serializable
+enum class SpellSchool {
+    @SerialName("heal") HEAL,
+    @SerialName("damage") DAMAGE,
+    @SerialName("utility") UTILITY,
+}
 
 @Serializable
 data class SpellBalance(
@@ -34,8 +52,33 @@ data class Spell(
     val icon: String = "",
     val tags: List<String> = emptyList(),
     val balance: SpellBalance? = null,
+
+    // --- role fields. All defaulted, so every existing spells.json parses
+    // unchanged and no healer spell means anything different than it did.
+
+    val school: SpellSchool = SpellSchool.HEAL,
+    /**
+     * `healing` doubles as the damage magnitude when [school] is DAMAGE.
+     *
+     * Reusing the field rather than adding `damage` is deliberate: it inherits
+     * spell ranks, the crit pipeline and the healingBoost talent stat with no
+     * new code. The only oddity is a stat named for healing scaling damage,
+     * which no player sees because tank and DPS classes have their own trees.
+     */
+    val threatMultiplier: Double = 1.0,
+    val flatThreat: Double = 0.0,
+    /** Non-null makes this a taunt: pins the enemy for this many ticks. */
+    val tauntTicks: Int? = null,
+    /** A defensive cooldown: fraction of incoming damage removed while it lasts. */
+    val damageReduction: Double? = null,
+    val damageReductionTicks: Int? = null,
+    /** MANA today. RAGE and ENERGY exist for the tank and DPS classes. */
+    val resource: String = "MANA",
 ) {
     fun hasTag(tag: String) = tag in tags
+
+    /** Convenience for the cast pipeline, which branches on this constantly. */
+    val isDamage: Boolean get() = school == SpellSchool.DAMAGE
 }
 
 // --- talents ----------------------------------------------------------------
@@ -96,6 +139,16 @@ data class Progression(
 data class ClassMeta(
     val id: String,
     val name: String,
+    /**
+     * TANK, DPS or HEALER. Absent means HEALER, which is what the three shipped
+     * classes are.
+     *
+     * Role is a property of the class rather than a separate axis on the
+     * character: that keeps `aegis.roster.v2` keyed by class alone, so adding
+     * roles needs no save migration and PlayerClass still identifies a
+     * character.
+     */
+    val role: String = "HEALER",
     val description: String = "",
     val passiveTraitName: String = "",
     val passiveTraitDescription: String = "",
