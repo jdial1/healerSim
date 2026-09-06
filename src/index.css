@@ -398,7 +398,13 @@
   }
   .ui-heal-grid-buff-row {
     grid-area: buffs;
-    @apply flex flex-wrap items-center gap-1.5 self-center;
+    /* No wrap: an unbounded aura row grew the frame and reflowed the whole
+       grid mid-fight, which moves the target you were about to click. The
+       count is capped in HealGrid and overflow is reported by the "+n" chip. */
+    @apply flex flex-nowrap items-center gap-1.5 self-center overflow-hidden;
+  }
+  .ui-heal-grid-aura-overflow {
+    @apply shrink-0 font-mono text-[10px] font-bold text-slate-400;
   }
   .ui-heal-grid-fallen {
     @apply border border-red-500/30 bg-red-600/20 px-1 text-[10px] font-black uppercase tracking-widest text-red-400 sm:text-[8px];
@@ -422,7 +428,10 @@
     @apply bg-red-950/95 text-red-300;
   }
   .ui-debuff-frame {
-    @apply relative rounded-md ring-1 ring-red-500/55 sm:p-0.5;
+    /* Debuffs sort ahead of HoTs in the flex row: the alarm outranks the
+       reassurance. Matches the Android frame, without reordering the DOM. */
+    @apply relative shrink-0 rounded-md ring-1 ring-red-500/55 sm:p-0.5;
+    order: -1;
   }
   .ui-debuff-countdown {
     @apply absolute inset-0 flex items-center justify-center rounded-md bg-slate-950/90 px-0.5 text-[10px] font-black text-orange-400 sm:text-[7px];

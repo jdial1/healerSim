@@ -35,7 +35,6 @@ function partyDebuffTooltipText(d) {
     `Deals ${fmtDebuffNumber(perSec)} damage per second.`,
     `${fmtDebuffNumber(total)} damage over ${fmtDebuffNumber(sec)} sec remaining.`
   ];
-  if (d.dispellable) lines.push("Can be dispelled.");
   return lines.join("\n");
 }
 function hotMaxTicks(buff) {
@@ -173,6 +172,20 @@ function HealGrid({
     const healthPercent = unit.health / unit.maxHealth * 100;
     const hpCur = Math.round(Math.max(0, unit.health));
     const hpMax = Math.round(unit.maxHealth);
+    // Percent for urgency, deficit for which heal covers the gap — the pair
+    // every healing addon puts on the frame. "1240 / 1450" makes the player do
+    // arithmetic under pressure to get either one.
+    const hpPct = Math.round(Math.max(0, healthPercent));
+    const hpDeficit = Math.max(0, Math.round(unit.maxHealth - unit.health));
+    // Debuffs first: the alarm outranks the reassurance. HoTs by time left, so
+    // the one about to fall off is never the one that gets truncated.
+    const AURA_CAP = 6;
+    const shownDebuffs = unit.debuffs.slice(0, AURA_CAP);
+    const shownBuffs = [...unit.buffs]
+      .sort((a, b) => a.remainingTicks - b.remainingTicks)
+      .slice(0, Math.max(0, AURA_CAP - shownDebuffs.length));
+    const aurasHidden =
+      unit.buffs.length + unit.debuffs.length - shownBuffs.length - shownDebuffs.length;
     const isDead = unit.health <= 0;
     const isSelected = selectedId === unit.id;
     const tier = healthTierClasses(isDead ? 0 : healthPercent);
@@ -305,8 +318,8 @@ function HealGridUnitRow(props) {
           transition: { duration: 0 },
           style: { originX: 0 }
         }
-      ), React.createElement("div", { className: "absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%270 0 200 200%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27noise%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.65%27 numOctaves=%273%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23noise)%27 opacity=%270.08%27/%3E%3C/svg%3E')] mix-blend-overlay pointer-events-none" }), React.createElement("div", { className: "absolute inset-0 flex items-center justify-center font-bold text-white text-xs drop-shadow-[0_1px_1px_rgba(0,0,0,1)]" }, hpCur, "/", hpMax)),
-      React.createElement("div", { className: "ui-heal-grid-content" }, React.createElement("div", { className: "ui-heal-grid-name" }, unit.name), React.createElement("div", { className: "ui-heal-grid-meta" }, React.createElement("span", null, unitRoleLabel(unit.role)), React.createElement("span", { className: "ui-heal-grid-level-pill" }, "Lv ", unit.level), unit.shield > 0 ? React.createElement("span", { className: "ui-numeric font-mono text-sky-200" }, "+", Math.round(unit.shield), " absorb") : null), React.createElement("div", { className: "ui-heal-grid-buff-row" }, unit.buffs.map((buff) => {
+      ), React.createElement("div", { className: "absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%270 0 200 200%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27noise%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.65%27 numOctaves=%273%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23noise)%27 opacity=%270.08%27/%3E%3C/svg%3E')] mix-blend-overlay pointer-events-none" }), React.createElement("div", { className: "absolute inset-0 flex items-center justify-center gap-1.5 font-bold text-white text-xs drop-shadow-[0_1px_1px_rgba(0,0,0,1)]" }, hpDeficit > 0 ? React.createElement("span", { className: "text-orange-300 font-mono" }, "-", hpDeficit) : null, React.createElement("span", null, hpPct, "%"))),
+      React.createElement("div", { className: "ui-heal-grid-content" }, React.createElement("div", { className: "ui-heal-grid-name" }, unit.name), React.createElement("div", { className: "ui-heal-grid-meta" }, React.createElement("span", null, unitRoleLabel(unit.role)), React.createElement("span", { className: "ui-heal-grid-level-pill" }, "Lv ", unit.level), unit.shield > 0 ? React.createElement("span", { className: "ui-numeric font-mono text-sky-200" }, "+", Math.round(unit.shield), " absorb") : null), React.createElement("div", { className: "ui-heal-grid-buff-row" }, shownBuffs.map((buff) => {
         if (buff.isManaRegenBuff) {
           return React.createElement(
             "div",
@@ -345,7 +358,7 @@ function HealGridUnitRow(props) {
             }
           )
         );
-      }), unit.debuffs.map((debuff) => {
+      }), shownDebuffs.map((debuff) => {
         const secondsLeft = Math.ceil(debuff.remainingTicks / 10);
         const showCountdown = debuff.remainingTicks < 50;
         return React.createElement(
@@ -384,7 +397,7 @@ function HealGridUnitRow(props) {
           ),
           showCountdown && React.createElement("div", { className: "ui-debuff-countdown" }, secondsLeft)
         );
-      }), isDead && React.createElement("span", { className: "ui-heal-grid-fallen" }, "FALLEN"))),
+      }), aurasHidden > 0 ? React.createElement("span", { className: "ui-heal-grid-aura-overflow" }, "+", aurasHidden) : null, isDead && React.createElement("span", { className: "ui-heal-grid-fallen" }, "FALLEN"))),
       React.createElement("div", { className: "ui-heal-grid-role-icons" }, unit.role === "TANK" && React.createElement(Shield, { className: "text-sky-400", size: 32, strokeWidth: 1.5 }), unit.role === "DPS" && React.createElement(Zap, { className: "text-amber-400", size: 32, strokeWidth: 1.5 }), unit.role === "HEALER" && React.createElement(User, { className: "text-emerald-400", size: 32, strokeWidth: 1.5 }))
     )
   ), React.createElement(HealGridFloatingLayer, { entries: rowFloats }));

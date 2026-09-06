@@ -13,7 +13,7 @@ import { SplashScreen } from "./components/SplashScreen.jsx";
 import { DungeonSelector } from "./components/DungeonSelector.jsx";
 import { maxLevelAcrossRoster } from "./gameStorage.js";
 import { GameHUD } from "./components/GameHUD.jsx";
-import { TRASH_PACK_COUNT, TICKS_PER_SECOND, MANA_POTION_USES_PER_DUNGEON } from "./constants.js";
+import { TRASH_PACK_COUNT, TICKS_PER_SECOND, MANA_POTION_USES_PER_DUNGEON, PALADIN_UNLOCK_LEVEL } from "./constants.js";
 import {
   PLAYER_BUFF_MANA_REGEN_POTION,
   PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT,
