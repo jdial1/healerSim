@@ -87,6 +87,39 @@ function ActionBars({
   const touchReorderPointerIdRef = useRef(null);
   const reorderPointerCleanupRef = useRef(null);
   const reorderPointerClientRef = useRef({ x: 0, y: 0 });
+  // The bar is fixed, so `main` has to reserve room for it, and a hard-coded
+  // padding was always a little short of the real height -- the healer, who is
+  // the last row and the one you die without, had the bottom of their frame
+  // under the bar. Publish the measured height instead of guessing at it.
+  // No dependency array on purpose. The bar's height changes with what it is
+  // showing (XP bar out of combat, mana panel and slots in it), and the screen
+  // transition swaps the DOM node under a ref an empty-deps effect would never
+  // re-read — which published a stale 126px against a real 190px bar. Measuring
+  // every render is cheap and cannot go stale.
+  //
+  // The property is never removed on cleanup either: two instances overlap
+  // during a screen transition, and the outgoing one's cleanup would clobber
+  // the value the incoming one just set.
+  useLayoutEffect(() => {
+    const root = barRootRef.current;
+    if (!root) return;
+    const publish = () => {
+      // bottom-3 lifts the bar off the viewport edge; that gap is reserved too.
+      const gap = window.innerHeight - root.getBoundingClientRect().bottom;
+      document.documentElement.style.setProperty(
+        "--ui-action-bar-h",
+        `${Math.ceil(root.offsetHeight + Math.max(0, gap))}px`
+      );
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(root);
+    window.addEventListener("resize", publish);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", publish);
+    };
+  });
   const actionBarIndexAtPoint = useCallback((clientX, clientY) => {
     const root = barRootRef.current;
     if (!root) return null;

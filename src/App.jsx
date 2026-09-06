@@ -156,6 +156,13 @@ function App() {
     () => state.currentDungeon ? getBuffTicks(state.playerCombatBuffs, PLAYER_BUFF_SPIRIT_REGEN_LOCKOUT) : 0,
     [state.currentDungeon, state.playerCombatBuffs]
   );
+  const debuffMax = useMemo(() => {
+    const out = {};
+    for (const t of state.currentDungeon?.bossCombat?.debuffTemplates ?? []) {
+      out[t.abilityId] = t.durationTicks;
+    }
+    return out;
+  }, [state.currentDungeon]);
   const partyForHealGrid = useMemo(
     () => {
       const withBuffs = partyWithHealerManaRegenDisplayBuff(state.party, manaRegenTicksForUi, state.level);
@@ -395,7 +402,9 @@ function App() {
           dungeon: state.currentDungeon
         }
       ),
-      React.createElement("main", { className: "flex min-h-0 flex-1 flex-col overflow-hidden pt-[9.5rem] pb-[10.5rem] sm:pt-[10.5rem] sm:pb-[11.5rem]" }, React.createElement("div", { className: "flex min-h-0 flex-1 w-full max-w-xl flex-col justify-center gap-0 self-center overflow-visible px-1 pb-1" }, React.createElement(
+      React.createElement("main", {
+        className: "ui-combat-main flex min-h-0 flex-1 flex-col overflow-hidden pt-[9.5rem] sm:pt-[10.5rem]"
+      }, React.createElement("div", { className: "flex min-h-0 flex-1 w-full max-w-xl flex-col justify-center gap-0 self-center overflow-visible px-1 pb-1" }, React.createElement(
         HealGrid,
         {
           party: partyForHealGrid,
@@ -406,7 +415,8 @@ function App() {
           debuffTipZIndex: introDebuffTutorialStep ? 10200 : 400,
           holdTutorialDebuffTip: introDebuffTutorialStep,
           uiSettings,
-          dropTargetId: castDragUnitId
+          dropTargetId: castDragUnitId,
+          debuffMax
         }
       )))
     )),

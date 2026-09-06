@@ -3,6 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { getIconUrlCandidates, GLOW_BOX, ICON_TINT } from "../gameIcons.js";
 const frameSize = {
   xs: "h-6 w-6 min-h-6 min-w-6 p-0.5",
+  // Fills whatever it is placed in. The aura socket draws its own kerb and
+  // ground, so the icon must not bring a size floor or a frame of its own.
+  socket: "h-full w-full min-h-0 min-w-0 p-0",
   sm: "h-9 w-9 min-h-9 min-w-9 p-1",
   md: "h-11 w-11 min-h-11 min-w-11 p-1",
   lg: "h-[2.75rem] w-[2.75rem] min-h-[2.75rem] min-w-[2.75rem] p-1",

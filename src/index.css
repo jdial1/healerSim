@@ -169,6 +169,13 @@
   .ui-nav-icon-flat {
     filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45)) drop-shadow(0 0 1px rgb(148 163 184 / 0.35));
   }
+  .ui-combat-main {
+    /* ActionBars publishes its measured height (plus the bottom-3 gap) as
+       --ui-action-bar-h. The fallback is only for the frame before that effect
+       runs; it is deliberately generous, because a too-small reserve puts the
+       healer's own frame under the bar. */
+    padding-bottom: var(--ui-action-bar-h, 13rem);
+  }
   .ui-action-bar-root {
     @apply fixed bottom-3 left-0 right-0 z-50 border-t border-slate-800 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,0.5)];
   }
@@ -369,39 +376,47 @@
   .ui-heal-grid-shield-fill {
     @apply h-full bg-gradient-to-r from-sky-600 via-sky-400 to-cyan-300 opacity-95 shadow-[0_0_10px_rgba(56,189,248,0.25)];
   }
-  .ui-heal-grid-content {
-    @apply pointer-events-none relative z-10 grid w-full px-3 py-1 sm:px-4 sm:py-1.5 gap-x-2 gap-y-0.5;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto 1fr;
-    grid-template-areas:
-      'name meta'
-      'buffs hp';
-    align-items: center;
-    height: 100%;
+  .ui-frame-name-block {
+    /* Overlaid on the health fill, whose colour runs green to red, so both
+       lines carry a hard outline: no single ink is readable on all four
+       bands. This is what VuhDo's outlined name text is for. */
+    @apply pointer-events-none absolute inset-y-0 left-0 z-10 flex max-w-[45%] flex-col justify-center gap-0 pl-2.5 sm:pl-3;
   }
-  .ui-heal-grid-name {
-    grid-area: name;
-    @apply min-w-0 truncate text-[0.95rem] sm:text-[1.05rem] font-semibold leading-tight tracking-tight text-white;
+  .ui-frame-name {
+    @apply truncate text-[0.95rem] font-semibold leading-tight tracking-tight text-white sm:text-[1.05rem];
     text-shadow:
-      0 1px 2px rgb(0 0 0 / 0.75),
-      0 0 12px rgb(0 0 0 / 0.45);
+      0 0 3px rgb(0 0 0 / 0.95),
+      0 1px 2px rgb(0 0 0 / 0.9);
   }
-  .ui-heal-grid-meta {
-    grid-area: meta;
-    @apply flex max-w-[min(100%,12rem)] flex-wrap items-center justify-end gap-x-2 gap-y-0.5 self-center justify-self-end text-right text-[11px] font-medium tracking-wide text-slate-200 sm:text-[10px];
+  .ui-frame-deficit {
+    /* White, not orange: the fill under this text is already orange because
+       the unit is hurt, so a warm ink is both redundant and the least legible
+       choice available. The bar carries the urgency; this carries the number. */
+    @apply font-mono text-[11px] font-bold leading-tight text-white tabular-nums;
     text-shadow:
-      0 1px 2px rgb(0 0 0 / 0.72),
-      0 0 10px rgb(0 0 0 / 0.4);
+      0 0 3px rgb(0 0 0 / 0.95),
+      0 1px 2px rgb(0 0 0 / 0.9);
   }
-  .ui-heal-grid-level-pill {
-    @apply rounded border border-slate-500/70 bg-slate-950/75 px-1.5 font-mono text-slate-100 tabular-nums;
+  .ui-frame-hp-block {
+    @apply pointer-events-none absolute inset-y-0 right-0 z-10 flex flex-col items-end justify-center gap-0 pr-2.5 sm:pr-3;
   }
-  .ui-heal-grid-buff-row {
-    grid-area: buffs;
-    /* No wrap: an unbounded aura row grew the frame and reflowed the whole
-       grid mid-fight, which moves the target you were about to click. The
+  .ui-frame-hp {
+    @apply font-mono text-[1.05rem] font-black leading-tight text-white tabular-nums sm:text-[1.15rem];
+    text-shadow:
+      0 0 3px rgb(0 0 0 / 0.95),
+      0 1px 2px rgb(0 0 0 / 0.9);
+  }
+  .ui-frame-level {
+    @apply font-mono text-[10px] font-medium leading-tight tracking-wide text-slate-200 tabular-nums;
+    text-shadow:
+      0 0 3px rgb(0 0 0 / 0.95),
+      0 1px 2px rgb(0 0 0 / 0.9);
+  }
+  .ui-frame-aura-row {
+    /* Centred, and fixed: an unbounded aura row grew the frame and reflowed
+       the grid mid-fight, which moves the target you were about to click. The
        count is capped in HealGrid and overflow is reported by the "+n" chip. */
-    @apply flex flex-nowrap items-center gap-1.5 self-center overflow-hidden;
+    @apply pointer-events-none absolute inset-0 z-10 flex flex-nowrap items-center justify-center gap-1.5 overflow-hidden;
   }
   .ui-heal-grid-committed-fill {
     /* Healing your HoTs will still deliver, sitting past current health. */
@@ -414,37 +429,59 @@
     @apply absolute inset-y-0 right-0 w-[2px] bg-amber-300;
   }
   .ui-heal-grid-aura-overflow {
-    @apply shrink-0 font-mono text-[10px] font-bold text-slate-400;
+    @apply shrink-0 font-mono text-[11px] font-bold text-white;
+    text-shadow:
+      0 0 3px rgb(0 0 0 / 0.95),
+      0 1px 2px rgb(0 0 0 / 0.9);
   }
   .ui-heal-grid-fallen {
     @apply border border-red-500/30 bg-red-600/20 px-1 text-[10px] font-black uppercase tracking-widest text-red-400 sm:text-[8px];
   }
   .ui-heal-grid-role-icons {
-    @apply pointer-events-none absolute right-2 top-1/2 z-[5] -translate-y-1/2 opacity-[0.14];
+    /* Was on the right, which is now where the health numerals live. */
+    @apply pointer-events-none absolute left-1.5 top-1/2 z-[1] -translate-y-1/2 opacity-[0.13];
   }
-  .ui-hot-ring-outer {
-    @apply absolute inset-0 rounded-full shadow-[0_0_0_1px_rgba(16,185,129,0.35)];
+  .ui-aura-socket {
+    /* Square, same size whatever it is. The kerb is the whole signal: red for
+       something hurting this unit, brass for something helping it. Two kerbs,
+       not one -- the outer black keeps the brass from dissolving into a bright
+       health bar, which is exactly where a HoT icon most often sits. */
+    @apply relative shrink-0 overflow-hidden rounded-[2px] outline outline-1 outline-black;
+    width: clamp(1.5rem, 4.4vh, 2.15rem);
+    height: clamp(1.5rem, 4.4vh, 2.15rem);
+    border: 2px solid;
   }
-  .ui-hot-inner {
-    @apply absolute inset-[3px] flex items-center justify-center overflow-hidden rounded-full bg-slate-950/95 ring-1 ring-emerald-500/25;
+  .ui-aura-hostile {
+    @apply border-red-500 bg-red-950;
+    order: -1; /* the alarm outranks the reassurance */
   }
-  .ui-hot-timer {
-    @apply absolute -bottom-0.5 -right-0.5 min-w-[1.1rem] rounded px-0.5 text-center font-mono font-black leading-none ring-1 ring-slate-800/90 text-[8px] sm:text-[7px];
+  .ui-aura-friendly {
+    @apply border-amber-400/85 bg-slate-950;
   }
-  .ui-hot-timer-ok {
-    @apply bg-slate-950/95 text-emerald-200;
+  .ui-aura-art {
+    @apply absolute inset-0 h-full w-full;
   }
-  .ui-hot-timer-urgent {
-    @apply bg-red-950/95 text-red-300;
+  .ui-aura-sweep {
+    /* Spent duration darkens from the bottom up: the cooldown swipe every WoW
+       UI has taught since vanilla. */
+    @apply pointer-events-none absolute inset-x-0 bottom-0 bg-black/60;
+  }
+  .ui-aura-secs {
+    @apply pointer-events-none absolute bottom-0 right-0 px-px font-mono text-[10px] font-black leading-none text-white tabular-nums;
+    text-shadow:
+      0 0 3px rgb(0 0 0 / 0.95),
+      0 1px 2px rgb(0 0 0 / 0.95);
+  }
+  .ui-aura-stacks {
+    @apply pointer-events-none absolute left-0 top-0 px-px font-mono text-[10px] font-black leading-none text-amber-200 tabular-nums;
+    text-shadow:
+      0 0 3px rgb(0 0 0 / 0.95),
+      0 1px 2px rgb(0 0 0 / 0.95);
   }
   .ui-debuff-frame {
-    /* Debuffs sort ahead of HoTs in the flex row: the alarm outranks the
-       reassurance. Matches the Android frame, without reordering the DOM. */
-    @apply relative shrink-0 rounded-md ring-1 ring-red-500/55 sm:p-0.5;
+    /* Only a hit target now -- the socket inside carries the whole look. */
+    @apply relative shrink-0;
     order: -1;
-  }
-  .ui-debuff-countdown {
-    @apply absolute inset-0 flex items-center justify-center rounded-md bg-slate-950/90 px-0.5 text-[10px] font-black text-orange-400 sm:text-[7px];
   }
   .ui-enemy-target-frame {
     @apply relative overflow-hidden rounded-md border border-slate-600/75 border-l-[4px] border-l-red-800/90 bg-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.35)];
@@ -462,9 +499,6 @@
   .ui-enemy-hp-sheen {
     @apply pointer-events-none absolute inset-0 z-[2];
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 35%);
-  }
-  .ui-mana-regen-overlay {
-    @apply absolute inset-0 flex items-center justify-center bg-slate-950/90 px-0.5 text-[10px] font-black text-blue-300 sm:text-[7px];
   }
   .ui-splash-root {
     @apply fixed inset-0 z-[80] flex flex-col overflow-hidden bg-slate-950;

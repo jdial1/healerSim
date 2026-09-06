@@ -47,11 +47,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -147,8 +149,9 @@ fun CombatScreen(
                 val gap = 7.dp
                 val maxRow = if (ui.largeFrames) 110.dp else PartyRowMaxHeight
                 val rowHeight = ((maxHeight - gap * 4) / 5).coerceIn(48.dp, maxRow)
-                val barHeight = (rowHeight * 0.40f).coerceIn(16.dp, HealthBarHeight)
-                val auraSize = (rowHeight * 0.30f).coerceIn(16.dp, AuraStripHeight)
+                // The bar is the whole row now, so the auras get the height the
+                // old name line used to take and can be read without squinting.
+                val auraSize = (rowHeight * 0.52f).coerceIn(20.dp, AuraSocketMax)
 
                 Column(
                     Modifier.widthIn(max = 480.dp).fillMaxWidth(),
@@ -167,7 +170,6 @@ fun CombatScreen(
                             state = state,
                             selected = unit.id == targetId,
                             rowHeight = rowHeight,
-                            barHeight = barHeight,
                             auraSize = auraSize,
                             debuffMax = debuffMax,
                             dropTarget = unit.id == dropTargetId,
@@ -456,8 +458,7 @@ private fun debuffDurations(state: GameState): Map<String, Int> =
 private fun committedHealing(unit: Unit): Double =
     unit.buffs.sumOf { it.healingPerTick * it.remainingTicks + (it.bloomBurstHeal ?: 0.0) }
 
-private val HealthBarHeight = 32.dp
-private val AuraStripHeight = 24.dp
+private val AuraSocketMax = 34.dp
 private val PartyRowMaxHeight = 90.dp
 
 /** Health colour is a hard signal, not decoration: four bands, no blending. */
@@ -486,7 +487,6 @@ private fun PartyRow(
     state: GameState,
     selected: Boolean,
     rowHeight: Dp,
-    barHeight: Dp,
     auraSize: Dp,
     debuffMax: Map<String, Int>,
     dropTarget: Boolean,
@@ -582,101 +582,19 @@ private fun PartyRow(
                         },
                     ),
             )
-            Column(
-                Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 5.dp),
-                verticalArrangement = Arrangement.Center,
+            // The bar IS the cell. VuhDo and HealBot spend the whole row on it
+            // and overlay the text, because a title line above a bar is height
+            // that carries no data. Everything below is layered on this one box,
+            // which is why the row can hold bigger auras than it used to.
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(horizontal = 6.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Obsidian.abyss)
+                    .border(1.dp, Gilt.deep.copy(alpha = 0.55f), RoundedCornerShape(2.dp)),
             ) {
-                Row(
-                    Modifier.height(auraSize),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BasicText(
-                        unit.name,
-                        maxLines = 1,
-                        style = AegisType.numeric.copy(
-                            fontSize = 13.sp,
-                            color = if (dead) Ink.muted else Ink.primary,
-                        ),
-                    )
-                    Spacer(Modifier.weight(1f))
-                    // Auras sit on the name line: present or absent, the row is
-                    // the same height either way.
-                    //
-                    // Debuffs come first because the alarm outranks the
-                    // reassurance, and HoTs are sorted by time remaining so the
-                    // one about to fall off is never the one that gets truncated.
-                    val cap = if (auraSize < 20.dp) 4 else 6
-                    val shownDebuffs = unit.debuffs.take(cap)
-                    val shownBuffs = unit.buffs
-                        .sortedBy { it.remainingTicks }
-                        .take(cap - shownDebuffs.size)
-                    val hidden = unit.buffs.size + unit.debuffs.size -
-                        shownBuffs.size - shownDebuffs.size
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        shownDebuffs.forEach { d ->
-                            AuraRing(
-                                icon = d.icon,
-                                remainingTicks = d.remainingTicks,
-                                // Was passing remainingTicks as the max as well, so
-                                // every debuff ring sat at a full sweep forever and
-                                // the arc conveyed nothing.
-                                maxTicks = debuffMax[d.sourceAbilityId] ?: d.remainingTicks,
-                                tint = Vital.critical,
-                                ringSize = auraSize,
-                            )
-                        }
-                        shownBuffs.forEach { HotRing(it, auraSize) }
-                        // Rows compress to 48dp so the cap stays, but a hidden
-                        // aura must not be a silent one.
-                        if (hidden > 0) {
-                            BasicText(
-                                "+$hidden",
-                                style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted),
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    if (dead) {
-                        BasicText("DEAD", style = AegisType.label.copy(color = Vital.critical))
-                    } else {
-                        // Percent for urgency, deficit for which heal covers the
-                        // gap. "1240 / 1450" makes the player do arithmetic under
-                        // pressure; these are the two numbers they act on.
-                        if (ui.healthTextPercent) {
-                            val deficit = (unit.maxHealth - unit.health).roundToInt()
-                            if (deficit > 0) {
-                                BasicText(
-                                    "-$deficit",
-                                    style = AegisType.numeric.copy(
-                                        fontSize = 11.sp,
-                                        color = Vital.hurt,
-                                    ),
-                                )
-                                Spacer(Modifier.width(5.dp))
-                            }
-                            BasicText(
-                                "${(pct * 100).roundToInt()}%",
-                                style = AegisType.numeric.copy(fontSize = 12.sp, color = barColor),
-                            )
-                        } else {
-                            BasicText(
-                                "${unit.health.roundToInt()} / ${unit.maxHealth.roundToInt()}",
-                                style = AegisType.numeric.copy(fontSize = 12.sp),
-                            )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(3.dp))
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(barHeight)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Obsidian.abyss)
-                        .border(1.dp, Gilt.deep.copy(alpha = 0.45f), RoundedCornerShape(3.dp)),
-                ) {
                     // Bands are layered widest-first and each is drawn from the
                     // left, so the narrower one on top leaves the previous band
                     // showing as the segment beyond it. That gives health |
@@ -718,33 +636,147 @@ private fun PartyRow(
                     // The game is called Overheal. When committed healing runs
                     // past the top of the bar, the surplus is being thrown away —
                     // say so with a gilt cap rather than a number.
-                    if (overhealing) {
-                        Box(
-                            Modifier
-                                .align(Alignment.CenterEnd)
-                                .width(2.dp)
-                                .fillMaxHeight()
-                                .background(Gilt.core),
+                if (overhealing) {
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .width(2.dp)
+                            .fillMaxHeight()
+                            .background(Gilt.core),
+                    )
+                }
+
+                // Name and deficit, left. Both are outlined: the text sits on
+                // the health fill, whose colour runs from green to red, and no
+                // single ink is readable against all four bands.
+                Column(
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        // Name and auras are both overlays on the same box, so
+                        // they overlap rather than push each other. Capping the
+                        // name is what keeps a long one out from under the
+                        // centred sockets.
+                        .fillMaxWidth(0.4f)
+                        .padding(start = 8.dp, end = 4.dp),
+                ) {
+                    BasicText(
+                        unit.name,
+                        maxLines = 1,
+                        // maxLines alone clips mid-glyph; this ends the name
+                        // somewhere a reader recognises.
+                        overflow = TextOverflow.Ellipsis,
+                        style = AegisType.numeric.copy(
+                            fontSize = 13.sp,
+                            color = if (dead) Ink.muted else Ink.primary,
+                            shadow = TextOutline,
+                        ),
+                    )
+                    if (!dead && ui.healthTextPercent) {
+                        val deficit = (unit.maxHealth - unit.health).roundToInt()
+                        if (deficit > 0) {
+                            BasicText(
+                                "-$deficit",
+                                style = AegisType.numeric.copy(
+                                    fontSize = 11.sp,
+                                    // Not Vital.hurt: the fill under this text
+                                    // is already that colour because the unit is
+                                    // hurt. The bar carries the urgency, this
+                                    // carries the number.
+                                    color = Ink.primary,
+                                    shadow = TextOutline,
+                                ),
+                            )
+                        }
+                    }
+                }
+
+                // Health and level, right.
+                Column(
+                    Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    if (dead) {
+                        BasicText(
+                            "DEAD",
+                            style = AegisType.label.copy(color = Vital.critical, shadow = TextOutline),
+                        )
+                    } else if (ui.healthTextPercent) {
+                        // Percent for urgency, deficit (on the left) for which
+                        // heal covers the gap. "1240 / 1450" makes the player do
+                        // arithmetic under pressure.
+                        BasicText(
+                            "${(pct * 100).roundToInt()}%",
+                            style = AegisType.numeric.copy(fontSize = 15.sp, shadow = TextOutline),
+                        )
+                    } else {
+                        BasicText(
+                            "${unit.health.roundToInt()} / ${unit.maxHealth.roundToInt()}",
+                            style = AegisType.numeric.copy(fontSize = 13.sp, shadow = TextOutline),
+                        )
+                    }
+                    if (rowHeight > 56.dp) {
+                        BasicText(
+                            "LV ${unit.level}",
+                            style = AegisType.label.copy(
+                                fontSize = 10.sp,
+                                color = Ink.secondary,
+                                shadow = TextOutline,
+                            ),
                         )
                     }
                 }
 
-            }
-            Column(Modifier.padding(end = 10.dp), horizontalAlignment = Alignment.End) {
-                // On short rows the role word yields its width to the health
-                // numerals. Role is already carried by the coloured stripe at the
-                // left edge, so the word is the redundant half of the pair.
-                if (rowHeight > 56.dp) {
-                    BasicText(
-                        when (unit.role) {
-                            UnitRole.TANK -> "TANK"
-                            UnitRole.DPS -> "DPS"
-                            UnitRole.HEALER -> "HEALER"
-                        },
-                        style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
-                    )
+                // Auras, centred. Debuffs first, because the alarm outranks the
+                // reassurance; HoTs then sorted by time left, so the one about
+                // to fall off is never the one that gets truncated.
+                val cap = if (auraSize < 26.dp) 4 else 5
+                val shownDebuffs = unit.debuffs.take(cap)
+                val shownBuffs = unit.buffs
+                    .sortedBy { it.remainingTicks }
+                    .take(cap - shownDebuffs.size)
+                val hidden = unit.buffs.size + unit.debuffs.size -
+                    shownBuffs.size - shownDebuffs.size
+
+                Row(
+                    Modifier.align(Alignment.Center),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    shownDebuffs.forEach { d ->
+                        AuraSocket(
+                            icon = d.icon,
+                            remainingTicks = d.remainingTicks,
+                            // UnitDebuff only carries what is left; the original
+                            // duration is a content lookup, so the sweep means
+                            // something instead of sitting full forever.
+                            maxTicks = debuffMax[d.sourceAbilityId] ?: d.remainingTicks,
+                            hostile = true,
+                            size = auraSize,
+                        )
+                    }
+                    shownBuffs.forEach { b ->
+                        AuraSocket(
+                            icon = b.icon,
+                            remainingTicks = b.remainingTicks,
+                            maxTicks = if (b.durationTicksMax > 0) b.durationTicksMax else b.remainingTicks,
+                            hostile = false,
+                            size = auraSize,
+                            stacks = b.stacks,
+                        )
+                    }
+                    // Rows still compress to 48dp, so the cap stays — but a
+                    // hidden aura must not be a silent one.
+                    if (hidden > 0) {
+                        BasicText(
+                            "+$hidden",
+                            style = AegisType.label.copy(
+                                fontSize = 11.sp,
+                                color = Ink.primary,
+                                shadow = TextOutline,
+                            ),
+                        )
+                    }
                 }
-                BasicText("LV ${unit.level}", style = AegisType.label.copy(fontSize = 11.sp))
             }
         }
 
@@ -753,68 +785,75 @@ private fun PartyRow(
     }
 }
 
-@Composable
-private fun HotRing(buff: UnitBuff, ringSize: Dp) {
-    val max = if (buff.durationTicksMax > 0) buff.durationTicksMax else buff.remainingTicks
-    AuraRing(buff.icon, buff.remainingTicks, max, Vital.healthy, ringSize, stacks = buff.stacks)
-}
+/** A hard black outline, so overlaid text survives every health band under it. */
+private val TextOutline = Shadow(Color(0xFF000000), Offset(0f, 1f), 3f)
 
 /**
- * An aura shown as a depleting ring around its icon — the remaining duration is
- * read at a glance from the arc, with the seconds beneath for precision.
+ * One aura, as a socket rather than a ring.
+ *
+ * Same size and same slot whatever it is, so an aura landing or falling off can
+ * never move the row, and the eye sorts by colour instead of by position: a red
+ * kerb means something is hurting this unit, brass means something is helping
+ * it. The dark sweep rising from the bottom is the duration already spent —
+ * the cooldown-swipe convention every WoW UI has taught since vanilla — and the
+ * seconds sit in the corner for precision.
  */
 @Composable
-private fun AuraRing(
+private fun AuraSocket(
     icon: String,
     remainingTicks: Int,
     maxTicks: Int,
-    tint: Color,
-    ringSize: Dp,
+    hostile: Boolean,
+    size: Dp,
     stacks: Int = 0,
 ) {
-    val sweep = if (maxTicks > 0) (remainingTicks.toFloat() / maxTicks).coerceIn(0f, 1f) else 0f
+    val left = if (maxTicks > 0) (remainingTicks.toFloat() / maxTicks).coerceIn(0f, 1f) else 1f
     val seconds = ceil(remainingTicks / 10.0).toInt()
     val urgent = remainingTicks <= 30
+    val kerb = if (hostile) Vital.critical else Gilt.mid
 
-    Box(Modifier.size(ringSize), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val stroke = 2.5f * density
-            val inset = stroke / 2
-            val arcSize = Size(size.width - stroke, size.height - stroke)
-            drawArc(
-                color = tint.copy(alpha = 0.18f),
-                startAngle = -90f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(width = stroke),
-            )
-            drawArc(
-                color = if (urgent) Vital.hurt else tint,
-                startAngle = -90f,
-                sweepAngle = 360f * sweep,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(width = stroke),
+    Box(
+        Modifier
+            .size(size)
+            .background(if (hostile) Color(0xFF2C1010) else Obsidian.abyss)
+            // Two kerbs, not one: the outer black keeps the brass from
+            // dissolving into a bright health bar, which is exactly where a HoT
+            // icon most often sits.
+            .border(1.dp, Color(0xFF000000))
+            .padding(1.dp)
+            .border(2.dp, kerb)
+            .padding(2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        GameIcon(icon, size = size, accent = Color.Transparent)
+        if (left < 1f) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(1f - left)
+                    .background(Color(0x99000000)),
             )
         }
-        GameIcon(icon, size = ringSize * 0.62f, accent = Color.Transparent)
         BasicText(
             "$seconds",
-            style = AegisType.label.copy(
-                fontSize = 9.sp,
-                color = if (urgent) Vital.hurt else tint,
+            style = AegisType.numeric.copy(
+                fontSize = 10.sp,
+                color = if (urgent) Vital.hurt else Ink.primary,
+                shadow = TextOutline,
             ),
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier.align(Alignment.BottomEnd),
         )
         // The engine has always tracked stacks; nothing ever showed them.
         if (stacks > 1) {
             BasicText(
                 "$stacks",
-                style = AegisType.label.copy(fontSize = 10.sp, color = Gilt.bright),
-                modifier = Modifier.align(Alignment.TopEnd),
+                style = AegisType.label.copy(
+                    fontSize = 10.sp,
+                    color = Gilt.bright,
+                    shadow = TextOutline,
+                ),
+                modifier = Modifier.align(Alignment.TopStart),
             )
         }
     }
