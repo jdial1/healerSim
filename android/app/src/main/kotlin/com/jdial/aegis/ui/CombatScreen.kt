@@ -35,7 +35,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +58,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.data.GameData
@@ -92,9 +99,22 @@ fun CombatScreen(
     targetId: String?,
     onTarget: (String) -> kotlin.Unit,
     onCast: (String) -> kotlin.Unit,
+    onCastAt: (String, String) -> kotlin.Unit,
     onReorder: (Int, Int) -> kotlin.Unit,
     onLeave: () -> kotlin.Unit,
 ) {
+    // Drag-to-cast. VuhDo and HealBot collapse target and heal into one click;
+    // on touch the honest analogue is dragging a spell onto a frame. The two-tap
+    // path is untouched — this is an additional route, not a replacement.
+    //
+    // Row bounds are in window coordinates so the slot, which lives in a
+    // different subtree, can hit-test against them.
+    val rowBounds = remember { mutableStateMapOf<String, Rect>() }
+    var dragPoint by remember { mutableStateOf<Offset?>(null) }
+    val dropTargetId = dragPoint?.let { p ->
+        rowBounds.entries.firstOrNull { it.value.contains(p) }?.key
+    }?.takeIf { id -> state.party.firstOrNull { it.id == id }?.isAlive == true }
+
     ObsidianBackdrop {
         BoxWithConstraints(
             Modifier
@@ -138,6 +158,8 @@ fun CombatScreen(
                             barHeight = barHeight,
                             auraSize = auraSize,
                             debuffMax = debuffMax,
+                            dropTarget = unit.id == dropTargetId,
+                            onBounds = { rowBounds[unit.id] = it },
                             onClick = { if (unit.isAlive) onTarget(unit.id) },
                         )
                     }
@@ -153,7 +175,9 @@ fun CombatScreen(
                         verticalArrangement = Arrangement.SpaceBetween,
                     ) {
                         EncounterHud(state, onLeave)
-                        ActionBar(state, data, onCast, onReorder)
+                        ActionBar(state, data, onCast, onReorder, dropTargetId, { dragPoint = it }) { spellId ->
+                            dropTargetId?.let { onCastAt(spellId, it) }
+                        }
                     }
                 }
             } else {
@@ -162,7 +186,9 @@ fun CombatScreen(
                     Spacer(Modifier.height(10.dp))
                     PartyGrid(Modifier.weight(1f).fillMaxWidth())
                     Spacer(Modifier.height(10.dp))
-                    ActionBar(state, data, onCast, onReorder)
+                    ActionBar(state, data, onCast, onReorder, dropTargetId, { dragPoint = it }) { spellId ->
+                            dropTargetId?.let { onCastAt(spellId, it) }
+                        }
                 }
             }
         }
@@ -246,13 +272,19 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
 
             // The pre-damage warning a healer plans around. mechanicCooldown
             // has always been in the state and was never shown.
+            // Reserved whatever the phase, so the telegraph appearing at the
+            // boss does not resize the card either.
             val next = nextMechanic(state)
-            if (next != null && state.mechanicCooldown > 0) {
-                val secs = ceil(state.mechanicCooldown / 10.0).toInt()
-                val imminent = state.mechanicCooldown <= 20
-                val everyone = next.whom == "everyone"
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.height(22.dp)) {
+                if (next != null && state.mechanicCooldown > 0) {
+                    val secs = ceil(state.mechanicCooldown / 10.0).toInt()
+                    val imminent = state.mechanicCooldown <= 20
+                    val everyone = next.whom == "everyone"
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                     GameIcon(next.icon, size = 22.dp, accent = if (imminent) Gilt.core else Gilt.deep)
                     Spacer(Modifier.width(6.dp))
                     BasicText(
@@ -273,6 +305,18 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
                         ),
                     )
                     Spacer(Modifier.weight(1f))
+                    // The boss's own buffs share this strip rather than claiming
+                    // a second reserved row — both answer "what is the boss
+                    // doing?", and one reserved row is enough hollow on trash.
+                    state.bossSelfBuffs.forEach { buff ->
+                        GameIcon(buff.icon, size = 18.dp, accent = Color(0xFFF87171))
+                        Spacer(Modifier.width(3.dp))
+                        BasicText(
+                            "${ceil(buff.remainingTicks / 10.0).toInt()}s",
+                            style = AegisType.label.copy(color = Color(0xFFFCA5A5)),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
                     BasicText(
                         "${secs}s",
                         style = AegisType.numeric.copy(
@@ -280,24 +324,10 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
                             color = if (imminent) Gilt.bright else Ink.secondary,
                         ),
                     )
-                }
-            }
-
-            if (state.bossSelfBuffs.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    state.bossSelfBuffs.forEach { buff ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            GameIcon(buff.icon, size = 24.dp, accent = Color(0xFFF87171))
-                            Spacer(Modifier.width(4.dp))
-                            BasicText(
-                                "${ceil(buff.remainingTicks / 10.0).toInt()}s",
-                                style = AegisType.label.copy(color = Color(0xFFFCA5A5)),
-                            )
-                        }
                     }
                 }
             }
+
         }
     }
 }
@@ -307,11 +337,35 @@ private fun EncounterPip(filled: Boolean, active: Boolean, boss: Boolean = false
     val color = when {
         boss && active -> Gilt.core
         boss -> Gilt.deep.copy(alpha = 0.5f)
-        filled -> Vital.healthy.copy(alpha = 0.7f)
+        filled -> Vital.critical.copy(alpha = 0.5f)
         active -> Gilt.core
         else -> Ink.muted.copy(alpha = 0.35f)
     }
-    Box(Modifier.size(if (boss) 11.dp else 8.dp).clip(CircleShape).background(color))
+    val size = if (boss) 11.dp else 8.dp
+    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().clip(CircleShape).background(color))
+        // A beaten pull reads as struck out rather than merely coloured in —
+        // "done" is a different idea from "in progress" and should not be left
+        // to a hue difference alone.
+        if (filled) {
+            Canvas(Modifier.fillMaxSize()) {
+                val stroke = 1.6f * density
+                val i = stroke
+                drawLine(
+                    color = Vital.critical,
+                    start = Offset(i, i),
+                    end = Offset(this.size.width - i, this.size.height - i),
+                    strokeWidth = stroke,
+                )
+                drawLine(
+                    color = Vital.critical,
+                    start = Offset(this.size.width - i, i),
+                    end = Offset(i, this.size.height - i),
+                    strokeWidth = stroke,
+                )
+            }
+        }
+    }
 }
 
 // --- heal grid --------------------------------------------------------------
@@ -408,6 +462,8 @@ private fun PartyRow(
     barHeight: Dp,
     auraSize: Dp,
     debuffMax: Map<String, Int>,
+    dropTarget: Boolean,
+    onBounds: (Rect) -> kotlin.Unit,
     onClick: () -> kotlin.Unit,
 ) {
     val pct = if (unit.maxHealth > 0) (unit.health / unit.maxHealth).toFloat().coerceIn(0f, 1f) else 0f
@@ -442,6 +498,7 @@ private fun PartyRow(
             // Fixed height: auras coming and going must not make the grid jump,
             // because a moving target is a mis-tap under pressure.
             .height(rowHeight)
+            .onGloballyPositioned { onBounds(it.boundsInWindow()) }
             .clickable(enabled = !dead, onClick = onClick)
             .semantics {
                 role = Role.Button
@@ -472,8 +529,8 @@ private fun PartyRow(
                 }
                 if (dead) disabled()
             },
-        selected = selected,
-        accent = accent.core,
+        selected = selected || dropTarget,
+        accent = if (dropTarget) accent.bright else accent.core,
         contentPadding = PaddingValues(0.dp),
     ) {
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
@@ -759,6 +816,9 @@ private fun ActionBar(
     data: GameData,
     onCast: (String) -> kotlin.Unit,
     onReorder: (Int, Int) -> kotlin.Unit,
+    dropTargetId: String?,
+    onDragPoint: (Offset?) -> kotlin.Unit,
+    onDropCast: (String) -> kotlin.Unit,
 ) {
     val manaPct = if (state.maxMana > 0) (state.mana / state.maxMana).toFloat().coerceIn(0f, 1f) else 0f
     val animatedMana by animateFloatAsState(manaPct, tween(160), label = "mana")
@@ -766,6 +826,7 @@ private fun ActionBar(
     // Reorder is a long-press drag; the picked-up slot follows the finger.
     var dragFrom by remember { mutableIntStateOf(-1) }
     var dragDx by remember { mutableFloatStateOf(0f) }
+    var dragDy by remember { mutableFloatStateOf(0f) }
 
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 480.dp).fillMaxWidth()) {
@@ -816,11 +877,27 @@ private fun ActionBar(
                             affordable = spell != null && state.mana >= spell.manaCost,
                             dragging = dragFrom == i,
                             dragOffsetPx = if (dragFrom == i) dragDx else 0f,
+                            dragOffsetYPx = if (dragFrom == i) dragDy else 0f,
                             width = slotWidth,
                             reorderable = !state.isCombatActive,
                             onClick = { if (spell != null) onCast(spell.id) },
-                            onDragStart = { dragFrom = i; dragDx = 0f },
+                            onDragStart = { dragFrom = i; dragDx = 0f; dragDy = 0f },
                             onDrag = { dragDx += it },
+                            onDragPoint = onDragPoint,
+                            onCastDrop = {
+                                // An invalid drop — dead unit, released off the
+                                // grid, or an unusable spell — casts nothing and
+                                // spends nothing. Falling back to the current
+                                // target would fire a cast the player did not aim.
+                                val usable = spell != null &&
+                                    (state.spellCooldowns[spellId] ?: 0) <= 0 &&
+                                    state.mana >= spell.manaCost
+                                if (usable && dropTargetId != null) onDropCast(spell.id)
+                                onDragPoint(null)
+                                dragFrom = -1
+                                dragDx = 0f
+                                dragDy = 0f
+                            },
                             onDragEnd = {
                                 val target = (i + (dragDx / slotPx).roundToInt())
                                     .coerceIn(0, state.activeActionBars.lastIndex)
@@ -877,24 +954,40 @@ private fun SpellSlot(
     affordable: Boolean,
     dragging: Boolean,
     dragOffsetPx: Float,
+    dragOffsetYPx: Float,
     width: Dp,
     reorderable: Boolean,
     onClick: () -> kotlin.Unit,
     onDragStart: () -> kotlin.Unit,
     onDrag: (Float) -> kotlin.Unit,
+    onDragPoint: (Offset?) -> kotlin.Unit,
     onDragEnd: () -> kotlin.Unit,
+    onCastDrop: () -> kotlin.Unit,
 ) {
     val accent = LocalAccent.current
     val onCooldown = cooldownTicks > 0
     val usable = spell != null && !onCooldown && affordable
     val shape = RoundedCornerShape(6.dp)
     val dragDp = with(LocalDensity.current) { dragOffsetPx.toDp() }
+    val dragDpY = with(LocalDensity.current) { dragOffsetYPx.toDp() }
+    // Window position of this slot, so a pointer offset local to it can be
+    // resolved against the party rows, which live in another subtree.
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    // pointerInput is keyed on the spell, so its coroutine keeps whatever
+    // callback existed when it started. Without this the drop handler still
+    // closed over the drop target from first composition — always null — so the
+    // drag highlighted correctly and then cast nothing.
+    val currentDrop by rememberUpdatedState(onCastDrop)
 
     Box(
         Modifier
             .width(width)
             .height(66.dp)
-            .offset(x = if (dragging) dragDp else 0.dp)
+            .onGloballyPositioned { origin = it.boundsInWindow().topLeft }
+            .offset(
+                x = if (dragging) dragDp else 0.dp,
+                y = if (dragging) dragDpY else 0.dp,
+            )
             .clip(shape)
             .background(if (dragging) Obsidian.raised else Obsidian.deep)
             .border(
@@ -907,6 +1000,33 @@ private fun SpellSlot(
                 },
                 shape = shape,
             )
+            .pointerInput(spell?.id, index, reorderable) {
+                if (spell == null) return@pointerInput
+                if (reorderable) {
+                    // Out of combat: long-press to rearrange the bar.
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { onDragStart() },
+                        onDrag = { change, amount -> change.consume(); onDrag(amount.x) },
+                        onDragEnd = { onDragEnd() },
+                        onDragCancel = { onDragEnd() },
+                    )
+                } else {
+                    // In combat: drag straight onto a frame to cast there. No
+                    // long press first — a hold before every cast is latency the
+                    // whole feature exists to remove. The tap path still works:
+                    // Compose cancels the click once a drag passes touch slop.
+                    detectDragGestures(
+                        onDragStart = { onDragStart() },
+                        onDrag = { change, amount ->
+                            change.consume()
+                            onDrag(amount.x)
+                            onDragPoint(origin + change.position)
+                        },
+                        onDragEnd = { currentDrop() },
+                        onDragCancel = { currentDrop() },
+                    )
+                }
+            }
             .clickable(enabled = spell != null, onClick = onClick)
             // The action bar is pure iconography: without this a spell is an
             // unlabelled box and the game cannot be played by ear at all.
@@ -920,19 +1040,6 @@ private fun SpellSlot(
                     else -> "${spell.name}, slot $index, ${spell.manaCost} mana"
                 }
                 if (!usable) disabled()
-            }
-            // Reorder is an out-of-combat action, as it already is on the web
-            // (`allowReorder: !state.currentDungeon`). Rearranging your bar
-            // mid-boss is never intentional, and in combat this gesture is
-            // wanted for drag-to-cast instead.
-            .pointerInput(spell?.id, index, reorderable) {
-                if (spell == null || !reorderable) return@pointerInput
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { onDragStart() },
-                    onDrag = { change, amount -> change.consume(); onDrag(amount.x) },
-                    onDragEnd = { onDragEnd() },
-                    onDragCancel = { onDragEnd() },
-                )
             },
         contentAlignment = Alignment.Center,
     ) {

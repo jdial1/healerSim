@@ -243,6 +243,13 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                             targetId = targetId,
                             onTarget = { targetId = it },
                             onCast = { spellId -> vm.castSpell(spellId, targetId) },
+                            // Dropping a spell on a frame casts there and keeps
+                            // that unit selected, so the next tap-cast continues
+                            // on it — the sticky retarget click-casting gives you.
+                            onCastAt = { spellId, unitId ->
+                                targetId = unitId
+                                vm.castSpell(spellId, unitId)
+                            },
                             onReorder = vm::reorderActionBar,
                             onLeave = { confirmAbandon = true },
                         )
