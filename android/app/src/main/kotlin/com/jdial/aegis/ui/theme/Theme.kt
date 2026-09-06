@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.jdial.aegis.sim.UiSettings
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -85,6 +86,13 @@ fun accentFor(cls: PlayerClass?): ClassAccent = when (cls) {
 }
 
 val LocalAccent = staticCompositionLocalOf { ClassAccent(Gilt.bright, Gilt.core, Gilt.deep) }
+
+/**
+ * Display preferences, read deep in the frame (PartyRow) and set far away
+ * (Settings). A composition local beats threading five booleans through every
+ * intermediate composable, and mirrors how the class accent is already carried.
+ */
+val LocalUiSettings = staticCompositionLocalOf { UiSettings() }
 
 @Composable
 fun AegisTheme(cls: PlayerClass? = null, content: @Composable () -> Unit) {

@@ -65,6 +65,8 @@ import com.jdial.aegis.ui.theme.AegisType
 import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.Ink
 import com.jdial.aegis.ui.theme.LocalAccent
+import androidx.compose.runtime.CompositionLocalProvider
+import com.jdial.aegis.ui.theme.LocalUiSettings
 import com.jdial.aegis.ui.theme.Obsidian
 
 class MainActivity : ComponentActivity() {
@@ -157,7 +159,9 @@ private fun AegisApp(onReady: () -> Unit = {}) {
         }
     }
 
+    val uiSettings by vm.settings.collectAsStateWithLifecycle()
     AegisTheme(cls = state.playerClass) {
+      CompositionLocalProvider(LocalUiSettings provides uiSettings) {
         Box(Modifier.fillMaxSize().background(Obsidian.abyss)) {
             // System back used to quit the app from every screen, including
             // mid-boss. Overlays unwind first — they can be up on any screen —
@@ -231,6 +235,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                         Screen.Character -> CharacterScreen(
                             state = state,
                             engine = vm.engine,
+                            onSettingsChange = { next -> vm.updateSettings { next } },
                             onChangeClass = {
                                 vm.leaveCharacter()
                                 screen = Screen.ClassSelect
@@ -317,6 +322,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                 )
             }
         }
+      }
     }
 }
 

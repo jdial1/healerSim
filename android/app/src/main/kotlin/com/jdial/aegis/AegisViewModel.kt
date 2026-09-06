@@ -12,6 +12,7 @@ import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.Rng
 import com.jdial.aegis.sim.Roster
 import com.jdial.aegis.sim.SaveStore
+import com.jdial.aegis.sim.UiSettings
 import com.jdial.aegis.sim.SUSPEND_SNAPSHOT_TICK_INTERVAL
 import com.jdial.aegis.sim.TICK_RATE_MS
 import kotlinx.coroutines.Dispatchers
@@ -126,6 +127,15 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // --- tutorial ------------------------------------------------------------
+
+    private val _settings = MutableStateFlow(store.readSettings())
+    val settings: StateFlow<UiSettings> = _settings.asStateFlow()
+
+    fun updateSettings(transform: (UiSettings) -> UiSettings) {
+        val next = transform(_settings.value)
+        _settings.value = next
+        store.writeSettings(next)
+    }
 
     private val _tutorialSteps = MutableStateFlow(store.readTutorialSteps().toSet())
     val tutorialSteps: StateFlow<Set<String>> = _tutorialSteps.asStateFlow()

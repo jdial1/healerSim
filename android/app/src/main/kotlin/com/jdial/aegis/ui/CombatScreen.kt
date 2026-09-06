@@ -81,6 +81,8 @@ import com.jdial.aegis.ui.theme.ForgedPanel
 import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.Ink
 import com.jdial.aegis.ui.theme.LocalAccent
+import com.jdial.aegis.sim.HEALER_UNIT_ID
+import com.jdial.aegis.ui.theme.LocalUiSettings
 import com.jdial.aegis.ui.theme.Obsidian
 import com.jdial.aegis.ui.theme.Vital
 import kotlin.math.ceil
@@ -140,8 +142,10 @@ fun CombatScreen(
                 // the row height is derived from the space available and the bar
                 // shrinks with it, rather than rows keeping a size that clips.
                 val debuffMax = remember(state.currentDungeon?.id) { debuffDurations(state) }
+                val ui = LocalUiSettings.current
                 val gap = 7.dp
-                val rowHeight = ((maxHeight - gap * 4) / 5).coerceIn(48.dp, PartyRowMaxHeight)
+                val maxRow = if (ui.largeFrames) 110.dp else PartyRowMaxHeight
+                val rowHeight = ((maxHeight - gap * 4) / 5).coerceIn(48.dp, maxRow)
                 val barHeight = (rowHeight * 0.40f).coerceIn(16.dp, HealthBarHeight)
                 val auraSize = (rowHeight * 0.30f).coerceIn(16.dp, AuraStripHeight)
 
@@ -149,7 +153,14 @@ fun CombatScreen(
                     Modifier.widthIn(max = 480.dp).fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(gap),
                 ) {
-                    state.party.forEach { unit ->
+                    // Sorted for display only — state.party is never reordered,
+                    // because the engine and the save both index it positionally.
+                    val ordered = if (ui.selfFirst) {
+                        state.party.sortedBy { if (it.id == HEALER_UNIT_ID) 0 else 1 }
+                    } else {
+                        state.party
+                    }
+                    ordered.forEach { unit ->
                         PartyRow(
                             unit = unit,
                             state = state,
@@ -446,6 +457,18 @@ private val AuraStripHeight = 24.dp
 private val PartyRowMaxHeight = 90.dp
 
 /** Health colour is a hard signal, not decoration: four bands, no blending. */
+/**
+ * Colour-blind ramp. The four-band structure is unchanged — only the hues move,
+ * from a green/red ramp that deuteranopia flattens to a blue/magenta one that
+ * survives it.
+ */
+private fun healthColorCb(pct: Float): Color = when {
+    pct < 0.25f -> Color(0xFFE040FB)
+    pct < 0.50f -> Color(0xFFFF8A65)
+    pct < 0.75f -> Color(0xFF64B5F6)
+    else -> Color(0xFF4DD0E1)
+}
+
 private fun healthColor(pct: Float): Color = when {
     pct < 0.25f -> Vital.critical
     pct < 0.50f -> Vital.hurt
@@ -472,10 +495,15 @@ private fun PartyRow(
     // moment after it lands — you can see how much was just lost, not only that
     // the bar moved.
     val ghostPct by animateFloatAsState(pct, tween(620, delayMillis = 260), label = "ghost")
-    val barColor by animateColorAsState(healthColor(pct), tween(240), label = "hpColor")
+    val ui = LocalUiSettings.current
+    val barColor by animateColorAsState(
+        if (ui.colourBlindBands) healthColorCb(pct) else healthColor(pct),
+        tween(240),
+        label = "hpColor",
+    )
     // Note the health band still comes from `pct` alone. If the colour brightened
     // because a HoT is pending, the signal would lie at the moment it matters.
-    val committed = committedHealing(unit)
+    val committed = if (ui.showCommitted) committedHealing(unit) else 0.0
     val committedFrac = if (unit.maxHealth > 0) (committed / unit.maxHealth).toFloat() else 0f
     val animatedCommitted by animateFloatAsState(committedFrac, tween(140), label = "committed")
     val overhealing = pct + committedFrac > 1f
@@ -611,18 +639,28 @@ private fun PartyRow(
                         // Percent for urgency, deficit for which heal covers the
                         // gap. "1240 / 1450" makes the player do arithmetic under
                         // pressure; these are the two numbers they act on.
-                        val deficit = (unit.maxHealth - unit.health).roundToInt()
-                        if (deficit > 0) {
+                        if (ui.healthTextPercent) {
+                            val deficit = (unit.maxHealth - unit.health).roundToInt()
+                            if (deficit > 0) {
+                                BasicText(
+                                    "-$deficit",
+                                    style = AegisType.numeric.copy(
+                                        fontSize = 11.sp,
+                                        color = Vital.hurt,
+                                    ),
+                                )
+                                Spacer(Modifier.width(5.dp))
+                            }
                             BasicText(
-                                "-$deficit",
-                                style = AegisType.numeric.copy(fontSize = 11.sp, color = Vital.hurt),
+                                "${(pct * 100).roundToInt()}%",
+                                style = AegisType.numeric.copy(fontSize = 12.sp, color = barColor),
                             )
-                            Spacer(Modifier.width(5.dp))
+                        } else {
+                            BasicText(
+                                "${unit.health.roundToInt()} / ${unit.maxHealth.roundToInt()}",
+                                style = AegisType.numeric.copy(fontSize = 12.sp),
+                            )
                         }
-                        BasicText(
-                            "${(pct * 100).roundToInt()}%",
-                            style = AegisType.numeric.copy(fontSize = 12.sp, color = barColor),
-                        )
                     }
                 }
 

@@ -51,6 +51,8 @@ import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.GiltRule
 import com.jdial.aegis.ui.theme.Ink
 import com.jdial.aegis.ui.theme.LocalAccent
+import com.jdial.aegis.sim.UiSettings
+import com.jdial.aegis.ui.theme.LocalUiSettings
 import com.jdial.aegis.ui.theme.Obsidian
 import com.jdial.aegis.ui.theme.Vital
 
@@ -366,9 +368,15 @@ private fun TalentDetail(
  * the same functions the simulation uses.
  */
 @Composable
-fun CharacterScreen(state: GameState, engine: Engine, onChangeClass: () -> Unit) {
+fun CharacterScreen(
+    state: GameState,
+    engine: Engine,
+    onSettingsChange: (UiSettings) -> Unit,
+    onChangeClass: () -> Unit,
+) {
     val cls = state.playerClass ?: return
     var showCredits by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     val meta = engine.data.bundle(cls).meta
     val primary = engine.stats.primaryStats(cls, state.level)
     val talentStats = engine.stats.talentStats(state.talents)
@@ -452,6 +460,16 @@ fun CharacterScreen(state: GameState, engine: Engine, onChangeClass: () -> Unit)
                 Spacer(Modifier.height(18.dp))
                 GiltButton("Change Class", onClick = onChangeClass)
                 Spacer(Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                BasicText(
+                    "SETTINGS",
+                    style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClickLabel = "Open display settings") { showSettings = true }
+                        .semantics { role = Role.Button }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                )
                 BasicText(
                     "CREDITS",
                     style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
@@ -461,6 +479,7 @@ fun CharacterScreen(state: GameState, engine: Engine, onChangeClass: () -> Unit)
                     .semantics { role = Role.Button }
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 )
+                }
                 Spacer(Modifier.height(20.dp))
             }
         }
@@ -469,6 +488,13 @@ fun CharacterScreen(state: GameState, engine: Engine, onChangeClass: () -> Unit)
         // rendered. This is the app's only attribution surface, which CC BY
         // requires, so a dead button here is a licence problem too.
         if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
+        if (showSettings) {
+            SettingsDialog(
+                settings = LocalUiSettings.current,
+                onChange = onSettingsChange,
+                onDismiss = { showSettings = false },
+            )
+        }
     }
 }
 

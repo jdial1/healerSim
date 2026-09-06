@@ -34,6 +34,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
+import com.jdial.aegis.sim.UiSettings
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.data.Dungeon
@@ -346,6 +351,112 @@ fun ConfirmDialog(
                     )
                 }
             }
+        }
+    }
+}
+
+
+// --- display settings -------------------------------------------------------
+
+/**
+ * Five toggles, deliberately. HealBot's own guidance is that a small readable
+ * setup beats enabling everything, and a five-unit party on a phone removes most
+ * of the reason to configure anything at all.
+ */
+@Composable
+fun SettingsDialog(
+    settings: UiSettings,
+    onChange: (UiSettings) -> kotlin.Unit,
+    onDismiss: () -> kotlin.Unit,
+) {
+    Scrim(onDismiss = onDismiss) {
+        ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
+            Column {
+                BasicText("DISPLAY", style = AegisType.title.copy(fontSize = 16.sp))
+                Spacer(Modifier.height(10.dp))
+                GiltRule(Modifier.fillMaxWidth().height(1.dp))
+                Spacer(Modifier.height(6.dp))
+
+                SettingRow(
+                    "Health as percent",
+                    "Off shows current and maximum instead.",
+                    settings.healthTextPercent,
+                ) { onChange(settings.copy(healthTextPercent = it)) }
+
+                SettingRow(
+                    "Show committed healing",
+                    "The pale band for healing your HoTs will still deliver.",
+                    settings.showCommitted,
+                ) { onChange(settings.copy(showCommitted = it)) }
+
+                SettingRow(
+                    "Colour-blind health bands",
+                    "Swaps the green-to-red ramp for blue to magenta.",
+                    settings.colourBlindBands,
+                ) { onChange(settings.copy(colourBlindBands = it)) }
+
+                SettingRow(
+                    "Keep my frame first",
+                    "Puts you at the top of the party instead of the bottom.",
+                    settings.selfFirst,
+                ) { onChange(settings.copy(selfFirst = it)) }
+
+                SettingRow(
+                    "Larger frames",
+                    "Taller rows where there is room for them.",
+                    settings.largeFrames,
+                ) { onChange(settings.copy(largeFrames = it)) }
+
+                Spacer(Modifier.height(14.dp))
+                GiltButton("Close", onClick = onDismiss)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingRow(
+    label: String,
+    hint: String,
+    checked: Boolean,
+    onToggle: (Boolean) -> kotlin.Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = label) { onToggle(!checked) }
+            .semantics { role = Role.Switch; toggleableState = ToggleableState(checked) }
+            .padding(vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            BasicText(label, style = AegisType.body.copy(color = Ink.primary))
+            Spacer(Modifier.height(2.dp))
+            BasicText(hint, style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted))
+        }
+        Spacer(Modifier.width(12.dp))
+        // A gilt pill rather than a Material Switch: there is no Material theme
+        // wired in this app, and importing one for five toggles is a bad trade.
+        val knob by animateDpAsState(if (checked) 22.dp else 2.dp, label = "knob")
+        Box(
+            Modifier
+                .size(44.dp, 24.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (checked) Gilt.deep else Obsidian.abyss)
+                .border(
+                    1.dp,
+                    if (checked) Gilt.core else Gilt.deep.copy(alpha = 0.5f),
+                    RoundedCornerShape(12.dp),
+                ),
+        ) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .offset(x = knob)
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(if (checked) Gilt.bright else Ink.muted),
+            )
         }
     }
 }

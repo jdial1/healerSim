@@ -11,4 +11,5 @@
 <full-backup-content>
     <include domain="file" path="aegis.roster.v2.json" />
     <include domain="file" path="aegis.tutorial.v1.json" />
+    <include domain="file" path="aegis.settings.v1.json" />
 </full-backup-content>

@@ -33,6 +33,22 @@ data class Roster(
     val byClass: Map<String, CharacterBlob> = emptyMap(),
 )
 
+/**
+ * Display preferences. Deliberately NOT part of GameState: that is compared
+ * against the JS engine's recorded output by the parity suite, and a UI toggle
+ * has no business showing up in golden JSON. Stored in its own file, exactly as
+ * tutorial progress is.
+ */
+@Serializable
+data class UiSettings(
+    val v: Int = 1,
+    val healthTextPercent: Boolean = true,
+    val showCommitted: Boolean = true,
+    val colourBlindBands: Boolean = false,
+    val selfFirst: Boolean = false,
+    val largeFrames: Boolean = false,
+)
+
 /** Mirrors the web app's `aegis.suspend.v1`: one boss-phase run, read once. */
 @Serializable
 data class SuspendedRun(val v: Int = 1, val playerClass: String, val state: GameState)
@@ -42,6 +58,7 @@ class SaveStore(
     private val engine: Engine,
     private val suspendFile: File = File(file.parentFile, "aegis.suspend.v1.json"),
     private val tutorialFile: File = File(file.parentFile, "aegis.tutorial.v1.json"),
+    private val settingsFile: File = File(file.parentFile, "aegis.settings.v1.json"),
 ) {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -174,6 +191,16 @@ class SaveStore(
 
     fun readTutorialSteps(): List<String> =
         runCatching { json.decodeFromString<List<String>>(tutorialFile.readText()) }.getOrElse { emptyList() }
+
+    // --- display settings ----------------------------------------------------
+
+    fun readSettings(): UiSettings =
+        runCatching { json.decodeFromString<UiSettings>(settingsFile.readText()) }
+            .getOrElse { UiSettings() }
+
+    fun writeSettings(s: UiSettings) {
+        runCatching { settingsFile.writeText(json.encodeToString(s)) }
+    }
 
     fun writeTutorialSteps(steps: List<String>) {
         runCatching { tutorialFile.writeText(json.encodeToString(steps.distinct())) }
