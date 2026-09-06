@@ -40,15 +40,105 @@ class GameTick(
         )
     }
 
+    // --- threat --------------------------------------------------------------
+    //
+    // Dormant in this increment: the table is built and carried, but no dungeon
+    // opts into Targeting.HIGHEST_THREAT, so nothing consults it. Building it
+    // first lets the model settle against the parity corpus before any content
+    // depends on it.
+
+    /**
+     * Who the enemy is on, from the threat table as it stood at the end of last
+     * tick.
+     *
+     * Draws nothing from the rng, and must never start doing so: every parity
+     * scenario is a recording of one seeded stream, and an extra draw per tick
+     * would desynchronise all of them. Ties break on ascending id so the answer
+     * cannot depend on party list order either.
+     */
+    internal fun resolveEnemyTarget(s: GameState): String? {
+        val living = s.party.filter { it.isAlive }
+        if (living.isEmpty()) return null
+
+        if (s.tauntLockTicks > 0) {
+            living.firstOrNull { it.id == s.tauntedById }?.let { return it.id }
+        }
+
+        val best = living.minWith(compareByDescending<Unit> { it.threat }.thenBy { it.id })
+        val current = living.firstOrNull { it.id == s.enemyTargetId } ?: return best.id
+        // Hysteresis: you have to beat the current target by a margin, not tie
+        // it, or the enemy flickers between two units trading the lead.
+        val margin = data.balance.threat.overtakeMultiplier
+        return if (best.threat > current.threat * margin) best.id else current.id
+    }
+
+    /**
+     * Adds this tick's threat to the table.
+     *
+     * Healing counts only where it landed -- overheal generates none, which is
+     * the one piece of threat a healer can actually play around. Scripted party
+     * damage is attributed to the units notionally dealing it, so a tank builds
+     * a lead a player has to respect once content starts using it.
+     */
+    internal fun accrueThreat(
+        party: List<Unit>,
+        healEffective: Double,
+        scriptedPartyDamage: Double,
+    ): List<Unit> {
+        val cfg = data.balance.threat
+        val living = party.filter { it.isAlive }
+        // No early return on an empty party: the corpse-zeroing below still has
+        // to run, or a wipe leaves the last unit to die holding the top of the
+        // table when the pull resets.
+        val tank = living.firstOrNull { it.role == UnitRole.TANK }
+        val dps = living.filter { it.role == UnitRole.DPS }
+        val tankDamage = if (tank != null) scriptedPartyDamage * cfg.tankDamageShare else 0.0
+        val perDps = if (dps.isEmpty()) 0.0 else (scriptedPartyDamage - tankDamage) / dps.size
+
+        fun mult(role: UnitRole) = cfg.roleMultiplier[role.name] ?: 1.0
+
+        return party.map { u ->
+            if (!u.isAlive) {
+                // A corpse holds no threat; it would otherwise still be leading
+                // the table when it is resurrected or the pull resets.
+                if (u.threat == 0.0) u else u.copy(threat = 0.0)
+            } else {
+                val damage = when {
+                    u.role == UnitRole.TANK -> tankDamage
+                    u.role == UnitRole.DPS -> perDps
+                    else -> 0.0
+                }
+                // The player is the only source of healing in the game today,
+                // so all of it is theirs. That stops being true when an AI
+                // healer exists.
+                val healing = if (u.id == PLAYER_UNIT_ID) healEffective * cfg.healingCoefficient else 0.0
+                val gained = (damage + healing) * mult(u.role)
+                if (gained == 0.0) u else u.copy(threat = u.threat + gained)
+            }
+        }
+    }
+
     // --- targeting -----------------------------------------------------------
 
-    private fun selectTargets(party: List<Unit>, targeting: Targeting, rng: Rng): Set<String> {
+    private fun selectTargets(
+        party: List<Unit>,
+        targeting: Targeting,
+        rng: Rng,
+        enemyTargetId: String?,
+    ): Set<String> {
         val living = party.filter { it.health > 0 }.map { it.id }
         if (living.isEmpty()) return emptySet()
         return when (targeting) {
             Targeting.ALL_LIVING -> living.toSet()
             Targeting.SINGLE_RANDOM -> setOf(rng.pick(living))
             Targeting.TWO_RANDOM -> rng.shuffled(living).take(2).toSet()
+            // Note this consumes no rng, unlike every mode above. That is why
+            // no existing dungeon may opt in: doing so would remove a draw from
+            // the seeded stream and desynchronise every later tick from the
+            // parity corpus. Falls back to the front of the list only if
+            // nothing has generated threat yet.
+            Targeting.HIGHEST_THREAT ->
+                setOf(enemyTargetId?.takeIf { id -> living.any { it == id } } ?: living.first())
         }
     }
 
@@ -127,7 +217,7 @@ class GameTick(
         when (kind) {
             "debuff" -> {
                 val tpl = profile.debuffTemplates[cycle % profile.debuffTemplates.size]
-                val targets = selectTargets(party, tpl.targeting, rng)
+                val targets = selectTargets(party, tpl.targeting, rng, ctx.state.enemyTargetId)
                 if (targets.isNotEmpty()) {
                     // Note: a new debuff *replaces* the unit's whole debuff list.
                     party = party.map { u ->
@@ -189,7 +279,7 @@ class GameTick(
         rng: Rng,
     ): Pair<List<Unit>, Int> {
         val s = ctx.state
-        val targets = selectTargets(party, tpl.targeting, rng)
+        val targets = selectTargets(party, tpl.targeting, rng, s.enemyTargetId)
         if (targets.isEmpty()) return party to 0
 
         val tank = party.firstOrNull { it.role == UnitRole.TANK }
@@ -631,16 +721,18 @@ class GameTick(
         bossBuffsNext: List<BossBuff>,
         dpsPaceMultiplier: Double,
         rng: Rng,
+        healEffectiveThisTick: Double,
     ): GameState {
         val pd = data.balance.partyDps
         val partyDps = pd.base + s.level.toDouble().pow(pd.levelExponent) * pd.levelMultiplier
         val deadDps = sys.party.count { it.role == UnitRole.DPS && it.health <= 0 }
         // Losing DPS only slows the boss, not trash.
         val bossDpsMult = if (s.combatPhase == CombatPhase.BOSS) 0.7.pow(deadDps) else 1.0
-        var enemyHealth = s.enemyHealth - partyDps * bossDpsMult * dpsPaceMultiplier * s.runDpsJitter
+        val scriptedDamage = partyDps * bossDpsMult * dpsPaceMultiplier * s.runDpsJitter
+        var enemyHealth = s.enemyHealth - scriptedDamage
 
         val base = s.copy(
-            party = sys.party,
+            party = accrueThreat(sys.party, healEffective = healEffectiveThisTick, scriptedPartyDamage = scriptedDamage),
             mana = sys.mana,
             playerCombatBuffs = sys.playerCombatBuffs,
             internalCooldowns = sys.internalCooldowns,
@@ -782,10 +874,17 @@ class GameTick(
     fun advance(state: GameState, rng: Rng, dpsMultiplierOverride: Double? = null): GameState {
         if (!state.isCombatActive) return state
 
+        // Threat is resolved first, off the table as it stood when last tick
+        // committed. Reading committed state rather than this tick's accrual is
+        // what makes the answer independent of evaluation order -- and what
+        // would let two machines that agree on tick N agree on tick N+1 without
+        // negotiating, if co-op ever happens.
         val s = state.copy(
             combatElapsedTicks = state.combatElapsedTicks + 1,
             floatingCombatTexts = state.floatingCombatTexts
                 .filter { it.expiresAtCombatTick > state.combatElapsedTicks + 1 },
+            enemyTargetId = resolveEnemyTarget(state),
+            tauntLockTicks = max(0, state.tauntLockTicks - 1),
         )
         val ctx = CastContext(s, data, stats, rng)
 
@@ -839,7 +938,10 @@ class GameTick(
             startId = s.combatElapsedTicks.toLong() * 100,
         )).filter { it.expiresAtCombatTick > s.combatElapsedTicks }
 
-        return resolveOngoingCombat(ctx, acc, sys, boss, bossBuffsNext, dpsPace, rng)
+        return resolveOngoingCombat(
+            ctx, acc, sys, boss, bossBuffsNext, dpsPace, rng,
+            healEffectiveThisTick = env.healEffective + sys.healEffective,
+        )
             .let { if (it.isCombatActive) it.copy(floatingCombatTexts = floats) else it }
     }
 }

@@ -118,5 +118,17 @@
   },
   "progression": {
     "paladinUnlockLevel": 25
+  },
+  "threat": {
+    "healingCoefficient": 0.5,
+    "roleMultiplier": {
+      "TANK": 2.5,
+      "DPS": 1.0,
+      "HEALER": 1.0
+    },
+    "overtakeMultiplier": 1.1,
+    "tauntOvertakeMultiplier": 1.1,
+    "tankDamageShare": 0.15,
+    "aiTauntCooldownTicks": 80
   }
 }

@@ -110,6 +110,18 @@ data class Unit(
     val shield: Double = 0.0,
     val shieldTicksRemaining: Int = 0,
     val livingSeedPool: Double = 0.0,
+    /**
+     * How much the enemy wants to hit this unit.
+     *
+     * Accrues from damage dealt and effective healing done; overheal generates
+     * none, which is the one threat rule a healer can actually play around.
+     * Nothing reads it yet -- see [com.jdial.aegis.data.Targeting.HIGHEST_THREAT].
+     *
+     * There is deliberately no decay: it would be a per-tick multiply across
+     * five units modelling something no player can perceive. The table is
+     * zeroed on phase transition and when a unit dies instead.
+     */
+    val threat: Double = 0.0,
 ) {
     val isAlive: Boolean get() = health > 0
 }
@@ -206,6 +218,11 @@ data class GameState(
     val beaconTargetId: String = "1",
     val mechanicCooldown: Int = 0,
     val mechanicOrdinal: Int = 0,
+    /** Who the enemy is currently on. Null until the first threat is generated. */
+    val enemyTargetId: String? = null,
+    /** While positive, [enemyTargetId] is held by a taunt regardless of the table. */
+    val tauntLockTicks: Int = 0,
+    val tauntedById: String? = null,
     val combatElapsedTicks: Int = 0,
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
@@ -241,6 +258,9 @@ data class GameState(
         holyPower = 0,
         mechanicCooldown = 0,
         mechanicOrdinal = 0,
+        enemyTargetId = null,
+        tauntLockTicks = 0,
+        tauntedById = null,
         combatElapsedTicks = 0,
         runDpsJitter = 1.0,
         endlessStacks = 0,

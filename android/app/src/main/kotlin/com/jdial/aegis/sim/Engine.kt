@@ -41,6 +41,17 @@ sealed interface Action {
     data object AbandonDungeon : Action
     data object DismissDungeonOutcome : Action
     data class SetTutorialPaused(val paused: Boolean) : Action
+
+    /**
+     * Puts [actorId] at the top of the threat table and pins the enemy there
+     * for [ticks].
+     *
+     * No spell grants this yet -- the action exists so the threat model is
+     * complete and testable before a tank class needs it. It is also the first
+     * action whose actorId is load-bearing rather than decorative: taunting is
+     * inherently "this unit, not the local player".
+     */
+    data class Taunt(val ticks: Int, override val actorId: String = PLAYER_UNIT_ID) : Action
 }
 
 class Engine(val data: GameData) {
@@ -77,6 +88,7 @@ class Engine(val data: GameData) {
             action.targetId,
             action.critRoll,
         )
+        is Action.Taunt -> taunt(state, action.actorId, action.ticks)
         is Action.UnlockTalent -> unlockTalent(state, action.talentId)
         is Action.DecrementTalent -> decrementTalent(state, action.talentId)
         Action.RespecTalents -> respec(state)
@@ -131,6 +143,28 @@ class Engine(val data: GameData) {
             party = tick.generateParty(cls, state.level, rng),
             mana = state.maxMana.toDouble(),
             dungeonOutcome = null,
+        )
+    }
+
+    /**
+     * Forces the enemy onto [actorId] for [ticks].
+     *
+     * Two parts, and both matter: the lock pins the target regardless of the
+     * table, and the threat bump means the taunter is still on top when the
+     * lock expires. Without the bump a taunt would hand the enemy straight back
+     * the instant it ran out, which is the classic mistake.
+     */
+    private fun taunt(state: GameState, actorId: String, ticks: Int): GameState {
+        val actor = state.party.firstOrNull { it.id == actorId && it.isAlive } ?: return state
+        val top = state.party.filter { it.isAlive }.maxOfOrNull { it.threat } ?: 0.0
+        val target = top * data.balance.threat.tauntOvertakeMultiplier
+        return state.copy(
+            party = state.party.map {
+                if (it.id == actor.id) it.copy(threat = max(it.threat, target)) else it
+            },
+            enemyTargetId = actor.id,
+            tauntedById = actor.id,
+            tauntLockTicks = ticks,
         )
     }
 

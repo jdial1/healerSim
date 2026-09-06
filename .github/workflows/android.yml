@@ -33,6 +33,12 @@ jobs:
       - name: Golden corpus is frozen and reproducible
         run: node scripts/check-golden-frozen.mjs
 
+      # Role work adds new top-level keys to balance.json. Everything else
+      # describes the finished healer game and is what the goldens were
+      # generated against, so a drive-by tweak there has to be deliberate.
+      - name: Healer-era balance is frozen
+        run: node scripts/check-balance-frozen.mjs
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

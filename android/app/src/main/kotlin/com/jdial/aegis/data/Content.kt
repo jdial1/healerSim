@@ -110,6 +110,16 @@ enum class Targeting {
     @SerialName("single_random") SINGLE_RANDOM,
     @SerialName("two_random") TWO_RANDOM,
     @SerialName("all_living") ALL_LIVING,
+
+    /**
+     * Whoever holds the most threat -- the mode a tank exists for.
+     *
+     * No dungeon in dungeons.json uses it. That is the point: every existing
+     * boss keeps drawing its victims from the rng exactly as before, so adding
+     * threat cannot shift the seeded stream the parity corpus was built on.
+     * New content opts in; old content never notices.
+     */
+    @SerialName("highest_threat") HIGHEST_THREAT,
 }
 
 @Serializable

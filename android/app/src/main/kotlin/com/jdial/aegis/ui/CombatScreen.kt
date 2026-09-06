@@ -418,6 +418,10 @@ private fun nextMechanic(state: GameState): NextMechanic? {
         Targeting.SINGLE_RANDOM -> "one of you"
         Targeting.TWO_RANDOM -> "two of you"
         Targeting.ALL_LIVING -> "everyone"
+        // Nameable, unlike the random modes: this one lands on whoever holds
+        // threat, and the engine has already decided who that is. Still phrased
+        // as a role rather than a name, because it can change before it fires.
+        Targeting.HIGHEST_THREAT -> "whoever has aggro"
     }
     return when (kinds[state.mechanicOrdinal % kinds.size]) {
         "debuff" -> c.debuffTemplates[cycle % c.debuffTemplates.size]

@@ -1,7 +1,7 @@
 {
   "name": "aegis",
   "private": true,
-  "version": "0.1.137",
+  "version": "0.1.138",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -12,6 +12,7 @@
     "icons:verify": "node scripts/verify-wow-icons.mjs",
     "test": "node scripts/test-meta.js",
     "test:golden": "node scripts/check-golden-frozen.mjs",
+    "test:balance": "node scripts/check-balance-frozen.mjs",
     "test:dungeons": "node scripts/test-dungeons.js",
     "test:class": "node scripts/test-classes.js",
     "test:spells": "node scripts/test-spells.js",

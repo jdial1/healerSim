@@ -19,6 +19,33 @@ data class Balance(
     val playerStats: PlayerStatsBalance,
     val combat: CombatBalance,
     val progression: ProgressionBalance,
+    // Defaulted, unlike its siblings: every key above describes the finished
+    // healer game, this one describes work in progress. The default means the
+    // engine still loads against a balance.json from before roles existed --
+    // including the one a suspended run was saved under.
+    val threat: ThreatBalance = ThreatBalance(),
+)
+
+/**
+ * Threat tuning. Nothing consumes this yet: no dungeon opts into
+ * [com.jdial.aegis.data.Targeting.HIGHEST_THREAT], so the table is built and
+ * kept but never decides anything. That is deliberate -- it lets the model bed
+ * in against the parity corpus before any content depends on it.
+ */
+@Serializable
+data class ThreatBalance(
+    /** Effective healing generates this much threat per point. Overheal generates none. */
+    val healingCoefficient: Double = 0.5,
+    /** Keyed by [com.jdial.aegis.sim.UnitRole] name. A tank's whole job is this number. */
+    val roleMultiplier: Map<String, Double> = mapOf("TANK" to 2.5, "DPS" to 1.0, "HEALER" to 1.0),
+    /** How far above the current target you must climb to pull it. Stops flapping on ties. */
+    val overtakeMultiplier: Double = 1.1,
+    /** Where a taunt puts you relative to the current highest. */
+    val tauntOvertakeMultiplier: Double = 1.1,
+    /** The tank's slice of the scripted party damage pool, for threat attribution. */
+    val tankDamageShare: Double = 0.15,
+    /** How long an AI tank waits between taunts. */
+    val aiTauntCooldownTicks: Int = 80,
 )
 
 @Serializable
