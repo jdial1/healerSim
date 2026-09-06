@@ -689,5 +689,9 @@ fun hooksFor(cls: PlayerClass?): ClassHooks = when (cls) {
     PlayerClass.PRIEST -> PriestHooks
     PlayerClass.DRUID -> DruidHooks
     PlayerClass.PALADIN -> PaladinHooks
+    // The Mage tree is built entirely from statBonus, which the engine already
+    // applies. `healing` doubles as the damage magnitude, so healingBoost
+    // scales a Frostbolt exactly as it scales a Flash Heal -- no hook code.
+    PlayerClass.MAGE -> NoHooks
     null -> NoHooks
 }

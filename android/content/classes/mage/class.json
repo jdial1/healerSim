@@ -1,0 +1,40 @@
+{
+  "id": "MAGE",
+  "name": "Frost Mage",
+  "role": "DPS",
+  "description": "Ranged burst and control. Big numbers, thin margins, and no one to blame.",
+  "iconKey": "snowflake",
+  "color": "bg-sky-500",
+  "textColor": "text-sky-300",
+  "hoverBorderClass": "hover:border-sky-400",
+  "locked": false,
+  "portraitUrl": "",
+  "portraitIcon": "mage",
+  "portraitGlow": "spell",
+  "passiveTraitName": "Shatter",
+  "passiveTraitDescription": "Frost damage crits harder against a target that is already suffering.",
+  "passiveTraitIcon": "wow/spell_nature_lightning",
+  "tutorial": {
+    "passiveDescription": "Shatter: Frost spells crit more."
+  },
+  "statCurves": {
+    "baseIntellect": 34,
+    "baseSpirit": 14,
+    "intellectPerLevel": 4.0,
+    "spiritPerLevel": 1.0,
+    "baseUniqueStat": 9,
+    "uniqueStatPerLevel": 0.6
+  },
+  "progression": {
+    "starterSpells": [
+      "frostbolt",
+      "fireball"
+    ],
+    "spellOrder": [
+      "frostbolt",
+      "fireball",
+      "arcane_missiles",
+      "living_bomb"
+    ]
+  }
+}

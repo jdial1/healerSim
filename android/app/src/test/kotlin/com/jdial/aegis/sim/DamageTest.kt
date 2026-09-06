@@ -7,11 +7,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The damage plumbing, which is dormant: no spell in the game has
- * `school = DAMAGE` and every class is a healer, so none of this runs.
+ * The damage plumbing. No longer dormant -- the Mage uses it -- but still
+ * inert for every class the frozen web app has, which is the property the
+ * parity corpus depends on.
  *
- * The parity corpus proves it changed nothing. These prove it would work, and
- * pin the one property the whole verification strategy rests on.
+ * The corpus proves the healer path did not move. These pin the reason it
+ * cannot: the enemy-damage expression is an exact identity while the player
+ * heals, not an approximation inside an epsilon.
  */
 class DamageTest {
     private val engine = Engine(Fixtures.data)
@@ -50,22 +52,30 @@ class DamageTest {
     }
 
     @Test
-    fun `every shipped class plays as a healer`() {
-        // The dormancy guarantee for the aiShare branch: while this holds, the
-        // damage expression can only ever take the identity path.
-        for (cls in PlayerClass.entries) {
+    fun `the web app's classes all still play as healers`() {
+        // Narrower than it was: the Mage is a DPS, so the aiShare branch is no
+        // longer permanently on the identity path. What still must hold is that
+        // no *healer* class drifted off it, because that is the path the parity
+        // corpus was recorded on.
+        for (cls in PlayerClass.webClasses) {
             assertEquals("$cls", UnitRole.HEALER, engine.roleOf(cls))
         }
+        assertEquals(UnitRole.DPS, engine.roleOf(PlayerClass.MAGE))
     }
 
     @Test
-    fun `no shipped spell deals damage`() {
-        val offenders = PlayerClass.entries.flatMap { cls ->
+    fun `no healer spell deals damage, and every mage spell does`() {
+        val healerOffenders = PlayerClass.webClasses.flatMap { cls ->
             Fixtures.data.bundle(cls).spells.values
                 .filter { it.school != SpellSchool.HEAL }
                 .map { "${cls}/${it.id}" }
         }
-        assertEquals(emptyList<String>(), offenders)
+        assertEquals(emptyList<String>(), healerOffenders)
+
+        val mageNonDamage = Fixtures.data.bundle(PlayerClass.MAGE).spells.values
+            .filter { it.school != SpellSchool.DAMAGE }
+            .map { it.id }
+        assertEquals(emptyList<String>(), mageNonDamage)
     }
 
     @Test

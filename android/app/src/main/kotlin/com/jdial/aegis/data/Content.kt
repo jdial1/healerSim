@@ -130,9 +130,12 @@ data class StatCurves(
 data class Progression(
     val starterSpells: List<String>,
     val spellOrder: List<String>,
-    val capstoneForm: String,
-    val capstoneMechanicId: String,
-    val capstonePlayerBuffId: String,
+    // Not every class has a capstone -- the three healers do, a Mage does not.
+    // Empty rather than null so the existing `== "priest_archangel"` style
+    // comparisons keep working untouched.
+    val capstoneForm: String = "",
+    val capstoneMechanicId: String = "",
+    val capstonePlayerBuffId: String = "",
 )
 
 @Serializable
@@ -245,6 +248,8 @@ data class NpcPools(
     val allyHealthDefaults: Map<String, RoleHealth>,
     val tankPool: List<NpcTemplate>,
     val dpsPool: List<NpcTemplate>,
+    /** Only needed once the player is not the healer. Defaulted for old data. */
+    val healerPool: List<NpcTemplate> = emptyList(),
 )
 
 @Serializable

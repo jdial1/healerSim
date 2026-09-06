@@ -653,25 +653,65 @@ class GameTick(
         )
     }
 
+    /**
+     * The party: one tank, three DPS, one healer, with the player in whichever
+     * role their class plays and the AI filling the other four.
+     *
+     * The player is always [PLAYER_UNIT_ID]. Ids are positional and load-bearing
+     * across the engine, the UI and the save, so the roles move between slots
+     * and the slots themselves never do.
+     *
+     * The rng draw order is deliberately unchanged from the healer-only version
+     * -- pick a tank, shuffle three DPS, then one level roll per AI slot in
+     * order. Adding or reordering a draw here would desynchronise every
+     * recorded parity scenario.
+     */
     fun generateParty(cls: PlayerClass, playerLevel: Int, rng: Rng): List<Unit> {
         fun allyLevel() = max(1, playerLevel + (rng.nextDouble() * 3).toInt() - 1)
 
+        val playerRole = runCatching { UnitRole.valueOf(data.bundle(cls).meta.role) }
+            .getOrDefault(UnitRole.HEALER)
+
         val tankTpl = rng.pick(data.npcPools.tankPool)
-        val dps = rng.shuffled(data.npcPools.dpsPool).take(3)
+        val dpsTpls = rng.shuffled(data.npcPools.dpsPool).take(3)
 
-        val tankLevel = allyLevel()
-        val tankHp = stats.maxHealthForRole("TANK", tankLevel).toDouble()
-        val healerHp = stats.healerMaxHealth(max(1, playerLevel)).toDouble()
-
-        return buildList {
-            add(Unit("1", tankTpl.name, UnitRole.TANK, tankLevel, tankHp, tankHp))
-            dps.forEachIndexed { i, tpl ->
-                val lv = allyLevel()
-                val hp = stats.maxHealthForRole("DPS", lv).toDouble()
-                add(Unit("${i + 2}", tpl.name, UnitRole.DPS, lv, hp, hp))
-            }
-            add(Unit(PLAYER_UNIT_ID, "Player (You)", UnitRole.HEALER, max(1, playerLevel), healerHp, healerHp))
+        // The four AI roles are the full group minus whatever the player is.
+        // Ordered tank-first so slot "1" stays the tank whenever there is an AI
+        // one, which a lot of UI and the tank-death rule both assume.
+        val aiRoles = buildList {
+            if (playerRole != UnitRole.TANK) add(UnitRole.TANK)
+            repeat(if (playerRole == UnitRole.DPS) 2 else 3) { add(UnitRole.DPS) }
+            if (playerRole != UnitRole.HEALER) add(UnitRole.HEALER)
         }
+
+        var dpsUsed = 0
+        val party = aiRoles.mapIndexed { i, role ->
+            val id = "${i + 1}"
+            val lv = allyLevel()
+            when (role) {
+                UnitRole.TANK -> stats.maxHealthForRole("TANK", lv).toDouble().let {
+                    Unit(id, tankTpl.name, role, lv, it, it)
+                }
+                UnitRole.DPS -> stats.maxHealthForRole("DPS", lv).toDouble().let {
+                    Unit(id, dpsTpls[dpsUsed++].name, role, lv, it, it)
+                }
+                // Named off the pool by level rather than a draw, so no new
+                // randomness enters the stream.
+                UnitRole.HEALER -> stats.healerMaxHealth(lv).toDouble().let {
+                    val pool = data.npcPools.healerPool
+                    val name = if (pool.isEmpty()) "Field Medic" else pool[lv % pool.size].name
+                    Unit(id, name, role, lv, it, it)
+                }
+            }
+        }
+
+        val selfLevel = max(1, playerLevel)
+        val selfHp = when (playerRole) {
+            UnitRole.HEALER -> stats.healerMaxHealth(selfLevel).toDouble()
+            UnitRole.TANK -> stats.maxHealthForRole("TANK", selfLevel).toDouble()
+            UnitRole.DPS -> stats.maxHealthForRole("DPS", selfLevel).toDouble()
+        }
+        return party + Unit(PLAYER_UNIT_ID, "Player (You)", playerRole, selfLevel, selfHp, selfHp)
     }
 
     private fun resolveFailure(ctx: CastContext, s: GameState, party: List<Unit>, rng: Rng): GameState? {

@@ -326,6 +326,7 @@ private fun classPortrait(cls: PlayerClass) = when (cls) {
     PlayerClass.PRIEST -> "class-icons/priest"
     PlayerClass.DRUID -> "class-icons/druid"
     PlayerClass.PALADIN -> "class-icons/paladin"
+    PlayerClass.MAGE -> "class-icons/mage"
 }
 
 // --- dungeon list -----------------------------------------------------------

@@ -70,5 +70,11 @@
       "name": "Feral Kitty",
       "role": "DPS"
     }
+  ],
+  "healerPool": [
+    { "name": "Mercy Wraithbane", "role": "HEALER" },
+    { "name": "Brother Cairn", "role": "HEALER" },
+    { "name": "Sunwell Adept", "role": "HEALER" },
+    { "name": "Thornweave", "role": "HEALER" }
   ]
 }

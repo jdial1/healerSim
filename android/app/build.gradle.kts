@@ -24,6 +24,14 @@ val syncGameData = tasks.register<Sync>("syncGameData") {
         include("*/class.json", "*/spells.json", "*/talents.json")
         into("classes")
     }
+    // Android-owned classes. These deliberately do NOT live in src/classes:
+    // the frozen web app builds a static class registry from that directory and
+    // validates class names on load, so a fourth class there would break it.
+    // Same destination, so GameData.load sees one merged tree.
+    from(layout.projectDirectory.dir("../content/classes")) {
+        include("*/class.json", "*/spells.json", "*/talents.json")
+        into("classes")
+    }
     from(webRoot.dir("public/icons")) {
         into("icons")
     }

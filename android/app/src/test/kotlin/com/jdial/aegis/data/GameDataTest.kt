@@ -22,7 +22,9 @@ class GameDataTest {
     fun `parses every content file`() {
         assertNotNull(data.balance)
         assertEquals(17, data.dungeons.size)
-        assertEquals(3, data.classes.size)
+        // Three from the frozen web app plus Android-only additions.
+        assertEquals(PlayerClass.entries.size, data.classes.size)
+        assertEquals(3, PlayerClass.webClasses.size)
         // 32 since druid_verdant_reservoir was registered; it was referenced by
         // talent d_r0c4 but missing from the registry.
         assertEquals(32, data.mechanics.size)
@@ -38,9 +40,20 @@ class GameDataTest {
         assertEquals(6, data.bundle(PlayerClass.DRUID).spells.size)
         assertEquals(3, data.bundle(PlayerClass.PALADIN).spells.size)
 
-        // Priest and Paladin both define `flash_heal`, so 13 class spells collapse
-        // to 12 unique ids, plus the shared mana_potion.
-        assertEquals(13, data.spells.size)
+        assertEquals(4, data.bundle(PlayerClass.MAGE).spells.size)
+        assertEquals(16, data.bundle(PlayerClass.MAGE).talents.size)
+
+        // Priest and Paladin both define `flash_heal`, so the web app's 13 class
+        // spells collapse to 12 unique ids, plus the shared mana_potion. The
+        // Mage adds four more, none of which may collide -- ids are a flat
+        // global namespace and the merged map silently lets one shadow another.
+        assertEquals(17, data.spells.size)
+        val ids = PlayerClass.entries.flatMap { data.bundle(it).spells.keys }
+        assertEquals(
+            "spell ids must be unique except the known flash_heal duplicate",
+            ids.size - 1,
+            ids.toSet().size,
+        )
     }
 
     @Test

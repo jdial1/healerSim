@@ -502,6 +502,7 @@ private fun uniqueStatLabel(cls: PlayerClass) = when (cls) {
     PlayerClass.PRIEST -> "Divinity"
     PlayerClass.DRUID -> "Vitality"
     PlayerClass.PALADIN -> "Radiance"
+    PlayerClass.MAGE -> "Shatter"
 }
 
 @Composable

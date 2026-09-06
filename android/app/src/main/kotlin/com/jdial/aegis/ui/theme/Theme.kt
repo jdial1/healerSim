@@ -77,11 +77,13 @@ data class ClassAccent(val bright: Color, val core: Color, val deep: Color)
 val PriestAccent = ClassAccent(Color(0xFFFCD34D), Color(0xFFFBBF24), Color(0xFF92610A))
 val DruidAccent = ClassAccent(Color(0xFF6EE7B7), Color(0xFF10B981), Color(0xFF065F46))
 val PaladinAccent = ClassAccent(Color(0xFFF0ABFC), Color(0xFFE879F9), Color(0xFF86198F))
+val MageAccent = ClassAccent(Color(0xFF7DD3FC), Color(0xFF38BDF8), Color(0xFF075985))
 
 fun accentFor(cls: PlayerClass?): ClassAccent = when (cls) {
     PlayerClass.PRIEST -> PriestAccent
     PlayerClass.DRUID -> DruidAccent
     PlayerClass.PALADIN -> PaladinAccent
+    PlayerClass.MAGE -> MageAccent
     null -> ClassAccent(Gilt.bright, Gilt.core, Gilt.deep)
 }
 

@@ -7,7 +7,25 @@ fun interface ContentSource {
     fun read(path: String): String
 }
 
-enum class PlayerClass { PRIEST, DRUID, PALADIN }
+/**
+ * Persisted by name (see `aegis.roster.v2`) and kept from being renamed by an
+ * R8 keep rule plus the verifyMinifiedSaveContract Gradle task, so entries are
+ * additive-only. A class's role lives in its ClassMeta, not here.
+ */
+enum class PlayerClass { PRIEST, DRUID, PALADIN, MAGE;
+
+    companion object {
+        /**
+         * The classes the frozen web app also has.
+         *
+         * parity/golden.json was generated from that app, so it is the only set
+         * the parity tests can meaningfully compare against -- an Android-only
+         * class has no reference to match. Anything added here from now on is
+         * Android-only by definition.
+         */
+        val webClasses: List<PlayerClass> = listOf(PRIEST, DRUID, PALADIN)
+    }
+}
 
 /** The four-part bundle per class, mirroring `src/classes/index.js`. */
 data class ClassBundle(

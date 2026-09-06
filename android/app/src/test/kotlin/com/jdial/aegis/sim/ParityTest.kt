@@ -39,7 +39,7 @@ class ParityTest {
     @Test
     fun primaryAndDerivedStatsMatch() {
         val section = golden.obj("playerStats")
-        for (cls in PlayerClass.entries) {
+        for (cls in PlayerClass.webClasses) {
             val talents = zeroTalents(cls)
             section.arr(cls.name).forEach { row ->
                 val e = row.jsonObject
@@ -72,7 +72,7 @@ class ParityTest {
     @Test
     fun spellRanksMatch() {
         val section = golden.obj("spellRanks")
-        for (cls in PlayerClass.entries) {
+        for (cls in PlayerClass.webClasses) {
             val perClass = section.obj(cls.name)
             perClass.forEach { (spellId, rows) ->
                 if (spellId == "__upgradesAtLevel") return@forEach
@@ -160,7 +160,7 @@ class ParityTest {
     @Test
     fun spellLoadoutsMatch() {
         val section = golden.obj("spellLoadout")
-        for (cls in PlayerClass.entries) {
+        for (cls in PlayerClass.webClasses) {
             val e = section.obj(cls.name)
             val actual = prog.buildSpellLoadout(cls, zeroTalents(cls))
             assertEquals(cls.name + " unlockedSpells", e.arr("unlockedSpells").strings(), actual.unlockedSpells)
