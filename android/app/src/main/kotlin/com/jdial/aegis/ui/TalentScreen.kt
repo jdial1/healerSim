@@ -521,6 +521,10 @@ private fun uniqueStatLabel(cls: PlayerClass) = when (cls) {
     PlayerClass.PALADIN -> "Radiance"
     PlayerClass.MAGE -> "Shatter"
     PlayerClass.WARRIOR -> "Vengeance"
+    PlayerClass.DEATHKNIGHT -> "Blood Shield"
+    PlayerClass.ROGUE -> "Seal Fate"
+    PlayerClass.MONK -> "Stagger"
+    PlayerClass.WARLOCK -> "Nightfall"
 }
 
 /**

@@ -91,6 +91,39 @@ class PartyCompositionTest {
     }
 
     @Test
+    fun `every role has three classes, the third of the new roles unbuilt`() {
+        val byRole = PlayerClass.entries.groupBy { Fixtures.data.bundle(it).meta.role }
+        assertEquals(setOf("HEALER", "DPS", "TANK"), byRole.keys)
+        for ((role, classes) in byRole) {
+            assertEquals("$role should have three classes", 3, classes.size)
+        }
+
+        // Two kinds of not-selectable, and they must not be confused. The
+        // Paladin is finished and gated on a level, so it carries no `locked`
+        // flag; the Monk and Warlock are simply unbuilt and carry one, which is
+        // what makes their card say so instead of promising a level.
+        val unbuilt = PlayerClass.entries.filter { Fixtures.data.bundle(it).meta.locked }
+        assertEquals(listOf(PlayerClass.MONK, PlayerClass.WARLOCK), unbuilt)
+        assertTrue(
+            "the Paladin is level-gated, not unbuilt",
+            !Fixtures.data.bundle(PlayerClass.PALADIN).meta.locked,
+        )
+    }
+
+    @Test
+    fun `every playable class can actually be started`() {
+        // A locked class still has to parse and build a character -- GameData
+        // loads every entry -- but only the playable ones need to reach combat.
+        val engine = Engine(Fixtures.data)
+        for (cls in PlayerClass.entries) {
+            val s = engine.newCharacter(cls, Rng(5))
+            assertEquals("$cls", cls, s.playerClass)
+            assertTrue("$cls needs a starting bar", s.activeActionBars.any { it.isNotBlank() })
+            assertEquals("$cls party", 5, s.party.size)
+        }
+    }
+
+    @Test
     fun `a healer party is unchanged from before roles existed`() {
         // Verified empirically against the pre-role implementation: identical
         // output across three seeds and three levels. The draw order is

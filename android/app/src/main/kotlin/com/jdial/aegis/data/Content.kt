@@ -152,6 +152,14 @@ data class ClassMeta(
      * character.
      */
     val role: String = "HEALER",
+    /**
+     * Not selectable, with no way to unlock it -- the class is not finished.
+     *
+     * Distinct from the Paladin, which is finished and gated on a level. The
+     * field was in every class.json from the start but never declared here, so
+     * kotlinx dropped it and the Paladin gate had to be hardcoded instead.
+     */
+    val locked: Boolean = false,
     val description: String = "",
     val passiveTraitName: String = "",
     val passiveTraitDescription: String = "",

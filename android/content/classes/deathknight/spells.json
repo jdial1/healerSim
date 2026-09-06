@@ -1,0 +1,63 @@
+{
+  "death_strike": {
+    "id": "death_strike",
+    "name": "Death Strike",
+    "type": "DIRECT",
+    "school": "damage",
+    "manaCost": 15,
+    "healing": 62,
+    "cooldown": 0,
+    "icon": "wow/spell_holy_crusade",
+    "tags": [],
+    "threatMultiplier": 3.0,
+    "color": "bg-red-500",
+    "actionBarBorderClass": "border-red-500",
+    "glowType": "spell"
+  },
+  "dark_command": {
+    "id": "dark_command",
+    "name": "Dark Command",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 8,
+    "healing": 0,
+    "cooldown": 80,
+    "tauntTicks": 60,
+    "icon": "wow/spell_holy_avenginewrath",
+    "tags": [],
+    "color": "bg-red-600",
+    "actionBarBorderClass": "border-red-600",
+    "glowType": "spell"
+  },
+  "heart_strike": {
+    "id": "heart_strike",
+    "name": "Heart Strike",
+    "type": "AOE",
+    "school": "damage",
+    "manaCost": 20,
+    "healing": 44,
+    "cooldown": 40,
+    "icon": "wow/spell_holy_holynova",
+    "tags": [],
+    "threatMultiplier": 2.6,
+    "color": "bg-rose-500",
+    "actionBarBorderClass": "border-rose-500",
+    "glowType": "spell"
+  },
+  "icebound_fortitude": {
+    "id": "icebound_fortitude",
+    "name": "Icebound Fortitude",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 22,
+    "healing": 0,
+    "cooldown": 300,
+    "damageReduction": 0.4,
+    "damageReductionTicks": 90,
+    "icon": "wow/spell_holy_divineintervention",
+    "tags": [],
+    "color": "bg-sky-700",
+    "actionBarBorderClass": "border-sky-700",
+    "glowType": "spell"
+  }
+}

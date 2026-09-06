@@ -1,0 +1,40 @@
+{
+  "id": "DEATHKNIGHT",
+  "name": "Blood DK",
+  "role": "TANK",
+  "description": "Soaks what should have killed you and gives it back. Grim, and hard to move.",
+  "iconKey": "skull",
+  "color": "bg-red-800",
+  "textColor": "text-red-300",
+  "hoverBorderClass": "hover:border-red-500",
+  "locked": false,
+  "portraitUrl": "",
+  "portraitIcon": "death_knight",
+  "portraitGlow": "spell",
+  "passiveTraitName": "Blood Shield",
+  "passiveTraitDescription": "Damage you absorb hardens into a shield.",
+  "passiveTraitIcon": "wow/spell_holy_powerwordshield",
+  "tutorial": {
+    "passiveDescription": "Blood Shield: Damage you absorb hardens into a shield."
+  },
+  "statCurves": {
+    "baseIntellect": 18,
+    "baseSpirit": 12,
+    "intellectPerLevel": 2.0,
+    "spiritPerLevel": 1.0,
+    "baseUniqueStat": 12,
+    "uniqueStatPerLevel": 0.8
+  },
+  "progression": {
+    "starterSpells": [
+      "death_strike",
+      "dark_command"
+    ],
+    "spellOrder": [
+      "death_strike",
+      "dark_command",
+      "heart_strike",
+      "icebound_fortitude"
+    ]
+  }
+}

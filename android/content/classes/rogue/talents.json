@@ -1,0 +1,305 @@
+[
+  {
+    "id": "rg_r0c0",
+    "name": "Improved Poisons",
+    "description": "Increases power by 2% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 0,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r0c2",
+    "name": "Malice",
+    "description": "Increases critical strike chance by 1% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_blessedresillience",
+    "gridX": 2,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r0c4",
+    "name": "Relentless Strikes",
+    "description": "Increases maximum resource by 3% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_power",
+    "gridX": 4,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r1c1",
+    "name": "Lethality",
+    "description": "Increases power by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "rg_r0c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r1c3",
+    "name": "Puncturing Wounds",
+    "description": "Increases critical strike chance by 2% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_holy_blessedresillience",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "rg_r0c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r2c0",
+    "name": "Blade Flurry",
+    "description": "Increases haste by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_nature_swiftness",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r2c2",
+    "name": "Eviscerate",
+    "description": "Unlocks Eviscerate.",
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "rg_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "eviscerate"
+  },
+  {
+    "id": "rg_r2c4",
+    "name": "Ruthlessness",
+    "description": "Returns resource on each direct cast.",
+    "maxPoints": 3,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_holy_sealofwisdom",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaReturnOnDirectHeal": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r3c1",
+    "name": "Fan of Knives",
+    "description": "Unlocks Fan of Knives.",
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "rg_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "fan_of_knives"
+  },
+  {
+    "id": "rg_r3c3",
+    "name": "Cold Blood",
+    "description": "Increases critical strike chance by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_holy_blessedresillience",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "rg_r1c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r4c2",
+    "name": "Murder",
+    "description": "Increases power by 5% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "rg_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 5
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r4c4",
+    "name": "Endurance",
+    "description": "Increases toughness by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_holy_greaterblessingofsanctuary",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "rg_r3c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r5c1",
+    "name": "Adrenaline Rush",
+    "description": "Increases haste by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/spell_nature_swiftness",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "rg_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r5c3",
+    "name": "Hunger for Blood",
+    "description": "Increases power by 6% per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "rg_r4c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 6
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r6c2",
+    "name": "Mutilate",
+    "description": "Increases power by 10%.",
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "rg_r5c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 10
+    },
+    "points": 0
+  }
+]

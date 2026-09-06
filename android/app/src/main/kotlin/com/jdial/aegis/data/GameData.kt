@@ -12,7 +12,7 @@ fun interface ContentSource {
  * R8 keep rule plus the verifyMinifiedSaveContract Gradle task, so entries are
  * additive-only. A class's role lives in its ClassMeta, not here.
  */
-enum class PlayerClass { PRIEST, DRUID, PALADIN, MAGE, WARRIOR;
+enum class PlayerClass { PRIEST, DRUID, PALADIN, MAGE, WARRIOR, DEATHKNIGHT, ROGUE, MONK, WARLOCK;
 
     companion object {
         /**

@@ -694,5 +694,10 @@ fun hooksFor(cls: PlayerClass?): ClassHooks = when (cls) {
     // scales a Frostbolt exactly as it scales a Flash Heal -- no hook code.
     PlayerClass.MAGE -> NoHooks
     PlayerClass.WARRIOR -> NoHooks
+    // Every Android-owned class is statBonus-only, so none needs hook code.
+    PlayerClass.DEATHKNIGHT -> NoHooks
+    PlayerClass.ROGUE -> NoHooks
+    PlayerClass.MONK -> NoHooks
+    PlayerClass.WARLOCK -> NoHooks
     null -> NoHooks
 }

@@ -250,11 +250,39 @@ fun ClassSelectScreen(
                 // against a hardcoded 30, while the web app compared against 25.
                 // Both now read the same number out of balance.json.
                 val unlockLevel = data.balance.progression.paladinUnlockLevel
-                PlayerClass.entries.forEachIndexed { i, cls ->
-                    val bundle = data.bundle(cls)
-                    val locked = cls == PlayerClass.PALADIN && maxLevel < unlockLevel
-                    ClassCard(cls, bundle, locked, unlockLevel) { if (!locked) onPick(cls) }
-                    if (i < PlayerClass.entries.lastIndex) Spacer(Modifier.height(12.dp))
+
+                // Grouped by role, so nine classes read as three choices rather
+                // than one long list.
+                val byRole = PlayerClass.entries.groupBy { data.bundle(it).meta.role }
+                listOf("HEALER", "DPS", "TANK").forEach { role ->
+                    val classes = byRole[role].orEmpty()
+                    if (classes.isEmpty()) return@forEach
+
+                    BasicText(
+                        role,
+                        style = AegisType.label.copy(
+                            fontSize = 11.sp,
+                            color = when (role) {
+                                "TANK" -> Vital.shield
+                                "DPS" -> Vital.hurt
+                                else -> Vital.healthy
+                            },
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    classes.forEach { cls ->
+                        val bundle = data.bundle(cls)
+                        // Two different kinds of locked. The Paladin is finished
+                        // and gated on a level; the rest are simply unbuilt, and
+                        // saying "reach level N" about them would be a lie.
+                        val levelGated = cls == PlayerClass.PALADIN && maxLevel < unlockLevel
+                        val unbuilt = bundle.meta.locked
+                        ClassCard(cls, bundle, levelGated, unbuilt, unlockLevel) {
+                            if (!levelGated && !unbuilt) onPick(cls)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    Spacer(Modifier.height(10.dp))
                 }
             }
         }
@@ -265,21 +293,26 @@ fun ClassSelectScreen(
 private fun ClassCard(
     cls: PlayerClass,
     bundle: ClassBundle,
-    locked: Boolean,
+    levelGated: Boolean,
+    unbuilt: Boolean,
     unlockLevel: Int,
     onClick: () -> Unit,
 ) {
     val accent = accentFor(cls)
+    val locked = levelGated || unbuilt
     ForgedPanel(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = !locked, onClick = onClick)
             .semantics {
                 role = Role.Button
-                contentDescription = if (locked) {
-                    "${bundle.meta.name}, locked, reach level $unlockLevel to unlock"
-                } else {
-                    "${bundle.meta.name}. ${bundle.meta.passiveTraitName}. ${bundle.meta.description}"
+                contentDescription = when {
+                    unbuilt -> "${bundle.meta.name}, not available yet"
+                    levelGated -> "${bundle.meta.name}, locked, reach level $unlockLevel to unlock"
+                    else -> {
+                        "${bundle.meta.name}. ${bundle.meta.passiveTraitName}. " +
+                            bundle.meta.description
+                    }
                 }
             },
         accent = accent.core,
@@ -324,7 +357,9 @@ private fun ClassCard(
                 Spacer(Modifier.height(4.dp))
                 if (locked) {
                     BasicText(
-                        "REACH LVL $unlockLevel TO UNLOCK",
+                        // No goal for the unbuilt ones: there is nothing to
+                        // reach, and inventing a level would be a promise.
+                        if (unbuilt) "NOT AVAILABLE YET" else "REACH LVL $unlockLevel TO UNLOCK",
                         style = AegisType.label.copy(color = Gilt.mid),
                     )
                 } else {
@@ -363,6 +398,10 @@ private fun classPortrait(cls: PlayerClass) = when (cls) {
     PlayerClass.PALADIN -> "class-icons/paladin"
     PlayerClass.MAGE -> "class-icons/mage"
     PlayerClass.WARRIOR -> "class-icons/warrior"
+    PlayerClass.DEATHKNIGHT -> "class-icons/death_knight"
+    PlayerClass.ROGUE -> "class-icons/rogue"
+    PlayerClass.MONK -> "class-icons/monk"
+    PlayerClass.WARLOCK -> "class-icons/warlock"
 }
 
 // --- dungeon list -----------------------------------------------------------

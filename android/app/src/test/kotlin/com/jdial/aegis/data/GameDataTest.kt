@@ -45,11 +45,21 @@ class GameDataTest {
         assertEquals(4, data.bundle(PlayerClass.WARRIOR).spells.size)
         assertEquals(16, data.bundle(PlayerClass.WARRIOR).talents.size)
 
+        // The Android-owned classes: two per role beyond the healers, the third
+        // of each new role deliberately unbuilt.
+        for (cls in listOf(
+            PlayerClass.MAGE, PlayerClass.WARRIOR, PlayerClass.DEATHKNIGHT,
+            PlayerClass.ROGUE, PlayerClass.MONK, PlayerClass.WARLOCK,
+        )) {
+            assertEquals("$cls spells", 4, data.bundle(cls).spells.size)
+            assertTrue("$cls needs a full tree", data.bundle(cls).talents.size >= 15)
+        }
+
         // Priest and Paladin both define `flash_heal`, so the web app's 13 class
         // spells collapse to 12 unique ids, plus the shared mana_potion. The
         // Mage adds four more, none of which may collide -- ids are a flat
         // global namespace and the merged map silently lets one shadow another.
-        assertEquals(21, data.spells.size)
+        assertEquals(37, data.spells.size)
         val ids = PlayerClass.entries.flatMap { data.bundle(it).spells.keys }
         assertEquals(
             "spell ids must be unique except the known flash_heal duplicate",

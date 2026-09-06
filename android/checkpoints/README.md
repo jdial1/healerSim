@@ -4,15 +4,16 @@ Archived builds kept at points worth being able to return to.
 
 ## `overheal-roles-2.0-debug-signed.apk`
 
-The role-based game: five classes across three roles (healer, DPS, tank), with
-a threat model, player damage, active mitigation and an AI healer.
+The role-based game: nine classes across three roles, three per role with the
+third of each new role not yet built. Threat model, player damage, active
+mitigation, an AI healer and an editable spellbook.
 
 | | |
 |---|---|
 | Variant | `debug` |
 | Size | 13 MB |
-| sha256 | `36ff0a6a98ae6bb4fac21e9df5ebf8b5cdb003430ed08e46f266ee26036aafbb` |
-| Verified | golden byte-identical, balance guard, 75 Kotlin tests, `minifyReleaseWithR8` save contract, `npm test` / `npm run tests` / web build |
+| sha256 | `eb6874e58d3944ae9e839315a6fa805295e83c0f7ec3d794f1d75faa3e9eca90` |
+| Verified | golden byte-identical, balance guard, 77 Kotlin tests, `minifyReleaseWithR8` save contract, `npm test` / `npm run tests` / web build |
 
 Debug-signed, exactly as the 1.0 checkpoint below is, and for the same reason —
 see the warning there before installing or distributing it.

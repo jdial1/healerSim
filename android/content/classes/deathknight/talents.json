@@ -1,0 +1,305 @@
+[
+  {
+    "id": "dk_r0c0",
+    "name": "Bloodworms",
+    "description": "Increases power by 2% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 0,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r0c2",
+    "name": "Might of the Frozen Wastes",
+    "description": "Increases critical strike chance by 1% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_blessedresillience",
+    "gridX": 2,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r0c4",
+    "name": "Rune Tap",
+    "description": "Increases maximum resource by 3% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_power",
+    "gridX": 4,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r1c1",
+    "name": "Improved Death Strike",
+    "description": "Increases power by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "dk_r0c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r1c3",
+    "name": "Subversion",
+    "description": "Increases critical strike chance by 2% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_holy_blessedresillience",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "dk_r0c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r2c0",
+    "name": "Runic Focus",
+    "description": "Increases haste by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_nature_swiftness",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r2c2",
+    "name": "Heart Strike",
+    "description": "Unlocks Heart Strike.",
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "dk_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "heart_strike"
+  },
+  {
+    "id": "dk_r2c4",
+    "name": "Scent of Blood",
+    "description": "Returns resource on each direct cast.",
+    "maxPoints": 3,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_holy_sealofwisdom",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaReturnOnDirectHeal": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r3c1",
+    "name": "Icebound Fortitude",
+    "description": "Unlocks Icebound Fortitude.",
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "dk_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "icebound_fortitude"
+  },
+  {
+    "id": "dk_r3c3",
+    "name": "Butchery",
+    "description": "Increases critical strike chance by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_holy_blessedresillience",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "dk_r1c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r4c2",
+    "name": "Vendetta",
+    "description": "Increases power by 5% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "dk_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 5
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r4c4",
+    "name": "Veteran of the Third War",
+    "description": "Increases toughness by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_holy_greaterblessingofsanctuary",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "dk_r3c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r5c1",
+    "name": "Bone Shield",
+    "description": "Increases haste by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/spell_nature_swiftness",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "dk_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r5c3",
+    "name": "Crimson Scourge",
+    "description": "Increases power by 6% per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "dk_r4c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 6
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r6c2",
+    "name": "Dancing Rune Weapon",
+    "description": "Increases power by 10%.",
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "dk_r5c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 10
+    },
+    "points": 0
+  }
+]

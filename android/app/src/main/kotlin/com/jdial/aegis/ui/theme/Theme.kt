@@ -79,6 +79,10 @@ val DruidAccent = ClassAccent(Color(0xFF6EE7B7), Color(0xFF10B981), Color(0xFF06
 val PaladinAccent = ClassAccent(Color(0xFFF0ABFC), Color(0xFFE879F9), Color(0xFF86198F))
 val MageAccent = ClassAccent(Color(0xFF7DD3FC), Color(0xFF38BDF8), Color(0xFF075985))
 val WarriorAccent = ClassAccent(Color(0xFFFCD9A8), Color(0xFFD97706), Color(0xFF78350F))
+val DeathKnightAccent = ClassAccent(Color(0xFFFCA5A5), Color(0xFFDC2626), Color(0xFF7F1D1D))
+val RogueAccent = ClassAccent(Color(0xFFFDE68A), Color(0xFFCA8A04), Color(0xFF713F12))
+val MonkAccent = ClassAccent(Color(0xFF6EE7B7), Color(0xFF059669), Color(0xFF064E3B))
+val WarlockAccent = ClassAccent(Color(0xFFDDD6FE), Color(0xFF7C3AED), Color(0xFF4C1D95))
 
 fun accentFor(cls: PlayerClass?): ClassAccent = when (cls) {
     PlayerClass.PRIEST -> PriestAccent
@@ -86,6 +90,10 @@ fun accentFor(cls: PlayerClass?): ClassAccent = when (cls) {
     PlayerClass.PALADIN -> PaladinAccent
     PlayerClass.MAGE -> MageAccent
     PlayerClass.WARRIOR -> WarriorAccent
+    PlayerClass.DEATHKNIGHT -> DeathKnightAccent
+    PlayerClass.ROGUE -> RogueAccent
+    PlayerClass.MONK -> MonkAccent
+    PlayerClass.WARLOCK -> WarlockAccent
     null -> ClassAccent(Gilt.bright, Gilt.core, Gilt.deep)
 }
 

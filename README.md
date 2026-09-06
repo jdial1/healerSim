@@ -40,13 +40,17 @@ classes belong in an Android-owned assets path, merged at load.
 
 ### The Android app is where development continues
 
-It is no longer a healer game. Five classes across three roles:
+It is no longer a healer game. Nine classes, three per role:
 
-| Class | Role |
+| Role | Classes |
 |---|---|
-| Holy Priest, Resto Druid, Holy Paladin | Healer |
-| Frost Mage | DPS |
-| Prot Warrior | Tank |
+| Healer | Holy Priest, Resto Druid, Holy Paladin *(unlocks at 25)* |
+| DPS | Frost Mage, Assassin Rogue, Affliction Lock *(not built)* |
+| Tank | Prot Warrior, Blood DK, Brewmaster *(not built)* |
+
+Two kinds of unavailable, and the cards say which: the Paladin is finished and
+gated on a level, the other two are simply unbuilt, so their cards promise no
+level to reach.
 
 Built on a threat model, real player damage, active mitigation, and an AI healer
 that keeps the party up when you are not the one doing it. Co-op is deliberately

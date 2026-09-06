@@ -1,0 +1,40 @@
+{
+  "id": "ROGUE",
+  "name": "Assassin Rogue",
+  "role": "DPS",
+  "description": "Bleeds things to death from behind. Fragile, and entirely unbothered by that.",
+  "iconKey": "dagger",
+  "color": "bg-yellow-600",
+  "textColor": "text-yellow-300",
+  "hoverBorderClass": "hover:border-yellow-400",
+  "locked": false,
+  "portraitUrl": "",
+  "portraitIcon": "rogue",
+  "portraitGlow": "spell",
+  "passiveTraitName": "Seal Fate",
+  "passiveTraitDescription": "Critical strikes sharpen the wound that follows.",
+  "passiveTraitIcon": "wow/spell_holy_surgeoflight",
+  "tutorial": {
+    "passiveDescription": "Seal Fate: Critical strikes sharpen the wound that follows."
+  },
+  "statCurves": {
+    "baseIntellect": 32,
+    "baseSpirit": 14,
+    "intellectPerLevel": 3.8,
+    "spiritPerLevel": 1.0,
+    "baseUniqueStat": 9,
+    "uniqueStatPerLevel": 0.6
+  },
+  "progression": {
+    "starterSpells": [
+      "sinister_strike",
+      "rupture"
+    ],
+    "spellOrder": [
+      "sinister_strike",
+      "rupture",
+      "eviscerate",
+      "fan_of_knives"
+    ]
+  }
+}
