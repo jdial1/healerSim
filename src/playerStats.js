@@ -195,8 +195,11 @@ function getHealingMultiplier(cls, level, talents) {
   const spiritPct = spirit * HEALING_PCT_PER_SPIRIT;
   return 1 + (spiritPct + talentPct) / 100;
 }
-function randomAllyLevel(playerLevel) {
-  return Math.max(1, playerLevel + Math.floor(Math.random() * 3) - 1);
+// The rng is injectable so the tick can pass its own seeded stream. It defaults
+// to Math.random because the menu paths that build a fresh party have no seed
+// and do not need one -- only draws made *inside* a tick have to be reproducible.
+function randomAllyLevel(playerLevel, rng = Math.random) {
+  return Math.max(1, playerLevel + Math.floor(rng() * 3) - 1);
 }
 const ALLY_HEALTH_DEFAULTS = npcPoolsData.allyHealthDefaults;
 function getMaxHealthForPool(role, level, healthScaling) {

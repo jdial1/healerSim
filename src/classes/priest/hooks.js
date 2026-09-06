@@ -121,8 +121,8 @@ function applyBindingHealSelf(s, newParty, targetId, spell, healMultB, critH, tM
     oh
   };
 }
-function rollSurgeOfLight(s, spellId) {
-  return spellId === "flash_heal" && getRanks(s.talents, "surge_of_light") > 0 && Math.random() < PRIEST.surgeOfLightProcChancePerRank * getRanks(s.talents, "surge_of_light");
+function rollSurgeOfLight(s, spellId, rng = Math.random) {
+  return spellId === "flash_heal" && getRanks(s.talents, "surge_of_light") > 0 && rng() < PRIEST.surgeOfLightProcChancePerRank * getRanks(s.talents, "surge_of_light");
 }
 function priestFlashCritBonusFromSynergy(s) {
   if (getRanks(s.talents, "gleaming_proclamation") <= 0) return 0;

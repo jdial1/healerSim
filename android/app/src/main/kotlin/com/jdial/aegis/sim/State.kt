@@ -12,7 +12,19 @@ import kotlinx.serialization.Serializable
 
 const val TICK_RATE_MS = 100
 const val TICKS_PER_SECOND = 1000 / TICK_RATE_MS
-const val HEALER_UNIT_ID = "5"
+/**
+ * The party slot the human occupies. Always "5", whatever role they play.
+ *
+ * Party ids are positional and load-bearing ("1" is the tank, "2".."4" the DPS),
+ * and both the engine and the save index into them. When roles become playable
+ * the player keeps this slot and only their `role` changes -- the generator
+ * fills the other four with whatever roles are missing. Moving the player
+ * between slots to match their role would touch every one of those call sites
+ * for no gain.
+ *
+ * Named HEALER_UNIT_ID until the healer stopped being the only thing you can be.
+ */
+const val PLAYER_UNIT_ID = "5"
 
 /** The only consumable, referenced from the pipeline, the UI and the loadout. */
 const val MANA_POTION_ID = "mana_potion"

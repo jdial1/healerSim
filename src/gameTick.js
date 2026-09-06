@@ -563,7 +563,7 @@ function resolvePlayerSystems(state, partyAfterEnv, dmgNaturalPerfectionStacks, 
     natureGraceOh
   };
 }
-function resolveFailure(state, newParty, now) {
+function resolveFailure(state, newParty, now, random) {
   if (!newParty.every((u) => u.health <= 0) && newParty.find((u) => u.role === "HEALER")?.health !== 0) {
     return null;
   }
@@ -579,7 +579,7 @@ function resolveFailure(state, newParty, now) {
     const nextDiag = finalizeDiagnostics(recordPhaseDiagnostics(state, now), state, now);
     return {
       ...state,
-      party: state.playerClass !== null ? generateRandomParty(meta.level, state.playerClass) : state.party,
+      party: state.playerClass !== null ? generateRandomParty(meta.level, state.playerClass, random) : state.party,
       xp: newXp,
       level: meta.level,
       talentPoints: meta.talentPoints,
@@ -681,7 +681,7 @@ function resolveOngoingCombat(state, sys, boss, bossBuffsNext, random, dpsPaceMu
           computeDungeonXpGain(source, state.level) * BALANCE.endless.bossKillXpFraction * dungeonPaceXpMultiplier(state.dungeonPace)
         );
         const { meta: meta2, isLevelUp: isLevelUp2 } = getPostDungeonLevelInfo(state, waveXp);
-        const nextParty = isLevelUp2 && state.playerClass ? generateRandomParty(meta2.level, state.playerClass) : newParty;
+        const nextParty = isLevelUp2 && state.playerClass ? generateRandomParty(meta2.level, state.playerClass, random) : newParty;
         const trashHpNext = getTrashMaxHealth(nextDungeon);
         const profNext = getCombatProfile(nextDungeon);
         const mechCdNext = randomIntInclusive(
@@ -739,7 +739,7 @@ function resolveOngoingCombat(state, sys, boss, bossBuffsNext, random, dpsPaceMu
         completedDungeonIds,
         maxMana: meta.maxMana,
         mana: Math.min(meta.maxMana, state.mana),
-        party: state.playerClass !== null ? generateRandomParty(meta.level, state.playerClass) : state.party,
+        party: state.playerClass !== null ? generateRandomParty(meta.level, state.playerClass, random) : state.party,
         floatingCombatTexts: [],
         endlessStacks: 0,
         dungeonOutcome: d ? {
@@ -819,7 +819,7 @@ function advanceCombatTick(state, random, now, dpsMultiplierOverride) {
     dungeonRunHealEffective: stAcc.dungeonRunHealEffective + sys.natureGraceEff,
     dungeonRunHealOverheal: stAcc.dungeonRunHealOverheal + sys.natureGraceOh
   };
-  const fail = resolveFailure(stAcc, sys.party, now);
+  const fail = resolveFailure(stAcc, sys.party, now, random);
   if (fail) return { ...fail, floatingCombatTexts: [] };
   return {
     ...resolveOngoingCombat(stAcc, sys, boss, bossBuffsNext, random, dpsPaceMultiplier, now),

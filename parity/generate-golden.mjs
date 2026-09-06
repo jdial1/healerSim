@@ -270,6 +270,16 @@ const TICK_SCENARIOS = [
     rotation: { everyTicks: 10, spells: ["flash_heal", "renew"] },
   },
   {
+    // Reaches the two cast-time procs that used to draw from Math.random and so
+    // could never be reproduced: Surge of Light (p_r2c3) fires off Flash Heal,
+    // and the free finisher it grants only then becomes reachable. Level 9 is
+    // the talent's own levelReq.
+    name: "priest-surge-of-light",
+    cls: "PRIEST", dungeon: "deadmines", phase: "BOSS", seed: 24601, ticks: 500, level: 9,
+    talents: { p_r2c3: 1 },
+    rotation: { everyTicks: 6, spells: ["flash_heal"] },
+  },
+  {
     name: "paladin-talented-devotion",
     cls: "PALADIN", dungeon: "deadmines", phase: "BOSS", seed: 777, ticks: 500, level: 4,
     // Off-default so the per-run damage jitter is actually exercised.
@@ -305,6 +315,10 @@ out.tickScenarios = TICK_SCENARIOS.map((sc) => {
           spellId,
           targetId: target.id,
           critRoll: random() * 100,
+          // Cast-time procs (Surge of Light, the Paladin holy-power talent)
+          // draw from this. Without it they used Math.random and no scenario
+          // that reached them could be reproduced.
+          random,
         });
       }
     }

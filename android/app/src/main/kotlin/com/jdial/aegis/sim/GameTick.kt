@@ -476,7 +476,7 @@ class GameTick(
 
         val regen = manaRegenPerTick(lockTicks, spirit) +
             s.playerCombatBuffs.potionDrip() +
-            hooks.manaReturnOnTick(ctx, lockTicks)
+            hooks.resourceReturnOnTick(ctx, lockTicks)
         val mana = min(s.maxMana.toDouble(), s.mana + regen + env.manaFromHotTicks + env.paladinResolveMana)
 
         var buffs = env.playerCombatBuffs.tickBuffs()
@@ -576,7 +576,7 @@ class GameTick(
                 val hp = stats.maxHealthForRole("DPS", lv).toDouble()
                 add(Unit("${i + 2}", tpl.name, UnitRole.DPS, lv, hp, hp))
             }
-            add(Unit(HEALER_UNIT_ID, "Player (You)", UnitRole.HEALER, max(1, playerLevel), healerHp, healerHp))
+            add(Unit(PLAYER_UNIT_ID, "Player (You)", UnitRole.HEALER, max(1, playerLevel), healerHp, healerHp))
         }
     }
 

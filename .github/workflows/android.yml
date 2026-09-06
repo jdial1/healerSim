@@ -16,9 +16,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # No Node step: the icons and content JSON that syncGameData copies are
-      # all tracked, so the Android build no longer depends on a web install
-      # or on two CDNs being reachable.
+      # Node is here only for the golden check below. The icons and content
+      # JSON that syncGameData copies are all tracked, so the Android *build*
+      # still does not depend on a web install or on any CDN being reachable.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # parity/golden.json is the reference the Kotlin engine is tested against,
+      # and it is only worth anything if it still describes the JS engine. This
+      # regenerates it twice and requires both runs to equal the committed
+      # bytes, which catches two different failures: a JS engine change nobody
+      # regenerated for, and unseeded randomness making the file a record of one
+      # past dice roll. The latter was true until the tick's seeded rng was
+      # threaded through generateRandomParty.
+      - name: Golden corpus is frozen and reproducible
+        run: node scripts/check-golden-frozen.mjs
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

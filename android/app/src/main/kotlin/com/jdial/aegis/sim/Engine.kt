@@ -14,9 +14,26 @@ import kotlin.math.min
  * seeded stream.
  */
 sealed interface Action {
+    /**
+     * Who this action came from — a party unit id, defaulting to the local
+     * player ([PLAYER_UNIT_ID]).
+     *
+     * Nothing reads it yet and single-player never needs it. It exists now
+     * because retrofitting an identity field onto a sealed hierarchy after
+     * other players can send actions is a rewrite, whereas defaulting it today
+     * costs one line and no behaviour: every existing construction site keeps
+     * compiling, and the reducer keeps ignoring it.
+     */
+    val actorId: String get() = PLAYER_UNIT_ID
+
     data class Tick(val ticks: Int = 1) : Action
     data class StartDungeon(val dungeon: Dungeon, val pace: String) : Action
-    data class CastSpell(val spellId: String, val targetId: String?, val critRoll: Double) : Action
+    data class CastSpell(
+        val spellId: String,
+        val targetId: String?,
+        val critRoll: Double,
+        override val actorId: String = PLAYER_UNIT_ID,
+    ) : Action
     data class UnlockTalent(val talentId: String) : Action
     data class DecrementTalent(val talentId: String) : Action
     data object RespecTalents : Action

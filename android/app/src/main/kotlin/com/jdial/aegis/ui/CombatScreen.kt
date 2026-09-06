@@ -84,7 +84,7 @@ import com.jdial.aegis.ui.theme.ForgedPanel
 import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.Ink
 import com.jdial.aegis.ui.theme.LocalAccent
-import com.jdial.aegis.sim.HEALER_UNIT_ID
+import com.jdial.aegis.sim.PLAYER_UNIT_ID
 import com.jdial.aegis.ui.theme.LocalUiSettings
 import com.jdial.aegis.ui.theme.Obsidian
 import com.jdial.aegis.ui.theme.Vital
@@ -160,7 +160,7 @@ fun CombatScreen(
                     // Sorted for display only — state.party is never reordered,
                     // because the engine and the save both index it positionally.
                     val ordered = if (ui.selfFirst) {
-                        state.party.sortedBy { if (it.id == HEALER_UNIT_ID) 0 else 1 }
+                        state.party.sortedBy { if (it.id == PLAYER_UNIT_ID) 0 else 1 }
                     } else {
                         state.party
                     }

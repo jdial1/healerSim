@@ -175,7 +175,7 @@ function gameReducer(state, action) {
     case "RESPEC_TALENTS":
       return reduceRespecTalents(state);
     case "CAST_SPELL":
-      return reduceCastSpell(state, action.spellId, action.targetId, action.critRoll);
+      return reduceCastSpell(state, action.spellId, action.targetId, action.critRoll, action.random);
     case "ADD_XP_NEXT_LEVEL": {
       if (!state.playerClass) return state;
       const { into, needed } = xpProgressWithinLevel(state.xp);
@@ -244,7 +244,7 @@ function reduceDecrementTalent(state, talentId) {
   if (!talent || talent.points <= 0 || state.talents.some((c) => c.points > 0 && c.id !== talentId && getPrerequisiteIds(state.talents, c).includes(talentId))) return state;
   return applyTalentUpdate(state, state.talents.map((t) => t.id === talentId ? { ...t, points: Math.max(0, t.points - 1) } : t), true);
 }
-function reduceCastSpell(state, spellId, targetId, critRoll) {
+function reduceCastSpell(state, spellId, targetId, critRoll, random = Math.random) {
   const spell = SPELLS[spellId];
   if (!spell) return state;
   const cdRem = state.spellCooldowns[spellId] ?? 0;
@@ -262,7 +262,13 @@ function reduceCastSpell(state, spellId, targetId, critRoll) {
       );
       if (cdR > 0) nextCooldowns[sid] = cdR;
       return nextPi;
-    }
+    },
+    // Cast-time procs draw from here rather than Math.random, so a seeded
+    // scenario can reproduce them. The Kotlin engine has always drawn these
+    // from its seeded Rng, so an unseeded draw here was a latent parity
+    // divergence -- currently unreachable, because no golden scenario takes
+    // Surge of Light or the Paladin holy-power talent.
+    random
   };
   const next = tryCast(state, { spell, spellId, targetId, critRoll }, cdRem, rt);
   if (next === state) return state;

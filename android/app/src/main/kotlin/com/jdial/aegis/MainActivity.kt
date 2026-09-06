@@ -47,7 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.PlayerClass
-import com.jdial.aegis.sim.HEALER_UNIT_ID
+import com.jdial.aegis.sim.PLAYER_UNIT_ID
 import com.jdial.aegis.ui.CharacterScreen
 import com.jdial.aegis.ui.ClassSelectScreen
 import com.jdial.aegis.ui.ConfirmDialog
@@ -128,7 +128,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
     var screen: Screen by remember { mutableStateOf(Screen.Splash) }
     var queued: Dungeon? by remember { mutableStateOf(null) }
     var confirmAbandon by remember { mutableStateOf(false) }
-    var targetId: String? by remember { mutableStateOf(HEALER_UNIT_ID) }
+    var targetId: String? by remember { mutableStateOf(PLAYER_UNIT_ID) }
     val seenTutorial by vm.tutorialSteps.collectAsStateWithLifecycle()
 
     // One tutorial card per screen, the first time that screen is reached.
@@ -147,7 +147,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
     // clearing it here would reintroduce the same bug.)
     LaunchedEffect(state.party) {
         val alive = state.party.any { it.id == targetId && it.isAlive }
-        if (!alive) targetId = HEALER_UNIT_ID
+        if (!alive) targetId = PLAYER_UNIT_ID
     }
 
     // Entering and leaving a run drives the screen, so the two never disagree.
@@ -277,7 +277,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                     onClose = { queued = null },
                     onEnter = { pace ->
                         queued = null
-                        targetId = HEALER_UNIT_ID
+                        targetId = PLAYER_UNIT_ID
                         vm.startDungeon(dungeon, pace)
                     },
                 )

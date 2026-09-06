@@ -23,12 +23,12 @@ interface ClassHooks {
 
     fun onHealManaCost(ctx: CastContext, spell: Spell, spellId: String, surgeFree: Boolean): Int? = null
 
-    fun onHealLand(ctx: CastContext, land: LandContext, party: List<Unit>, buffs: List<PlayerBuff>): LandResult =
+    fun onCastLand(ctx: CastContext, land: LandContext, party: List<Unit>, buffs: List<PlayerBuff>): LandResult =
         LandResult(party, buffs, 0.0, 0.0)
 
     fun manaAfterHeal(ctx: CastContext, land: LandContext, initialMana: Double): Double = initialMana
 
-    fun manaReturnOnTick(ctx: CastContext, spiritLockoutTicks: Int): Double = 0.0
+    fun resourceReturnOnTick(ctx: CastContext, spiritLockoutTicks: Int): Double = 0.0
 
     fun hasteBonusSum(ctx: CastContext): Double = 0.0
 
@@ -74,7 +74,7 @@ class CastContext(
     fun uniqueStatRating(): Double = stats.uniqueStatRating(cls, level, talents)
 }
 
-/** The cast being resolved, passed to `onHealLand` and the mana hooks. */
+/** The cast being resolved, passed to `onCastLand` and the mana hooks. */
 data class LandContext(
     val spell: Spell,
     val spellId: String,
@@ -122,14 +122,14 @@ object PriestHooks : ClassHooks {
     }
 
     /** Meditative Wellspring: returns mana *only while* the five-second rule is active. */
-    override fun manaReturnOnTick(ctx: CastContext, spiritLockoutTicks: Int): Double {
+    override fun resourceReturnOnTick(ctx: CastContext, spiritLockoutTicks: Int): Double {
         if (ctx.cls != PlayerClass.PRIEST || spiritLockoutTicks <= 0) return 0.0
         val ranks = ctx.talentRanks("p_r0c4")
         if (ranks <= 0) return 0.0
         return ctx.maxMana * ctx.data.balance.combat.priest.meditativeManaReturnPerRankPerTick * ranks
     }
 
-    override fun onHealLand(
+    override fun onCastLand(
         ctx: CastContext,
         land: LandContext,
         party: List<Unit>,
@@ -245,7 +245,7 @@ object PriestHooks : ClassHooks {
         val ranks = ctx.ranks("binding_heal")
         if (ctx.cls == null || ranks <= 0) return LandResult(party, emptyList(), 0.0, 0.0)
         val priest = ctx.data.balance.combat.priest
-        val healer = party.firstOrNull { it.id == HEALER_UNIT_ID }
+        val healer = party.firstOrNull { it.id == PLAYER_UNIT_ID }
         val target = ctx.party.firstOrNull { it.id == land.targetId }
         if (healer == null || target == null || target.id == healer.id) {
             return LandResult(party, emptyList(), 0.0, 0.0)
@@ -254,7 +254,7 @@ object PriestHooks : ClassHooks {
             priest.bindingHealSelfFraction * min(priest.bindingHealMaxRanksForCap, ranks)
         val applied = applyHealToUnit(healer, bind)
         return LandResult(
-            party.map { if (it.id == HEALER_UNIT_ID) it.copy(health = applied.health) else it },
+            party.map { if (it.id == PLAYER_UNIT_ID) it.copy(health = applied.health) else it },
             emptyList(), applied.effective, applied.overheal,
         )
     }
@@ -376,7 +376,7 @@ object DruidHooks : ClassHooks {
         return null
     }
 
-    override fun onHealLand(
+    override fun onCastLand(
         ctx: CastContext,
         land: LandContext,
         party: List<Unit>,
@@ -520,7 +520,7 @@ object DruidHooks : ClassHooks {
 
 object PaladinHooks : ClassHooks {
 
-    override fun onHealLand(
+    override fun onCastLand(
         ctx: CastContext,
         land: LandContext,
         party: List<Unit>,

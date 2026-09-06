@@ -109,10 +109,10 @@ function shuffleArray(arr, rng = Math.random) {
   }
   return copy;
 }
-function generateRandomParty(playerLevel, playerClass) {
-  const tankTpl = TANK_POOL[Math.floor(Math.random() * TANK_POOL.length)];
-  const selectedDps = shuffleArray(DPS_POOL).slice(0, 3);
-  const tankLevel = randomAllyLevel(playerLevel);
+function generateRandomParty(playerLevel, playerClass, rng = Math.random) {
+  const tankTpl = TANK_POOL[Math.floor(rng() * TANK_POOL.length)];
+  const selectedDps = shuffleArray(DPS_POOL, rng).slice(0, 3);
+  const tankLevel = randomAllyLevel(playerLevel, rng);
   const tankHp = getMaxHealthForPool("TANK", tankLevel, tankTpl.healthScaling);
   const healerLevel = Math.max(1, playerLevel);
   const healerHp = getHealerMaxHealth(playerClass, healerLevel);
@@ -130,7 +130,7 @@ function generateRandomParty(playerLevel, playerClass) {
       livingSeedPool: 0
     },
     ...selectedDps.map((tpl, i) => {
-      const lv = randomAllyLevel(playerLevel);
+      const lv = randomAllyLevel(playerLevel, rng);
       const hp = getMaxHealthForPool("DPS", lv, tpl.healthScaling);
       return {
         ...tpl,

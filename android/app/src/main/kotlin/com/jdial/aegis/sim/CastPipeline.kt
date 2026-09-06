@@ -372,7 +372,7 @@ class CastPipeline(
             needMana = ready.needMana.toDouble(),
             surgeFree = ready.surgeFree,
         )
-        val landed = hooks.onHealLand(ctx, land, patch.party, castBuffs)
+        val landed = hooks.onCastLand(ctx, land, patch.party, castBuffs)
         var party = landed.party
         var buffs = landed.playerCombatBuffs
 

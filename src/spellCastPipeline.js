@@ -375,7 +375,7 @@ function applyStandardHealCast(s, ready, rt) {
       hp2 = Math.min(3, hp2 + gain);
     }
   }
-  if (s.playerClass === "PALADIN" && isCritH && (s.talents.find((t) => t.id === "h_r5c4")?.points ?? 0) > 0 && Math.random() < 0.25) {
+  if (s.playerClass === "PALADIN" && isCritH && (s.talents.find((t) => t.id === "h_r5c4")?.points ?? 0) > 0 && rt.random() < 0.25) {
     hp2 = Math.min(3, hp2 + 1);
   }
   if (tower2) {
@@ -383,7 +383,7 @@ function applyStandardHealCast(s, ready, rt) {
   }
   // Surge of Light: a Flash Heal can proc a free finisher. Nothing granted this
   // buff before, so the consumption path below was unreachable.
-  if (s.playerClass === "PRIEST" && rollSurgeOfLight(s, spellId)) {
+  if (s.playerClass === "PRIEST" && rollSurgeOfLight(s, spellId, rt.random)) {
     pbuffs = addBuff(pbuffs, "surge_of_light", SURGE_OF_LIGHT_TICKS, 1);
   }
   const spentManaForSpiritRegen = needMana > 0 && !(surgeFree && isPriestSurgeFinisher(spellId));

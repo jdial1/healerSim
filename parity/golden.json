@@ -2611,28 +2611,28 @@
           "party": [
             {
               "id": "1",
-              "health": 208,
+              "health": 156,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "2",
-              "health": 77,
+              "health": 89,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "3",
-              "health": 101,
+              "health": 77,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "4",
-              "health": 101,
+              "health": 77,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -3780,28 +3780,28 @@
           "party": [
             {
               "id": "1",
-              "health": 156,
+              "health": 182,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "2",
-              "health": 89,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "3",
-              "health": 77,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "4",
-              "health": 77,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -4406,7 +4406,7 @@
           "party": [
             {
               "id": "1",
-              "health": 156,
+              "health": 182,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -4427,7 +4427,7 @@
             },
             {
               "id": "4",
-              "health": 89,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -5442,21 +5442,21 @@
             },
             {
               "id": "2",
-              "health": 89,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "3",
-              "health": 113,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "4",
-              "health": 113,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -6586,7 +6586,7 @@
             },
             {
               "id": "3",
-              "health": 113,
+              "health": 89,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -6601,6 +6601,548 @@
             {
               "id": "5",
               "health": 101,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "priest-surge-of-light",
+      "cls": "PRIEST",
+      "dungeonId": "deadmines",
+      "phase": "BOSS",
+      "seed": 24601,
+      "level": 9,
+      "maxMana": 696,
+      "talents": {
+        "p_r2c3": 1
+      },
+      "jitter": 1,
+      "rotation": {
+        "everyTicks": 6,
+        "spells": [
+          "flash_heal"
+        ]
+      },
+      "xp": 4856,
+      "party": [
+        {
+          "id": "1",
+          "name": "Tanky McShield",
+          "role": "TANK",
+          "level": 9,
+          "maxHealth": 338
+        },
+        {
+          "id": "2",
+          "name": "Zappy Mage",
+          "role": "DPS",
+          "level": 9,
+          "maxHealth": 161
+        },
+        {
+          "id": "3",
+          "name": "Hunter Mark",
+          "role": "DPS",
+          "level": 8,
+          "maxHealth": 149
+        },
+        {
+          "id": "4",
+          "name": "Frostweaver",
+          "role": "DPS",
+          "level": 9,
+          "maxHealth": 161
+        },
+        {
+          "id": "5",
+          "name": "Player (You)",
+          "role": "HEALER",
+          "level": 9,
+          "maxHealth": 161
+        }
+      ],
+      "mechanicCooldown": 5,
+      "snapshots": [
+        {
+          "tick": 20,
+          "phase": "BOSS",
+          "trashPullsRemaining": 0,
+          "enemyHealth": 4227.293486,
+          "mana": 624,
+          "progress": 79.479158,
+          "combatActive": true,
+          "mechanicCooldown": 32,
+          "mechanicOrdinal": 1,
+          "cooldowns": [],
+          "playerBuffs": [
+            {
+              "id": "priest_weave_hot",
+              "ticks": 78,
+              "stacks": 1
+            },
+            {
+              "id": "spirit_regen_lockout",
+              "ticks": 48,
+              "stacks": 1
+            }
+          ],
+          "bossBuffs": [],
+          "healEffective": 1.155636,
+          "healOverheal": 369.336089,
+          "xp": 4856,
+          "level": 9,
+          "outcome": null,
+          "outcomeXp": null,
+          "party": [
+            {
+              "id": "1",
+              "health": 337.787599,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "2",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "3",
+              "health": 148.836405,
+              "shield": 20.608954,
+              "buffs": [
+                {
+                  "src": "echo_of_light",
+                  "ticks": 58
+                }
+              ],
+              "debuffs": [
+                {
+                  "src": "vc_gut_slash",
+                  "ticks": 104
+                }
+              ]
+            },
+            {
+              "id": "4",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "5",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            }
+          ]
+        },
+        {
+          "tick": 40,
+          "phase": "BOSS",
+          "trashPullsRemaining": 0,
+          "enemyHealth": 3304.586972,
+          "mana": 552,
+          "progress": 83.958316,
+          "combatActive": true,
+          "mechanicCooldown": 12,
+          "mechanicOrdinal": 1,
+          "cooldowns": [],
+          "playerBuffs": [
+            {
+              "id": "priest_weave_hot",
+              "ticks": 76,
+              "stacks": 1
+            },
+            {
+              "id": "spirit_regen_lockout",
+              "ticks": 46,
+              "stacks": 1
+            }
+          ],
+          "bossBuffs": [],
+          "healEffective": 2.64108,
+          "healOverheal": 738.348883,
+          "xp": 4856,
+          "level": 9,
+          "outcome": null,
+          "outcomeXp": null,
+          "party": [
+            {
+              "id": "1",
+              "health": 336.969938,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "2",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "3",
+              "health": 148.67281,
+              "shield": 41.199868,
+              "buffs": [
+                {
+                  "src": "echo_of_light",
+                  "ticks": 56
+                }
+              ],
+              "debuffs": [
+                {
+                  "src": "vc_gut_slash",
+                  "ticks": 84
+                }
+              ]
+            },
+            {
+              "id": "4",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "5",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            }
+          ]
+        },
+        {
+          "tick": 60,
+          "phase": "BOSS",
+          "trashPullsRemaining": 0,
+          "enemyHealth": 2381.880458,
+          "mana": 456,
+          "progress": 88.437474,
+          "combatActive": true,
+          "mechanicCooldown": 21,
+          "mechanicOrdinal": 2,
+          "cooldowns": [],
+          "playerBuffs": [
+            {
+              "id": "priest_weave_hot",
+              "ticks": 80,
+              "stacks": 1
+            },
+            {
+              "id": "spirit_regen_lockout",
+              "ticks": 50,
+              "stacks": 1
+            }
+          ],
+          "bossBuffs": [
+            {
+              "id": "vc_blade_flurry",
+              "ticks": 91
+            }
+          ],
+          "healEffective": 4.617309,
+          "healOverheal": 1230.365941,
+          "xp": 4856,
+          "level": 9,
+          "outcome": null,
+          "outcomeXp": null,
+          "party": [
+            {
+              "id": "1",
+              "health": 336.969938,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "2",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "3",
+              "health": 149,
+              "shield": 68.654419,
+              "buffs": [
+                {
+                  "src": "echo_of_light",
+                  "ticks": 60
+                }
+              ],
+              "debuffs": [
+                {
+                  "src": "vc_gut_slash",
+                  "ticks": 64
+                }
+              ]
+            },
+            {
+              "id": "4",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "5",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            }
+          ]
+        },
+        {
+          "tick": 80,
+          "phase": "BOSS",
+          "trashPullsRemaining": 0,
+          "enemyHealth": 1459.173944,
+          "mana": 384,
+          "progress": 92.916631,
+          "combatActive": true,
+          "mechanicCooldown": 1,
+          "mechanicOrdinal": 2,
+          "cooldowns": [],
+          "playerBuffs": [
+            {
+              "id": "priest_weave_hot",
+              "ticks": 78,
+              "stacks": 1
+            },
+            {
+              "id": "spirit_regen_lockout",
+              "ticks": 48,
+              "stacks": 1
+            },
+            {
+              "id": "surge_of_light",
+              "ticks": 58,
+              "stacks": 1
+            }
+          ],
+          "bossBuffs": [
+            {
+              "id": "vc_blade_flurry",
+              "ticks": 71
+            }
+          ],
+          "healEffective": 8.358252,
+          "healOverheal": 1597.148589,
+          "xp": 4856,
+          "level": 9,
+          "outcome": null,
+          "outcomeXp": null,
+          "party": [
+            {
+              "id": "1",
+              "health": 338,
+              "shield": 6.76524,
+              "buffs": [
+                {
+                  "src": "echo_of_light",
+                  "ticks": 52
+                }
+              ],
+              "debuffs": []
+            },
+            {
+              "id": "2",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "3",
+              "health": 148.837714,
+              "shield": 82.024324,
+              "buffs": [
+                {
+                  "src": "echo_of_light",
+                  "ticks": 58
+                }
+              ],
+              "debuffs": [
+                {
+                  "src": "vc_gut_slash",
+                  "ticks": 44
+                }
+              ]
+            },
+            {
+              "id": "4",
+              "health": 160.684137,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "5",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            }
+          ]
+        },
+        {
+          "tick": 100,
+          "phase": "BOSS",
+          "trashPullsRemaining": 0,
+          "enemyHealth": 536.46743,
+          "mana": 312,
+          "progress": 97.395789,
+          "combatActive": true,
+          "mechanicCooldown": 3,
+          "mechanicOrdinal": 3,
+          "cooldowns": [],
+          "playerBuffs": [
+            {
+              "id": "priest_weave_hot",
+              "ticks": 76,
+              "stacks": 1
+            },
+            {
+              "id": "spirit_regen_lockout",
+              "ticks": 46,
+              "stacks": 1
+            },
+            {
+              "id": "surge_of_light",
+              "ticks": 38,
+              "stacks": 1
+            }
+          ],
+          "bossBuffs": [
+            {
+              "id": "vc_blade_flurry",
+              "ticks": 51
+            }
+          ],
+          "healEffective": 9.842387,
+          "healOverheal": 1966.22539,
+          "xp": 4856,
+          "level": 9,
+          "outcome": null,
+          "outcomeXp": null,
+          "party": [
+            {
+              "id": "1",
+              "health": 338,
+              "shield": 3.262364,
+              "buffs": [
+                {
+                  "src": "echo_of_light",
+                  "ticks": 32
+                }
+              ],
+              "debuffs": []
+            },
+            {
+              "id": "2",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "3",
+              "health": 148.67281,
+              "shield": 101.101408,
+              "buffs": [
+                {
+                  "src": "echo_of_light",
+                  "ticks": 56
+                }
+              ],
+              "debuffs": [
+                {
+                  "src": "vc_gut_slash",
+                  "ticks": 24
+                }
+              ]
+            },
+            {
+              "id": "4",
+              "health": 160.684137,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "5",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            }
+          ]
+        },
+        {
+          "tick": 112,
+          "phase": "BOSS",
+          "trashPullsRemaining": 0,
+          "enemyHealth": 28.978847,
+          "mana": 264,
+          "progress": 100,
+          "combatActive": false,
+          "mechanicCooldown": 0,
+          "mechanicOrdinal": 0,
+          "cooldowns": [],
+          "playerBuffs": [],
+          "bossBuffs": [],
+          "healEffective": 10.861866,
+          "healOverheal": 2212.23993,
+          "xp": 4861,
+          "level": 9,
+          "outcome": "success",
+          "outcomeXp": 5,
+          "party": [
+            {
+              "id": "1",
+              "health": 338,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "2",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "3",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "4",
+              "health": 161,
+              "shield": 0,
+              "buffs": [],
+              "debuffs": []
+            },
+            {
+              "id": "5",
+              "health": 161,
               "shield": 0,
               "buffs": [],
               "debuffs": []
@@ -7453,28 +7995,28 @@
           "party": [
             {
               "id": "1",
-              "health": 182,
+              "health": 208,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "2",
-              "health": 101,
+              "health": 89,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "3",
-              "health": 113,
+              "health": 101,
               "shield": 0,
               "buffs": [],
               "debuffs": []
             },
             {
               "id": "4",
-              "health": 113,
+              "health": 89,
               "shield": 0,
               "buffs": [],
               "debuffs": []
