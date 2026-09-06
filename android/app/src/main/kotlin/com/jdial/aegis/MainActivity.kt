@@ -137,6 +137,17 @@ private fun AegisApp(onReady: () -> Unit = {}) {
         else -> null
     }?.takeIf { it.id !in seenTutorial }
 
+    // A dead target stays selected but is no longer clickable, and CastPipeline
+    // does not reject a target that is missing — so every later cast silently
+    // spent mana and healed nobody. Fall back to yourself, which is the initial
+    // default and always a legal heal target. (The web app nulls the target and
+    // its cast path falls back to the tank; Android has no such fallback, so
+    // clearing it here would reintroduce the same bug.)
+    LaunchedEffect(state.party) {
+        val alive = state.party.any { it.id == targetId && it.isAlive }
+        if (!alive) targetId = HEALER_UNIT_ID
+    }
+
     // Entering and leaving a run drives the screen, so the two never disagree.
     LaunchedEffect(state.isCombatActive) {
         screen = when {

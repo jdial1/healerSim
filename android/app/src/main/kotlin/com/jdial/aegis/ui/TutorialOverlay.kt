@@ -74,8 +74,12 @@ object Tutorial {
     val COMBAT = TutorialStep(
         id = "combat",
         title = "Keep them alive",
-        body = "Tap an ally to target them, then tap a spell to heal. Watch the mana orb: " +
-            "running dry is how runs are lost. Hold a spell to move it along the bar.",
+        // Reordering is now an out-of-combat action, so this card must not teach
+        // it as a combat gesture. It also reads the frame numbers, which are the
+        // point of the screen: percent for urgency, deficit for which heal fits.
+        body = "Tap an ally to target them, then tap a spell to heal. Each frame shows " +
+            "health percent and, when hurt, how much is missing. Watch the mana orb: " +
+            "running dry is how runs are lost.",
         anchor = TutorialAnchor.BOTTOM,
     )
 

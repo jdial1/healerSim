@@ -118,6 +118,7 @@ fun CombatScreen(
                 // one, and a run is lost when you cannot see or tap yourself. So
                 // the row height is derived from the space available and the bar
                 // shrinks with it, rather than rows keeping a size that clips.
+                val debuffMax = remember(state.currentDungeon?.id) { debuffDurations(state) }
                 val gap = 7.dp
                 val rowHeight = ((maxHeight - gap * 4) / 5).coerceIn(48.dp, PartyRowMaxHeight)
                 val barHeight = (rowHeight * 0.40f).coerceIn(16.dp, HealthBarHeight)
@@ -135,6 +136,7 @@ fun CombatScreen(
                             rowHeight = rowHeight,
                             barHeight = barHeight,
                             auraSize = auraSize,
+                            debuffMax = debuffMax,
                             onClick = { if (unit.isAlive) onTarget(unit.id) },
                         )
                     }
@@ -276,6 +278,17 @@ private fun EncounterPip(filled: Boolean, active: Boolean, boss: Boolean = false
 
 // Row geometry. The row height is fixed and derived from these, so adding an
 // aura can never change it: 5 + 18 (name) + 3 + bar + 3 + strip + 5.
+/**
+ * A debuff's original duration, needed for the depleting ring. UnitDebuff only
+ * carries what is left, but every debuff in the game is minted from the boss's
+ * debuffTemplates, so the full duration is a content lookup rather than new
+ * serialized state (which would land in the parity-covered GameState).
+ */
+private fun debuffDurations(state: GameState): Map<String, Int> =
+    state.currentDungeon?.bossCombat?.debuffTemplates
+        ?.associate { it.abilityId to it.durationTicks }
+        ?: emptyMap()
+
 private val HealthBarHeight = 32.dp
 private val AuraStripHeight = 24.dp
 private val PartyRowMaxHeight = 90.dp
@@ -296,6 +309,7 @@ private fun PartyRow(
     rowHeight: Dp,
     barHeight: Dp,
     auraSize: Dp,
+    debuffMax: Map<String, Int>,
     onClick: () -> kotlin.Unit,
 ) {
     val pct = if (unit.maxHealth > 0) (unit.health / unit.maxHealth).toFloat().coerceIn(0f, 1f) else 0f
@@ -384,19 +398,59 @@ private fun PartyRow(
                     Spacer(Modifier.weight(1f))
                     // Auras sit on the name line: present or absent, the row is
                     // the same height either way.
+                    //
+                    // Debuffs come first because the alarm outranks the
+                    // reassurance, and HoTs are sorted by time remaining so the
+                    // one about to fall off is never the one that gets truncated.
+                    val cap = if (auraSize < 20.dp) 4 else 6
+                    val shownDebuffs = unit.debuffs.take(cap)
+                    val shownBuffs = unit.buffs
+                        .sortedBy { it.remainingTicks }
+                        .take(cap - shownDebuffs.size)
+                    val hidden = unit.buffs.size + unit.debuffs.size -
+                        shownBuffs.size - shownDebuffs.size
+
                     Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        unit.buffs.take(4).forEach { HotRing(it, auraSize) }
-                        unit.debuffs.take(2).forEach {
-                            AuraRing(it.icon, it.remainingTicks, it.remainingTicks, Vital.critical, auraSize)
+                        shownDebuffs.forEach { d ->
+                            AuraRing(
+                                icon = d.icon,
+                                remainingTicks = d.remainingTicks,
+                                // Was passing remainingTicks as the max as well, so
+                                // every debuff ring sat at a full sweep forever and
+                                // the arc conveyed nothing.
+                                maxTicks = debuffMax[d.sourceAbilityId] ?: d.remainingTicks,
+                                tint = Vital.critical,
+                                ringSize = auraSize,
+                            )
+                        }
+                        shownBuffs.forEach { HotRing(it, auraSize) }
+                        // Rows compress to 48dp so the cap stays, but a hidden
+                        // aura must not be a silent one.
+                        if (hidden > 0) {
+                            BasicText(
+                                "+$hidden",
+                                style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted),
+                            )
                         }
                     }
                     Spacer(Modifier.width(8.dp))
                     if (dead) {
                         BasicText("DEAD", style = AegisType.label.copy(color = Vital.critical))
                     } else {
+                        // Percent for urgency, deficit for which heal covers the
+                        // gap. "1240 / 1450" makes the player do arithmetic under
+                        // pressure; these are the two numbers they act on.
+                        val deficit = (unit.maxHealth - unit.health).roundToInt()
+                        if (deficit > 0) {
+                            BasicText(
+                                "-$deficit",
+                                style = AegisType.numeric.copy(fontSize = 11.sp, color = Vital.hurt),
+                            )
+                            Spacer(Modifier.width(5.dp))
+                        }
                         BasicText(
-                            "${unit.health.roundToInt()} / ${unit.maxHealth.roundToInt()}",
-                            style = AegisType.numeric.copy(fontSize = 12.sp),
+                            "${(pct * 100).roundToInt()}%",
+                            style = AegisType.numeric.copy(fontSize = 12.sp, color = barColor),
                         )
                     }
                 }
@@ -441,14 +495,19 @@ private fun PartyRow(
 
             }
             Column(Modifier.padding(end = 10.dp), horizontalAlignment = Alignment.End) {
-                BasicText(
-                    when (unit.role) {
-                        UnitRole.TANK -> "TANK"
-                        UnitRole.DPS -> "DPS"
-                        UnitRole.HEALER -> "HEALER"
-                    },
-                    style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
-                )
+                // On short rows the role word yields its width to the health
+                // numerals. Role is already carried by the coloured stripe at the
+                // left edge, so the word is the redundant half of the pair.
+                if (rowHeight > 56.dp) {
+                    BasicText(
+                        when (unit.role) {
+                            UnitRole.TANK -> "TANK"
+                            UnitRole.DPS -> "DPS"
+                            UnitRole.HEALER -> "HEALER"
+                        },
+                        style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
+                    )
+                }
                 BasicText("LV ${unit.level}", style = AegisType.label.copy(fontSize = 11.sp))
             }
         }
@@ -461,7 +520,7 @@ private fun PartyRow(
 @Composable
 private fun HotRing(buff: UnitBuff, ringSize: Dp) {
     val max = if (buff.durationTicksMax > 0) buff.durationTicksMax else buff.remainingTicks
-    AuraRing(buff.icon, buff.remainingTicks, max, Vital.healthy, ringSize)
+    AuraRing(buff.icon, buff.remainingTicks, max, Vital.healthy, ringSize, stacks = buff.stacks)
 }
 
 /**
@@ -469,7 +528,14 @@ private fun HotRing(buff: UnitBuff, ringSize: Dp) {
  * read at a glance from the arc, with the seconds beneath for precision.
  */
 @Composable
-private fun AuraRing(icon: String, remainingTicks: Int, maxTicks: Int, tint: Color, ringSize: Dp) {
+private fun AuraRing(
+    icon: String,
+    remainingTicks: Int,
+    maxTicks: Int,
+    tint: Color,
+    ringSize: Dp,
+    stacks: Int = 0,
+) {
     val sweep = if (maxTicks > 0) (remainingTicks.toFloat() / maxTicks).coerceIn(0f, 1f) else 0f
     val seconds = ceil(remainingTicks / 10.0).toInt()
     val urgent = remainingTicks <= 30
@@ -507,6 +573,14 @@ private fun AuraRing(icon: String, remainingTicks: Int, maxTicks: Int, tint: Col
             ),
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+        // The engine has always tracked stacks; nothing ever showed them.
+        if (stacks > 1) {
+            BasicText(
+                "$stacks",
+                style = AegisType.label.copy(fontSize = 10.sp, color = Gilt.bright),
+                modifier = Modifier.align(Alignment.TopEnd),
+            )
+        }
     }
 }
 
@@ -606,6 +680,7 @@ private fun ActionBar(
                             dragging = dragFrom == i,
                             dragOffsetPx = if (dragFrom == i) dragDx else 0f,
                             width = slotWidth,
+                            reorderable = !state.isCombatActive,
                             onClick = { if (spell != null) onCast(spell.id) },
                             onDragStart = { dragFrom = i; dragDx = 0f },
                             onDrag = { dragDx += it },
@@ -666,6 +741,7 @@ private fun SpellSlot(
     dragging: Boolean,
     dragOffsetPx: Float,
     width: Dp,
+    reorderable: Boolean,
     onClick: () -> kotlin.Unit,
     onDragStart: () -> kotlin.Unit,
     onDrag: (Float) -> kotlin.Unit,
@@ -708,8 +784,12 @@ private fun SpellSlot(
                 }
                 if (!usable) disabled()
             }
-            .pointerInput(spell?.id, index) {
-                if (spell == null) return@pointerInput
+            // Reorder is an out-of-combat action, as it already is on the web
+            // (`allowReorder: !state.currentDungeon`). Rearranging your bar
+            // mid-boss is never intentional, and in combat this gesture is
+            // wanted for drag-to-cast instead.
+            .pointerInput(spell?.id, index, reorderable) {
+                if (spell == null || !reorderable) return@pointerInput
                 detectDragGesturesAfterLongPress(
                     onDragStart = { onDragStart() },
                     onDrag = { change, amount -> change.consume(); onDrag(amount.x) },
