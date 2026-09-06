@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import com.jdial.aegis.sim.UnitRole
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -441,7 +442,13 @@ fun CharacterScreen(
                 Spacer(Modifier.height(12.dp))
                 StatPanel("Affinities") {
                     // Spirit, not intellect, is this game's healing power stat.
-                    StatLine("Bonus Healing", "+${((healMult - 1) * 100).toInt()}%")
+                    // The same stat scales damage for a class that deals it --
+                    // the engine reuses `healing` as the magnitude either way,
+                    // so only the label should differ.
+                    StatLine(
+                        if (state.playerRole == UnitRole.HEALER) "Bonus Healing" else "Bonus Damage",
+                        "+${((healMult - 1) * 100).toInt()}%",
+                    )
                     StatLine("Crit Chance", "${talentStats.critChancePct.toInt()}%")
                     StatLine("Haste", "${talentStats.hastePct.toInt()}%")
                     StatLine(uniqueStatLabel(cls), String.format("%.1f", unique))
