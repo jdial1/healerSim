@@ -137,6 +137,16 @@ class PlayerStats(private val data: GameData) {
     /** The healer uses the DPS health curve. */
     fun healerMaxHealth(level: Int): Int = maxHealthForRole("DPS", level)
 
+    /**
+     * The player's own max health, by the role they play.
+     *
+     * One source of truth for this: the character sheet used to call
+     * healerMaxHealth unconditionally, so a tank's sheet read 65 while the tank
+     * it generated in combat had 130.
+     */
+    fun playerMaxHealth(role: UnitRole, level: Int): Int =
+        maxHealthForRole(if (role == UnitRole.TANK) "TANK" else "DPS", level)
+
     // --- talent tree queries -------------------------------------------------
 
     /** Transitive prerequisite ids of [talent]. */

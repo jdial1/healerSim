@@ -240,6 +240,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                                 vm.leaveCharacter()
                                 screen = Screen.ClassSelect
                             },
+                            onSetActionBarSlot = vm::setActionBarSlot,
                         )
 
                         Screen.Combat -> CombatScreen(

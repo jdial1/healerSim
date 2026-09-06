@@ -798,11 +798,7 @@ class GameTick(
         }
 
         val selfLevel = max(1, playerLevel)
-        val selfHp = when (playerRole) {
-            UnitRole.HEALER -> stats.healerMaxHealth(selfLevel).toDouble()
-            UnitRole.TANK -> stats.maxHealthForRole("TANK", selfLevel).toDouble()
-            UnitRole.DPS -> stats.maxHealthForRole("DPS", selfLevel).toDouble()
-        }
+        val selfHp = stats.playerMaxHealth(playerRole, selfLevel).toDouble()
         return party + Unit(PLAYER_UNIT_ID, "Player (You)", playerRole, selfLevel, selfHp, selfHp)
     }
 

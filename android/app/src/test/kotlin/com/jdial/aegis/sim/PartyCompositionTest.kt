@@ -70,6 +70,27 @@ class PartyCompositionTest {
     }
 
     @Test
+    fun `the character sheet and the combat frame agree on the player's health`() {
+        // The sheet called healerMaxHealth unconditionally, so a tank read 65
+        // on their character screen and 130 in the party frame. Both go through
+        // playerMaxHealth now; this is what stops them drifting apart again.
+        for (cls in PlayerClass.entries) {
+            val role = Engine(Fixtures.data).roleOf(cls)
+            val sheet = Fixtures.stats.playerMaxHealth(role, 12)
+            val frame = party(cls, 12, 99).last().maxHealth
+            assertEquals("$cls", sheet.toDouble(), frame, 0.0)
+        }
+    }
+
+    @Test
+    fun `a tank has more health than a dps`() {
+        assertTrue(
+            Fixtures.stats.playerMaxHealth(UnitRole.TANK, 12) >
+                Fixtures.stats.playerMaxHealth(UnitRole.DPS, 12),
+        )
+    }
+
+    @Test
     fun `a healer party is unchanged from before roles existed`() {
         // Verified empirically against the pre-role implementation: identical
         // output across three seeds and three levels. The draw order is

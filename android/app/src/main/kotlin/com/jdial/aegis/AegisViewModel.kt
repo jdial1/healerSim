@@ -151,6 +151,11 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- action bar ----------------------------------------------------------
 
+    fun setActionBarSlot(index: Int, spellId: String) {
+        dispatch(Action.SetActionBarSlot(index, spellId))
+        persist()
+    }
+
     fun reorderActionBar(from: Int, to: Int) {
         dispatch(Action.ReorderActionBar(from, to))
         persist()

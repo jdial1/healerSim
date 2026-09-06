@@ -356,28 +356,53 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
 }
 
 /**
- * Threat, and what the player has running on the enemy.
+ * How close the enemy is to changing its mind, plus what the player has running
+ * on it.
  *
- * The bar is the player's threat as a fraction of whoever leads the table, so
- * "full" means you are about to take the boss off the tank. A tank wants it
- * full; a DPS wants it near full and never over. That single number is the
- * whole of what a WoW threat meter told you, without pretending to a precision
- * this simulation does not have.
+ * The first version of this showed `yourThreat / highestThreat`, which pinned a
+ * tank at 100% permanently -- a tank *is* the highest, so the number could never
+ * move and told them nothing. What actually matters to both roles is the same
+ * quantity from opposite sides: how near the gap is to closing.
+ *
+ *  - Holding aggro (a tank's normal state): the bar is the closest rival's
+ *    threat as a fraction of yours. Full means you are about to lose it.
+ *  - Not holding aggro (a DPS's normal state): the bar is your threat as a
+ *    fraction of what it takes to pull. Full means you are about to take it.
+ *
+ * Either way full is the dangerous end for the role that should not have aggro,
+ * so the colour rule is one rule, and the number moves constantly.
  */
 @Composable
 private fun ThreatStrip(state: GameState) {
     val living = state.party.filter { it.isAlive }
     val self = living.firstOrNull { it.id == PLAYER_UNIT_ID } ?: return
-    val top = living.maxOfOrNull { it.threat } ?: 0.0
-    val frac = if (top > 0) (self.threat / top).toFloat().coerceIn(0f, 1f) else 0f
-    val hasAggro = state.enemyTargetId == PLAYER_UNIT_ID
-    // A tank being on top is the job; anyone else being on top is a problem.
+    val holder = living.firstOrNull { it.id == state.enemyTargetId }
+    val hasAggro = holder?.id == self.id
     val wantsAggro = state.playerRole == UnitRole.TANK
-    val bad = hasAggro != wantsAggro && top > 0
+    val overtake = 1.1
+
+    // The threat that would have to be beaten, from whichever side you are on.
+    val rival = living.filter { it.id != self.id }.maxByOrNull { it.threat }?.threat ?: 0.0
+    val frac = when {
+        hasAggro -> if (self.threat > 0) (rival / (self.threat * overtake)) else 0.0
+        holder != null && holder.threat > 0 -> self.threat / (holder.threat * overtake)
+        else -> 0.0
+    }.toFloat().coerceIn(0f, 1f)
+
+    val label = if (hasAggro) "HOLDING" else "PULL IN"
+    // Near the top of the bar something is about to change hands. For a tank
+    // that is bad when they hold it; for a DPS it is bad when they are closing.
+    val danger = if (wantsAggro) hasAggro && frac > 0.8f else !hasAggro && frac > 0.8f
+    val bar = when {
+        danger -> Vital.critical
+        hasAggro && wantsAggro -> Vital.shield
+        hasAggro -> Vital.hurt
+        else -> Vital.healthy
+    }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         BasicText(
-            "THREAT",
+            label,
             style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted),
         )
         Spacer(Modifier.width(8.dp))
@@ -389,19 +414,14 @@ private fun ThreatStrip(state: GameState) {
                 .background(Obsidian.abyss)
                 .border(1.dp, Gilt.deep.copy(alpha = 0.5f), RoundedCornerShape(2.dp)),
         ) {
-            Box(
-                Modifier
-                    .fillMaxWidth(frac)
-                    .fillMaxHeight()
-                    .background(if (bad) Vital.critical else if (wantsAggro) Vital.shield else Vital.healthy),
-            )
+            Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(bar))
         }
         Spacer(Modifier.width(8.dp))
         BasicText(
             "${(frac * 100).roundToInt()}%",
             style = AegisType.numeric.copy(
                 fontSize = 12.sp,
-                color = if (bad) Vital.critical else Ink.primary,
+                color = if (danger) Vital.critical else Ink.primary,
             ),
         )
 

@@ -24,6 +24,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
+import com.jdial.aegis.data.Spell
+import com.jdial.aegis.data.SpellType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import kotlin.math.ceil
+import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -373,6 +379,7 @@ fun CharacterScreen(
     engine: Engine,
     onSettingsChange: (UiSettings) -> Unit,
     onChangeClass: () -> Unit,
+    onSetActionBarSlot: (Int, String) -> Unit = { _, _ -> },
 ) {
     val cls = state.playerClass ?: return
     var showCredits by remember { mutableStateOf(false) }
@@ -427,7 +434,7 @@ fun CharacterScreen(
                 StatPanel("Attributes") {
                     StatLine("Intellect", primary.intellect.toInt().toString())
                     StatLine("Spirit", primary.spirit.toInt().toString())
-                    StatLine("Max Health", engine.stats.healerMaxHealth(state.level).toString())
+                    StatLine("Max Health", engine.stats.playerMaxHealth(state.playerRole, state.level).toString())
                     StatLine("Max Mana", state.maxMana.toString())
                 }
 
@@ -457,6 +464,9 @@ fun CharacterScreen(
                         BasicText(meta.passiveTraitDescription, style = AegisType.body)
                     }
                 }
+                Spacer(Modifier.height(12.dp))
+                Spellbook(state, engine, onSetActionBarSlot)
+
                 Spacer(Modifier.height(18.dp))
                 GiltButton("Change Class", onClick = onChangeClass)
                 Spacer(Modifier.height(16.dp))
@@ -504,6 +514,191 @@ private fun uniqueStatLabel(cls: PlayerClass) = when (cls) {
     PlayerClass.PALADIN -> "Radiance"
     PlayerClass.MAGE -> "Shatter"
     PlayerClass.WARRIOR -> "Vengeance"
+}
+
+/**
+ * The action bar, editable, with everything the class has unlocked underneath.
+ *
+ * Reordering already existed as a drag on the combat bar, but there was no way
+ * to choose *which* spells you carried -- the loadout was whatever progression
+ * handed you. Tapping a slot selects it; tapping an unlocked spell puts it
+ * there. The same spell cannot occupy two slots, because two slots sharing one
+ * cooldown is indistinguishable from a bug.
+ */
+@Composable
+private fun Spellbook(
+    state: GameState,
+    engine: Engine,
+    onSet: (Int, String) -> Unit,
+) {
+    val accent = LocalAccent.current
+    var selectedSlot by remember { mutableStateOf(0) }
+    val bar = state.activeActionBars
+    val inCombat = state.currentDungeon != null
+
+    ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(14.dp)) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicText("ACTION BAR", style = AegisType.label.copy(color = Gilt.mid))
+                Spacer(Modifier.weight(1f))
+                if (inCombat) {
+                    BasicText(
+                        "LOCKED IN COMBAT",
+                        style = AegisType.label.copy(fontSize = 10.sp, color = Vital.hurt),
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                bar.forEachIndexed { i, id ->
+                    val spell = engine.data.spell(id)
+                    val selected = i == selectedSlot
+                    val label = spell?.name ?: "empty"
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(
+                                if (selected) 2.dp else 1.dp,
+                                if (selected) accent.bright else Gilt.deep.copy(alpha = 0.5f),
+                                RoundedCornerShape(6.dp),
+                            )
+                            .clickable(enabled = !inCombat) { selectedSlot = i }
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = "Slot " + (i + 1) + ", " + label
+                            }
+                            .padding(6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (spell != null) {
+                            GameIcon(spell.icon, size = 34.dp, accent = accent.core)
+                        } else {
+                            BasicText(
+                                (i + 1).toString(),
+                                style = AegisType.label.copy(color = Ink.muted),
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            val current = engine.data.spell(bar.getOrNull(selectedSlot) ?: "")
+            BasicText(
+                "Slot " + (selectedSlot + 1) + ": " + (current?.name ?: "empty"),
+                style = AegisType.body.copy(color = Ink.secondary),
+            )
+            if (current != null && !inCombat) {
+                Spacer(Modifier.height(6.dp))
+                BasicText(
+                    "REMOVE FROM SLOT",
+                    style = AegisType.label.copy(fontSize = 10.sp, color = Vital.hurt),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClickLabel = "Clear this slot") { onSet(selectedSlot, "") }
+                        .semantics { role = Role.Button }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+            BasicText("SPELLBOOK", style = AegisType.label.copy(color = Gilt.mid))
+            Spacer(Modifier.height(8.dp))
+
+            state.unlockedSpells.forEach { id ->
+                val spell = engine.data.spell(id)
+                if (spell != null) {
+                    SpellRow(
+                        spell = spell,
+                        onBar = id in bar,
+                        enabled = !inCombat && id !in bar,
+                        accent = accent.core,
+                        onClick = { onSet(selectedSlot, id) },
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+            }
+        }
+    }
+}
+
+/** One spellbook entry: art, name, what it costs, and what it actually does. */
+@Composable
+private fun SpellRow(
+    spell: Spell,
+    onBar: Boolean,
+    enabled: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { role = Role.Button }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GameIcon(spell.icon, size = 34.dp, accent = accent, dimmed = onBar)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicText(
+                    spell.name,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                    style = AegisType.numeric.copy(
+                        fontSize = 13.sp,
+                        color = if (onBar) Ink.muted else Ink.primary,
+                    ),
+                )
+                if (onBar) {
+                    Spacer(Modifier.width(6.dp))
+                    BasicText(
+                        "ON BAR",
+                        style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted),
+                    )
+                }
+            }
+            BasicText(
+                spellSummary(spell),
+                style = AegisType.body.copy(fontSize = 11.sp, color = Ink.secondary),
+            )
+        }
+    }
+}
+
+/**
+ * What a spell does, derived from its data rather than hand-written, so the
+ * description cannot drift from the numbers the engine actually uses.
+ */
+private fun spellSummary(spell: Spell): String {
+    val parts = buildList {
+        add(spell.manaCost.toString() + " mana")
+        if (spell.cooldown > 0) add(ceil(spell.cooldown / 10.0).toInt().toString() + "s cd")
+        if (spell.healing > 0) {
+            val word = if (spell.isDamage) " damage" else " healing"
+            add(spell.healing.roundToInt().toString() + word)
+        }
+        val per = spell.hotHealingPerTick
+        if (per != null && per > 0) {
+            val secs = ceil((spell.hotDuration ?: 0) / 10.0).toInt()
+            add(per.roundToInt().toString() + "/tick for " + secs + "s")
+        }
+        val taunt = spell.tauntTicks
+        if (taunt != null) add("taunts for " + ceil(taunt / 10.0).toInt() + "s")
+        val dr = spell.damageReduction
+        if (dr != null) {
+            val secs = ceil((spell.damageReductionTicks ?: 0) / 10.0).toInt()
+            add("-" + (dr * 100).roundToInt() + "% damage taken for " + secs + "s")
+        }
+        if (spell.type == SpellType.AOE) add("hits everyone")
+    }
+    return parts.joinToString(" \u00b7 ")
 }
 
 @Composable

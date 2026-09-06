@@ -11,7 +11,7 @@ a threat model, player damage, active mitigation and an AI healer.
 |---|---|
 | Variant | `debug` |
 | Size | 13 MB |
-| sha256 | `ca852a0a2ebe1f5f579c852ccbf2f65f5001597ac1eed6d9b111f94eb0a83d6b` |
+| sha256 | `954a08c3a9c4741dde1b221320070a0db4a4a5149cd48e475b5028d8951f79aa` |
 | Verified | golden byte-identical, balance guard, 57 Kotlin tests, `minifyReleaseWithR8` save contract, `npm test` / `npm run tests` / web build |
 
 Debug-signed, exactly as the 1.0 checkpoint below is, and for the same reason —

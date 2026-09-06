@@ -38,6 +38,14 @@ sealed interface Action {
     data class DecrementTalent(val talentId: String) : Action
     data object RespecTalents : Action
     data class ReorderActionBar(val from: Int, val to: Int) : Action
+
+    /**
+     * Puts [spellId] in an action bar slot, or clears it when blank.
+     *
+     * Reordering could only ever shuffle what was already there; this is what
+     * lets a player choose which of their unlocked spells they carry at all.
+     */
+    data class SetActionBarSlot(val index: Int, val spellId: String) : Action
     data object AbandonDungeon : Action
     data object DismissDungeonOutcome : Action
     data class SetTutorialPaused(val paused: Boolean) : Action
@@ -101,6 +109,7 @@ class Engine(val data: GameData) {
         is Action.DecrementTalent -> decrementTalent(state, action.talentId)
         Action.RespecTalents -> respec(state)
         is Action.ReorderActionBar -> reorderActionBar(state, action.from, action.to)
+        is Action.SetActionBarSlot -> setActionBarSlot(state, action.index, action.spellId)
         Action.AbandonDungeon -> state.clearedCombat().copy(isCombatActive = false)
         Action.DismissDungeonOutcome -> state.copy(dungeonOutcome = null)
         is Action.SetTutorialPaused -> state.copy(isTutorialPaused = action.paused)
@@ -254,6 +263,28 @@ class Engine(val data: GameData) {
         val bar = state.activeActionBars.toMutableList()
         if (from !in bar.indices || to !in bar.indices) return state
         bar.add(to, bar.removeAt(from))
+        return state.copy(activeActionBars = bar)
+    }
+
+    /**
+     * Assigns or clears one action bar slot.
+     *
+     * Rejects anything that would put the bar in a state the player could not
+     * have reached legitimately: an unknown or still-locked spell, or the same
+     * spell twice. A duplicate would be the more annoying bug -- two slots
+     * sharing one cooldown, with no way to tell from looking.
+     */
+    private fun setActionBarSlot(state: GameState, index: Int, spellId: String): GameState {
+        // Inert mid-run, like reordering: rebuilding your bar mid-pull is not a
+        // decision this game asks you to make.
+        if (state.currentDungeon != null) return state
+        if (index !in state.activeActionBars.indices) return state
+        if (spellId.isNotBlank()) {
+            if (spellId !in state.unlockedSpells) return state
+            if (state.activeActionBars.any { it == spellId }) return state
+        }
+        val bar = state.activeActionBars.toMutableList()
+        bar[index] = spellId
         return state.copy(activeActionBars = bar)
     }
 }

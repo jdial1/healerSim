@@ -13,7 +13,7 @@
   "portraitGlow": "spell",
   "passiveTraitName": "Vengeance",
   "passiveTraitDescription": "Holding the enemy's attention sharpens your retaliation.",
-  "passiveTraitIcon": "wow/spell_holy_devotionaura",
+  "passiveTraitIcon": "wow/spell_holy_greaterblessingofsanctuary",
   "tutorial": {
     "passiveDescription": "Vengeance: threat begets damage."
   },
