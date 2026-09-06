@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.Spell
+import com.jdial.aegis.data.Targeting
 import com.jdial.aegis.sim.CombatPhase
 import com.jdial.aegis.sim.FLOATING_TEXT_LIFETIME_TICKS
 import com.jdial.aegis.sim.FloatingKind
@@ -243,6 +244,45 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
                 )
             }
 
+            // The pre-damage warning a healer plans around. mechanicCooldown
+            // has always been in the state and was never shown.
+            val next = nextMechanic(state)
+            if (next != null && state.mechanicCooldown > 0) {
+                val secs = ceil(state.mechanicCooldown / 10.0).toInt()
+                val imminent = state.mechanicCooldown <= 20
+                val everyone = next.whom == "everyone"
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GameIcon(next.icon, size = 22.dp, accent = if (imminent) Gilt.core else Gilt.deep)
+                    Spacer(Modifier.width(6.dp))
+                    BasicText(
+                        next.name.uppercase(),
+                        maxLines = 1,
+                        style = AegisType.label.copy(
+                            color = if (imminent) Gilt.bright else Ink.secondary,
+                        ),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    BasicText(
+                        next.whom,
+                        style = AegisType.body.copy(
+                            // An incoming raid-wide hit is the one cue worth
+                            // shouting: it is the difference between a single
+                            // heal and a cooldown.
+                            color = if (everyone) Gilt.core else Ink.muted,
+                        ),
+                    )
+                    Spacer(Modifier.weight(1f))
+                    BasicText(
+                        "${secs}s",
+                        style = AegisType.numeric.copy(
+                            fontSize = 13.sp,
+                            color = if (imminent) Gilt.bright else Ink.secondary,
+                        ),
+                    )
+                }
+            }
+
             if (state.bossSelfBuffs.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -278,6 +318,46 @@ private fun EncounterPip(filled: Boolean, active: Boolean, boss: Boolean = false
 
 // Row geometry. The row height is fixed and derived from these, so adding an
 // aura can never change it: 5 + 18 (name) + 3 + bar + 3 + strip + 5.
+/** The boss's next mechanic: what it is, and who it can land on. */
+private data class NextMechanic(val icon: String, val name: String, val whom: String)
+
+/**
+ * Reads the boss's next move off the state. The engine picks mechanics in
+ * strict round-robin (`kinds[ordinal % kinds.size]`, then
+ * `templates[cycle % size]` — GameTick.processBossAi), so *which* ability comes
+ * next is fully determined and can be shown honestly.
+ *
+ * Only the victims are drawn from the RNG, at the moment it fires. So this says
+ * "two of you", never "these two" — naming the targets would be a guess, and
+ * peeking at the RNG would desync the parity stream.
+ */
+private fun nextMechanic(state: GameState): NextMechanic? {
+    if (state.combatPhase != CombatPhase.BOSS) return null
+    val c = state.currentDungeon?.bossCombat ?: return null
+
+    val kinds = buildList {
+        if (c.debuffTemplates.isNotEmpty()) add("debuff")
+        if (c.selfBuffTemplates.isNotEmpty()) add("buff")
+        if (c.attackTemplates.isNotEmpty()) add("attack")
+    }
+    if (kinds.isEmpty()) return null
+
+    val cycle = state.mechanicOrdinal / kinds.size
+    fun whom(t: Targeting) = when (t) {
+        Targeting.SINGLE_RANDOM -> "one of you"
+        Targeting.TWO_RANDOM -> "two of you"
+        Targeting.ALL_LIVING -> "everyone"
+    }
+    return when (kinds[state.mechanicOrdinal % kinds.size]) {
+        "debuff" -> c.debuffTemplates[cycle % c.debuffTemplates.size]
+            .let { NextMechanic(it.icon, it.name, whom(it.targeting)) }
+        "buff" -> c.selfBuffTemplates[cycle % c.selfBuffTemplates.size]
+            .let { NextMechanic(it.icon, it.name, "empowers itself") }
+        else -> c.attackTemplates[cycle % c.attackTemplates.size]
+            .let { NextMechanic(it.icon, it.name, whom(it.targeting)) }
+    }
+}
+
 /**
  * A debuff's original duration, needed for the depleting ring. UnitDebuff only
  * carries what is left, but every debuff in the game is minted from the boss's
@@ -288,6 +368,24 @@ private fun debuffDurations(state: GameState): Map<String, Int> =
     state.currentDungeon?.bossCombat?.debuffTemplates
         ?.associate { it.abilityId to it.durationTicks }
         ?: emptyMap()
+
+/**
+ * Healing already committed to a unit by its active heal-over-time effects.
+ *
+ * There are no cast times in this game (Content.kt), so nothing is ever in
+ * flight and classic incoming-heal prediction has nothing to predict. What a
+ * healer can still be told is how much healing is already on the way — which is
+ * what stops you stacking a second HoT onto a target that is about to cap.
+ *
+ * `remainingTicks` counts heal ticks, not seconds, so haste does not enter into
+ * it. Class hooks can scale an individual tick at execution time, so this is an
+ * estimate and can read low; it is the same estimate in both apps.
+ *
+ * Shields are excluded on purpose: shieldTicksRemaining expires them, so they
+ * are absorb rather than healing, and they get their own band on the bar.
+ */
+private fun committedHealing(unit: Unit): Double =
+    unit.buffs.sumOf { it.healingPerTick * it.remainingTicks + (it.bloomBurstHeal ?: 0.0) }
 
 private val HealthBarHeight = 32.dp
 private val AuraStripHeight = 24.dp
@@ -319,6 +417,22 @@ private fun PartyRow(
     // the bar moved.
     val ghostPct by animateFloatAsState(pct, tween(620, delayMillis = 260), label = "ghost")
     val barColor by animateColorAsState(healthColor(pct), tween(240), label = "hpColor")
+    // Note the health band still comes from `pct` alone. If the colour brightened
+    // because a HoT is pending, the signal would lie at the moment it matters.
+    val committed = committedHealing(unit)
+    val committedFrac = if (unit.maxHealth > 0) (committed / unit.maxHealth).toFloat() else 0f
+    val animatedCommitted by animateFloatAsState(committedFrac, tween(140), label = "committed")
+    val overhealing = pct + committedFrac > 1f
+    val committedEnd = (pct + animatedCommitted).coerceIn(0f, 1f)
+    val shieldFrac = if (unit.maxHealth > 0) {
+        (unit.shield / unit.maxHealth).toFloat().coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    // Absorb sits past current health, as it does in the game this apes — it was
+    // drawn from the left edge over the health fill, which read as "some of your
+    // health is blue" rather than "you have a shield on top".
+    val shieldEnd = (committedEnd + shieldFrac).coerceIn(0f, 1f)
     val accent = LocalAccent.current
     val dead = !unit.isAlive
 
@@ -464,6 +578,26 @@ private fun PartyRow(
                         .background(Obsidian.abyss)
                         .border(1.dp, Gilt.deep.copy(alpha = 0.45f), RoundedCornerShape(3.dp)),
                 ) {
+                    // Bands are layered widest-first and each is drawn from the
+                    // left, so the narrower one on top leaves the previous band
+                    // showing as the segment beyond it. That gives health |
+                    // committed | absorb without measuring the bar.
+                    if (shieldEnd > committedEnd) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(shieldEnd)
+                                .fillMaxHeight()
+                                .background(Vital.shield.copy(alpha = 0.55f)),
+                        )
+                    }
+                    if (committedEnd > animatedPct) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(committedEnd)
+                                .fillMaxHeight()
+                                .background(Vital.healthy.copy(alpha = 0.34f)),
+                        )
+                    }
                     if (ghostPct > animatedPct) {
                         Box(
                             Modifier
@@ -482,13 +616,16 @@ private fun PartyRow(
                                 ),
                             ),
                     )
-                    if (unit.shield > 0) {
-                        val shieldPct = (unit.shield / unit.maxHealth).toFloat().coerceIn(0f, 1f)
+                    // The game is called Overheal. When committed healing runs
+                    // past the top of the bar, the surplus is being thrown away —
+                    // say so with a gilt cap rather than a number.
+                    if (overhealing) {
                         Box(
                             Modifier
-                                .fillMaxWidth(shieldPct)
+                                .align(Alignment.CenterEnd)
+                                .width(2.dp)
                                 .fillMaxHeight()
-                                .background(Vital.shield.copy(alpha = 0.55f)),
+                                .background(Gilt.core),
                         )
                     }
                 }
