@@ -10,8 +10,9 @@ import { HealGrid } from "./components/HealGrid.jsx";
 import { ActionBars } from "./components/ActionBars.jsx";
 import { CharacterRoster } from "./components/CharacterRoster.jsx";
 import { SplashScreen } from "./components/SplashScreen.jsx";
+import { SettingsModal } from "./components/SettingsModal.jsx";
 import { DungeonSelector } from "./components/DungeonSelector.jsx";
-import { maxLevelAcrossRoster } from "./gameStorage.js";
+import { maxLevelAcrossRoster, readUiSettings, writeUiSettings } from "./gameStorage.js";
 import { GameHUD } from "./components/GameHUD.jsx";
 import { TRASH_PACK_COUNT, TICKS_PER_SECOND, MANA_POTION_USES_PER_DUNGEON, PALADIN_UNLOCK_LEVEL } from "./constants.js";
 import {
@@ -63,6 +64,13 @@ function App() {
   const [reorderTutorialSignal, setReorderTutorialSignal] = useState(0);
   const [showRoster, setShowRoster] = useState(true);
   const [splashDismissed, setSplashDismissed] = useState(false);
+  const [uiSettings, setUiSettings] = useState(readUiSettings);
+  const [showSettings, setShowSettings] = useState(false);
+  const [castDragUnitId, setCastDragUnitId] = useState(null);
+  const changeUiSettings = useCallback((next) => {
+    setUiSettings(next);
+    writeUiSettings(next);
+  }, []);
   const [menuView, setMenuView] = useState("dungeons");
   const paladinUnlocked = maxLevelAcrossRoster(roster) >= PALADIN_UNLOCK_LEVEL;
   const [pwaNeedsRefresh, setPwaNeedsRefresh] = useState(false);
@@ -149,8 +157,14 @@ function App() {
     [state.currentDungeon, state.playerCombatBuffs]
   );
   const partyForHealGrid = useMemo(
-    () => partyWithHealerManaRegenDisplayBuff(state.party, manaRegenTicksForUi, state.level),
-    [state.party, manaRegenTicksForUi, state.level]
+    () => {
+      const withBuffs = partyWithHealerManaRegenDisplayBuff(state.party, manaRegenTicksForUi, state.level);
+      // Display order only — state.party is never reordered, because the engine
+      // and the save both index it positionally.
+      if (!uiSettings.selfFirst) return withBuffs;
+      return [...withBuffs].sort((a, b) => (a.role === "HEALER" ? 0 : 1) - (b.role === "HEALER" ? 0 : 1));
+    },
+    [state.party, manaRegenTicksForUi, state.level, uiSettings.selfFirst]
   );
   const playerCombatStats = useMemo(() => {
     if (!state.playerClass) return null;
@@ -193,7 +207,9 @@ function App() {
     actionBarHighlights
   ]);
   keyboardRef.current = {
-    party: state.party,
+    // The same array the grid renders, so Shift+1-5 cannot disagree with what
+    // is on screen once "keep my frame first" is on.
+    party: partyForHealGrid,
     currentDungeon: state.currentDungeon,
     activeActionBars: state.activeActionBars,
     targetId,
@@ -240,7 +256,11 @@ function App() {
     {
       className: `bg-slate-950 font-sans selection:bg-amber-500 selection:text-slate-950 ${state.playerClass && !showRoster ? "min-h-dvh max-h-dvh overflow-hidden" : "min-h-dvh"}`
     },
-    React.createElement(AnimatePresence, { mode: "wait" }, menuView === "talents" && state.playerClass && !showRoster ? React.createElement(
+    // No mode: "wait" on the screen-level transition either. It holds the
+    // incoming screen until every animation in the outgoing subtree finishes,
+    // and TutorialOverlay pulses with repeat: Infinity — so with a tutorial card
+    // up, entering a dungeon never completed. Same root cause as the splash.
+    React.createElement(AnimatePresence, null, menuView === "talents" && state.playerClass && !showRoster ? React.createElement(
       TalentTree,
       {
         key: "talents",
@@ -271,6 +291,7 @@ function App() {
         // already a motion.div, so the wrapper only hid that.
         key: "splash",
         onEnter: () => setSplashDismissed(true),
+        onOpenSettings: () => setShowSettings(true),
         version: __APP_VERSION__,
         communityUrl: COMMUNITY_URL
       }
@@ -368,7 +389,10 @@ function App() {
           bossName: state.currentDungeon.bossName,
           trashEnemyName: state.currentDungeon.enemies[TRASH_PACK_COUNT - state.trashPullsRemaining]?.name ?? "",
           bossSelfBuffs: state.combatPhase === "BOSS" ? state.bossSelfBuffs : [],
-          endlessStacks: state.currentDungeon.endless ? state.endlessStacks : void 0
+          endlessStacks: state.currentDungeon.endless ? state.endlessStacks : void 0,
+          mechanicCooldown: state.mechanicCooldown,
+          mechanicOrdinal: state.mechanicOrdinal,
+          dungeon: state.currentDungeon
         }
       ),
       React.createElement("main", { className: "flex min-h-0 flex-1 flex-col overflow-hidden pt-[9.5rem] pb-[10.5rem] sm:pt-[10.5rem] sm:pb-[11.5rem]" }, React.createElement("div", { className: "flex min-h-0 flex-1 w-full max-w-xl flex-col justify-center gap-0 self-center overflow-visible px-1 pb-1" }, React.createElement(
@@ -380,10 +404,16 @@ function App() {
           floatingCombatTexts: state.floatingCombatTexts,
           syncIntroTutorialDebuffTip: introDebuffTutorialStep,
           debuffTipZIndex: introDebuffTutorialStep ? 10200 : 400,
-          holdTutorialDebuffTip: introDebuffTutorialStep
+          holdTutorialDebuffTip: introDebuffTutorialStep,
+          uiSettings,
+          dropTargetId: castDragUnitId
         }
       )))
     )),
+    React.createElement(AnimatePresence, null, showSettings ? React.createElement(
+      SettingsModal,
+      { key: "settings", settings: uiSettings, onChange: changeUiSettings, onClose: () => setShowSettings(false) }
+    ) : null),
     React.createElement(AnimatePresence, null, menuView === "character" && state.playerClass && !showRoster ? React.createElement(
       PlayerStatsModal,
       {
@@ -404,7 +434,15 @@ function App() {
         allowReorder: !state.currentDungeon,
         onReorderSlots: reorderActionBarWithSignal,
         hideResourcePanels: !state.currentDungeon,
-        tutorialFirstEmptyDropDataId: tutorialActionBarDropSlotDataId ?? void 0
+        tutorialFirstEmptyDropDataId: tutorialActionBarDropSlotDataId ?? void 0,
+        onCastDragOver: setCastDragUnitId,
+        // Dropping on a frame casts there and leaves that unit selected, so the
+        // next click continues on it — the sticky retarget click-casting gives.
+        onCastOnUnit: (spellId, unitId) => {
+          if (!spellId) return;
+          setTargetId(unitId);
+          castSpellWithTutorialSignal(spellId, unitId);
+        }
       }
     ) : null,
     showGlobalMenuNav ? React.createElement(

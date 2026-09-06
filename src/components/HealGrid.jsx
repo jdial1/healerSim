@@ -1,3 +1,5 @@
+import { committedHealing } from "../healMath.js";
+import { DEFAULT_UI_SETTINGS } from "../gameStorage.js";
 import React from "react";
 import {
   Fragment,
@@ -104,7 +106,9 @@ function HealGrid({
   floatingCombatTexts,
   syncIntroTutorialDebuffTip = false,
   debuffTipZIndex = 400,
-  holdTutorialDebuffTip = false
+  holdTutorialDebuffTip = false,
+  uiSettings = DEFAULT_UI_SETTINGS,
+  dropTargetId = null
 }) {
   const [debuffTip, setDebuffTip] = useState(null);
   const [debuffTipShiftX, setDebuffTipShiftX] = useState(0);
@@ -193,6 +197,8 @@ function HealGrid({
         hpCur,
         hpMax,
         rowFloats,
+        uiSettings,
+        isDropTarget: dropTargetId === unit.id,
         onTargetSelect,
         setDebuffTip
       }
@@ -240,6 +246,8 @@ function HealGridUnitRow(props) {
     hpCur,
     hpMax,
     rowFloats,
+    uiSettings,
+    isDropTarget,
     onTargetSelect,
     setDebuffTip
   } = props;
@@ -247,6 +255,13 @@ function HealGridUnitRow(props) {
   // every healing addon puts on the frame. "1240 / 1450" makes the player do
   // arithmetic under pressure to get either one.
   const hpPct = Math.round(Math.max(0, healthPercent));
+  // The app is named Overheal: show the healing already on the way, and where
+  // it would spill past the top of the bar. committedHealing() in healMath.js
+  // is the same estimate the Android app makes.
+  const committedRaw = uiSettings.showCommitted ? committedHealing(unit) : 0;
+  const committedPct = unit.maxHealth > 0 ? committedRaw / unit.maxHealth * 100 : 0;
+  const committedWidth = Math.max(0, Math.min(100 - healthPercent, committedPct));
+  const isOverhealing = !isDead && healthPercent + committedPct > 100;
   const hpDeficit = Math.max(0, Math.round(unit.maxHealth - unit.health));
   // Debuffs first: the alarm outranks the reassurance. HoTs by time left, so
   // the one about to fall off is never the one that gets truncated.
@@ -278,11 +293,15 @@ function HealGridUnitRow(props) {
         type: "button",
         key: shakePulse > 0 ? `${unit.id}-crit-${shakePulse}` : unit.id,
         id: `unit-${unit.id}`,
+        // How a spell dragged out of the action bar finds this frame.
+        "data-unit-id": unit.id,
         disabled: isDead,
         onClick: () => {
           if (!isDead) onTargetSelect(unit.id);
         },
-        className: healGridRowClass(isSelected, isDead, tierEdge),
+        // The frame under the finger takes the existing selection treatment
+        // rather than inventing a second visual vocabulary for "about to drop".
+        className: healGridRowClass(isSelected || isDropTarget, isDead, tierEdge),
         initial: { x: 0 },
         animate: shakePulse > 0 ? { x: [0, -5, 5, -4, 4, -2, 2, 0] } : { x: 0 },
         transition: { duration: 0.34, ease: "easeOut" },
@@ -318,7 +337,16 @@ function HealGridUnitRow(props) {
           transition: { duration: 0 },
           style: { originX: 0 }
         }
-      ), React.createElement("div", { className: "absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%270 0 200 200%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27noise%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.65%27 numOctaves=%273%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23noise)%27 opacity=%270.08%27/%3E%3C/svg%3E')] mix-blend-overlay pointer-events-none" }), React.createElement("div", { className: "absolute inset-0 flex items-center justify-center gap-1.5 font-bold text-white text-xs drop-shadow-[0_1px_1px_rgba(0,0,0,1)]" }, hpDeficit > 0 ? React.createElement("span", { className: "text-orange-300 font-mono" }, "-", hpDeficit) : null, React.createElement("span", null, hpPct, "%"))),
+      ), committedWidth > 0 ? React.createElement(
+        motion.div,
+        {
+          className: "ui-heal-grid-committed-fill pointer-events-none absolute top-0 z-[2] h-full",
+          initial: false,
+          animate: { width: `${committedWidth}%` },
+          transition: { type: "tween", duration: 0.14 },
+          style: { left: `${Math.min(100, healthPercent)}%` }
+        }
+      ) : null, isOverhealing ? React.createElement("div", { className: "ui-heal-grid-overheal-cap pointer-events-none z-[3]" }) : null, React.createElement("div", { className: "absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%270 0 200 200%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27noise%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.65%27 numOctaves=%273%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23noise)%27 opacity=%270.08%27/%3E%3C/svg%3E')] mix-blend-overlay pointer-events-none" }), React.createElement("div", { className: "absolute inset-0 flex items-center justify-center gap-1.5 font-bold text-white text-xs drop-shadow-[0_1px_1px_rgba(0,0,0,1)]" }, uiSettings.healthTextPercent ? React.createElement(React.Fragment, null, hpDeficit > 0 ? React.createElement("span", { className: "text-orange-300 font-mono" }, "-", hpDeficit) : null, React.createElement("span", null, hpPct, "%")) : React.createElement("span", null, hpCur, "/", hpMax))),
       React.createElement("div", { className: "ui-heal-grid-content" }, React.createElement("div", { className: "ui-heal-grid-name" }, unit.name), React.createElement("div", { className: "ui-heal-grid-meta" }, React.createElement("span", null, unitRoleLabel(unit.role)), React.createElement("span", { className: "ui-heal-grid-level-pill" }, "Lv ", unit.level), unit.shield > 0 ? React.createElement("span", { className: "ui-numeric font-mono text-sky-200" }, "+", Math.round(unit.shield), " absorb") : null), React.createElement("div", { className: "ui-heal-grid-buff-row" }, shownBuffs.map((buff) => {
         if (buff.isManaRegenBuff) {
           return React.createElement(

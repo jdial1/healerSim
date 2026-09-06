@@ -77,6 +77,10 @@ const ROSTER_KEY = "aegis.roster.v2";
 const LEGACY_SAVE_KEY = "aegis.save.v1";
 const SUSPEND_KEY = "aegis.suspend.v1";
 const TUTORIAL_PROGRESS_KEY = "aegis.tutorial.v1";
+// Display preferences live in their own key, never inside the roster or the
+// game state — the latter is compared against the Kotlin engine by the parity
+// suite, and a UI toggle has no business appearing in golden JSON.
+const UI_SETTINGS_KEY = "aegis.settings.v1";
 function emptyRoster() {
   return { v: 2, lastPlayedClass: null, byClass: {} };
 }
@@ -180,6 +184,33 @@ function writeTutorialCompletedSteps(steps) {
   if (typeof localStorage === "undefined") return;
   const deduped = [...new Set(steps)];
   localStorage.setItem(TUTORIAL_PROGRESS_KEY, JSON.stringify(deduped));
+}
+const DEFAULT_UI_SETTINGS = {
+  v: 1,
+  healthTextPercent: true,
+  showCommitted: true,
+  colourBlindBands: false,
+  selfFirst: false,
+  largeFrames: false
+};
+function readUiSettings() {
+  if (typeof localStorage === "undefined") return { ...DEFAULT_UI_SETTINGS };
+  try {
+    const raw = localStorage.getItem(UI_SETTINGS_KEY);
+    if (!raw) return { ...DEFAULT_UI_SETTINGS };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return { ...DEFAULT_UI_SETTINGS };
+    return { ...DEFAULT_UI_SETTINGS, ...parsed };
+  } catch {
+    return { ...DEFAULT_UI_SETTINGS };
+  }
+}
+function writeUiSettings(settings) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(UI_SETTINGS_KEY, JSON.stringify({ ...DEFAULT_UI_SETTINGS, ...settings }));
+  } catch {
+  }
 }
 function getSuspendedRun(cls) {
   const suspended = readSuspendedRun();
@@ -355,7 +386,10 @@ export {
   mergeSavedTalentRanks,
   patchFromSavedShape,
   readRoster,
+  DEFAULT_UI_SETTINGS,
   readTutorialCompletedSteps,
+  readUiSettings,
+  writeUiSettings,
   reconcileActionBarOrder,
   serializeCharacter,
   writeRoster,

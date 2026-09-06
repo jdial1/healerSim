@@ -54,7 +54,9 @@ function ActionBars({
   allowReorder = false,
   onReorderSlots,
   hideResourcePanels = false,
-  tutorialFirstEmptyDropDataId = null
+  tutorialFirstEmptyDropDataId = null,
+  onCastOnUnit = null,
+  onCastDragOver = null
 }) {
   const {
     xp,
@@ -97,6 +99,14 @@ function ActionBars({
     const i = parseInt(v, 10);
     return Number.isNaN(i) ? null : i;
   }, []);
+  // Party frames tag themselves with data-unit-id so a spell dragged out of the
+  // bar can be resolved against them — the same trick actionBarIndexAtPoint
+  // uses for slots.
+  const unitIdAtPoint = useCallback((clientX, clientY) => {
+    const el = document.elementFromPoint(clientX, clientY);
+    const row = el?.closest?.("[data-unit-id]");
+    return row?.getAttribute("data-unit-id") ?? null;
+  }, []);
   const clearReorderGestureListeners = useCallback(() => {
     reorderPointerCleanupRef.current?.();
     reorderPointerCleanupRef.current = null;
@@ -104,7 +114,11 @@ function ActionBars({
   useEffect(() => () => clearReorderGestureListeners(), [clearReorderGestureListeners]);
   const attachSpellSlotReorderHold = useCallback(
     (slotIndex, activate, e) => {
-      if (!allowReorder || !onReorderSlots) return;
+      // Out of combat this is a long-press reorder. In combat the same gesture
+      // drags the spell onto a frame to cast it there — VuhDo's click-casting,
+      // as close as touch allows. The two never coexist, so they cannot fight.
+      const casting = !allowReorder;
+      if (casting ? !onCastOnUnit : !onReorderSlots) return;
       clearReorderGestureListeners();
       let dragStarted = false;
       const el = e.currentTarget;
@@ -125,8 +139,10 @@ function ActionBars({
         } catch {
         }
       };
+      // No long press before a cast: a hold before every heal is exactly the
+      // latency this feature exists to remove. Casting arms on movement alone.
       const longMs = isTouchLikePointer(ptype) ? 200 : 220;
-      const timer = window.setTimeout(armDrag, longMs);
+      const timer = casting ? 0 : window.setTimeout(armDrag, longMs);
       const teardown = () => {
         window.clearTimeout(timer);
         window.removeEventListener("pointermove", onMove);
@@ -145,8 +161,12 @@ function ActionBars({
         }
         if (dragStarted) {
           ev.preventDefault();
-          const hi = actionBarIndexAtPoint(ev.clientX, ev.clientY);
-          if (hi !== null) setReorderHoverIndex(hi);
+          if (casting) {
+            onCastDragOver?.(unitIdAtPoint(ev.clientX, ev.clientY));
+          } else {
+            const hi = actionBarIndexAtPoint(ev.clientX, ev.clientY);
+            if (hi !== null) setReorderHoverIndex(hi);
+          }
         }
       };
       const onUp = (ev) => {
@@ -166,21 +186,25 @@ function ActionBars({
         setDraggingBarIndex(null);
         setReorderHoverIndex(null);
         const { x, y } = reorderPointerClientRef.current;
+        suppressPreviewClickUntilRef.current = performance.now() + 450;
+        if (casting) {
+          onCastDragOver?.(null);
+          // An invalid drop casts nothing and costs nothing. Falling back to the
+          // current target would fire a heal the player never aimed.
+          const unitId = unitIdAtPoint(x, y);
+          if (unitId) onCastOnUnit(spellIds[from], unitId);
+          return;
+        }
         const hi = actionBarIndexAtPoint(x, y);
         const to = hi !== null ? hi : from;
-        if (from !== to) {
-          suppressPreviewClickUntilRef.current = performance.now() + 450;
-          onReorderSlots(from, to);
-        } else {
-          suppressPreviewClickUntilRef.current = performance.now() + 450;
-        }
+        if (from !== to) onReorderSlots(from, to);
       };
       reorderPointerCleanupRef.current = teardown;
       window.addEventListener("pointermove", onMove, { passive: false });
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [actionBarIndexAtPoint, allowReorder, clearReorderGestureListeners, onReorderSlots]
+    [actionBarIndexAtPoint, allowReorder, clearReorderGestureListeners, onCastDragOver, onCastOnUnit, onReorderSlots, spellIds, unitIdAtPoint]
   );
   useEffect(() => {
     if (spellsEnabled) setPreviewTooltipSpellId(null);

@@ -63,6 +63,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.data.GameData
@@ -359,8 +360,11 @@ private fun EncounterPip(filled: Boolean, active: Boolean, boss: Boolean = false
         // "done" is a different idea from "in progress" and should not be left
         // to a hue difference alone.
         if (filled) {
-            Canvas(Modifier.fillMaxSize()) {
-                val stroke = 1.6f * density
+            // requiredSize, not size: the cross is deliberately drawn at twice
+            // the pip and allowed to overflow it, so a beaten pull strikes
+            // through rather than sitting politely inside the dot.
+            Canvas(Modifier.requiredSize(size * 2)) {
+                val stroke = 2f * density
                 val i = stroke
                 drawLine(
                     color = Vital.critical,

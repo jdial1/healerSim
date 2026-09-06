@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { GameIcon } from "./GameIcon.jsx";
 import { BOSS_BUFF_ICON_TINT, getSelfBuffGlow } from "../gameIcons.js";
 import { TRASH_PACK_COUNT, getEndlessMultiplier } from "../constants.js";
+import { nextMechanic } from "../nextMechanic.js";
 import { useGhostBarPercent } from "../useGhostBarPercent.js";
 import { clampTooltipX } from "../layoutEnvironment.js";
 const TRASH_PACKS = TRASH_PACK_COUNT;
@@ -55,7 +56,10 @@ function GameHUD({
   bossName,
   trashEnemyName,
   bossSelfBuffs = [],
-  endlessStacks
+  endlessStacks,
+  mechanicCooldown = 0,
+  mechanicOrdinal = 0,
+  dungeon = null
 }) {
   const [bossBuffTip, setBossBuffTip] = useState(null);
   const [bossBuffTipShiftX, setBossBuffTipShiftX] = useState(0);
@@ -64,6 +68,11 @@ function GameHUD({
   const { ghostPercent, ghostEaseDuration } = useGhostBarPercent(enemyPercent);
   const pullsCleared = TRASH_PACKS - trashPullsRemaining;
   const bossActive = combatPhase === "BOSS";
+  // The pre-damage warning a healer plans around. mechanicCooldown has always
+  // been in the state and was never surfaced.
+  const incoming = nextMechanic(combatPhase, dungeon, mechanicOrdinal);
+  const incomingSecs = Math.ceil(Math.max(0, mechanicCooldown) / 10);
+  const incomingImminent = mechanicCooldown > 0 && mechanicCooldown <= 20;
   const enemyBarHeightClass = bossActive ? "h-[3.6rem] sm:h-[4.75rem]" : "h-[4.5rem] sm:h-[4.75rem]";
   const enemyBarFill = bossActive ? "bg-gradient-to-r from-[#2b0f0f] via-[#4a1d1a] to-[#6a2c1e]" : "bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#334155]";
   const displayBossName = bossName || "FINAL BOSS";
@@ -95,7 +104,12 @@ function GameHUD({
     if (!vw) return;
     setBossBuffTipShiftX(clampTooltipX(tip.getBoundingClientRect(), vw));
   }, [bossBuffTip]);
-  return React.createElement(React.Fragment, null, React.createElement("div", { className: "ui-frame-divider-bottom fixed top-0 left-0 right-0 z-40 bg-slate-950/90 shadow-xl backdrop-blur-md" }, React.createElement("div", { className: "flex flex-col gap-2 px-3 pb-3 pt-3 sm:gap-2.5 sm:px-4 sm:pb-3.5 sm:pt-4" }, React.createElement("div", { className: "mx-auto w-full max-w-6xl" }, bossActive ? React.createElement("div", { className: "flex w-full flex-col items-center gap-2 sm:gap-2.5" }, React.createElement("div", { className: "flex flex-wrap items-center justify-center gap-2" }, endlessStacks !== void 0 ? React.createElement("span", { className: "ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 sm:text-[9px]" }, "Endless x", getEndlessMultiplier(endlessStacks).toFixed(2)) : null), React.createElement("h1", { className: "ui-heading w-full max-w-full text-balance text-center text-2xl leading-[1.05] tracking-[0.06em] text-white sm:text-3xl md:text-4xl lg:text-5xl" }, displayBossName)) : React.createElement("div", { className: "flex flex-wrap items-center gap-2" }, React.createElement("span", { className: "text-xs font-black uppercase tracking-tight text-slate-300 tabular-nums sm:text-[10px]" }, !bossActive ? React.createElement("div", { className: "mx-auto flex w-full items-center justify-evenly" }, Array.from({ length: TRASH_PACKS }, (_, i) => React.createElement(Fragment, { key: i }, React.createElement(EncounterIcon, { type: "trash", defeated: pullsCleared > i }))), React.createElement(EncounterIcon, { type: "boss", active: bossActive })) : null)), endlessStacks !== void 0 && !bossActive ? React.createElement("div", { className: "mt-1.5 flex justify-center sm:mt-2" }, React.createElement("span", { className: "ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 tabular-nums sm:text-[9px]" }, "Endless \xD7", getEndlessMultiplier(endlessStacks).toFixed(2))) : null), React.createElement("div", { className: "mx-auto w-full max-w-6xl" }, React.createElement("div", { className: `ui-enemy-target-frame ${enemyBarHeightClass} w-full` }, React.createElement(
+  return React.createElement(React.Fragment, null, React.createElement("div", { className: "ui-frame-divider-bottom fixed top-0 left-0 right-0 z-40 bg-slate-950/90 shadow-xl backdrop-blur-md" }, React.createElement("div", { className: "flex flex-col gap-2 px-3 pb-3 pt-3 sm:gap-2.5 sm:px-4 sm:pb-3.5 sm:pt-4" }, React.createElement("div", { className: "mx-auto w-full max-w-6xl" }, bossActive ? React.createElement("div", { className: "flex w-full flex-col items-center gap-2 sm:gap-2.5" }, React.createElement("div", { className: "flex flex-wrap items-center justify-center gap-2" }, endlessStacks !== void 0 ? React.createElement("span", { className: "ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 sm:text-[9px]" }, "Endless x", getEndlessMultiplier(endlessStacks).toFixed(2)) : null), React.createElement("h1", { className: "ui-heading w-full max-w-full text-balance text-center text-2xl leading-[1.05] tracking-[0.06em] text-white sm:text-3xl md:text-4xl lg:text-5xl" }, displayBossName)) : React.createElement("div", { className: "flex flex-wrap items-center gap-2" }, React.createElement("span", { className: "text-xs font-black uppercase tracking-tight text-slate-300 tabular-nums sm:text-[10px]" }, !bossActive ? React.createElement("div", { className: "mx-auto flex w-full items-center justify-evenly" }, Array.from({ length: TRASH_PACKS }, (_, i) => React.createElement(Fragment, { key: i }, React.createElement(EncounterIcon, { type: "trash", defeated: pullsCleared > i }))), React.createElement(EncounterIcon, { type: "boss", active: bossActive })) : null)), endlessStacks !== void 0 && !bossActive ? React.createElement("div", { className: "mt-1.5 flex justify-center sm:mt-2" }, React.createElement("span", { className: "ui-frame rounded bg-fuchsia-950/45 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-fuchsia-200 tabular-nums sm:text-[9px]" }, "Endless \xD7", getEndlessMultiplier(endlessStacks).toFixed(2))) : null), React.createElement("div", { className: "mx-auto w-full max-w-6xl" }, incoming && mechanicCooldown > 0 ? React.createElement("div", { className: "ui-boss-telegraph mb-1.5 flex items-center gap-2" },
+    React.createElement(GameIcon, { iconPath: incoming.icon, glow: "debuff", size: "xs", className: incomingImminent ? "" : "opacity-70" }),
+    React.createElement("span", { className: `text-[11px] font-black uppercase tracking-[0.14em] ${incomingImminent ? "text-amber-200" : "text-slate-300"}` }, incoming.name),
+    React.createElement("span", { className: `text-[11px] ${incoming.whom === "everyone" ? "font-bold text-amber-300" : "text-slate-400"}` }, incoming.whom),
+    React.createElement("span", { className: "ml-auto font-mono text-xs font-bold tabular-nums text-amber-200" }, incomingSecs, "s")
+  ) : null, React.createElement("div", { className: `ui-enemy-target-frame ${enemyBarHeightClass} w-full` }, React.createElement(
     motion.div,
     {
       className: "ui-enemy-hp-ghost",

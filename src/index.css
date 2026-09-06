@@ -403,6 +403,16 @@
        count is capped in HealGrid and overflow is reported by the "+n" chip. */
     @apply flex flex-nowrap items-center gap-1.5 self-center overflow-hidden;
   }
+  .ui-heal-grid-committed-fill {
+    /* Healing your HoTs will still deliver, sitting past current health. */
+    @apply bg-emerald-300/35;
+  }
+  .ui-heal-grid-overheal-cap {
+    /* Gilt cap: committed healing runs past the top of the bar, so the surplus
+       is being thrown away. The lesson the game is named after, without a
+       number. */
+    @apply absolute inset-y-0 right-0 w-[2px] bg-amber-300;
+  }
   .ui-heal-grid-aura-overflow {
     @apply shrink-0 font-mono text-[10px] font-bold text-slate-400;
   }
