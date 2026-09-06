@@ -62,10 +62,31 @@ rewrite.
 run in CI:
 
 - `npm run test:golden` regenerates `parity/golden.json` twice and requires both
-  runs to equal the committed bytes. Byte equality, not the 1e-6 the Kotlin
-  comparison tolerates.
+  runs to equal the committed bytes. Byte equality, not an epsilon.
 - `npm run test:balance` hashes every `balance.json` key except the role blocks,
   so healer tuning cannot move under cover of role work.
+
+**The cross-engine *tick* contract has ended, deliberately.** Adding a global
+cooldown — which applies to every class, healers included — changed the Android
+tick, and the web app is frozen as the healer game it shipped as. The two
+engines now genuinely disagree about the tick, so `TickParityTest` compares
+against `android/app/src/test/resources/tick-snapshots.json`, recorded from the
+Kotlin engine and committed, rather than against the JS engine's numbers.
+Regenerating `golden.json` from Kotlin instead would have turned the reference
+into a copy of the thing it checks.
+
+Regenerate those snapshots deliberately, never silently:
+
+```
+./gradlew :app:testDebugUnitTest -Daegis.regenerateTickSnapshots=true
+```
+
+The other twelve golden sections — stats, spell ranks, xp curves, rng streams —
+are unaffected by the GCD and are still checked against the JS engine.
+
+Measured cost of the GCD on the recorded healer scenarios: no change at all to
+three of them, and -4.3% effective healing on the fourth, which is the only one
+whose rotation casts faster than the cooldown.
 
 Two design choices do the actual work. Enemy damage is
 `scripted * aiShare + playerDamage`, and `aiShareWhenHealer` is exactly `1.0`,

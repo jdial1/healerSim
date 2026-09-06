@@ -221,6 +221,14 @@ data class GameState(
     val playerCombatBuffs: List<PlayerBuff> = emptyList(),
     val internalCooldowns: Map<String, Int> = emptyMap(),
     val spellCooldowns: Map<String, Int> = emptyMap(),
+    /**
+     * Ticks until the next cast is allowed, from any spell.
+     *
+     * Stops the bar being spammed, and bounds how many actions a client can
+     * produce per second -- which is what makes a relayed action stream
+     * predictable rather than unbounded.
+     */
+    val globalCooldownRemaining: Int = 0,
     val capstoneForm: String? = null,
     val holyPower: Int = 0,
     val beaconTargetId: String = "1",
@@ -237,6 +245,15 @@ data class GameState(
      * of it outstanding.
      */
     val pendingEnemyDamage: Double = 0.0,
+    /**
+     * Threat the player's casts have generated since the last tick consumed it.
+     *
+     * Separate from [pendingEnemyDamage] because threat is not proportional to
+     * damage: a tank's Shield Slam is worth three times its damage in threat and
+     * a taunt is worth threat with no damage at all. Deriving one from the other
+     * is what made `Spell.threatMultiplier` inert.
+     */
+    val pendingPlayerThreat: Double = 0.0,
     /**
      * The AI healer's mana. Zero and unused while the player is the healer.
      *
@@ -284,6 +301,7 @@ data class GameState(
         playerCombatBuffs = emptyList(),
         internalCooldowns = emptyMap(),
         spellCooldowns = emptyMap(),
+        globalCooldownRemaining = 0,
         capstoneForm = null,
         holyPower = 0,
         mechanicCooldown = 0,
@@ -292,6 +310,7 @@ data class GameState(
         tauntLockTicks = 0,
         tauntedById = null,
         pendingEnemyDamage = 0.0,
+        pendingPlayerThreat = 0.0,
         enemyDebuffs = emptyList(),
         aiHealerMana = 0.0,
         combatElapsedTicks = 0,

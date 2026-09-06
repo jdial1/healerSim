@@ -155,6 +155,14 @@ data class CombatBalance(
 
 @Serializable
 data class SharedCombat(
+    /**
+     * Ticks every cast locks the whole action bar for. 10 = one second.
+     *
+     * Applies to every class. This is a deliberate change to the healer game as
+     * well -- see the note in scripts/check-balance-frozen.mjs about why the
+     * frozen-balance hash moved.
+     */
+    val globalCooldownTicks: Int = 10,
     val shieldDefaultTicks: Int,
     val directHealSynergyMultiplierDefault: Double,
     val hotPandemicDurationCapMultDefault: Double,

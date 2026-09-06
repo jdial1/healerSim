@@ -104,6 +104,10 @@ class CastPipeline(
         val spell = data.spell(spellId) ?: return null
         if (s.playerClass == null) return null
         if ((s.spellCooldowns[spellId] ?: 0) > 0) return null
+        // The potion is off the global cooldown, as consumables conventionally
+        // are -- being unable to drink because you just cast is the kind of
+        // rule that only ever feels like a bug.
+        if (s.globalCooldownRemaining > 0 && spellId != MANA_POTION_ID) return null
         if (spellId == MANA_POTION_ID && s.manaPotionsUsedThisDungeon >= MANA_POTION_USES_PER_DUNGEON) return null
         s.healer ?: return null
 
@@ -166,14 +170,22 @@ class CastPipeline(
 
     // --- application ---------------------------------------------------------
 
-    fun tryCast(ctx: CastContext, spellId: String, targetId: String?, critRoll: Double): GameState =
-        when (val ready = validate(ctx, spellId, targetId, critRoll)) {
-            null -> ctx.state
+    fun tryCast(ctx: CastContext, spellId: String, targetId: String?, critRoll: Double): GameState {
+        val ready = validate(ctx, spellId, targetId, critRoll) ?: return ctx.state
+        val out = when (ready) {
             is Ready.ManaPotion -> applyManaPotion(ctx, ready)
             is Ready.Swiftmend -> applySwiftmend(ctx, ready)
             is Ready.Standard -> applyStandardHeal(ctx, ready)
             is Ready.Damage -> applyDamageCast(ctx, ready)
         }
+        // Started here rather than in each apply path: there are four of them
+        // and a fifth would silently forget.
+        return if (ready is Ready.ManaPotion) {
+            out
+        } else {
+            out.copy(globalCooldownRemaining = data.balance.combat.shared.globalCooldownTicks)
+        }
+    }
 
     /**
      * A damage cast: mana out, damage into the tick's accumulator, and a DoT on
@@ -222,10 +234,18 @@ class CastPipeline(
             )
         }
 
+        // Threat is not proportional to damage. A tank's Shield Slam is worth
+        // three times its damage in threat; a taunt is worth a flat amount with
+        // no damage at all. Both fields were declared on Spell and read by
+        // nothing, which is why a "threat spell" moved the bar exactly as much
+        // as any other spell of the same size.
+        val threat = dealt * spell.threatMultiplier + spell.flatThreat
+
         val out = s.copy(
             mana = max(0.0, s.mana - ready.needMana),
             playerCombatBuffs = buffs,
             pendingEnemyDamage = s.pendingEnemyDamage + dealt,
+            pendingPlayerThreat = s.pendingPlayerThreat + threat,
             enemyDebuffs = dots,
             spellCooldowns = s.spellCooldowns.withCooldown(
                 ready.spellId,

@@ -9,12 +9,17 @@
 // So: hash every key except the role blocks. Changing a healer number is still
 // allowed -- it just has to be deliberate enough to update the hash here, which
 // puts it in the diff where a reviewer will see it.
+//
+// It has moved once, deliberately: adding combat.shared.globalCooldownTicks.
+// The global cooldown applies to every class including the healers, which is a
+// real change to the shipped healer game and is why the cross-engine tick
+// contract ended at the same time -- see TickParityTest.
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const ROLE_KEYS = new Set(["threat", "roles"]);
-const EXPECTED = "15249c396150aa918ca654ca47240a5b44bf70ad264169a8e444858ce05af526";
+const EXPECTED = "b70356ed7b4036665b59214f3a403b9612664c362f1ff6a265adff08505c71e7";
 
 const path = fileURLToPath(new URL("../src/data/balance.json", import.meta.url));
 const all = JSON.parse(readFileSync(path, "utf8"));

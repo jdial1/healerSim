@@ -50,7 +50,8 @@
       "shieldDefaultTicks": 100,
       "directHealSynergyMultiplierDefault": 1.15,
       "hotPandemicDurationCapMultDefault": 1.3,
-      "dispellableCurseCleanseProcPerRank": 0.08
+      "dispellableCurseCleanseProcPerRank": 0.08,
+      "globalCooldownTicks": 10
     },
     "priest": {
       "divinityOverhealToShieldPerRating": 0.0045,

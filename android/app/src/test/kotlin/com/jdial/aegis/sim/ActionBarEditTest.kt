@@ -85,6 +85,64 @@ class ActionBarEditTest {
         assertEquals("clearing must be refused mid-run", started, set(started, filled, ""))
     }
 
+    // --- the global cooldown -------------------------------------------------
+
+    @Test
+    fun `a second cast in the same tick is refused`() {
+        val engine2 = Engine(Fixtures.data)
+        var s = engine2.reduce(
+            character(), Action.StartDungeon(Fixtures.data.dungeons.first(), "normal"), Rng(3),
+        )
+        s = engine2.reduce(s, Action.Tick(1), Rng(3))
+        val spell = s.activeActionBars.first { it.isNotBlank() && it != MANA_POTION_ID }
+
+        val first = engine2.reduce(s, Action.CastSpell(spell, "1", 100.0), Rng(3))
+        assertTrue("the first cast should land", first.mana < s.mana)
+        assertTrue("and should start the GCD", first.globalCooldownRemaining > 0)
+
+        val second = engine2.reduce(first, Action.CastSpell(spell, "1", 100.0), Rng(3))
+        assertEquals("a second cast on the GCD must change nothing", first, second)
+    }
+
+    @Test
+    fun `the global cooldown expires and casting resumes`() {
+        val engine2 = Engine(Fixtures.data)
+        var s = engine2.reduce(
+            character(), Action.StartDungeon(Fixtures.data.dungeons.first(), "normal"), Rng(3),
+        )
+        s = engine2.reduce(s, Action.Tick(1), Rng(3))
+        val spell = s.activeActionBars.first { it.isNotBlank() && it != MANA_POTION_ID }
+        s = engine2.reduce(s, Action.CastSpell(spell, "1", 100.0), Rng(3))
+
+        val gcd = Fixtures.data.balance.combat.shared.globalCooldownTicks
+        repeat(gcd) { s = engine2.reduce(s, Action.Tick(1), Rng(3)) }
+        assertEquals("the GCD should have expired", 0, s.globalCooldownRemaining)
+
+        val manaBefore = s.mana
+        val after = engine2.reduce(s, Action.CastSpell(spell, "1", 100.0), Rng(3))
+        assertTrue("casting should work again", after.mana < manaBefore)
+    }
+
+    @Test
+    fun `the potion is off the global cooldown`() {
+        // Being unable to drink because you just cast is the kind of rule that
+        // only ever feels like a bug.
+        val engine2 = Engine(Fixtures.data)
+        var s = engine2.reduce(
+            character(), Action.StartDungeon(Fixtures.data.dungeons.first(), "normal"), Rng(3),
+        )
+        s = engine2.reduce(s, Action.Tick(1), Rng(3))
+        val spell = s.activeActionBars.first { it.isNotBlank() && it != MANA_POTION_ID }
+        s = engine2.reduce(s, Action.CastSpell(spell, "1", 100.0), Rng(3))
+        assertTrue(s.globalCooldownRemaining > 0)
+
+        val drunk = engine2.reduce(s, Action.CastSpell(MANA_POTION_ID, null, 100.0), Rng(3))
+        assertTrue(
+            "the potion must still be usable on the GCD",
+            drunk.manaPotionsUsedThisDungeon > s.manaPotionsUsedThisDungeon,
+        )
+    }
+
     @Test
     fun `every class can fill a slot with each of its own spells`() {
         // Guards the new classes too: a spell that cannot be slotted is one the

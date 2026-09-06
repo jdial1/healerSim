@@ -146,6 +146,13 @@ tasks.withType<Test>().configureEach {
     dependsOn(syncGameData)
     systemProperty("aegis.parityDir", rootProject.file("../parity").absolutePath)
     systemProperty("aegis.assetsDir", generatedAssetsDir.absolutePath)
+    // The recorded tick snapshots, and the deliberate switch that rewrites them.
+    // Forwarded explicitly: a bare -D on the Gradle command line does not reach
+    // the test JVM.
+    systemProperty("aegis.tickSnapshots", project.file("src/test/resources/tick-snapshots.json").absolutePath)
+    providers.systemProperty("aegis.regenerateTickSnapshots").orNull?.let {
+        systemProperty("aegis.regenerateTickSnapshots", it)
+    }
 }
 
 // --- release guards ---------------------------------------------------------

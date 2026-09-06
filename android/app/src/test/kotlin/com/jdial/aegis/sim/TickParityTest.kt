@@ -11,7 +11,14 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Test
+import java.io.File
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.add
 
 /**
  * Replays the JS engine's recorded combat ticks against the Kotlin port.
@@ -20,11 +27,46 @@ import org.junit.Test
  * mechanic scheduling, environmental damage, DoT and HoT ticks, mana regen,
  * death and encounter progression — has to agree, tick for tick, on the same
  * seeded PRNG stream.
+ *
+ * **That cross-engine contract ended when the global cooldown was added.** The
+ * GCD applies to every class including healers, and it exists only in this
+ * engine — the web app is frozen as the healer game it shipped as. The two
+ * engines now genuinely disagree about the tick, and pretending otherwise by
+ * regenerating golden.json from Kotlin would have turned the reference into a
+ * copy of the thing it was supposed to check.
+ *
+ * So: scenario *inputs* still come from golden.json, because those are just
+ * setup and remain valid. Expected *outputs* now come from
+ * `src/test/resources/tick-snapshots.json`, recorded from this engine and
+ * committed. The regression teeth are identical; the claim is smaller and true.
+ *
+ * The other twelve golden sections — stats, spell ranks, xp curves, rng streams
+ * — are unaffected by the GCD and are still checked against the JS engine by
+ * [ParityTest].
+ *
+ * Regenerate deliberately, never silently:
+ * `./gradlew :app:testDebugUnitTest -Daegis.regenerateTickSnapshots=true`
  */
 class TickParityTest {
 
     private val data = Fixtures.data
     private val engine = Engine(data)
+
+    private val snapshotFile = File(
+        System.getProperty("aegis.tickSnapshots") ?: "src/test/resources/tick-snapshots.json",
+    )
+    private val regenerate = System.getProperty("aegis.regenerateTickSnapshots") == "true"
+    private val recorded = mutableMapOf<String, JsonObject>()
+
+    private val expected: Map<String, JsonObject> by lazy {
+        if (regenerate) return@lazy emptyMap()
+        check(snapshotFile.isFile) {
+            "Missing ${snapshotFile.absolutePath}. Regenerate with " +
+                "-Daegis.regenerateTickSnapshots=true and commit the result."
+        }
+        (Json.parseToJsonElement(snapshotFile.readText()) as JsonObject)
+            .mapValues { it.value.jsonObject }
+    }
 
     // Healths are doubles accumulated over hundreds of operations; allow only
     // floating-point noise, not behavioural drift.
@@ -87,8 +129,72 @@ class TickParityTest {
         )
     }
 
+    private fun snapshotOf(s: GameState): JsonObject = buildJsonObject {
+        put("phase", s.combatPhase.name)
+        put("trashPullsRemaining", s.trashPullsRemaining)
+        put("combatActive", s.isCombatActive)
+        put("enemyHealth", s.enemyHealth)
+        put("mana", s.mana)
+        put("progress", s.dungeonProgress)
+        put("healEffective", s.runHealEffective)
+        put("healOverheal", s.runHealOverheal)
+        put("mechanicCooldown", s.mechanicCooldown)
+        put("mechanicOrdinal", s.mechanicOrdinal)
+        put("xp", s.xp)
+        put("level", s.level)
+        put("outcome", s.dungeonOutcome?.kind?.name?.let(::jsOutcomeName))
+        put("outcomeXp", s.dungeonOutcome?.xpGained ?: 0)
+        putJsonArray("bossBuffs") {
+            s.bossSelfBuffs.forEach {
+                add(buildJsonObject { put("id", it.sourceAbilityId); put("ticks", it.remainingTicks) })
+            }
+        }
+        putJsonArray("cooldowns") {
+            s.spellCooldowns.toSortedMap().forEach { (k, v) ->
+                add(buildJsonObject { put("id", k); put("t", v) })
+            }
+        }
+        putJsonArray("playerBuffs") {
+            s.playerCombatBuffs.sortedBy { it.id }.forEach {
+                add(
+                    buildJsonObject {
+                        put("id", it.id); put("ticks", it.remainingTicks); put("stacks", it.stacks)
+                    },
+                )
+            }
+        }
+        putJsonArray("party") {
+            s.party.forEach { u ->
+                add(
+                    buildJsonObject {
+                        put("id", u.id); put("health", u.health); put("shield", u.shield)
+                        putJsonArray("buffs") {
+                            u.buffs.forEach {
+                                add(buildJsonObject { put("src", it.sourceSpellId); put("ticks", it.remainingTicks) })
+                            }
+                        }
+                        putJsonArray("debuffs") {
+                            u.debuffs.forEach {
+                                add(buildJsonObject { put("src", it.sourceAbilityId); put("ticks", it.remainingTicks) })
+                            }
+                        }
+                    },
+                )
+            }
+        }
+    }
+
+    @After
+    fun writeSnapshotsIfRegenerating() {
+        if (!regenerate) return
+        snapshotFile.parentFile?.mkdirs()
+        val pretty = Json { prettyPrint = true }
+        snapshotFile.writeText(pretty.encodeToString(JsonObject.serializer(), JsonObject(recorded)))
+        println("wrote ${recorded.size} tick snapshots to ${snapshotFile.absolutePath}")
+    }
+
     @Test
-    fun combatTicksMatchTheJsEngine() {
+    fun combatTicksMatchTheRecordedRun() {
         val scenarios = Fixtures.golden.getValue("tickScenarios").jsonArray
         assertTrue("no tick scenarios in golden.json", scenarios.isNotEmpty())
 
@@ -98,8 +204,21 @@ class TickParityTest {
             var state = buildInitialState(sc)
             val rng = Rng(sc.i("seed"))
 
-            val expectedByTick = sc.arr("snapshots").associateBy { it.jsonObject.i("tick") }
-            val maxTick = expectedByTick.keys.max()
+            // Inputs still come from golden.json -- which ticks to sample at is
+            // setup, not a claim about the JS engine's numbers.
+            val sampleTicks = sc.arr("snapshots").map { it.jsonObject.i("tick") }.toSet()
+            val maxTick = sampleTicks.max()
+
+            fun check(t: Int, st: GameState) {
+                if (t !in sampleTicks) return
+                val key = "$name@$t"
+                if (regenerate) {
+                    recorded[key] = snapshotOf(st)
+                } else {
+                    val e = expected[key] ?: error("no recorded snapshot for $key")
+                    assertSnapshot(name, t, e, st)
+                }
+            }
 
             val rotation = sc["rotation"]?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.jsonObject
             val everyTicks = rotation?.i("everyTicks") ?: 0
@@ -109,7 +228,7 @@ class TickParityTest {
             for (t in 1..maxTick) {
                 state = engine.reduce(state, Action.Tick(1), rng)
                 if (!state.isCombatActive) {
-                    expectedByTick[t]?.let { assertSnapshot(name, t, it.jsonObject, state) }
+                    check(t, state)
                     break
                 }
 
@@ -126,7 +245,7 @@ class TickParityTest {
                         )
                     }
                 }
-                expectedByTick[t]?.let { assertSnapshot(name, t, it.jsonObject, state) }
+                check(t, state)
             }
         }
     }

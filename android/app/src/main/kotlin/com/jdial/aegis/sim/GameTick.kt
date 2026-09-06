@@ -84,7 +84,12 @@ class GameTick(
         party: List<Unit>,
         healEffective: Double,
         scriptedPartyDamage: Double,
-        playerDamage: Double = 0.0,
+        /**
+         * Threat the player generated this tick from their own casts, already
+         * scaled by each spell's threatMultiplier. Not their damage -- see
+         * GameState.pendingPlayerThreat.
+         */
+        playerThreat: Double = 0.0,
     ): List<Unit> {
         val cfg = data.balance.threat
         val living = party.filter { it.isAlive }
@@ -113,9 +118,9 @@ class GameTick(
                 // so all of it is theirs. That stops being true when an AI
                 // healer exists.
                 val healing = if (u.id == PLAYER_UNIT_ID) healEffective * cfg.healingCoefficient else 0.0
-                // The player's own damage is theirs alone, and is what will let
-                // a DPS pull off a tank that is only generating scripted threat.
-                val own = if (u.id == PLAYER_UNIT_ID) playerDamage else 0.0
+                // The player's own threat is theirs alone, and is what lets a
+                // DPS pull off a tank that only generates scripted threat.
+                val own = if (u.id == PLAYER_UNIT_ID) playerThreat else 0.0
                 val gained = (damage + healing + own) * mult(u.role)
                 if (gained == 0.0) u else u.copy(threat = u.threat + gained)
             }
@@ -879,6 +884,9 @@ class GameTick(
         val scriptedDamage = partyDps * bossDpsMult * dpsPaceMultiplier * s.runDpsJitter * aiShare
         val enemyDots = s.enemyDebuffs.sumOf { it.damagePerTick }
         val playerDamage = s.pendingEnemyDamage + enemyDots
+        // DoT ticks are worth their damage in threat; direct casts carry
+        // whatever their spell declared.
+        val playerThreat = s.pendingPlayerThreat + enemyDots
         var enemyHealth = s.enemyHealth - (scriptedDamage + playerDamage)
 
         val base = s.copy(
@@ -886,10 +894,11 @@ class GameTick(
                 sys.party,
                 healEffective = healEffectiveThisTick,
                 scriptedPartyDamage = scriptedDamage,
-                playerDamage = playerDamage,
+                playerThreat = playerThreat,
             ),
             // Drained every tick: what the player dealt has now landed.
             pendingEnemyDamage = 0.0,
+            pendingPlayerThreat = 0.0,
             enemyDebuffs = s.enemyDebuffs
                 .map { it.copy(remainingTicks = it.remainingTicks - 1) }
                 .filter { it.remainingTicks > 0 },

@@ -84,11 +84,13 @@ import com.jdial.aegis.ui.theme.ForgedPanel
 import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.Ink
 import com.jdial.aegis.ui.theme.LocalAccent
+import com.jdial.aegis.sim.MANA_POTION_ID
 import com.jdial.aegis.sim.PLAYER_UNIT_ID
 import com.jdial.aegis.ui.theme.LocalUiSettings
 import com.jdial.aegis.ui.theme.Obsidian
 import com.jdial.aegis.ui.theme.Vital
 import kotlin.math.ceil
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
@@ -168,6 +170,7 @@ fun CombatScreen(
                         PartyRow(
                             unit = unit,
                             state = state,
+                            targetable = state.playerRole == UnitRole.HEALER,
                             selected = unit.id == targetId,
                             rowHeight = rowHeight,
                             auraSize = auraSize,
@@ -252,6 +255,16 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
 
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // For a role that only ever hits the enemy, say so once here
+                // rather than leaving the player to infer it from spells that
+                // work without a selection.
+                if (state.playerRole != UnitRole.HEALER) {
+                    BasicText(
+                        "TARGET",
+                        style = AegisType.label.copy(fontSize = 10.sp, color = Vital.critical),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
                 BasicText(
                     (if (isBoss) "BOSS · " else "").plus(name).uppercase(),
                     style = AegisType.label.copy(color = if (isBoss) Gilt.core else Ink.secondary),
@@ -417,12 +430,22 @@ private fun ThreatStrip(state: GameState) {
             Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(bar))
         }
         Spacer(Modifier.width(8.dp))
+        // The ratio flattens out once you are well ahead -- a tank three times
+        // clear of the field sits near zero and stops appearing to respond to
+        // anything. The gap always moves when you cast, so it carries the
+        // moment-to-moment feedback and the bar carries the standing.
+        val gap = (self.threat - rival).roundToInt()
         BasicText(
-            "${(frac * 100).roundToInt()}%",
+            (if (gap >= 0) "+" else "") + gap,
             style = AegisType.numeric.copy(
                 fontSize = 12.sp,
                 color = if (danger) Vital.critical else Ink.primary,
             ),
+        )
+        Spacer(Modifier.width(6.dp))
+        BasicText(
+            "${(frac * 100).roundToInt()}%",
+            style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted),
         )
 
         // The player's own DoTs, so upkeep is visible without guessing.
@@ -592,6 +615,8 @@ private fun healthColor(pct: Float): Color = when {
 private fun PartyRow(
     unit: Unit,
     state: GameState,
+    /** False for roles whose spells never take a party member. */
+    targetable: Boolean,
     selected: Boolean,
     rowHeight: Dp,
     auraSize: Dp,
@@ -638,7 +663,11 @@ private fun PartyRow(
             // because a moving target is a mis-tap under pressure.
             .height(rowHeight)
             .onGloballyPositioned { onBounds(it.boundsInWindow()) }
-            .clickable(enabled = !dead, onClick = onClick)
+            // A tank or DPS has no spell that takes a party member: every one
+            // of theirs is aimed at the enemy, and applyDamageCast ignores
+            // targetId entirely. Leaving the frames tappable would leave an
+            // interaction that silently does nothing, which reads as broken.
+            .clickable(enabled = !dead && targetable, onClick = onClick)
             .semantics {
                 role = Role.Button
                 val pct = if (unit.maxHealth > 0) {
@@ -668,7 +697,7 @@ private fun PartyRow(
                 }
                 if (dead) disabled()
             },
-        selected = selected || dropTarget,
+        selected = (selected && targetable) || dropTarget,
         accent = if (dropTarget) accent.bright else accent.core,
         contentPadding = PaddingValues(0.dp),
     ) {
@@ -1061,7 +1090,16 @@ private fun ActionBar(
                         SpellSlot(
                             index = i + 1,
                             spell = spell,
-                            cooldownTicks = state.spellCooldowns[spellId] ?: 0,
+                            // The global cooldown is shown as a slot cooldown
+                            // rather than as its own widget: it means the same
+                            // thing to the player -- you cannot press this yet --
+                            // and a tap that silently does nothing is the thing
+                            // most likely to read as a broken button. The
+                            // potion is off the GCD, so it never shows one.
+                            cooldownTicks = max(
+                                state.spellCooldowns[spellId] ?: 0,
+                                if (spellId == MANA_POTION_ID) 0 else state.globalCooldownRemaining,
+                            ),
                             affordable = spell != null && state.mana >= spell.manaCost,
                             dragging = dragFrom == i,
                             dragOffsetPx = if (dragFrom == i) dragDx else 0f,
@@ -1079,6 +1117,7 @@ private fun ActionBar(
                                 // target would fire a cast the player did not aim.
                                 val usable = spell != null &&
                                     (state.spellCooldowns[spellId] ?: 0) <= 0 &&
+                                    (spellId == MANA_POTION_ID || state.globalCooldownRemaining <= 0) &&
                                     state.mana >= spell.manaCost
                                 if (usable && dropTargetId != null) onDropCast(spell.id)
                                 onDragPoint(null)

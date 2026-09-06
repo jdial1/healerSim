@@ -130,8 +130,12 @@ class Engine(val data: GameData) {
 
     /** Cooldowns decrement every tick; entries reaching zero are dropped. */
     private fun tickCooldowns(s: GameState): GameState {
-        if (s.spellCooldowns.isEmpty()) return s
+        val gcd = if (s.globalCooldownRemaining > 0) s.globalCooldownRemaining - 1 else 0
+        if (s.spellCooldowns.isEmpty()) {
+            return if (gcd == s.globalCooldownRemaining) s else s.copy(globalCooldownRemaining = gcd)
+        }
         return s.copy(
+            globalCooldownRemaining = gcd,
             spellCooldowns = s.spellCooldowns
                 .mapValues { (_, v) -> v - 1 }
                 .filterValues { it > 0 },

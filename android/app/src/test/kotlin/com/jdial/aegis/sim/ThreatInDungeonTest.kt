@@ -97,6 +97,52 @@ class ThreatInDungeonTest {
     }
 
     @Test
+    fun `a spell's threatMultiplier reaches the threat table`() {
+        // It did not. threatMultiplier and flatThreat were declared on Spell and
+        // read by nothing, so a tank's Shield Slam (3.0x) generated exactly the
+        // same threat as any other spell of the same size -- which is why
+        // casting a threat spell did not move the bar.
+        val slam = Fixtures.data.bundle(PlayerClass.WARRIOR).spells.getValue("shield_slam")
+        assertTrue("fixture must declare a multiplier", slam.threatMultiplier > 1.0)
+
+        val casts = CastPipeline(Fixtures.data, Fixtures.stats)
+        val s = run(start(PlayerClass.WARRIOR), 1)
+        val out = casts.tryCast(
+            CastContext(s, Fixtures.data, Fixtures.stats, Rng(4)),
+            "shield_slam", null, 100.0,
+        )
+
+        assertTrue("the cast must deal damage", out.pendingEnemyDamage > 0.0)
+        assertEquals(
+            "threat banked must be damage times the declared multiplier, plus any flat",
+            out.pendingEnemyDamage * slam.threatMultiplier + slam.flatThreat,
+            out.pendingPlayerThreat,
+            1e-9,
+        )
+        assertTrue(
+            "and must therefore exceed the damage, or the multiplier is inert",
+            out.pendingPlayerThreat > out.pendingEnemyDamage,
+        )
+    }
+
+    @Test
+    fun `a taunt generates threat even though it deals no damage`() {
+        val casts = CastPipeline(Fixtures.data, Fixtures.stats)
+        val s = run(start(PlayerClass.WARRIOR), 20)
+        val before = s.party.first { it.id == PLAYER_UNIT_ID }.threat
+        val out = casts.tryCast(
+            CastContext(s, Fixtures.data, Fixtures.stats, Rng(4)),
+            "taunt", null, 100.0,
+        )
+        assertEquals("a taunt deals no damage", 0.0, out.pendingEnemyDamage, 0.0)
+        assertTrue(
+            "but it must take the lead: $before -> ${out.party.first { it.id == PLAYER_UNIT_ID }.threat}",
+            out.party.first { it.id == PLAYER_UNIT_ID }.threat >= before,
+        )
+        assertEquals(PLAYER_UNIT_ID, out.enemyTargetId)
+    }
+
+    @Test
     fun `a healer run credits threat only to the healer, from healing`() {
         // The healer game must be untouched. The table is still computed for
         // them -- it costs nothing and stays honest -- but the *AI* units get no
