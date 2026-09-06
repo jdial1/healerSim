@@ -275,6 +275,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                 DungeonQueueSheet(
                     dungeon = dungeon,
                     data = vm.data,
+                    playerRole = state.playerRole,
                     onClose = { queued = null },
                     onEnter = { pace ->
                         queued = null

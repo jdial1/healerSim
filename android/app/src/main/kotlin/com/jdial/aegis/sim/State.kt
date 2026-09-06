@@ -65,6 +65,26 @@ const val TAG_TREE_OF_LIFE_BIG_DIRECT = "tree-of-life-big-direct"
 @Serializable
 enum class UnitRole { TANK, DPS, HEALER }
 
+/**
+ * The roles of the five party slots, in slot order, for a party led by
+ * [playerRole]. The player is always last -- slot ids are positional and
+ * load-bearing across the engine, the UI and the save.
+ *
+ * Shared with the queue lobby rather than restated there. The lobby used to
+ * draw four anonymous dots and a fifth captioned "the healer is you", which was
+ * true only while healer was the one playable role; anything that describes the
+ * group it is about to form has to be derived from the same place the engine
+ * builds it, or it drifts into being decoration again.
+ */
+fun partyRoles(playerRole: UnitRole): List<UnitRole> = buildList {
+    // Tank first, so slot "1" is the tank whenever there is an AI one -- a lot
+    // of UI and the tank-death rule both assume it.
+    if (playerRole != UnitRole.TANK) add(UnitRole.TANK)
+    repeat(if (playerRole == UnitRole.DPS) 2 else 3) { add(UnitRole.DPS) }
+    if (playerRole != UnitRole.HEALER) add(UnitRole.HEALER)
+    add(playerRole)
+}
+
 @Serializable
 enum class CombatPhase { TRASH, BOSS }
 

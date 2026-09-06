@@ -138,4 +138,30 @@ class PartyCompositionTest {
         assertEquals(listOf(1, 1, 2, 1, 1), p.map { it.level })
         assertEquals(listOf(130.0, 65.0, 77.0, 65.0), p.dropLast(1).map { it.maxHealth })
     }
+
+    @Test
+    fun `the queue lobby shows the party the engine actually builds`() {
+        // The lobby drew four anonymous dots and captioned the fifth "the healer
+        // is you" -- true only while healer was the one playable role. It reads
+        // partyRoles now, and so does generateParty; this is what stops the two
+        // drifting apart again.
+        for (cls in PlayerClass.entries) {
+            val role = runCatching { UnitRole.valueOf(Fixtures.data.bundle(cls).meta.role) }
+                .getOrDefault(UnitRole.HEALER)
+            val built = tick.generateParty(cls, 10, Rng(7)).map { it.role }
+            assertEquals("$cls", built, partyRoles(role))
+        }
+    }
+
+    @Test
+    fun `every party is one tank, three dps and a healer whoever the player is`() {
+        for (role in UnitRole.entries) {
+            val roles = partyRoles(role)
+            assertEquals("$role: party size", 5, roles.size)
+            assertEquals("$role: tanks", 1, roles.count { it == UnitRole.TANK })
+            assertEquals("$role: dps", 3, roles.count { it == UnitRole.DPS })
+            assertEquals("$role: healers", 1, roles.count { it == UnitRole.HEALER })
+            assertEquals("$role: the player is always last", role, roles.last())
+        }
+    }
 }

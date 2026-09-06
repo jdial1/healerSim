@@ -795,13 +795,9 @@ class GameTick(
         val dpsTpls = rng.shuffled(data.npcPools.dpsPool).take(3)
 
         // The four AI roles are the full group minus whatever the player is.
-        // Ordered tank-first so slot "1" stays the tank whenever there is an AI
-        // one, which a lot of UI and the tank-death rule both assume.
-        val aiRoles = buildList {
-            if (playerRole != UnitRole.TANK) add(UnitRole.TANK)
-            repeat(if (playerRole == UnitRole.DPS) 2 else 3) { add(UnitRole.DPS) }
-            if (playerRole != UnitRole.HEALER) add(UnitRole.HEALER)
-        }
+        // partyRoles is the shared definition -- the queue lobby draws the same
+        // list, so what it shows you forming is what the engine actually builds.
+        val aiRoles = partyRoles(playerRole).dropLast(1)
 
         var dpsUsed = 0
         val party = aiRoles.mapIndexed { i, role ->
