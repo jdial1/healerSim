@@ -40,11 +40,40 @@ classes belong in an Android-owned assets path, merged at load.
 
 ### The Android app is where development continues
 
-Planned: playable tank and DPS roles alongside the existing three healer classes,
-each with their own kit and talent tree, a threat model, real player damage, and
-role-specific combat frames. Co-op is deliberately deferred, but the engine is
-kept as a pure `(state, action, rng) -> state` reducer with serializable actions
-so it stays possible without a rewrite.
+It is no longer a healer game. Five classes across three roles:
+
+| Class | Role |
+|---|---|
+| Holy Priest, Resto Druid, Holy Paladin | Healer |
+| Frost Mage | DPS |
+| Prot Warrior | Tank |
+
+Built on a threat model, real player damage, active mitigation, and an AI healer
+that keeps the party up when you are not the one doing it. Co-op is deliberately
+deferred, but the engine is kept as a pure `(state, action, rng) -> state`
+reducer with serializable, actor-tagged actions so it stays possible without a
+rewrite.
+
+**How the healer game stayed frozen while all that was added.** Two gates, both
+run in CI:
+
+- `npm run test:golden` regenerates `parity/golden.json` twice and requires both
+  runs to equal the committed bytes. Byte equality, not the 1e-6 the Kotlin
+  comparison tolerates.
+- `npm run test:balance` hashes every `balance.json` key except the role blocks,
+  so healer tuning cannot move under cover of role work.
+
+Two design choices do the actual work. Enemy damage is
+`scripted * aiShare + playerDamage`, and `aiShareWhenHealer` is exactly `1.0`,
+so with the player healing the expression is an exact IEEE identity rather than
+an approximation. And threat targeting is switched on by the player's *role*
+rather than by dungeon content -- opting a dungeon in via JSON would change how
+the boss picks victims for a healer too, removing an rng draw and desynchronising
+every recorded scenario.
+
+New classes live in `android/content/classes/`, never `src/classes/`: the frozen
+web app builds a static registry from that directory and validates class names,
+so a fourth class there would break it.
 
 See `android/README.md` and `android/RELEASE.md`.
 

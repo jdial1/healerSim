@@ -1,5 +1,20 @@
 # Play Store listing copy
 
+> **STALE — needs rewriting before release.** This copy sells a healer-only
+> game: the name `Overheal: Healer Sim`, the short and full descriptions, the
+> deliberate healer-only vocabulary, and all ten screenshots. The Android app
+> now ships five classes across three roles (healer, DPS, tank).
+>
+> This is a product decision, not a mechanical one, which is why it has not been
+> rewritten in passing. The options are roughly: keep the sharp healer-first
+> positioning and treat the other roles as depth found after install, or
+> reposition to a party-role sim and lose the "only product for a specific,
+> underserved audience" angle that made this listing worth writing. The
+> `applicationId` is permanent but the store name is not, so either is possible.
+>
+> Everything below is the healer-era copy, kept verbatim as the starting point.
+
+
 Target player: someone who healed 5-mans with HealBot, VuhDo, Grid+Clique or
 Cell — the person who spent the dungeon looking at frames, not at the boss.
 

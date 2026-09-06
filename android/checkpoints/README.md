@@ -2,6 +2,21 @@
 
 Archived builds kept at points worth being able to return to.
 
+## `overheal-roles-2.0-debug-signed.apk`
+
+The role-based game: five classes across three roles (healer, DPS, tank), with
+a threat model, player damage, active mitigation and an AI healer.
+
+| | |
+|---|---|
+| Variant | `debug` |
+| Size | 13 MB |
+| sha256 | `ca852a0a2ebe1f5f579c852ccbf2f65f5001597ac1eed6d9b111f94eb0a83d6b` |
+| Verified | golden byte-identical, balance guard, 57 Kotlin tests, `minifyReleaseWithR8` save contract, `npm test` / `npm run tests` / web build |
+
+Debug-signed, exactly as the 1.0 checkpoint below is, and for the same reason —
+see the warning there before installing or distributing it.
+
 ## `overheal-healer-1.0-checkpoint-debug-signed.apk`
 
 The healer-only game, frozen at the point the repository split: web app complete
