@@ -147,3 +147,44 @@ fun formRoom(
         formedAtMs = nowMs,
     )
 }
+
+// --- staying alive -----------------------------------------------------------
+
+/**
+ * How long a client may go unheard from before it is presumed gone.
+ *
+ * Long enough to ride out a stall or a lock-screen, short enough that a room
+ * does not sit frozen while everyone waits. The host writes its heartbeat every
+ * tick; missing several in a row is what counts.
+ */
+const val HEARTBEAT_TIMEOUT_MS = 6_000L
+
+/**
+ * Who should be hosting now.
+ *
+ * Every client evaluates this over the same heartbeats, so they reach the same
+ * answer without negotiating -- the same property that lets the queue form a
+ * group without a server. Ties break on lowest uid, as the plan specifies,
+ * because it is the only ordering every client already agrees on.
+ *
+ * The sitting host keeps the job while it is still being heard from, even if a
+ * lower uid joins later: migrating on merely *seeing* a better candidate would
+ * hand the room around for no reason, and every migration costs a rollback to
+ * the last published frame.
+ *
+ * Returns the current host when nobody at all has been heard from recently --
+ * including when the caller is the one whose clock has stopped. Someone
+ * mistakenly keeping the job is recoverable; two clients each concluding they
+ * are host, and publishing over each other, is not.
+ */
+fun electHost(
+    memberUids: List<String>,
+    lastSeenMs: Map<String, Long>,
+    currentHost: String,
+    nowMs: Long,
+    timeoutMs: Long = HEARTBEAT_TIMEOUT_MS,
+): String {
+    fun alive(uid: String) = lastSeenMs[uid]?.let { nowMs - it <= timeoutMs } == true
+    if (alive(currentHost)) return currentHost
+    return memberUids.filter(::alive).minOrNull() ?: currentHost
+}

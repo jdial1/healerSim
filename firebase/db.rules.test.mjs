@@ -7,7 +7,9 @@
 import { test, before, after } from "node:test";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import { readFileSync } from "node:fs";
-import { ref, set, get } from "firebase/database";
+import { ref, set, get, serverTimestamp } from "firebase/database";
+
+const SERVER_TIME = serverTimestamp();
 
 let env;
 
@@ -89,4 +91,43 @@ test("the host reads every action stream, because it is the one simulating", asy
   await seed((db) => set(ref(db, "rooms/r9"), roomNode("alice", ["alice", "bob"])));
   await seed((db) => set(ref(db, "rooms/r9/actions/bob"), { spellId: "x" }));
   await assertSucceeds(get(ref(as("alice"), "rooms/r9/actions/bob")));
+});
+
+test("a heartbeat must be the server's clock, and must be your own", async () => {
+  await seed((db) => set(ref(db, "rooms/d1_alice_bob_hb"), roomNode("alice", ["alice", "bob"])));
+  // Forging a future timestamp would keep a dead room alive forever; backdating
+  // somebody else's would force a migration that should not happen.
+  await assertFails(set(ref(as("bob"), "rooms/d1_alice_bob_hb/heartbeats/bob"), Date.now() + 600000));
+  await assertFails(set(ref(as("bob"), "rooms/d1_alice_bob_hb/heartbeats/alice"), SERVER_TIME));
+  await assertSucceeds(set(ref(as("bob"), "rooms/d1_alice_bob_hb/heartbeats/bob"), SERVER_TIME));
+});
+
+test("a member cannot take the room from a host that is still beating", async () => {
+  await seed(async (db) => {
+    await set(ref(db, "rooms/d1_alice_bob_live"), roomNode("alice", ["alice", "bob"]));
+    await set(ref(db, "rooms/d1_alice_bob_live/heartbeats/alice"), Date.now());
+  });
+  await assertFails(set(ref(as("bob"), "rooms/d1_alice_bob_live/hostUid"), "bob"));
+});
+
+test("a member takes over once the host's heartbeat has gone stale", async () => {
+  await seed(async (db) => {
+    await set(ref(db, "rooms/d1_alice_bob_dead"), roomNode("alice", ["alice", "bob"]));
+    await set(ref(db, "rooms/d1_alice_bob_dead/heartbeats/alice"), 1);
+  });
+  // An outsider still cannot, however dead the host is.
+  await assertFails(set(ref(as("carol"), "rooms/d1_alice_bob_dead/hostUid"), "carol"));
+  // Nor can a member install somebody else as host.
+  await assertFails(set(ref(as("bob"), "rooms/d1_alice_bob_dead/hostUid"), "carol"));
+  await assertSucceeds(set(ref(as("bob"), "rooms/d1_alice_bob_dead/hostUid"), "bob"));
+  // And the new host can now publish, which is the point of taking over.
+  await assertSucceeds(set(ref(as("bob"), "rooms/d1_alice_bob_dead/state"), { tick: 7 }));
+});
+
+test("a profile is yours alone to publish", async () => {
+  await seed((db) => set(ref(db, "rooms/d1_alice_bob_p"), roomNode("alice", ["alice", "bob"])));
+  await assertSucceeds(set(ref(as("bob"), "rooms/d1_alice_bob_p/profiles/bob"), { json: "{}" }));
+  // Rewriting somebody else's talents would change what their spells do.
+  await assertFails(set(ref(as("bob"), "rooms/d1_alice_bob_p/profiles/alice"), { json: "{}" }));
+  await assertFails(set(ref(as("carol"), "rooms/d1_alice_bob_p/profiles/carol"), { json: "{}" }));
 });

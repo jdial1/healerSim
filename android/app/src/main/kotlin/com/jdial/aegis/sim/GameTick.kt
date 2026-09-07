@@ -145,6 +145,39 @@ class GameTick(
     }
 
     /**
+     * How much of the party's scripted damage the AI is still responsible for.
+     *
+     * Each human takes over one slot, so the scripted pool shrinks by whatever
+     * that role was contributing. The three balance constants are the *result*
+     * for exactly one human, so the generalisation has to reproduce them
+     * exactly rather than approximately -- see the identity below.
+     *
+     * This is also what hands a slot back when somebody disconnects. A dropped
+     * player is marked `isHuman = false` rather than removed, so they stop
+     * subtracting here and the AI simply resumes doing their damage. There is
+     * no separate handover path to get wrong, and a run does not end because
+     * one phone lost signal.
+     *
+     * The arithmetic is deliberately `1.0 - Σ(1 - share)`: with a single healer
+     * that is `1.0 - (1.0 - 1.0)`, which is bit-identical to 1.0 in IEEE-754,
+     * so the enemy-damage expression stays the exact identity parity/golden.json
+     * was recorded against. [DamageTest] pins that.
+     */
+    internal fun aiDamageShare(s: GameState): Double {
+        val roles = data.balance.roles
+        fun shareFor(role: UnitRole) = when (role) {
+            UnitRole.HEALER -> roles.aiShareWhenHealer
+            UnitRole.DPS -> roles.aiShareWhenDps
+            UnitRole.TANK -> roles.aiShareWhenTank
+        }
+        // Single player is a map of one, so this is one subtraction of zero.
+        val taken = s.participants.values
+            .filter { it.isHuman }
+            .sumOf { 1.0 - shareFor(it.role) }
+        return (1.0 - taken).coerceIn(0.0, 1.0)
+    }
+
+    /**
      * A cast defensive cooldown's reduction, for the player's own unit only.
      *
      * Applied here rather than through damageTakenMultiplier because that hook
@@ -895,11 +928,7 @@ class GameTick(
         // what lets parity/golden.json still be compared byte-for-byte now that
         // player damage exists. Do not "simplify" this into a form that
         // reorders the multiply.
-        val aiShare = when (s.playerRole) {
-            UnitRole.HEALER -> data.balance.roles.aiShareWhenHealer
-            UnitRole.DPS -> data.balance.roles.aiShareWhenDps
-            UnitRole.TANK -> data.balance.roles.aiShareWhenTank
-        }
+        val aiShare = aiDamageShare(s)
         val scriptedDamage = partyDps * bossDpsMult * dpsPaceMultiplier * s.runDpsJitter * aiShare
         val enemyDots = s.enemyDebuffs.sumOf { it.damagePerTick }
         val playerDamage = s.pendingEnemyDamage + enemyDots

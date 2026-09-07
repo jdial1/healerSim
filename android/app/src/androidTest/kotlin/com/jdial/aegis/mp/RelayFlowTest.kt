@@ -203,4 +203,119 @@ class RelayFlowTest {
         assertEquals(hostState.party.map { it.health }, rendered.party.map { it.health })
         assertEquals("the guest keeps its own character", PlayerClass.WARRIOR, rendered.playerClass)
     }
+
+    /**
+     * The host's phone stops answering and the run carries on.
+     *
+     * This is the phase the plan calls load-bearing: as host, backgrounding
+     * stops *everyone's* game, and a host is a phone. The guest has to notice,
+     * take the room, rebuild the party from the join profiles -- the frame
+     * carries no talents -- and keep simulating from the last frame it saw.
+     */
+    @Test
+    fun aGuestTakesOverWhenTheHostGoesQuiet() = runBlocking {
+        val roomId = "d1_${hostUid}_$guestUid"
+        val room = Room(
+            id = roomId,
+            hostUid = hostUid,
+            dungeonId = data.dungeons.first().id,
+            pace = "normal",
+            members = listOf(
+                RoomMember(hostUid, "5", com.jdial.aegis.sim.UnitRole.HEALER),
+                RoomMember(guestUid, "1", com.jdial.aegis.sim.UnitRole.TANK),
+            ),
+            memberUids = listOf(hostUid, guestUid),
+            formedAtMs = 0L,
+        )
+        host.relay.openAsHost(roomId, hostUid, room.memberUids)
+
+        val hostSession = MultiplayerSession(host.relay, engine, data, room, hostUid)
+        val guestSession = MultiplayerSession(guest.relay, engine, data, room, guestUid)
+
+        // Both publish who they are, once, on joining.
+        hostSession.publishProfile(midFight())
+        guestSession.publishProfile(engine.newCharacter(PlayerClass.WARRIOR, Rng(4)))
+
+        hostSession.reconcileHost()
+        assertTrue("the elected host should be hosting", hostSession.isHost)
+        assertTrue("and the guest should not be", !guestSession.reconcileHost())
+
+        var hostState = midFight()
+        repeat(3) { hostState = hostSession.hostStep(hostState, Rng(21)) }
+
+        // The host's phone goes away: it simply stops heartbeating. The guest
+        // keeps beating, and cannot take the room while the host is still warm.
+        assertTrue("no migration while the host is alive", !guestSession.reconcileHost())
+        assertEquals(hostUid, guestSession.hostUid)
+
+        // Past the timeout, the guest takes over.
+        withTimeout(30_000) {
+            while (!guestSession.reconcileHost()) kotlinx.coroutines.delay(1_000)
+        }
+        assertTrue("the guest must now be hosting", guestSession.isHost)
+        assertEquals(guestUid, host.relay.hostUid(roomId))
+
+        // And it can rebuild the party well enough to simulate: everyone's real
+        // character, with the departed host's slot handed to the AI.
+        val participants = guestSession.buildParticipants()
+        assertEquals(setOf("1", "5"), participants.keys)
+        assertEquals(PlayerClass.WARRIOR, participants.getValue("1").playerClass)
+        assertTrue("the guest is still playing", participants.getValue("1").isHuman)
+        assertTrue(
+            "the departed host's slot must be handed to the ai, not left as a hole",
+            !participants.getValue("5").isHuman,
+        )
+
+        // The run continues under the new host.
+        var carried = hostState.copy(participants = participants, localUnitId = "1")
+        repeat(3) { carried = guestSession.hostStep(carried, Rng(21)) }
+        assertTrue("the fight must have advanced", carried.combatElapsedTicks > hostState.combatElapsedTicks)
+    }
+
+    /**
+     * Coming back after being killed.
+     *
+     * A phone that was swapped out of memory has no session object and no
+     * state. All it has is its uid, which is enough: the room is found by
+     * membership, and the current frame is whatever the host published last.
+     * Nothing is replayed and nothing is resumed -- the fight is wherever it
+     * got to.
+     */
+    @Test
+    fun aGuestThatWasKilledRejoinsFromTheCurrentFrame() = runBlocking {
+        val roomId = "d1_${hostUid}_$guestUid"
+        val room = Room(
+            id = roomId,
+            hostUid = hostUid,
+            dungeonId = data.dungeons.first().id,
+            pace = "normal",
+            members = listOf(
+                RoomMember(hostUid, "5", com.jdial.aegis.sim.UnitRole.HEALER),
+                RoomMember(guestUid, "1", com.jdial.aegis.sim.UnitRole.TANK),
+            ),
+            memberUids = listOf(hostUid, guestUid),
+            formedAtMs = 0L,
+        )
+        // The room as the queue leaves it: a Firestore document anyone in it can
+        // find, and an RTDB node to play in.
+        host.createRoom(room)
+        host.relay.openAsHost(roomId, hostUid, room.memberUids)
+
+        val hostSession = MultiplayerSession(host.relay, engine, data, room, hostUid)
+        var hostState = midFight()
+        repeat(5) { hostState = hostSession.hostStep(hostState, Rng(21)) }
+
+        // The guest comes back knowing only who it is.
+        val found = guest.roomFor(guestUid)
+        assertNotNull("a returning player must be able to find their room", found)
+        assertEquals(roomId, found!!.id)
+        assertEquals("and their slot in it", "1", found.members.first { it.uid == guestUid }.unitId)
+
+        val rejoined = MultiplayerSession(guest.relay, engine, data, found, guestUid)
+        val frame = withTimeout(20_000) { guest.relay.frames(roomId).first() }
+        val rendered = rejoined.render(engine.newCharacter(PlayerClass.WARRIOR, Rng(4)), frame)
+
+        assertEquals("the fight is wherever it got to", hostState.combatElapsedTicks, rendered.combatElapsedTicks)
+        assertEquals(hostState.enemyHealth, rendered.enemyHealth, 1e-9)
+    }
 }

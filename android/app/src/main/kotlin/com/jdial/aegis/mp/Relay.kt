@@ -4,6 +4,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -102,6 +103,70 @@ class Relay(private val db: FirebaseDatabase) {
         }
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
+    }
+
+    // --- staying alive -------------------------------------------------------
+
+    /**
+     * "I am still here", stamped with the *server's* clock.
+     *
+     * ServerValue.TIMESTAMP rather than the device's time, and the security
+     * rules require it: a client that could post a future timestamp would keep
+     * a dead room alive forever, and one that could backdate another player's
+     * would force a migration that should not happen.
+     */
+    suspend fun heartbeat(roomId: String, uid: String) {
+        room(roomId).child("heartbeats").child(uid).setValue(ServerValue.TIMESTAMP).await()
+    }
+
+    /**
+     * Everyone's last heartbeat, on the server's clock.
+     *
+     * Read these against your *own* entry rather than against
+     * System.currentTimeMillis(): the values are server-stamped, so comparing
+     * them to a device clock measures the gap between two clocks instead of how
+     * long ago somebody was last heard from, and a phone an hour fast would
+     * declare the host dead immediately.
+     */
+    suspend fun heartbeats(roomId: String): Map<String, Long> {
+        val snap = room(roomId).child("heartbeats").get().await()
+        return snap.children.mapNotNull { c ->
+            val uid = c.key ?: return@mapNotNull null
+            val at = c.getValue(Long::class.java) ?: return@mapNotNull null
+            uid to at
+        }.toMap()
+    }
+
+    suspend fun hostUid(roomId: String): String? =
+        room(roomId).child("hostUid").get().await().getValue(String::class.java)
+
+    /**
+     * Takes the room over. Refused by the rules unless the sitting host's
+     * heartbeat has actually gone stale, judged on the server's clock.
+     */
+    suspend fun claimHost(roomId: String, uid: String) {
+        room(roomId).child("hostUid").setValue(uid).await()
+    }
+
+    // --- who is playing ------------------------------------------------------
+
+    /** Published once on joining: see [WireProfile] for why it is not per frame. */
+    suspend fun publishProfile(roomId: String, uid: String, profile: WireProfile) {
+        room(roomId).child("profiles").child(uid).setValue(
+            mapOf("json" to json.encodeToString(WireProfile.serializer(), profile)),
+        ).await()
+    }
+
+    /** Everyone's profile, for whoever is simulating. Junk is dropped. */
+    suspend fun profiles(roomId: String): Map<String, WireProfile> {
+        val snap = room(roomId).child("profiles").get().await()
+        return snap.children.mapNotNull { c ->
+            val uid = c.key ?: return@mapNotNull null
+            val raw = c.child("json").getValue(String::class.java) ?: return@mapNotNull null
+            val p = runCatching { json.decodeFromString(WireProfile.serializer(), raw) }.getOrNull()
+                ?: return@mapNotNull null
+            uid to p
+        }.toMap()
     }
 
     /** A guest asking to cast. Writes only to its own uid; the rules enforce it. */

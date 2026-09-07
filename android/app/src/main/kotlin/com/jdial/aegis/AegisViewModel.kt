@@ -217,7 +217,22 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         tickJob = null
     }
 
-    /** Called from the activity lifecycle: never tick while backgrounded. */
+    /**
+     * Called from the activity lifecycle: never tick while backgrounded.
+     *
+     * In a multiplayer room this is also how the host stands down. Heartbeats
+     * are written by [com.jdial.aegis.mp.MultiplayerSession.reconcileHost],
+     * which the tick loop drives, so stopping the loop stops the heartbeat and
+     * the remaining players elect a new host within
+     * [com.jdial.aegis.mp.HEARTBEAT_TIMEOUT_MS]. That is a deliberate choice of
+     * "migrate promptly" over "keep hosting in the background": holding a
+     * foreground service open to keep simulating would cost a permanent
+     * notification, and a backgrounded phone is exactly the one whose game is
+     * about to be killed anyway.
+     *
+     * The visible cost is honest and worth stating: the room stalls for up to
+     * that timeout before somebody else picks it up.
+     */
     fun onEnterBackground() {
         stopTicking()
         // Backgrounding is the most likely prelude to being killed, so snapshot now.

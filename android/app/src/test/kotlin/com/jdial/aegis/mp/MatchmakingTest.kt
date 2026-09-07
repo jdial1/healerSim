@@ -138,4 +138,53 @@ class MatchmakingTest {
         val solo = formRoom(listOf(q("solo", UnitRole.TANK, 0)), dungeon, "normal", wait, wait)!!
         assertTrue(solo.id != a.id)
     }
+
+    // --- host migration ------------------------------------------------------
+
+    private val members = listOf("carol", "alice", "bob")
+
+    @Test
+    fun `a host that is still beating keeps the room`() {
+        val seen = members.associateWith { 1_000L }
+        assertEquals("carol", electHost(members, seen, "carol", nowMs = 1_500L))
+    }
+
+    @Test
+    fun `a lower uid joining later does not take the room from a live host`() {
+        // Migrating on merely seeing a better candidate would pass the room
+        // around for no reason, and every migration costs a rollback to the
+        // last published frame.
+        val seen = members.associateWith { 1_000L }
+        assertEquals("carol", electHost(members, seen, "carol", nowMs = 1_000L))
+    }
+
+    @Test
+    fun `when the host goes quiet the lowest live uid takes over`() {
+        val seen = mapOf("carol" to 0L, "alice" to 9_000L, "bob" to 9_000L)
+        assertEquals("alice", electHost(members, seen, "carol", nowMs = 10_000L))
+    }
+
+    @Test
+    fun `every client reaches the same answer from the same heartbeats`() {
+        // Two clients each concluding they are host, and publishing over each
+        // other, is the failure this has to make impossible.
+        val seen = mapOf("carol" to 0L, "alice" to 9_000L, "bob" to 9_100L)
+        val answers = listOf(members, members.reversed(), members.sorted())
+            .map { electHost(it, seen, "carol", nowMs = 10_000L) }
+        assertEquals(1, answers.toSet().size)
+    }
+
+    @Test
+    fun `a dead host with nobody left alive keeps the job`() {
+        // Including when the caller is the one whose clock stopped. Somebody
+        // wrongly keeping the room is recoverable; nobody holding it is not.
+        val seen = members.associateWith { 0L }
+        assertEquals("carol", electHost(members, seen, "carol", nowMs = 100_000L))
+    }
+
+    @Test
+    fun `a member who has never been heard from is not elected`() {
+        val seen = mapOf("carol" to 0L, "bob" to 9_000L)
+        assertEquals("bob", electHost(members, seen, "carol", nowMs = 10_000L))
+    }
 }

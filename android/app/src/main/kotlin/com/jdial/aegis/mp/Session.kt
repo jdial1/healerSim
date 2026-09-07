@@ -4,6 +4,7 @@ import com.jdial.aegis.data.GameData
 import com.jdial.aegis.sim.Action
 import com.jdial.aegis.sim.Engine
 import com.jdial.aegis.sim.GameState
+import com.jdial.aegis.sim.Participant
 import com.jdial.aegis.sim.Rng
 
 /**
@@ -28,7 +29,14 @@ class MultiplayerSession(
     val room: Room,
     val uid: String,
 ) {
-    val isHost: Boolean get() = room.hostUid == uid
+    /**
+     * Who is hosting now. Starts as whoever the matchmaker elected and moves
+     * when that phone stops answering -- see [reconcileHost].
+     */
+    var hostUid: String = room.hostUid
+        private set
+
+    val isHost: Boolean get() = hostUid == uid
 
     /** Which party slot this player occupies, if they are in the room at all. */
     val localUnitId: String? get() = room.members.firstOrNull { it.uid == uid }?.unitId
@@ -66,6 +74,80 @@ class MultiplayerSession(
         s = engine.reduce(s, Action.Tick(1), rng)
         relay.publish(room.id, s.toSnapshot())
         return s
+    }
+
+    // --- surviving the host being a phone ------------------------------------
+
+    /**
+     * Says "still here", and works out whether the room needs a new host.
+     *
+     * Every client runs this over the same server-stamped heartbeats, so they
+     * reach the same answer without negotiating -- the same property that lets
+     * the queue form a group without a server. If the answer is this client, it
+     * claims the room; the rules refuse the claim unless the sitting host has
+     * genuinely gone quiet, so a client that gets the election wrong cannot act
+     * on it.
+     *
+     * Returns true when this client is now the host and was not before, which
+     * is the caller's cue to start ticking.
+     */
+    suspend fun reconcileHost(): Boolean {
+        relay.heartbeat(room.id, uid)
+        val was = isHost
+        val seen = relay.heartbeats(room.id)
+        // "Now" is this client's own heartbeat, just written and read straight
+        // back. Every value in the map is stamped by the same server clock, so
+        // comparing them to each other measures elapsed time; comparing them to
+        // the device clock would measure the skew between two machines.
+        val now = seen[uid] ?: System.currentTimeMillis()
+        val elected = electHost(
+            memberUids = room.memberUids,
+            lastSeenMs = seen,
+            currentHost = relay.hostUid(room.id) ?: hostUid,
+            nowMs = now,
+        )
+        hostUid = elected
+        if (elected == uid && !was) {
+            // The rules refuse this unless the old host really has gone quiet,
+            // judged on the server's clock rather than ours. A refusal means we
+            // were wrong, so take the room's word for who is hosting rather
+            // than believing our own election.
+            if (runCatching { relay.claimHost(room.id, uid) }.isFailure) {
+                hostUid = relay.hostUid(room.id) ?: room.hostUid
+                return false
+            }
+            return true
+        }
+        return false
+    }
+
+    /**
+     * The party as the host must simulate it: everyone's real character, and a
+     * slot marked AI for anyone who has gone quiet.
+     *
+     * Built from the join profiles rather than from the frame, because the
+     * frame carries no talents -- that is what keeps it at 1.4 KB. A player
+     * whose profile is missing or malformed becomes an AI slot, which is the
+     * same outcome as their having disconnected: a bad document from a stranger
+     * must not be able to stop a run.
+     */
+    suspend fun buildParticipants(): Map<String, Participant> {
+        relay.heartbeat(room.id, uid)
+        val seen = relay.heartbeats(room.id)
+        val now = seen[uid] ?: System.currentTimeMillis()
+        return relay.profiles(room.id).mapNotNull { (memberUid, profile) ->
+            val slot = unitIdByUid[memberUid] ?: return@mapNotNull null
+            val p = profile.toParticipant(engine) ?: return@mapNotNull null
+            val alive = seen[memberUid]?.let { now - it <= HEARTBEAT_TIMEOUT_MS } == true
+            slot to p.copy(unitId = slot, isHuman = alive)
+        }.toMap()
+    }
+
+    /** Publishes who this player is. Once, on joining. */
+    suspend fun publishProfile(state: GameState) {
+        val slot = localUnitId ?: return
+        val profile = state.me.copy(unitId = slot).toProfile() ?: return
+        relay.publishProfile(room.id, uid, profile)
     }
 
     /** A guest's request to cast. It does not resolve until the host says so. */

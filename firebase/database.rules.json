@@ -30,6 +30,45 @@
         // let a guest write its own action stream.
         ".write": "auth != null && ((!data.exists() && $roomId.contains(auth.uid) && newData.child('hostUid').val() === auth.uid && newData.child('members').child(auth.uid).exists()) || data.child('hostUid').val() === auth.uid)",
 
+        "hostUid": {
+          // Host migration. The sitting host is covered by the room-level rule
+          // above; this is the case that rule cannot express, because the host
+          // whose phone died is not around to hand anything over.
+          //
+          // A member may take the room only once the current host's heartbeat
+          // has gone stale. `now` is the server's clock, not the claimant's, so
+          // a client cannot talk its way into an early takeover by lying about
+          // the time. Which member takes it is decided by electHost, which
+          // every client computes identically from the same heartbeats -- these
+          // rules only have to stop an outsider and stop it happening early.
+          ".write": "auth != null && data.parent().child('members').child(auth.uid).exists() && newData.val() === auth.uid && data.parent().child('heartbeats').child(data.val()).val() < (now - 6000)"
+        },
+
+        "heartbeats": {
+          "$uid": {
+            // Your own liveness, and it must be the server's clock: without the
+            // validate a client could post a future timestamp for the host and
+            // keep a dead room alive forever, or backdate its own and force a
+            // migration.
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.val() === now"
+          }
+        },
+
+        "profiles": {
+          "$uid": {
+            // Who you are, published once on joining: class, level and talent
+            // ranks, so whoever is simulating can build your character. Yours
+            // alone to write -- otherwise a player could rewrite somebody
+            // else's talents and change what their spells do.
+            //
+            // The receiver rebuilds the spell loadout from the talent tree it
+            // holds itself rather than trusting a list, so the worst a forged
+            // profile of your own can do is misrepresent you.
+            ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('members').child(auth.uid).exists()"
+          }
+        },
+
         "state": {
           // The broadcast frame. Host-written and member-read by the cascade
           // above. A guest must never write here: it does not simulate, and a

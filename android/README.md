@@ -101,6 +101,45 @@ against crit chance — so a guest sending `0.0` would crit every cast forever.
 to trust. None of this stops the *host* cheating; that is the accepted trade of
 a host-authoritative v1.
 
+### Surviving the host being a phone
+
+A host is somebody's phone, so it will be backgrounded, throttled and killed.
+
+**Heartbeats decide who hosts.** Each client stamps its own liveness with the
+*server's* clock (`ServerValue.TIMESTAMP`, required by the rules — a client that
+could post a future timestamp would keep a dead room alive forever). `electHost`
+is pure and deterministic, so every client reaches the same answer from the same
+heartbeats without negotiating, and ties break on lowest uid. A claim is refused
+by the rules unless the sitting host has genuinely gone quiet, so a client that
+gets the election wrong cannot act on it.
+
+"Now" is the client's *own* heartbeat, written and read straight back. Comparing
+server-stamped values against `System.currentTimeMillis()` would measure the skew
+between two machines rather than elapsed time, and a phone an hour fast would
+declare the host dead immediately.
+
+**There is no handover code path.** A player who stops answering is marked
+`isHuman = false`, and `aiDamageShare` recomputes to include their slot again —
+the AI simply resumes doing their damage. A separate "somebody left" path would
+be one that only runs when something has already gone wrong, which is the worst
+kind to have. The arithmetic is `1.0 - Σ(1 - share)` specifically so that a lone
+healer still yields exactly `1.0` and the enemy-damage expression stays the
+bit-identical identity `golden.json` was recorded against.
+
+**Backgrounding stands the host down.** Heartbeats are written by the tick loop,
+so `onEnterBackground` stopping the loop stops the heartbeat and the room
+migrates within `HEARTBEAT_TIMEOUT_MS`. That is a deliberate choice of "migrate
+promptly" over "keep hosting in the background", which would need a foreground
+service and a permanent notification. The honest cost: the room stalls for up to
+that timeout before somebody else picks it up.
+
+**Talents travel once, in a join profile.** The frame carries none — that is what
+keeps it at 1.4 KB — but a migrated host has to simulate players it never met, so
+`WireProfile` publishes class, level and talent *ranks* on joining. The receiver
+rebuilds the spell loadout from the tree it holds itself rather than trusting a
+list, the same trick `SaveStore.restore` uses, so a forged profile can only
+misrepresent its own author.
+
 ### Running it without a Firebase project
 
 Everything below runs against the local emulator suite. No Google account, no
