@@ -1,0 +1,206 @@
+package com.jdial.aegis.mp
+
+import androidx.test.platform.app.InstrumentationRegistry
+import com.jdial.aegis.data.GameData
+import com.jdial.aegis.data.PlayerClass
+import com.jdial.aegis.sim.Action
+import com.jdial.aegis.sim.Engine
+import com.jdial.aegis.sim.GameState
+import com.jdial.aegis.sim.Rng
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+/**
+ * The relay end to end, against the emulator suite with the real rules applied.
+ *
+ * ```
+ * cd firebase && npm run emulators
+ * adb reverse tcp:9099 tcp:9099 && adb reverse tcp:8080 tcp:8080 && adb reverse tcp:9000 tcp:9000
+ * cd android && ./gradlew :app:connectedDebugAndroidTest
+ * ```
+ *
+ * Two players in one process means two identities, and an identity belongs to a
+ * FirebaseApp, so this runs two of them.
+ */
+class RelayFlowTest {
+    private lateinit var host: FirebaseBackend
+    private lateinit var guest: FirebaseBackend
+    private lateinit var hostUid: String
+    private lateinit var guestUid: String
+    private lateinit var data: GameData
+    private lateinit var engine: Engine
+
+    private val json = Json { encodeDefaults = true }
+
+    private fun backend(appName: String) = FirebaseBackend.forEmulator(
+        context = InstrumentationRegistry.getInstrumentation().targetContext,
+        host = "127.0.0.1",
+        authPort = 9099,
+        firestorePort = 8080,
+        databasePort = 9000,
+        projectId = "overheal-local",
+        appName = appName,
+    )
+
+    @Before
+    fun signIn() = runBlocking {
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        data = GameData.load { path -> ctx.assets.open(path).bufferedReader().readText() }
+        engine = Engine(data)
+        host = backend("relay-host")
+        guest = backend("relay-guest")
+        hostUid = host.signIn()
+        guestUid = guest.signIn()
+        assertTrue("the two clients must be different players", hostUid != guestUid)
+    }
+
+    private fun midFight(): GameState {
+        var s = engine.reduce(
+            engine.newCharacter(PlayerClass.PRIEST, Rng(4)),
+            Action.StartDungeon(data.dungeons.first(), "normal"),
+            Rng(4),
+        )
+        repeat(40) { if (s.isCombatActive) s = engine.reduce(s, Action.Tick(1), Rng(4)) }
+        return s
+    }
+
+    @Test
+    fun aGuestSeesTheFightTheHostIsSimulating() = runBlocking {
+        val roomId = "d1_${hostUid}_$guestUid"
+        host.relay.openAsHost(roomId, hostUid, listOf(hostUid, guestUid))
+
+        val state = midFight()
+        host.relay.publish(roomId, state.toSnapshot())
+
+        val frame = withTimeout(20_000) { guest.relay.frames(roomId).first() }
+        assertEquals("the guest must see the host's fight", state.combatElapsedTicks, frame.tick)
+        assertEquals(state.enemyHealth, frame.enemyHealth, 1e-9)
+        assertEquals(state.party.map { it.health }, frame.party.map { it.health })
+    }
+
+    @Test
+    fun aGuestsActionReachesTheHostAndCarriesNoCritRoll() = runBlocking {
+        val roomId = "d1_${hostUid}_$guestUid"
+        host.relay.openAsHost(roomId, hostUid, listOf(hostUid, guestUid))
+
+        guest.relay.sendAction(roomId, guestUid, WireAction(seq = 1, spellId = "flash_heal", targetId = "1"))
+
+        val pending = host.relay.pendingActions(roomId)
+        assertEquals(setOf(guestUid), pending.keys)
+        assertEquals("flash_heal", pending.getValue(guestUid).spellId)
+        // There is deliberately no crit roll on the wire: the host redraws it,
+        // and a field that is not sent cannot be trusted by mistake.
+        assertTrue(
+            "a wire action must not carry a crit roll",
+            !json.encodeToString(WireAction.serializer(), pending.getValue(guestUid)).contains("crit"),
+        )
+    }
+
+    @Test
+    fun aGuestCannotForgeTheFrameEveryoneElseRendersFrom() = runBlocking {
+        val roomId = "d1_${hostUid}_$guestUid"
+        host.relay.openAsHost(roomId, hostUid, listOf(hostUid, guestUid))
+        host.relay.publish(roomId, midFight().toSnapshot())
+
+        val forged = midFight().copy(enemyHealth = 1.0).toSnapshot().copy(tick = 99_999)
+        val threw = runCatching { guest.relay.publish(roomId, forged) }.exceptionOrNull()
+        assertNotNull(
+            "a guest publishing a frame must be refused by the rules. If this fails with the " +
+                "emulator running, check the database namespace: an unknown one is served with " +
+                "default open rules rather than an error, and every rule silently stops applying",
+            threw,
+        )
+    }
+
+    /**
+     * The plan budgets 0.17 GB per room-hour: 4 Hz, four readers, ~3 KB a
+     * frame. This measures the bytes that actually cross rather than the
+     * serialised length, and reports the projection.
+     */
+    @Test
+    fun aFrameFitsTheEgressBudget() = runBlocking {
+        val snap = midFight().toSnapshot()
+        val bytes = json.encodeToString(Snapshot.serializer(), snap).toByteArray().size
+        val perRoomHourGb = bytes.toDouble() * 4 * 4 * 3600 / 1e9
+        val report = "frame=$bytes bytes -> ${"%.3f".format(perRoomHourGb)} GB/room-hour at 4Hz x4 readers"
+        assertTrue("$report exceeds the 0.17 GB budget", perRoomHourGb <= 0.17)
+        // Fail-with-the-number so the measurement is visible even when green.
+        assertTrue(report, true)
+        println(report)
+    }
+
+    /**
+     * Two clients playing the same fight: the host simulates, the guest asks to
+     * cast, and the guest's screen is the host's fight rather than its own.
+     *
+     * This is the property the whole phase exists for. Everything else -- the
+     * slimmed frame, the rerolled crit, the rules -- only matters because this
+     * has to hold.
+     */
+    @Test
+    fun twoClientsPlayOneFight() = runBlocking {
+        val roomId = "d1_${hostUid}_$guestUid"
+        val room = Room(
+            id = roomId,
+            hostUid = hostUid,
+            dungeonId = data.dungeons.first().id,
+            pace = "normal",
+            members = listOf(
+                RoomMember(hostUid, "5", com.jdial.aegis.sim.UnitRole.HEALER),
+                RoomMember(guestUid, "1", com.jdial.aegis.sim.UnitRole.TANK),
+            ),
+            memberUids = listOf(hostUid, guestUid),
+            formedAtMs = 0L,
+        )
+        host.relay.openAsHost(roomId, hostUid, room.memberUids)
+
+        val hostSession = MultiplayerSession(host.relay, engine, data, room, hostUid)
+        val guestSession = MultiplayerSession(guest.relay, engine, data, room, guestUid)
+        assertTrue(hostSession.isHost)
+        assertTrue("the guest must never simulate", !guestSession.isHost)
+        assertEquals("1", guestSession.localUnitId)
+
+        // The guest is a warrior in slot 1 of the host's simulation.
+        var hostState = midFight()
+        val warrior = engine.newCharacter(PlayerClass.WARRIOR, Rng(4)).me
+        hostState = hostState.withParticipant("1") {
+            warrior.copy(unitId = "1", mana = warrior.maxMana.toDouble())
+        }
+
+        // The guest asks to cast something it could not possibly resolve itself.
+        val spell = hostState.participants.getValue("1")
+            .activeActionBars.first { it.isNotEmpty() && it != com.jdial.aegis.sim.MANA_POTION_ID }
+        guestSession.requestCast(seq = 1, spellId = spell, targetId = null)
+
+        val rng = Rng(21)
+        repeat(6) { hostState = hostSession.hostStep(hostState, rng) }
+
+        assertTrue(
+            "the host must have resolved the guest's cast",
+            hostState.participants.getValue("1").mana < warrior.maxMana.toDouble(),
+        )
+
+        // A held request must not re-cast every tick: the sequence has not moved.
+        val manaAfterOne = hostState.participants.getValue("1").mana
+        repeat(4) { hostState = hostSession.hostStep(hostState, rng) }
+        assertEquals(
+            "one request must be one cast, however many times the host reads it",
+            manaAfterOne, hostState.participants.getValue("1").mana, 1e-9,
+        )
+
+        // And the guest is looking at the host's fight, not its own.
+        val guestLocal = engine.newCharacter(PlayerClass.WARRIOR, Rng(4))
+        val frame = withTimeout(20_000) { guest.relay.frames(roomId).first() }
+        val rendered = guestSession.render(guestLocal, frame)
+        assertEquals(hostState.enemyHealth, rendered.enemyHealth, 1e-9)
+        assertEquals(hostState.party.map { it.health }, rendered.party.map { it.health })
+        assertEquals("the guest keeps its own character", PlayerClass.WARRIOR, rendered.playerClass)
+    }
+}

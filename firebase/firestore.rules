@@ -33,6 +33,11 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == uid;
     }
 
+    // Live game state and the guests' action streams are NOT here: they live in
+    // the Realtime Database (database.rules.json). Firestore's sustained write
+    // limit is about one per second per document and the relay publishes at
+    // 3-4 Hz, so a frame-rate document here would be throttled by design.
+    // Firestore keeps what changes at human speed: the queue and the room.
     match /rooms/{roomId} {
       function isMember() {
         return signedIn() && request.auth.uid in resource.data.memberUids;
@@ -44,28 +49,20 @@ service cloud.firestore {
       // Only members see the room. memberUids exists purely so this is
       // expressible -- rules cannot index into the members array of maps.
       allow read: if isMember();
-      // You may only create a room you host, and only one you are in.
+      // You may only create a room you host, and only one you are in --
+      // and whose id names you. Ids are derived from the group's uids
+      // (roomIdFor) precisely so every client computes the same one, which
+      // also makes them guessable; without the id check a stranger could
+      // create the room a group is about to form and lock its host out.
       allow create: if signedIn()
         && request.resource.data.hostUid == request.auth.uid
-        && request.auth.uid in request.resource.data.memberUids;
+        && request.auth.uid in request.resource.data.memberUids
+        && request.auth.uid in roomId.split('_');
       // The host owns the room, and cannot hand the host seat to someone who
       // is not in it. Phase 4's host migration writes through here.
       allow update: if isHost()
         && request.resource.data.hostUid in request.resource.data.memberUids;
       allow delete: if isHost();
-
-      // A guest's action stream. The document id is the guest's uid, so a
-      // client can only ever write its own actions -- forging a cast as
-      // another player is refused here rather than trusted to the host.
-      match /actions/{uid} {
-        function room() {
-          return get(/databases/$(database)/documents/rooms/$(roomId)).data;
-        }
-        allow read: if signedIn() && request.auth.uid in room().memberUids;
-        allow write: if signedIn()
-          && request.auth.uid == uid
-          && request.auth.uid in room().memberUids;
-      }
     }
   }
 }

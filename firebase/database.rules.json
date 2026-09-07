@@ -1,0 +1,51 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      "$roomId": {
+        // Membership is mirrored here by the host when the room is created.
+        // Realtime Database rules cannot read Firestore, so the room document
+        // the queue produces cannot be consulted from here. This node is that
+        // limitation made explicit rather than a second source of truth that
+        // nobody notices has drifted.
+        ".read": "auth != null && data.child('members').child(auth.uid).exists()",
+
+        // Only the host writes the room.
+        //
+        // Room ids are derived from the group's member uids so that every
+        // client computes the same one without coordinating -- which also makes
+        // them guessable. Naming yourself as host and member is therefore not
+        // enough: $roomId must contain your uid, so an outsider cannot claim
+        // the id of a group they are not in and lock its real host out.
+        //
+        // What this still allows, and cannot express: a genuine member of the
+        // group creating the room before the elected host does, and hosting it
+        // themselves. The election is deterministic but lives in client code
+        // these rules cannot see, and a host-authoritative v1 already accepts
+        // that the host can cheat -- this only decides *which* member gets to.
+        //
+        // RTDB rules cascade permissively, so the narrower grants below still
+        // let a guest write its own action stream.
+        ".write": "auth != null && ((!data.exists() && $roomId.contains(auth.uid) && newData.child('hostUid').val() === auth.uid && newData.child('members').child(auth.uid).exists()) || data.child('hostUid').val() === auth.uid)",
+
+        "state": {
+          // The broadcast frame. Host-written and member-read by the cascade
+          // above. A guest must never write here: it does not simulate, and a
+          // forged frame is not one player cheating, it is everybody else's
+          // fight being rewritten.
+          ".validate": "newData.hasChildren(['tick'])"
+        },
+
+        "actions": {
+          "$uid": {
+            // One guest's action stream, at their own uid. Forging a cast as
+            // another player is refused here rather than trusted to the host.
+            ".write": "auth != null && auth.uid === $uid && root.child('rooms').child($roomId).child('members').child(auth.uid).exists()"
+          }
+        }
+      }
+    }
+  }
+}

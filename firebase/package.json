@@ -4,8 +4,8 @@
   "type": "module",
   "description": "Firestore security rules for the public queue, and their tests. Runs entirely against the local emulator suite -- no Firebase project and no Google account are needed to run these.",
   "scripts": {
-    "emulators": "firebase emulators:start --only auth,firestore",
-    "test:rules": "firebase emulators:exec --only auth,firestore \"node --test rules.test.mjs\""
+    "emulators": "firebase emulators:start --only auth,firestore,database",
+    "test:rules": "firebase emulators:exec --only auth,firestore,database \"node --test rules.test.mjs db.rules.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",

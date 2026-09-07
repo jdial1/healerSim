@@ -98,13 +98,18 @@ test("the queue is readable by any signed-in client, because matchmaking is", as
 
 test("a room can only be created by its own host, who must be in it", async () => {
   await assertSucceeds(
-    setDoc(doc(as("alice"), "rooms/r1"), room("alice", ["alice", "bob"])),
+    setDoc(doc(as("alice"), "rooms/d1_alice_bob"), room("alice", ["alice", "bob"])),
   );
   await assertFails(
-    setDoc(doc(as("mallory"), "rooms/r2"), room("alice", ["alice", "bob"])),
+    setDoc(doc(as("mallory"), "rooms/d1_alice_bob_2"), room("alice", ["alice", "bob"])),
   );
   await assertFails(
-    setDoc(doc(as("mallory"), "rooms/r3"), room("mallory", ["alice", "bob"])),
+    setDoc(doc(as("mallory"), "rooms/d1_alice_bob_3"), room("mallory", ["alice", "bob"])),
+  );
+  // The id names the group, so an outsider cannot claim the room a group is
+  // about to form even by naming themselves host and member.
+  await assertFails(
+    setDoc(doc(as("mallory"), "rooms/d1_alice_bob"), room("mallory", ["mallory"])),
   );
 });
 
@@ -130,13 +135,4 @@ test("only the host can write the room, and cannot hand it to an outsider", asyn
   await assertFails(
     setDoc(doc(as("alice"), "rooms/r2"), room("carol", ["alice", "bob"])),
   );
-});
-
-test("a member writes only their own action stream", async () => {
-  await seed((db) => setDoc(doc(db, "rooms/r1"), room("alice", ["alice", "bob"])));
-  await assertSucceeds(setDoc(doc(as("bob"), "rooms/r1/actions/bob"), { n: 1 }));
-  // Forging a cast as another player is refused here, not trusted to the host.
-  await assertFails(setDoc(doc(as("bob"), "rooms/r1/actions/alice"), { n: 1 }));
-  // And an outsider has no stream at all.
-  await assertFails(setDoc(doc(as("carol"), "rooms/r1/actions/carol"), { n: 1 }));
 });

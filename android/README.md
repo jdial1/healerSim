@@ -73,6 +73,34 @@ enforced:
 turned up and the AI fills the rest, so a queue nobody else is in still produces
 a dungeon. That is the same code path single player already takes.
 
+### The relay
+
+One client simulates. The host drains what everyone asked to do, advances the
+engine it already had, and publishes a frame; guests apply frames and never call
+the engine at all, so there is no drift to reconcile — there is one timeline and
+it is the host's. `MultiplayerSession` is a pair of steps the caller drives
+rather than a loop, so a test and the app's tick loop step it the same way.
+
+**Realtime Database, not Firestore, for a reason that is not cost.** Firestore's
+sustained write limit is about one per second per document and the relay
+publishes at 3–4 Hz, so a frame-rate document there would be throttled by
+design. Firestore keeps what changes at human speed — the queue and the room.
+
+**The frame is 1,405 bytes, against 17,839 for a full `GameState`.** Measured,
+not estimated: 14,753 of those bytes were the talent tree, because every
+`TalentRank` embeds its whole `Talent`. Talents do not change during a run and
+every client holds the same tree in assets, so they travel once at join. That
+projects to **0.081 GB per room-hour** at 4 Hz with four readers, against the
+plan's 0.17 GB budget. `SnapshotTest` asserts both numbers.
+
+**A relayed crit roll is thrown away.** `critRoll` reaches the engine as action
+data because the web app rolled it client-side, and `validate` only compares it
+against crit chance — so a guest sending `0.0` would crit every cast forever.
+`Engine.castAs` redraws it for any actor that is not the local one, and
+`WireAction` does not carry the field at all, so there is nothing to be tempted
+to trust. None of this stops the *host* cheating; that is the accepted trade of
+a host-authoritative v1.
+
 ### Running it without a Firebase project
 
 Everything below runs against the local emulator suite. No Google account, no
@@ -87,9 +115,16 @@ For the client half, with a device or AVD attached:
 
 ```
 cd firebase && npm run emulators                            # leave running
-adb reverse tcp:9099 tcp:9099 && adb reverse tcp:8080 tcp:8080
+adb reverse tcp:9099 tcp:9099 && adb reverse tcp:8080 tcp:8080 && adb reverse tcp:9000 tcp:9000
 cd android && ./gradlew :app:connectedDebugAndroidTest
 ```
+
+One trap worth knowing: the Realtime Database namespace must be
+`<projectId>-default-rtdb`, not the project id. Get it wrong and the emulator
+does **not** error — it serves the unknown namespace with default open rules, so
+every security test passes for the wrong reason. That is how a guest was briefly
+able to forge the broadcast frame here, and
+`aGuestCannotForgeTheFrameEveryoneElseRendersFrom` is the test that caught it.
 
 `adb reverse` rather than the usual `10.0.2.2`: an app process could not reach
 the host through the emulator NAT on this setup even though `adb shell` could,

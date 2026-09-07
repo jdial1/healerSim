@@ -146,6 +146,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.database)
     implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)

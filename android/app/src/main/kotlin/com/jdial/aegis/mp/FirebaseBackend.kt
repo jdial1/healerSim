@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Filter
 import kotlinx.coroutines.tasks.await
@@ -27,6 +28,8 @@ import kotlinx.coroutines.tasks.await
 class FirebaseBackend private constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
+    /** The live relay. Null until a room exists; see [Relay]. */
+    val relay: Relay,
 ) {
     companion object {
         private const val APP_NAME = "overheal-mp"
@@ -41,7 +44,11 @@ class FirebaseBackend private constructor(
          */
         fun createOrNull(context: Context): FirebaseBackend? {
             val app = runCatching { FirebaseApp.initializeApp(context) }.getOrNull() ?: return null
-            return FirebaseBackend(FirebaseAuth.getInstance(app), FirebaseFirestore.getInstance(app))
+            return FirebaseBackend(
+                FirebaseAuth.getInstance(app),
+                FirebaseFirestore.getInstance(app),
+                Relay(FirebaseDatabase.getInstance(app)),
+            )
         }
 
         /**
@@ -57,24 +64,41 @@ class FirebaseBackend private constructor(
             host: String,
             authPort: Int,
             firestorePort: Int,
+            databasePort: Int,
             projectId: String,
+            // Two players in one test process need two identities, and an
+            // identity belongs to a FirebaseApp -- so they need two of those.
+            appName: String = APP_NAME,
         ): FirebaseBackend {
             val options = FirebaseOptions.Builder()
                 .setProjectId(projectId)
                 .setApplicationId("1:0:android:0")
                 .setApiKey("emulator-does-not-check-this")
+                // The namespace must be the project's *default instance*, which
+                // real Firebase names "<projectId>-default-rtdb" -- not the
+                // project id. Get it wrong and the emulator does not fail: it
+                // serves the unknown namespace with default open rules, so
+                // every security test passes for the wrong reason. That is how
+                // a guest was briefly able to forge the broadcast frame.
+                .setDatabaseUrl("http://$host:$databasePort/?ns=$projectId-default-rtdb")
                 .build()
-            val app = runCatching { FirebaseApp.getInstance(APP_NAME) }
-                .getOrElse { FirebaseApp.initializeApp(context, options, APP_NAME)!! }
+            val app = runCatching { FirebaseApp.getInstance(appName) }
+                .getOrElse { FirebaseApp.initializeApp(context, options, appName)!! }
             val auth = FirebaseAuth.getInstance(app).apply {
                 runCatching { useEmulator(host, authPort) }
             }
             val db = FirebaseFirestore.getInstance(app).apply {
                 runCatching { useEmulator(host, firestorePort) }
             }
-            return FirebaseBackend(auth, db)
+            val rtdb = FirebaseDatabase.getInstance(app).apply {
+                runCatching { useEmulator(host, databasePort) }
+            }
+            return FirebaseBackend(auth, db, Relay(rtdb))
         }
     }
+
+    /** Signs out, so a test can take a second identity. */
+    fun signOut() = auth.signOut()
 
     /** The current uid, signing in anonymously if this is the first time. */
     suspend fun signIn(): String =

@@ -141,4 +141,55 @@ class ParticipantTest {
             gcd0 - 1, s.participants.getValue("1").globalCooldownRemaining,
         )
     }
+
+    @Test
+    fun `a guest cannot crit every cast by sending a zero crit roll`() {
+        // critRoll arrives as action data because the web app rolled it
+        // client-side, and validate only compares it against crit chance. A
+        // relayed 0.0 would therefore crit every cast forever, and nothing
+        // downstream would find it odd.
+        var s = twoPlayers()
+        val spell = firstSpell(s, "1")
+        val rng = Rng(11)
+        var casts = 0
+        var crits = 0
+        repeat(120) {
+            val before = s
+            s = engine.reduce(s, Action.CastSpell(spell, null, 0.0, actorId = "1"), rng)
+            if (s !== before) {
+                casts++
+                if (s.floatingCombatTexts.any { f -> f.crit && f !in before.floatingCombatTexts }) crits++
+            }
+            s = engine.reduce(s, Action.Tick(1), rng)
+        }
+        assertTrue("the guest never got a cast off, so this proves nothing", casts > 10)
+        assertTrue("a relayed critRoll of 0.0 must not crit every cast: $crits of $casts", crits < casts)
+    }
+
+    @Test
+    fun `the roll is honoured for the local actor and discarded for a remote one`() {
+        // A level 1 character has 0% crit, so the only roll that can force one
+        // is a negative -- which is exactly the illegal value a hostile client
+        // would send, and the reason this is worth pinning in both directions.
+        val s = twoPlayers()
+        val spell = firstSpell(s, PLAYER_UNIT_ID)
+        fun damageAfter(roll: Double, actor: String) = engine
+            .reduce(s.actingAs(actor), Action.CastSpell(spell, null, roll, actorId = actor), Rng(11))
+            .participants.getValue(actor).pendingEnemyDamage
+
+        val honest = damageAfter(50.0, PLAYER_UNIT_ID)
+        assertTrue(
+            "a local roll must still decide the local player's crit",
+            damageAfter(-1.0, PLAYER_UNIT_ID) > honest,
+        )
+
+        // The same cast relayed from somebody else. Only remote actors are
+        // rerolled, so single player -- one participant, and it is the local
+        // one -- adds no draw to the stream the parity corpus recorded.
+        val remote = s.copy(localUnitId = "1")
+        val forged = engine
+            .reduce(remote, Action.CastSpell(spell, null, -1.0, actorId = PLAYER_UNIT_ID), Rng(11))
+            .participants.getValue(PLAYER_UNIT_ID).pendingEnemyDamage
+        assertEquals("a forged roll must buy a remote caster nothing", honest, forged, 1e-9)
+    }
 }

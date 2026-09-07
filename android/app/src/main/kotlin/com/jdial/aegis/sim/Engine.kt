@@ -86,16 +86,33 @@ class Engine(val data: GameData) {
      *
      * A cast from a participant who is not in the run is dropped rather than
      * silently creating one: that is the shape a malformed relayed action takes.
+     *
+     * **The crit roll of a remote actor is thrown away and redrawn here.** It
+     * arrives as action data because the web app rolled it client-side, and
+     * `validate` only ever compares it against the caster's crit chance -- so a
+     * guest sending `critRoll = 0.0` would crit every single cast, forever, and
+     * nothing downstream would find that odd. Whoever is running the simulation
+     * draws it from their own stream instead.
+     *
+     * This does not stop the *host* cheating, including on other people's
+     * rewards. That is the accepted trade of a host-authoritative v1 and is
+     * recorded in the multiplayer plan; it is not something this can fix.
+     *
+     * Single player never takes the reroll branch -- there is one participant
+     * and it is the local one -- so no draw is added to the stream the parity
+     * corpus recorded.
      */
     private fun castAs(state: GameState, action: Action.CastSpell, rng: Rng): GameState {
         if (action.actorId !in state.participants) return state
         val seat = state.localUnitId
         val acting = state.actingAs(action.actorId)
+        val critRoll =
+            if (action.actorId == state.localUnitId) action.critRoll else rng.nextDouble() * 100.0
         val out = casts.tryCast(
             CastContext(acting, data, stats, rng),
             action.spellId,
             action.targetId,
-            action.critRoll,
+            critRoll,
         )
         return out.actingAs(seat)
     }

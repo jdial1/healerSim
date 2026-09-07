@@ -51,6 +51,7 @@ class QueueFlowTest {
             host = "127.0.0.1",
             authPort = 9099,
             firestorePort = 8080,
+            databasePort = 9000,
             projectId = "overheal-local",
         )
         uid = runBlocking { backend.signIn() }
