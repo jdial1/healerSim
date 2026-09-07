@@ -150,6 +150,9 @@ class MultiplayerSession(
         relay.publishProfile(room.id, uid, profile)
     }
 
+    /** Frames from whoever is hosting. A guest renders these and nothing else. */
+    fun frames() = relay.frames(room.id)
+
     /** A guest's request to cast. It does not resolve until the host says so. */
     suspend fun requestCast(seq: Long, spellId: String, targetId: String?) {
         relay.sendAction(room.id, uid, WireAction(seq = seq, spellId = spellId, targetId = targetId))

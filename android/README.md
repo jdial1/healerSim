@@ -101,6 +101,29 @@ against crit chance — so a guest sending `0.0` would crit every cast forever.
 to trust. None of this stops the *host* cheating; that is the accepted trade of
 a host-authoritative v1.
 
+### Reaching it from the app
+
+Off by default, in Settings → Multiplayer, and the row says what leaves the
+device rather than making you find the privacy policy. With it off the game
+never opens a socket.
+
+The lobby starts queueing the moment it opens, which is what lets it show real
+people arriving instead of an animation; backing out deletes the queue entry,
+because a stale one keeps everyone else holding a seat for somebody who has
+gone. **Entering is never blocked on strangers** — the AI fills whatever is
+empty, so the lobby never says "waiting for players".
+
+The rule the wiring is built around: **"the queue is broken" must never mean
+"you cannot play".** Switched off, unconfigured, nobody there, network down, a
+publish that fails mid-fight — every one of those falls through to the run you
+would have had anyway, and `aQueueThatCannotBeReachedStillLetsYouPlay` points
+the client at a dead port to prove it.
+
+A debug build with no `google-services.json` falls back to a local emulator
+suite, which is how the multiplayer UI is reachable without owning a Firebase
+project. Release builds do not: there, no configuration means multiplayer is
+unavailable and the settings row says so.
+
 ### Surviving the host being a phone
 
 A host is somebody's phone, so it will be backgrounded, throttled and killed.

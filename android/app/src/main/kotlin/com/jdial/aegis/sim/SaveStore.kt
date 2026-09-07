@@ -47,6 +47,12 @@ data class UiSettings(
     val colourBlindBands: Boolean = false,
     val selfFirst: Boolean = false,
     val largeFrames: Boolean = false,
+    /**
+     * Opt in to the public queue. Off by default and staying that way: single
+     * player never opens a network connection, and this is the switch that
+     * decides whether any of it ever does.
+     */
+    val multiplayer: Boolean = false,
 )
 
 /**

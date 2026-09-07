@@ -98,7 +98,9 @@ class QueueFlowTest {
         backend.createRoom(room!!)
         val found = backend.roomFor(uid)
         assertEquals(room, found)
-        assertEquals("the tank takes slot 1", "1", found!!.members.single().unitId)
+        // Slots come from the *host's* layout, so the host is last exactly as a
+        // single player is -- generateParty builds that same shape.
+        assertEquals("the host takes the slot single player would", "5", found!!.members.single().unitId)
         assertEquals("and hosts, being the only human", uid, found.hostUid)
 
         backend.leaveQueue(uid)

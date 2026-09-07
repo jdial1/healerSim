@@ -1,6 +1,7 @@
 package com.jdial.aegis.mp
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
@@ -43,13 +44,39 @@ class FirebaseBackend private constructor(
          * broken one.
          */
         fun createOrNull(context: Context): FirebaseBackend? {
-            val app = runCatching { FirebaseApp.initializeApp(context) }.getOrNull() ?: return null
-            return FirebaseBackend(
-                FirebaseAuth.getInstance(app),
-                FirebaseFirestore.getInstance(app),
-                Relay(FirebaseDatabase.getInstance(app)),
-            )
+            val app = runCatching { FirebaseApp.initializeApp(context) }.getOrNull()
+            if (app != null) {
+                return FirebaseBackend(
+                    FirebaseAuth.getInstance(app),
+                    FirebaseFirestore.getInstance(app),
+                    Relay(FirebaseDatabase.getInstance(app)),
+                )
+            }
+            // No configuration. In a release build that is the end of it and
+            // the game plays offline, which is a supported state rather than a
+            // broken one.
+            if (!isDebuggable(context)) return null
+
+            // In a debug build, fall back to a local emulator suite so the
+            // multiplayer UI is reachable without anyone having to own a
+            // Firebase project. Requires the emulators to be running and the
+            // ports forwarded (see the README); when they are not, queueing
+            // fails and the lobby says so before playing solo, which is the
+            // same path a dropped network takes.
+            return runCatching {
+                forEmulator(
+                    context = context,
+                    host = "127.0.0.1",
+                    authPort = 9099,
+                    firestorePort = 8080,
+                    databasePort = 9000,
+                    projectId = "overheal-local",
+                )
+            }.getOrNull()
         }
+
+        private fun isDebuggable(context: Context): Boolean =
+            (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
         /**
          * A backend pointed at a locally running emulator suite.

@@ -1,6 +1,7 @@
 package com.jdial.aegis.mp
 
 import com.jdial.aegis.sim.UnitRole
+import com.jdial.aegis.sim.partyRoles
 import kotlinx.serialization.Serializable
 
 /**
@@ -55,18 +56,20 @@ data class Room(
 /**
  * Slot roles for a room, in slot order.
  *
- * Fixed, unlike `partyRoles(playerRole)`, which is written from one player's
- * point of view and always puts them in slot 5. That is fine when there is
- * exactly one human and it is what parity/golden.json records, but two humans
- * cannot both be last. Rooms therefore use an absolute layout and single player
- * keeps the relative one.
+ * The host's own layout, not a separate one. `partyRoles` is written from one
+ * player's point of view and puts them last, which is what `generateParty`
+ * builds and what parity/golden.json records -- and the host is the client
+ * running that engine, so using its layout means a room and single player agree
+ * about which slot holds what. A second absolute layout would have been one
+ * more thing to keep in step for no benefit.
  */
-val ROOM_PARTY_ROLES: List<UnitRole> = listOf(
-    UnitRole.TANK, UnitRole.DPS, UnitRole.DPS, UnitRole.DPS, UnitRole.HEALER,
-)
+fun roomPartyRoles(hostRole: UnitRole): List<UnitRole> = partyRoles(hostRole)
 
-/** How many of each role a party has room for. */
-private fun capacity(role: UnitRole) = ROOM_PARTY_ROLES.count { it == role }
+/** One tank, three DPS, a healer -- whoever is playing which. */
+const val PARTY_SIZE = 5
+
+/** How many of each role a party has room for. Composition is fixed at 1/3/1. */
+private fun capacity(role: UnitRole) = partyRoles(role).count { it == role }
 
 /**
  * The queue in the order it will be served: longest wait first, ties broken by
@@ -93,10 +96,15 @@ fun selectMembers(waiting: List<QueueEntry>, dungeonId: String): List<QueueEntry
     }
 }
 
-/** Assigns each selected player the first free slot their role can hold. */
-fun assignSlots(selected: List<QueueEntry>): List<RoomMember> {
+/**
+ * Assigns each selected player the first free slot their role can hold.
+ *
+ * Slots come from the *host's* layout, so the host lands in slot 5 exactly as a
+ * single player does and the engine sees the party shape it already builds.
+ */
+fun assignSlots(selected: List<QueueEntry>, hostRole: UnitRole): List<RoomMember> {
     val unseated = selected.toMutableList()
-    return ROOM_PARTY_ROLES.mapIndexedNotNull { i, role ->
+    return roomPartyRoles(hostRole).mapIndexedNotNull { i, role ->
         val entry = unseated.firstOrNull { it.role == role } ?: return@mapIndexedNotNull null
         unseated.remove(entry)
         RoomMember(uid = entry.uid, unitId = "${i + 1}", role = role)
@@ -132,10 +140,10 @@ fun formRoom(
 ): Room? {
     val selected = selectMembers(waiting, dungeonId)
     if (selected.isEmpty()) return null
-    val full = selected.size == ROOM_PARTY_ROLES.size
+    val full = selected.size == PARTY_SIZE
     val waited = nowMs - selected.first().enqueuedAtMs
     if (!full && waited < maxWaitMs) return null
-    val members = assignSlots(selected)
+    val members = assignSlots(selected, selected.first().role)
     val uids = members.map { it.uid }
     return Room(
         id = roomIdFor(dungeonId, uids),

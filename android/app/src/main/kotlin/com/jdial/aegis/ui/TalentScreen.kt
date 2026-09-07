@@ -379,6 +379,8 @@ fun CharacterScreen(
     state: GameState,
     engine: Engine,
     onSettingsChange: (UiSettings) -> Unit,
+    /** False when this build has no server configuration; the row explains it. */
+    multiplayerAvailable: Boolean = false,
     onChangeClass: () -> Unit,
     onSetActionBarSlot: (Int, String) -> Unit = { _, _ -> },
 ) {
@@ -509,6 +511,7 @@ fun CharacterScreen(
             SettingsDialog(
                 settings = LocalUiSettings.current,
                 onChange = onSettingsChange,
+                multiplayerAvailable = multiplayerAvailable,
                 onDismiss = { showSettings = false },
             )
         }

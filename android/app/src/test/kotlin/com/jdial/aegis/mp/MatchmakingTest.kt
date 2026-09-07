@@ -53,7 +53,8 @@ class MatchmakingTest {
         )
         assertEquals(1, room?.members?.size)
         assertEquals("solo", room?.hostUid)
-        // The other four seats are simply absent, and become AI.
+        // The other four seats are simply absent, and become AI. A lone healer
+        // sits in slot 5, which is where single player has always put them.
         assertEquals("5", room?.members?.single()?.unitId)
     }
 
@@ -77,13 +78,17 @@ class MatchmakingTest {
     @Test
     fun `slots follow the room layout, and each role lands on a slot that holds it`() {
         val room = formRoom(fullQueue(), dungeon, "normal", 1, wait)!!
+        // The tank hosts here (longest wait), so the layout is the tank's own:
+        // three DPS, the healer, then the host last -- exactly what
+        // generateParty builds for a tank in single player.
         assertEquals(
-            listOf("1" to "tank", "2" to "d1", "3" to "d2", "4" to "d3", "5" to "heal"),
+            listOf("1" to "d1", "2" to "d2", "3" to "d3", "4" to "heal", "5" to "tank"),
             room.members.map { it.unitId to it.uid },
         )
         room.members.forEach {
-            assertEquals("slot ${it.unitId}", ROOM_PARTY_ROLES[it.unitId.toInt() - 1], it.role)
+            assertEquals("slot ${it.unitId}", roomPartyRoles(UnitRole.TANK)[it.unitId.toInt() - 1], it.role)
         }
+        assertEquals("the host takes the slot single player would", "5", room.members.last().unitId)
     }
 
     @Test
@@ -113,7 +118,8 @@ class MatchmakingTest {
         val waiting = listOf(q("tank", UnitRole.TANK, 0), q("heal", UnitRole.HEALER, 100))
         val room = formRoom(waiting, dungeon, "normal", nowMs = wait, maxWaitMs = wait)!!
         assertEquals(2, room.members.size)
-        assertEquals(listOf("1", "5"), room.members.map { it.unitId })
+        // The tank hosts, so the tank is last and the healer takes slot 4.
+        assertEquals(listOf("4", "5"), room.members.map { it.unitId })
     }
 
     @Test

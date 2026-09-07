@@ -236,6 +236,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                             state = state,
                             engine = vm.engine,
                             onSettingsChange = { next -> vm.updateSettings { next } },
+                            multiplayerAvailable = vm.multiplayerAvailable,
                             onChangeClass = {
                                 vm.leaveCharacter()
                                 screen = Screen.ClassSelect
@@ -272,14 +273,24 @@ private fun AegisApp(onReady: () -> Unit = {}) {
             }
 
             queued?.let { dungeon ->
+                val queueStatus by vm.queueStatus.collectAsStateWithLifecycle()
+                // Start looking the moment the lobby opens, so it can show real
+                // people arriving rather than an animation. Backing out gives
+                // the seat up again -- a stale queue entry keeps everyone else
+                // holding a place for somebody who has gone.
+                LaunchedEffect(dungeon.id) { vm.enterQueue(dungeon, "normal") }
                 DungeonQueueSheet(
                     dungeon = dungeon,
                     data = vm.data,
                     playerRole = state.playerRole,
-                    onClose = { queued = null },
+                    queueStatus = queueStatus,
+                    onClose = {
+                        queued = null
+                        vm.cancelQueue()
+                    },
                     onEnter = { pace ->
                         queued = null
-                        targetId = PLAYER_UNIT_ID
+                        targetId = state.localUnitId
                         vm.startDungeon(dungeon, pace)
                     },
                 )

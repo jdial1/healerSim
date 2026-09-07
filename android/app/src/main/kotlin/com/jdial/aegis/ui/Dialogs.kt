@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import com.jdial.aegis.mp.QueueStatus
 import com.jdial.aegis.sim.UnitRole
 import com.jdial.aegis.sim.partyRoles
 import androidx.compose.ui.semantics.role
@@ -84,15 +85,21 @@ internal fun Scrim(onDismiss: (() -> kotlin.Unit)?, content: @Composable () -> k
  * true the moment tank and DPS became playable and would have gone on lying
  * quietly.
  *
- * The fill is still local: there is nobody else to wait for yet, so the delay is
- * pacing, not matchmaking, and every slot but yours fills with an AI. That is
- * also what a real queue does at zero population — see the multiplayer plan.
+ * Offline, the fill is local: there is nobody to wait for, so the delay is
+ * pacing rather than matchmaking and every slot but yours becomes an AI. That is
+ * also exactly what a real queue does at zero population, which is why there is
+ * one lobby and not two.
+ *
+ * With the public queue on, [queueStatus] replaces the animation with the
+ * people actually arriving, and entering is never blocked on them: the AI fills
+ * whatever is still empty, so nobody waits for a group that may not exist.
  */
 @Composable
 fun DungeonQueueSheet(
     dungeon: Dungeon,
     data: GameData,
     playerRole: UnitRole,
+    queueStatus: QueueStatus,
     onClose: () -> kotlin.Unit,
     onEnter: (pace: String) -> kotlin.Unit,
 ) {
@@ -101,14 +108,25 @@ fun DungeonQueueSheet(
     val yourSlot = slots.lastIndex
     var filled by remember(dungeon.id, playerRole) { mutableIntStateOf(0) }
 
-    LaunchedEffect(dungeon.id, playerRole) {
+    val online = queueStatus !is QueueStatus.Offline
+    val humans = when (queueStatus) {
+        is QueueStatus.Waiting -> queueStatus.humans
+        is QueueStatus.Ready -> queueStatus.humans
+        else -> 1
+    }
+
+    LaunchedEffect(dungeon.id, playerRole, online) {
+        if (online) return@LaunchedEffect
         filled = 0
         repeat(yourSlot) {
             delay(350L + Random.nextLong(700))
             filled += 1
         }
     }
-    val ready = filled >= yourSlot
+    // Online you may always enter: the AI takes the empty seats.
+    val ready = online || filled >= yourSlot
+    // Humans other than you occupy the earliest slots; the rest read as AI.
+    val occupiedByOthers = if (online) (humans - 1).coerceAtLeast(0) else filled
 
     Scrim(onDismiss = onClose) {
         ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
@@ -126,11 +144,18 @@ fun DungeonQueueSheet(
                 GiltRule(Modifier.fillMaxWidth().height(1.dp))
                 Spacer(Modifier.height(14.dp))
 
-                BasicText("FORMING GROUP", style = AegisType.label.copy(color = Gilt.mid))
+                BasicText(
+                    if (online) "FINDING A GROUP" else "FORMING GROUP",
+                    style = AegisType.label.copy(color = Gilt.mid),
+                )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     slots.forEachIndexed { i, role ->
-                        QueueSlot(role = role, isYou = i == yourSlot, occupied = i == yourSlot || i < filled)
+                        QueueSlot(
+                            role = role,
+                            isYou = i == yourSlot,
+                            occupied = i == yourSlot || i < occupiedByOthers,
+                        )
                     }
                 }
                 Spacer(Modifier.height(6.dp))
@@ -138,6 +163,24 @@ fun DungeonQueueSheet(
                     "YOU ARE THE ${roleLabel(playerRole)}",
                     style = AegisType.label.copy(color = LocalAccent.current.bright),
                 )
+                if (online) {
+                    Spacer(Modifier.height(4.dp))
+                    BasicText(
+                        when (queueStatus) {
+                            // Never "waiting for players": you are not blocked
+                            // on them, and saying so invites people to sit here.
+                            is QueueStatus.Failed -> "COULDN'T REACH THE QUEUE — PLAYING SOLO"
+                            is QueueStatus.Ready ->
+                                if (humans > 1) "$humans PLAYERS — THE AI TAKES THE REST"
+                                else "NO ONE ELSE ABOUT — THE AI TAKES THE REST"
+                            else -> "SEARCHING — THE AI FILLS ANY EMPTY SEAT"
+                        },
+                        style = AegisType.label.copy(
+                            fontSize = 8.sp,
+                            color = if (queueStatus is QueueStatus.Failed) Vital.hurt else Ink.muted,
+                        ),
+                    )
+                }
 
                 Spacer(Modifier.height(16.dp))
                 BasicText("PACE", style = AegisType.label.copy(color = Gilt.mid))
@@ -402,6 +445,7 @@ fun ConfirmDialog(
 fun SettingsDialog(
     settings: UiSettings,
     onChange: (UiSettings) -> kotlin.Unit,
+    multiplayerAvailable: Boolean,
     onDismiss: () -> kotlin.Unit,
 ) {
     Scrim(onDismiss = onDismiss) {
@@ -443,6 +487,26 @@ fun SettingsDialog(
                 ) { onChange(settings.copy(largeFrames = it)) }
 
                 Spacer(Modifier.height(14.dp))
+                BasicText("MULTIPLAYER", style = AegisType.title.copy(fontSize = 16.sp))
+                Spacer(Modifier.height(10.dp))
+                GiltRule(Modifier.fillMaxWidth().height(1.dp))
+                Spacer(Modifier.height(6.dp))
+
+                SettingRow(
+                    "Play with other people",
+                    if (multiplayerAvailable) {
+                        // Says what leaves the device, in the one place someone
+                        // deciding whether to turn it on is actually looking.
+                        "Queue publicly. Off, the game never connects at all. " +
+                            "On, it shares your role and level with the people you play with."
+                    } else {
+                        "Unavailable in this build: it has no server configuration."
+                    },
+                    settings.multiplayer && multiplayerAvailable,
+                    enabled = multiplayerAvailable,
+                ) { onChange(settings.copy(multiplayer = it)) }
+
+                Spacer(Modifier.height(14.dp))
                 GiltButton("Close", onClick = onDismiss)
             }
         }
@@ -454,18 +518,23 @@ private fun SettingRow(
     label: String,
     hint: String,
     checked: Boolean,
+    /** A row that cannot do anything says so rather than silently ignoring taps. */
+    enabled: Boolean = true,
     onToggle: (Boolean) -> kotlin.Unit,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = label) { onToggle(!checked) }
+            .clickable(enabled = enabled, onClickLabel = label) { onToggle(!checked) }
             .semantics { role = Role.Switch; toggleableState = ToggleableState(checked) }
             .padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            BasicText(label, style = AegisType.body.copy(color = Ink.primary))
+            BasicText(
+                label,
+                style = AegisType.body.copy(color = if (enabled) Ink.primary else Ink.muted),
+            )
             Spacer(Modifier.height(2.dp))
             BasicText(hint, style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted))
         }
