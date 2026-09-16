@@ -1,5 +1,7 @@
 package com.jdial.aegis.ui
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -436,15 +438,20 @@ fun CharacterScreen(
                 )
 
                 Spacer(Modifier.height(18.dp))
-                StatPanel("Attributes") {
+                // Side by side: two short lists read better as a pair than as
+                // a column, and it gives the spellbook the screen it needs.
+                // IntrinsicSize.Min lets both panels match the taller one.
+                Row(
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                StatPanel("Attributes", Modifier.weight(1f).fillMaxHeight()) {
                     StatLine("Intellect", primary.intellect.toInt().toString())
                     StatLine("Spirit", primary.spirit.toInt().toString())
                     StatLine("Max Health", engine.stats.playerMaxHealth(state.playerRole, state.level).toString())
                     StatLine("Max Mana", state.maxMana.toString())
                 }
-
-                Spacer(Modifier.height(12.dp))
-                StatPanel("Affinities") {
+                StatPanel("Affinities", Modifier.weight(1f).fillMaxHeight()) {
                     // Spirit, not intellect, is this game's healing power stat.
                     // The same stat scales damage for a class that deals it --
                     // the engine reuses `healing` as the magnitude either way,
@@ -456,6 +463,7 @@ fun CharacterScreen(
                     StatLine("Crit Chance", "${talentStats.critChancePct.toInt()}%")
                     StatLine("Haste", "${talentStats.hastePct.toInt()}%")
                     StatLine(uniqueStatLabel(cls), String.format("%.1f", unique))
+                }
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -720,8 +728,12 @@ private fun spellSummary(spell: Spell): String {
 }
 
 @Composable
-private fun StatPanel(title: String, content: @Composable () -> Unit) {
-    ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(14.dp)) {
+private fun StatPanel(
+    title: String,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    content: @Composable () -> Unit,
+) {
+    ForgedPanel(modifier, contentPadding = PaddingValues(12.dp)) {
         Column {
             BasicText(title.uppercase(), style = AegisType.label.copy(color = Gilt.mid))
             Spacer(Modifier.height(8.dp))
@@ -736,8 +748,16 @@ private fun StatLine(label: String, value: String) {
         Modifier.fillMaxWidth().padding(vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BasicText(label, style = AegisType.body, modifier = Modifier.weight(1f))
-        BasicText(value, style = AegisType.numeric.copy(fontSize = 14.sp))
+        // Half-width panels: one line per stat, never a wrapped label.
+        BasicText(
+            label,
+            style = AegisType.body.copy(fontSize = 13.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(6.dp))
+        BasicText(value, style = AegisType.numeric.copy(fontSize = 14.sp), maxLines = 1)
     }
 }
 
