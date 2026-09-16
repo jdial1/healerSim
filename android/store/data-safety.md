@@ -71,8 +71,12 @@ IP-address decision.
    them ever queues again, the room stays. Closing that needs a scheduled job on
    the server (a Cloud Function, which needs the paid Blaze plan). The privacy
    page says this as it is.
-2. **A real Firebase project.** Everything so far is verified against the local
-   emulator suite. Deploy `firebase/firestore.rules` and
-   `firebase/database.rules.json` before the first build that points at it —
-   a project in test mode accepts every write, which is the failure these rules
-   exist to prevent.
+2. **The `GOOGLE_SERVICES_JSON` secret** has to be set in the `production`
+   environment before CI can build a release (see `RELEASE.md`). Without it
+   the build fails rather than shipping with multiplayer off.
+
+Also resolved: the real project. `overheal-mp` exists, both rule sets are
+deployed, and anonymous sign-in is the only provider.
+`firebase/smoke-prod.mjs` passed against it, and a real device ran the whole
+flow there: queue, room, hosted fight, host casts, leaving, and deleting its
+data.

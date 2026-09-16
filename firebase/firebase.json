@@ -19,5 +19,10 @@
   },
   "database": {
     "rules": "database.rules.json"
+  },
+  "auth": {
+    "providers": {
+      "anonymous": true
+    }
   }
 }

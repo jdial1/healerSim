@@ -163,6 +163,65 @@ rebuilds the spell loadout from the tree it holds itself rather than trusting a
 list, the same trick `SaveStore.restore` uses, so a forged profile can only
 misrepresent its own author.
 
+### The real project
+
+**`overheal-mp`**, on the free Spark plan with billing disabled, so nothing
+can be charged. Firestore is in `nam5` and the Realtime Database in
+`us-central1`, which are permanent. Anonymous sign-in is the only enabled
+provider.
+
+In `firebase/.firebaserc` the real project is the alias **`prod`**. The default
+alias is the local emulator's fake project, so `firebase deploy` without
+`--project prod` cannot touch production. To deploy and then check what was
+deployed:
+
+```
+cd firebase
+firebase deploy --only firestore:rules,database,auth --project prod
+node smoke-prod.mjs
+```
+
+`smoke-prod.mjs` checks the chain against production itself:
+
+- signed-out clients are refused by both databases, so the project is not in
+  test mode;
+- anonymous sign-in works;
+- a player can join the queue, and cannot queue as or delete anyone else;
+- a stranger can neither read a room nor forge its frame.
+
+It creates two throwaway accounts and deletes everything it made, even on
+failure.
+
+`android/app/google-services.json` is gitignored. Fetch it with:
+
+```
+firebase apps:sdkconfig ANDROID 1:68677581304:android:2f75d87590c4e75027be0d \
+  --project prod -o ../android/app/google-services.json
+```
+
+**Debug builds still use the emulator** with that file present. The
+instrumented suite creates and deletes real accounts and rooms, and must never
+do that to production. To point a debug build at production on purpose:
+
+```
+./gradlew installDebug -Paegis.firebase=prod
+```
+
+Enabling anonymous sign-in through the CLI (`"auth"` in `firebase.json`) put
+the project on the **Identity Platform** auth tier, and registered an unused
+"Default Web App" config along the way. On Spark, Firebase's limits page gives
+a cap of **3,000 daily active users** for that tier. It does not say whether
+anonymous sign-ins count toward it, so plan as if they do.
+
+Two things only production showed:
+
+- `connectedDebugAndroidTest` uninstalls the app when it finishes. Any
+  production account on that device is orphaned: the "uninstalled before
+  deleting" case the privacy page describes.
+- A host that waited on the network inside its tick loop ran fights at about
+  half speed and dropped its own casts. The loop and the relay are now
+  separate; see `AegisViewModel.startRelay`.
+
 ### Running it without a Firebase project
 
 Everything below runs against the local emulator suite. No Google account, no

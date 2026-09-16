@@ -1,8 +1,8 @@
 package com.jdial.aegis.mp
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import com.google.firebase.FirebaseApp
+import com.jdial.aegis.BuildConfig
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -53,45 +53,40 @@ class FirebaseBackend private constructor(
          * Firebase -- with multiplayer off, nothing of it runs.
          */
         fun isConfigured(context: Context): Boolean =
-            FirebaseOptions.fromResource(context) != null || isDebuggable(context)
+            BuildConfig.FIREBASE_EMULATOR || FirebaseOptions.fromResource(context) != null
 
         fun createOrNull(context: Context): FirebaseBackend? {
+            // Debug builds use the local emulator suite unless built with
+            // -Paegis.firebase=prod: the instrumented tests create and delete
+            // real accounts and rooms, and must never do it to production.
+            // When the emulators are not running, queueing fails and the lobby
+            // says so before playing solo -- the same path a dropped network
+            // takes.
+            if (BuildConfig.FIREBASE_EMULATOR) {
+                return runCatching {
+                    forEmulator(
+                        context = context,
+                        host = "127.0.0.1",
+                        authPort = 9099,
+                        firestorePort = 8080,
+                        databasePort = 9000,
+                        projectId = "overheal-local",
+                    )
+                }.getOrNull()
+            }
             // The startup provider is removed from the manifest, so the default
-            // app exists only if this has run before in this process.
+            // app exists only if this has run before in this process. No
+            // google-services.json means null: the game plays offline, which is
+            // a supported state rather than a broken one.
             val app = runCatching { FirebaseApp.getInstance() }.getOrNull()
                 ?: runCatching { FirebaseApp.initializeApp(context) }.getOrNull()
-            if (app != null) {
-                return FirebaseBackend(
-                    FirebaseAuth.getInstance(app),
-                    FirebaseFirestore.getInstance(app),
-                    Relay(FirebaseDatabase.getInstance(app)),
-                )
-            }
-            // No configuration. In a release build that is the end of it and
-            // the game plays offline, which is a supported state rather than a
-            // broken one.
-            if (!isDebuggable(context)) return null
-
-            // In a debug build, fall back to a local emulator suite so the
-            // multiplayer UI is reachable without anyone having to own a
-            // Firebase project. Requires the emulators to be running and the
-            // ports forwarded (see the README); when they are not, queueing
-            // fails and the lobby says so before playing solo, which is the
-            // same path a dropped network takes.
-            return runCatching {
-                forEmulator(
-                    context = context,
-                    host = "127.0.0.1",
-                    authPort = 9099,
-                    firestorePort = 8080,
-                    databasePort = 9000,
-                    projectId = "overheal-local",
-                )
-            }.getOrNull()
+                ?: return null
+            return FirebaseBackend(
+                FirebaseAuth.getInstance(app),
+                FirebaseFirestore.getInstance(app),
+                Relay(FirebaseDatabase.getInstance(app)),
+            )
         }
-
-        private fun isDebuggable(context: Context): Boolean =
-            (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
         /**
          * A backend pointed at a locally running emulator suite.

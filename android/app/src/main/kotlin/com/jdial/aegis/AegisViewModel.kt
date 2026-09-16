@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.jdial.aegis.mp.ForgetResult
 import com.jdial.aegis.mp.Multiplayer
 import com.jdial.aegis.mp.MultiplayerSession
+import com.jdial.aegis.sim.Participant
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.PlayerClass
@@ -60,9 +61,17 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
      */
     private val heartbeatIntervalMs = 2_000L
 
+    /**
+     * How often a host takes in requests and broadcasts a frame: 4 Hz, the
+     * rate the egress budget in SnapshotTest is written against. The fight
+     * itself still ticks at 10 Hz; guests see every fourth-of-a-second.
+     */
+    private val relayIntervalMs = 250L
+
     private var tickJob: Job? = null
     private var heartbeatJob: Job? = null
     private var queueJob: Job? = null
+    private var relayJob: Job? = null
     private var renderJob: Job? = null
 
     /** Absent when this build has no Firebase configuration; then it is offline. */
@@ -131,8 +140,23 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- actions -------------------------------------------------------------
 
+    /**
+     * Guards every read-reduce-write of [_state], and the shared [rng].
+     *
+     * The tick loop, the host's relay job, frame rendering and the UI all
+     * update the state from different threads. Without this, one of them
+     * reading the state, doing something else, and writing its result back
+     * silently discards whatever the others wrote in between -- which, once a
+     * network call sat in that gap, lost the host's own casts. Nothing that
+     * suspends may run while it is held.
+     */
+    private val stateLock = Any()
+
+    private inline fun mutate(f: (GameState) -> GameState): GameState =
+        synchronized(stateLock) { f(_state.value).also { _state.value = it } }
+
     private fun dispatch(action: Action) {
-        _state.value = engine.reduce(_state.value, action, rng)
+        mutate { engine.reduce(it, action, rng) }
     }
 
     /**
@@ -150,9 +174,14 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         store.clearSuspendedRun()
         lastSnapshotTick = 0
         lastBossBracket = -1
-        multiplayer.leave()
+
+        // Keep the room the lobby formed -- discarding it here made every player
+        // sit through the whole group timer again after pressing Enter. Only a
+        // room for some other dungeon is stale.
+        if (multiplayer.session?.room?.dungeonId != dungeon.id) multiplayer.leave()
 
         if (!_settings.value.multiplayer || !multiplayer.isAvailable) {
+            multiplayer.leave()
             dispatch(Action.StartDungeon(dungeon, pace))
             startTicking()
             return
@@ -166,9 +195,12 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
                 ?: multiplayer.joinQueue(dungeon, pace, _state.value)
             dispatch(Action.StartDungeon(dungeon, pace))
             if (session != null) {
-                _state.value = seatIn(session, _state.value)
+                // Build the seating over the network first, then apply it under
+                // the lock -- never await with the state in hand.
+                val others = runCatching { session.buildParticipants() }.getOrDefault(emptyMap())
+                mutate { seatIn(session, it, others) }
                 startHeartbeat()
-                if (!session.isHost) startRendering(session)
+                if (session.isHost) startRelay(session) else startRendering(session)
             }
             startTicking()
         }
@@ -207,9 +239,12 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
      * usable profile stays AI, which is the same outcome as that player having
      * disconnected.
      */
-    private suspend fun seatIn(session: MultiplayerSession, local: GameState): GameState {
+    private fun seatIn(
+        session: MultiplayerSession,
+        local: GameState,
+        others: Map<String, Participant>,
+    ): GameState {
         val slot = session.localUnitId ?: return local
-        val others = runCatching { session.buildParticipants() }.getOrDefault(emptyMap())
         return local.copy(
             participants = others + (slot to local.me.copy(unitId = slot)),
             localUnitId = slot,
@@ -233,12 +268,11 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
                 // Inherit the party as it stands, then simulate from here.
                 runCatching { session.buildParticipants() }.getOrNull()?.let { built ->
                     val slot = session.localUnitId ?: return@let
-                    _state.value = _state.value.let { s ->
-                        s.copy(participants = built + (slot to s.me))
-                    }
+                    mutate { s -> s.copy(participants = built + (slot to s.me)) }
                 }
                 renderJob?.cancel()
                 renderJob = null
+                startRelay(session)
             }
         }
     }
@@ -248,7 +282,33 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         renderJob?.cancel()
         renderJob = viewModelScope.launch(Dispatchers.Default) {
             session.frames().collect { frame ->
-                _state.value = session.render(_state.value, frame)
+                mutate { session.render(it, frame) }
+            }
+        }
+    }
+
+    /**
+     * The host's side of the relay, at [relayIntervalMs]: take in what the
+     * guests asked for, and broadcast the fight.
+     *
+     * Deliberately not part of the tick loop. When it was, every tick waited on
+     * two network round trips, so against a real server the fight ran at about
+     * half speed, and a frame went out every tick -- up to ten a second, where
+     * the egress budget assumes four. The simulation now keeps real time on its
+     * own, and the network works at the rate the budget was written for.
+     */
+    private fun startRelay(session: MultiplayerSession) {
+        relayJob?.cancel()
+        relayJob = viewModelScope.launch(Dispatchers.IO) {
+            while (session.isHost) {
+                runCatching {
+                    val requests = session.drainRequests()
+                    val frame = mutate { session.applyRequests(it, requests, rng) }
+                    session.publish(frame)
+                }
+                // A failure here costs the guests a frame, never the host its
+                // fight: the tick loop does not wait on any of this.
+                delay(relayIntervalMs)
             }
         }
     }
@@ -274,8 +334,9 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch { runCatching { multiplayer.requestCast(spellId, targetId) } }
             return
         }
-        // Crit is rolled per cast on 0..100, matching the web app's contract.
-        dispatch(Action.CastSpell(spellId, targetId, rng.nextDouble() * 100.0))
+        // Crit is rolled per cast on 0..100, matching the web app's contract --
+        // inside the lock, because the tick loop draws from the same stream.
+        mutate { engine.reduce(it, Action.CastSpell(spellId, targetId, rng.nextDouble() * 100.0), rng) }
     }
 
     fun unlockTalent(id: String) { dispatch(Action.UnlockTalent(id)); persist() }
@@ -309,7 +370,16 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         store.writeTutorialSteps(next.toList())
     }
 
-    fun setTutorialPaused(paused: Boolean) = dispatch(Action.SetTutorialPaused(paused))
+    /**
+     * Pauses for a tutorial card -- alone.
+     *
+     * An online fight is shared, so one player reading a card must not freeze
+     * everyone else's. In a room the card still shows; the fight carries on.
+     */
+    fun setTutorialPaused(paused: Boolean) {
+        if (paused && multiplayer.session != null) return
+        dispatch(Action.SetTutorialPaused(paused))
+    }
 
     // --- action bar ----------------------------------------------------------
 
@@ -342,8 +412,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
                     lastTickMs += ticks.toLong() * TICK_RATE_MS
                 }
 
-                val current = _state.value
-                if (!current.isCombatActive) {
+                if (!_state.value.isCombatActive) {
                     // The run is over, so the snapshot must go — otherwise a wipe
                     // would still look resumable on the next class select.
                     store.clearSuspendedRun()
@@ -355,19 +424,14 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
                     persist()
                     break
                 }
-                val session = multiplayer.session
-                val next = when {
-                    // A guest draws frames and never runs the engine, so there
-                    // is exactly one timeline and nothing to reconcile.
-                    session != null && !session.isHost -> current
-                    session != null -> runCatching { session.hostStep(current, rng) }
-                        // A failed publish must not stall the fight for the
-                        // people who can still see it, this one included.
-                        .getOrElse { engine.reduce(current, Action.Tick(1), rng) }
-                    else -> engine.reduce(current, Action.Tick(ticks), rng)
+                // A guest draws frames and never runs the engine, so there is
+                // exactly one timeline and nothing to reconcile. Everyone else
+                // -- single player and host alike -- simulates locally in real
+                // time; the host's network work happens in startRelay.
+                if (multiplayer.isHost) {
+                    val next = mutate { engine.reduce(it, Action.Tick(ticks), rng) }
+                    maybeSnapshot(next)
                 }
-                _state.value = next
-                maybeSnapshot(next)
             }
         }
     }
@@ -395,6 +459,8 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         heartbeatJob = null
         renderJob?.cancel()
         renderJob = null
+        relayJob?.cancel()
+        relayJob = null
     }
 
     /**

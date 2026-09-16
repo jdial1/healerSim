@@ -112,7 +112,22 @@ android {
     }
 
     buildTypes {
+        // Which Firebase a build talks to. Release: the real project, via
+        // google-services.json. Debug: the local emulator suite, always, unless
+        // asked otherwise -- google-services.json sits in this directory for
+        // release builds, and without this a debug build (and the whole
+        // instrumented suite, which creates and deletes accounts and rooms)
+        // would quietly start writing to production.
+        //   ./gradlew installDebug -Paegis.firebase=prod   # debug against the real project
+        debug {
+            buildConfigField(
+                "boolean",
+                "FIREBASE_EMULATOR",
+                (findProperty("aegis.firebase") != "prod").toString(),
+            )
+        }
         release {
+            buildConfigField("boolean", "FIREBASE_EMULATOR", "false")
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -217,8 +232,26 @@ val verifyGameAssets = tasks.register("verifyGameAssets") {
     }
 }
 
+// 1b. No google-services.json used to produce a release with multiplayer
+//     silently unavailable: the plugin is skipped, the app runs, and the
+//     settings row just says "unavailable". The file is gitignored, so CI has
+//     to write it from the GOOGLE_SERVICES_JSON secret. An offline-only release
+//     is allowed, but it has to be asked for.
+val requireFirebaseConfig = tasks.register("requireFirebaseConfig") {
+    val present = hasFirebaseConfig
+    val offlineOk = findProperty("aegis.offlineRelease") == "true"
+    doFirst {
+        check(present || offlineOk) {
+            "android/app/google-services.json is missing, so this release would ship with " +
+                "multiplayer unavailable. Fetch it with `firebase apps:sdkconfig ANDROID " +
+                "--project prod -o ../android/app/google-services.json` (from firebase/), or " +
+                "pass -Paegis.offlineRelease=true if that is intended. See android/RELEASE.md."
+        }
+    }
+}
+
 tasks.matching { it.name == "bundleRelease" || it.name == "assembleRelease" }.configureEach {
-    dependsOn(requireReleaseSigning, verifyGameAssets)
+    dependsOn(requireReleaseSigning, verifyGameAssets, requireFirebaseConfig)
 }
 // AGP's own validateSigningRelease also fails on a missing key, but says only
 // "Keystore file not set". Run ahead of it so the actionable message is the one

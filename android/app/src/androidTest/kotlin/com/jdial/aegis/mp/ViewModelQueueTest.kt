@@ -116,8 +116,14 @@ class ViewModelQueueTest {
         assertEquals("alone in the queue", 1, ready.humans)
         assertTrue("and therefore hosting", ready.isHost)
 
+        // The lobby already formed the room, so entering must use it rather
+        // than queueing again -- which would make the player sit through the
+        // whole group timer a second time after pressing Enter.
+        val entered = System.currentTimeMillis()
         vm.startDungeon(dungeon, "normal")
         withTimeout(20_000) { while (!vm.state.value.isCombatActive) delay(100) }
+        val waited = System.currentTimeMillis() - entered
+        assertTrue("entering took ${waited}ms: the lobby's room was not reused", waited < 3_000)
 
         // The fight runs, and this client is simulating it.
         val at = vm.state.value.combatElapsedTicks

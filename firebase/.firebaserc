@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "overheal-local"
+    "default": "overheal-local",
+    "prod": "overheal-mp"
   }
 }

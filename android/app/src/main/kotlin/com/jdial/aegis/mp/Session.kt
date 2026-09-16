@@ -62,18 +62,46 @@ class MultiplayerSession(
      */
     suspend fun hostStep(state: GameState, rng: Rng): GameState {
         check(isHost) { "only the host simulates" }
-        var s = state
-        for ((actorUid, action) in relay.pendingActions(room.id)) {
-            val unitId = unitIdByUid[actorUid] ?: continue
-            if (appliedSeq[actorUid]?.let { action.seq <= it } == true) continue
-            appliedSeq[actorUid] = action.seq
-            // critRoll is not on the wire and is redrawn inside the engine for
-            // any actor that is not this client -- see Engine.castAs.
-            s = engine.reduce(s, Action.CastSpell(action.spellId, action.targetId, 0.0, unitId), rng)
-        }
-        s = engine.reduce(s, Action.Tick(1), rng)
-        relay.publish(room.id, s.toSnapshot())
+        val s = engine.reduce(applyRequests(state, drainRequests(), rng), Action.Tick(1), rng)
+        publish(s)
         return s
+    }
+
+    /**
+     * The guests' new requests, as (party slot, request). Network only.
+     *
+     * Kept apart from [applyRequests] because the two must not share a
+     * suspension: the app's state is read and written under a lock, and
+     * anything written while a network call is in flight would be overwritten
+     * by a result computed from the state before it. Against a real server that
+     * window is hundreds of milliseconds, and it silently dropped the host's
+     * own casts.
+     */
+    suspend fun drainRequests(): List<Pair<String, WireAction>> {
+        check(isHost) { "only the host simulates" }
+        return relay.pendingActions(room.id).mapNotNull { (actorUid, action) ->
+            val unitId = unitIdByUid[actorUid] ?: return@mapNotNull null
+            if (appliedSeq[actorUid]?.let { action.seq <= it } == true) return@mapNotNull null
+            appliedSeq[actorUid] = action.seq
+            unitId to action
+        }
+    }
+
+    /**
+     * Applies drained requests. Pure and immediate, so it can run inside the
+     * state lock.
+     *
+     * critRoll is not on the wire and is redrawn inside the engine for any
+     * actor that is not this client -- see Engine.castAs.
+     */
+    fun applyRequests(state: GameState, requests: List<Pair<String, WireAction>>, rng: Rng): GameState =
+        requests.fold(state) { s, (unitId, action) ->
+            engine.reduce(s, Action.CastSpell(action.spellId, action.targetId, 0.0, unitId), rng)
+        }
+
+    /** Broadcasts one frame of [state]. */
+    suspend fun publish(state: GameState) {
+        relay.publish(room.id, state.toSnapshot())
     }
 
     // --- surviving the host being a phone ------------------------------------
