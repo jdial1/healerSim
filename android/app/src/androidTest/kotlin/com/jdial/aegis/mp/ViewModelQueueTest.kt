@@ -129,9 +129,18 @@ class ViewModelQueueTest {
 
     @Test
     fun aQueueThatCannotBeReachedStillLetsYouPlay() = runBlocking {
-        // The property that matters most. "The queue is broken" must never mean
-        // "you cannot play", so this points the client at a dead port and
-        // expects a normal single-player run.
+        // The property that matters most: "the queue is broken" must never mean
+        // "you cannot play".
+        //
+        // Note what this does and does not prove. In the normal suite the
+        // emulators are reachable, so it only covers queueing inline from
+        // startDungeon. It proves the unreachable case only when run with the
+        // ports *not* forwarded:
+        //   adb reverse --remove-all
+        //   ./gradlew :app:connectedDebugAndroidTest \
+        //     -Pandroid.testInstrumentationRunnerArguments.class=\
+        //     com.jdial.aegis.mp.ViewModelQueueTest#aQueueThatCannotBeReachedStillLetsYouPlay
+        // which was done when this was written: the run started within a second.
         val vm = vm()
         vm.selectClass(PlayerClass.PRIEST)
         vm.updateSettings { it.copy(multiplayer = true) }
@@ -145,5 +154,84 @@ class ViewModelQueueTest {
         withTimeout(20_000) { while (vm.state.value.combatElapsedTicks <= at) delay(200) }
         assertTrue("the run must advance regardless", vm.state.value.combatElapsedTicks > at)
         vm.abandonDungeon()
+    }
+
+    /** The same app instance and identity the view model's debug backend uses. */
+    private fun sameBackend() = FirebaseBackend.forEmulator(
+        context = app,
+        host = "127.0.0.1",
+        authPort = 9099,
+        firestorePort = 8080,
+        databasePort = 9000,
+        projectId = "overheal-local",
+    )
+
+    private suspend fun playSoloRoom(vm: AegisViewModel): String {
+        vm.selectClass(PlayerClass.PRIEST)
+        vm.updateSettings { it.copy(multiplayer = true) }
+        val dungeon = vm.data.dungeons.first()
+        vm.enterQueue(dungeon, "normal")
+        withTimeout(40_000) { while (vm.queueStatus.value !is QueueStatus.Ready) delay(250) }
+        vm.startDungeon(dungeon, "normal")
+        withTimeout(20_000) { while (!vm.state.value.isCombatActive) delay(100) }
+        val uid = sameBackend().currentUid()!!
+        val roomId = roomIdFor(dungeon.id, listOf(uid))
+        withTimeout(20_000) { while (!EmulatorAdmin.databaseHas("rooms/$roomId/hostUid")) delay(250) }
+        return roomId
+    }
+
+    /** A host alone in its room deletes it on the way out; nobody is left to take over. */
+    @Test
+    fun abandoningASoloRoomLeavesNothingBehind() = runBlocking {
+        val vm = vm()
+        val roomId = playSoloRoom(vm)
+        assertTrue(EmulatorAdmin.firestoreHas("rooms/$roomId"))
+
+        vm.abandonDungeon()
+        withTimeout(20_000) { while (EmulatorAdmin.databaseHas("rooms/$roomId")) delay(250) }
+        withTimeout(20_000) { while (EmulatorAdmin.firestoreHas("rooms/$roomId")) delay(250) }
+    }
+
+    /** The deletion path: account, queue entry and hosted room, all gone. */
+    @Test
+    fun deletingMyDataRemovesTheAccountAndWhatItHeld() = runBlocking {
+        val vm = vm()
+        val roomId = playSoloRoom(vm)
+        val uid = sameBackend().currentUid()!!
+
+        vm.forgetMultiplayerData()
+        val result = withTimeout(30_000) {
+            var r = vm.forgetResult.value
+            while (r == null) { delay(250); r = vm.forgetResult.value }
+            r
+        }
+        assertEquals(ForgetResult.Deleted, result)
+        assertTrue("multiplayer must be switched off", !vm.settings.value.multiplayer)
+        assertTrue("the anonymous account must be gone", sameBackend().currentUid() == null)
+        assertTrue("its hosted room must be gone", !EmulatorAdmin.databaseHas("rooms/$roomId"))
+        assertTrue("and the room's queue record", !EmulatorAdmin.firestoreHas("rooms/$roomId"))
+        assertTrue("and any queue entry", !EmulatorAdmin.firestoreHas("queue/$uid"))
+
+        // A new queue must mint a new identity, not resurrect the old one.
+        val fresh = sameBackend().signIn()
+        assertTrue("a deleted account must not come back", fresh != uid)
+        vm.abandonDungeon()
+    }
+
+    @Test
+    fun deletingDataThatWasNeverCreatedTouchesNothing() = runBlocking {
+        // A player who never queued has no account to delete, and pressing the
+        // button must not create one to find that out.
+        sameBackend().signOut()
+        val vm = vm()
+        vm.selectClass(PlayerClass.PRIEST)
+        vm.forgetMultiplayerData()
+        val result = withTimeout(20_000) {
+            var r = vm.forgetResult.value
+            while (r == null) { delay(100); r = vm.forgetResult.value }
+            r
+        }
+        assertEquals(ForgetResult.NothingHeld, result)
+        assertTrue("it must not have signed in to check", sameBackend().currentUid() == null)
     }
 }

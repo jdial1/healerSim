@@ -142,6 +142,33 @@ class FirebaseBackend private constructor(
     /** Signs out, so a test can take a second identity. */
     fun signOut() = auth.signOut()
 
+    /** Who this installation is, without signing in to find out. */
+    fun currentUid(): String? = auth.currentUser?.uid
+
+    /**
+     * Deletes the anonymous account. Everything the server still holds under
+     * its uid is no longer tied to an account anybody can sign in as.
+     */
+    suspend fun deleteAccount() {
+        auth.currentUser?.delete()?.await()
+        auth.signOut()
+    }
+
+    /** Every room this player is recorded in, however old. */
+    suspend fun roomsOf(uid: String): List<Room> =
+        db.collection("rooms")
+            .where(Filter.arrayContains("memberUids", uid))
+            .get().await()
+            .documents.mapNotNull { doc -> doc.data?.let { roomFrom(it) } }
+
+    /**
+     * Deletes a room's queue record. The host may at any time; any member once
+     * it is an hour old.
+     */
+    suspend fun deleteRoomRecord(roomId: String) {
+        db.collection("rooms").document(roomId).delete().await()
+    }
+
     /** The current uid, signing in anonymously if this is the first time. */
     suspend fun signIn(): String =
         auth.currentUser?.uid ?: auth.signInAnonymously().await().user!!.uid

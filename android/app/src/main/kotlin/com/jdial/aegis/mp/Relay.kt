@@ -62,8 +62,30 @@ class Relay(private val db: FirebaseDatabase) {
                 "hostUid" to hostUid,
                 "members" to memberUids.associateWith { true },
                 "state" to mapOf("tick" to 0, "json" to ""),
+                // The only clock the members' clean-up rule trusts.
+                "startedAt" to ServerValue.TIMESTAMP,
             ),
         ).await()
+    }
+
+    /**
+     * Removes the whole room. The host may do this at any time; any member may
+     * once it is an hour old. Refused otherwise, which is the caller's cue to
+     * fall back to [forget].
+     */
+    suspend fun deleteRoom(roomId: String) {
+        room(roomId).removeValue().await()
+    }
+
+    /**
+     * Removes what this player left in a room they cannot delete: their
+     * character profile, their last request and their heartbeat. The room
+     * stays for the people still playing in it.
+     */
+    suspend fun forget(roomId: String, uid: String) {
+        for (node in listOf("profiles", "actions", "heartbeats")) {
+            room(roomId).child(node).child(uid).removeValue().await()
+        }
     }
 
     /** Publishes one frame. Host only -- the rules refuse anyone else. */

@@ -150,6 +150,19 @@ class MultiplayerSession(
         relay.publishProfile(room.id, uid, profile)
     }
 
+    /**
+     * Whether any other player in the room is still beating.
+     *
+     * Decides what leaving does to the room: a host leaving people behind hands
+     * it on; a host leaving an empty room deletes it.
+     */
+    suspend fun othersAlive(): Boolean {
+        relay.heartbeat(room.id, uid)
+        val seen = relay.heartbeats(room.id)
+        val now = seen[uid] ?: return false
+        return seen.any { (other, at) -> other != uid && other in room.memberUids && now - at <= HEARTBEAT_TIMEOUT_MS }
+    }
+
     /** Frames from whoever is hosting. A guest renders these and nothing else. */
     fun frames() = relay.frames(room.id)
 

@@ -48,7 +48,7 @@ const room = (host, members) => ({
   pace: "normal",
   members: members.map((u, i) => ({ uid: u, unitId: `${i + 1}`, role: "DPS" })),
   memberUids: members,
-  formedAtMs: 1000,
+  formedAtMs: Date.now(),
 });
 
 before(async () => {
@@ -60,6 +60,10 @@ before(async () => {
       port: 8080,
     },
   });
+  // Start from nothing. These fixtures use fixed ids, so against a long-lived
+  // emulator a second run would find its rooms already created and the
+  // create-path rules would -- correctly -- refuse them.
+  await env.clearFirestore();
 });
 
 after(async () => {
@@ -191,4 +195,22 @@ test("anyone may sweep an abandoned entry, and nobody may sweep a live one", asy
   await assertFails(deleteDoc(doc(as("mallory"), "queue/fresh")));
   // ...but one nobody has refreshed in an hour is everybody's to remove.
   await assertSucceeds(deleteDoc(doc(as("mallory"), "queue/ghost")));
+});
+
+test("a room cannot be dated in the future", async () => {
+  // Or the members' clean-up rule could never apply to it.
+  await assertFails(setDoc(doc(as("alice"), "rooms/d1_alice_later"), {
+    ...room("alice", ["alice"]), formedAtMs: Date.now() + 86_400_000,
+  }));
+});
+
+test("a member may delete an hour-old room, but not a fresh one", async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, "rooms/d1_alice_bob_old"), { ...room("alice", ["alice", "bob"]), formedAtMs: Date.now() - 7_200_000 });
+    await setDoc(doc(db, "rooms/d1_alice_bob_new"), room("alice", ["alice", "bob"]));
+  });
+  // Deleting a fresh room would strand the players still looking for it.
+  await assertFails(deleteDoc(doc(as("bob"), "rooms/d1_alice_bob_new")));
+  await assertSucceeds(deleteDoc(doc(as("bob"), "rooms/d1_alice_bob_old")));
+  await assertSucceeds(deleteDoc(doc(as("alice"), "rooms/d1_alice_bob_new")));
 });

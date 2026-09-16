@@ -13,10 +13,11 @@ const SERVER_TIME = serverTimestamp();
 
 let env;
 
-const roomNode = (host, members) => ({
+const roomNode = (host, members, startedAt = SERVER_TIME) => ({
   hostUid: host,
   members: Object.fromEntries(members.map((m) => [m, true])),
   state: { tick: 1 },
+  startedAt,
 });
 
 before(async () => {
@@ -28,6 +29,10 @@ before(async () => {
       port: 9000,
     },
   });
+  // Start from nothing. These fixtures use fixed ids, so against a long-lived
+  // emulator a second run would find its rooms already created and the
+  // create-path rules would -- correctly -- refuse them.
+  await env.clearDatabase();
 });
 after(async () => { await env?.cleanup(); });
 
@@ -130,4 +135,50 @@ test("a profile is yours alone to publish", async () => {
   // Rewriting somebody else's talents would change what their spells do.
   await assertFails(set(ref(as("bob"), "rooms/d1_alice_bob_p/profiles/alice"), { json: "{}" }));
   await assertFails(set(ref(as("carol"), "rooms/d1_alice_bob_p/profiles/carol"), { json: "{}" }));
+});
+
+test("a room's start time must be the server's", async () => {
+  // It is what the clean-up rule trusts; a future date would make a room
+  // impossible for its members to remove.
+  await assertFails(set(ref(as("alice"), "rooms/d1_alice_future"),
+    roomNode("alice", ["alice"], Date.now() + 86_400_000)));
+  await assertSucceeds(set(ref(as("alice"), "rooms/d1_alice_now"), roomNode("alice", ["alice"])));
+});
+
+test("a member may delete an hour-old room, but not a live one", async () => {
+  await seed(async (db) => {
+    await set(ref(db, "rooms/d1_alice_bob_old"), roomNode("alice", ["alice", "bob"], Date.now() - 7_200_000));
+    await set(ref(db, "rooms/d1_alice_bob_new"), roomNode("alice", ["alice", "bob"], Date.now()));
+  });
+  // Pulling a room out from under the other players would end their run.
+  await assertFails(set(ref(as("bob"), "rooms/d1_alice_bob_new"), null));
+  // An hour on, nobody is playing in it.
+  await assertSucceeds(set(ref(as("bob"), "rooms/d1_alice_bob_old"), null));
+  // And an outsider may not delete even an old one.
+  await seed((db) => set(ref(db, "rooms/d1_alice_bob_old2"), roomNode("alice", ["alice", "bob"], Date.now() - 7_200_000)));
+  await assertFails(set(ref(as("carol"), "rooms/d1_alice_bob_old2"), null));
+});
+
+test("the host may delete its room at any time", async () => {
+  await seed((db) => set(ref(db, "rooms/d1_alice_bob_end"), roomNode("alice", ["alice", "bob"])));
+  await assertFails(set(ref(as("bob"), "rooms/d1_alice_bob_end"), null));
+  await assertSucceeds(set(ref(as("alice"), "rooms/d1_alice_bob_end"), null));
+});
+
+test("a member can remove their own traces from a room", async () => {
+  await seed(async (db) => {
+    await set(ref(db, "rooms/d1_alice_bob_f"), roomNode("alice", ["alice", "bob"]));
+    await set(ref(db, "rooms/d1_alice_bob_f/profiles/bob"), { json: "{}" });
+    await set(ref(db, "rooms/d1_alice_bob_f/heartbeats/bob"), Date.now());
+    await set(ref(db, "rooms/d1_alice_bob_f/actions/bob"), { seq: 1 });
+  });
+  for (const node of ["profiles", "heartbeats", "actions"]) {
+    await assertSucceeds(set(ref(as("bob"), `rooms/d1_alice_bob_f/${node}/bob`), null));
+  }
+});
+
+test("a host can re-open its own room", async () => {
+  // Same player, same dungeon, same room id: a leftover must not block them.
+  await seed((db) => set(ref(db, "rooms/d1_alice_again"), roomNode("alice", ["alice"], Date.now() - 7_200_000)));
+  await assertSucceeds(set(ref(as("alice"), "rooms/d1_alice_again"), roomNode("alice", ["alice"])));
 });

@@ -28,7 +28,24 @@
         //
         // RTDB rules cascade permissively, so the narrower grants below still
         // let a guest write its own action stream.
-        ".write": "auth != null && ((!data.exists() && $roomId.contains(auth.uid) && newData.child('hostUid').val() === auth.uid && newData.child('members').child(auth.uid).exists()) || data.child('hostUid').val() === auth.uid)",
+        //
+        // Clean-up: any member may delete the whole room once it is an hour
+        // old, judged on the server's clock via startedAt. The host deletes
+        // it when a run ends; this is for rooms whose players all vanished
+        // mid-run, which would otherwise keep everyone's profiles forever.
+        // An hour is far past any run, so nobody can pull a live room out
+        // from under the others.
+        ".write": "auth != null && ((!data.exists() && $roomId.contains(auth.uid) && newData.child('hostUid').val() === auth.uid && newData.child('members').child(auth.uid).exists()) || data.child('hostUid').val() === auth.uid || (!newData.exists() && data.child('members').child(auth.uid).exists() && data.child('startedAt').val() < (now - 3600000)))",
+
+        "startedAt": {
+          // Stamped by the server whenever the host opens the room. It is the
+          // only clock the clean-up rule above trusts, so a host cannot
+          // future-date a room to make it undeletable. Re-opening restamps it
+          // rather than being refused: the same player queueing the same
+          // dungeon again gets the same room id, and a leftover room must not
+          // lock them out of their next game.
+          ".validate": "newData.val() === now || newData.val() === data.val()"
+        },
 
         "hostUid": {
           // Host migration. The sitting host is covered by the room-level rule

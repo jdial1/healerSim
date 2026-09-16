@@ -318,4 +318,75 @@ class RelayFlowTest {
         assertEquals("the fight is wherever it got to", hostState.combatElapsedTicks, rendered.combatElapsedTicks)
         assertEquals(hostState.enemyHealth, rendered.enemyHealth, 1e-9)
     }
+
+    private fun twoPlayerRoom(): Room {
+        val roomId = "d1_${hostUid}_$guestUid"
+        return Room(
+            id = roomId,
+            hostUid = hostUid,
+            dungeonId = data.dungeons.first().id,
+            pace = "normal",
+            members = listOf(
+                RoomMember(hostUid, "5", com.jdial.aegis.sim.UnitRole.HEALER),
+                RoomMember(guestUid, "1", com.jdial.aegis.sim.UnitRole.TANK),
+            ),
+            memberUids = listOf(hostUid, guestUid),
+            formedAtMs = System.currentTimeMillis(),
+        )
+    }
+
+    /** Decides whether a leaving host deletes the room or hands it on. */
+    @Test
+    fun aHostKnowsWhetherAnybodyIsStillThere() = runBlocking {
+        val room = twoPlayerRoom()
+        host.relay.openAsHost(room.id, hostUid, room.memberUids)
+        val hostSession = MultiplayerSession(host.relay, engine, data, room, hostUid)
+        val guestSession = MultiplayerSession(guest.relay, engine, data, room, guestUid)
+
+        assertTrue("nobody else has beaten yet", !hostSession.othersAlive())
+        guestSession.reconcileHost()
+        assertTrue("the guest is beating", hostSession.othersAlive())
+    }
+
+    /** A finished run's room goes, profiles and all -- in both stores. */
+    @Test
+    fun aHostDeletesItsRoomEverywhere() = runBlocking {
+        val room = twoPlayerRoom()
+        host.createRoom(room)
+        host.relay.openAsHost(room.id, hostUid, room.memberUids)
+        guest.relay.publishProfile(room.id, guestUid, WireProfile("1", "WARRIOR", 3))
+        assertTrue(EmulatorAdmin.databaseHas("rooms/${room.id}/profiles/$guestUid"))
+
+        host.relay.deleteRoom(room.id)
+        host.deleteRoomRecord(room.id)
+
+        assertTrue("the live room must be gone", !EmulatorAdmin.databaseHas("rooms/${room.id}"))
+        assertTrue("and its queue record", !EmulatorAdmin.firestoreHas("rooms/${room.id}"))
+    }
+
+    /**
+     * A guest who leaves early cannot delete a room others are playing in, but
+     * can take its own character and requests out of it.
+     */
+    @Test
+    fun aGuestRemovesOnlyItsOwnTraces() = runBlocking {
+        val room = twoPlayerRoom()
+        host.relay.openAsHost(room.id, hostUid, room.memberUids)
+        host.relay.publishProfile(room.id, hostUid, WireProfile("5", "PRIEST", 3))
+        guest.relay.publishProfile(room.id, guestUid, WireProfile("1", "WARRIOR", 3))
+        guest.relay.sendAction(room.id, guestUid, WireAction(1, "shield_slam"))
+        guest.relay.heartbeat(room.id, guestUid)
+
+        assertTrue(
+            "a guest must not be able to end a live room for everyone",
+            runCatching { guest.relay.deleteRoom(room.id) }.isFailure,
+        )
+        guest.relay.forget(room.id, guestUid)
+
+        for (node in listOf("profiles", "actions", "heartbeats")) {
+            assertTrue("$node/$guestUid should be gone", !EmulatorAdmin.databaseHas("rooms/${room.id}/$node/$guestUid"))
+        }
+        assertTrue("the host's profile must survive", EmulatorAdmin.databaseHas("rooms/${room.id}/profiles/$hostUid"))
+        assertTrue("and the room itself", EmulatorAdmin.databaseHas("rooms/${room.id}/hostUid"))
+    }
 }

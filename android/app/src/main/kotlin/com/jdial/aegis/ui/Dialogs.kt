@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import com.jdial.aegis.mp.ForgetResult
 import com.jdial.aegis.mp.QueueStatus
 import com.jdial.aegis.sim.UnitRole
 import com.jdial.aegis.sim.partyRoles
@@ -447,7 +448,10 @@ fun SettingsDialog(
     onChange: (UiSettings) -> kotlin.Unit,
     multiplayerAvailable: Boolean,
     onDismiss: () -> kotlin.Unit,
+    forgetResult: ForgetResult? = null,
+    onForgetMultiplayer: () -> kotlin.Unit = {},
 ) {
+    var confirmForget by remember { mutableStateOf(false) }
     Scrim(onDismiss = onDismiss) {
         ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
             Column {
@@ -506,6 +510,48 @@ fun SettingsDialog(
                     settings.multiplayer && multiplayerAvailable,
                     enabled = multiplayerAvailable,
                 ) { onChange(settings.copy(multiplayer = it)) }
+
+                if (multiplayerAvailable) {
+                    // The deletion path the Play data safety form asks about.
+                    // Two taps, because it cannot be undone: the anonymous
+                    // account it deletes is the only thing tying this device
+                    // to anything on the server.
+                    Spacer(Modifier.height(6.dp))
+                    BasicText(
+                        if (confirmForget) "TAP AGAIN TO DELETE — THIS CANNOT BE UNDONE"
+                        else "DELETE MY MULTIPLAYER DATA",
+                        style = AegisType.label.copy(
+                            fontSize = 11.sp,
+                            color = if (confirmForget) Vital.hurt else Ink.muted,
+                        ),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable(onClickLabel = "Delete my multiplayer data") {
+                                if (confirmForget) {
+                                    confirmForget = false
+                                    onForgetMultiplayer()
+                                } else {
+                                    confirmForget = true
+                                }
+                            }
+                            .semantics { role = Role.Button }
+                            .padding(vertical = 8.dp),
+                    )
+                    forgetResult?.let { result ->
+                        BasicText(
+                            when (result) {
+                                ForgetResult.Deleted ->
+                                    "Deleted. Your anonymous account is gone and multiplayer is off."
+                                ForgetResult.NothingHeld ->
+                                    "Nothing to delete — this device has never played online."
+                                ForgetResult.Failed ->
+                                    "Couldn't finish, so some data may remain. Try again " +
+                                        "when you're online."
+                            },
+                            style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted),
+                        )
+                    }
+                }
 
                 Spacer(Modifier.height(14.dp))
                 GiltButton("Close", onClick = onDismiss)

@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withTimeoutOrNull
 
+/** What "delete my multiplayer data" managed to do. */
+enum class ForgetResult { NothingHeld, Deleted, Failed }
+
 /** What the queue is doing, as the lobby needs to show it. */
 sealed interface QueueStatus {
     /** Multiplayer is off, or this build has no Firebase configuration. */
@@ -82,6 +85,73 @@ class Multiplayer(
     }
 
     /**
+     * Tidies up after a run.
+     *
+     * A finished run is over for everyone, so its host deletes the room --
+     * including every player's character profile. Abandoning is different:
+     * a host with players still in the room leaves it for them to take over,
+     * and deletes it only if nobody is left. A guest who abandons removes what
+     * it left behind and lets the host's slot handover take its place.
+     *
+     * Best effort throughout. Anything left because a call failed is removed
+     * by the members' hour-old clean-up the next time one of them queues.
+     */
+    suspend fun endRun(finished: Boolean) {
+        val s = session ?: return
+        val be = backend ?: return
+        leave()
+        val deleteRoom = s.isHost && (finished || !runCatching { s.othersAlive() }.getOrDefault(false))
+        when {
+            deleteRoom -> deleteRoomEverywhere(be, s.room.id)
+            !finished -> runCatching { be.relay.forget(s.room.id, s.uid) }
+        }
+    }
+
+    /**
+     * "Delete my multiplayer data": the deletion path Play's data safety form
+     * asks about.
+     *
+     * Leaves the queue, removes this player from every room they were in --
+     * the whole room where the rules allow it, their own profile, request and
+     * heartbeat where they do not -- and then deletes the anonymous account.
+     * A room that somebody else is still playing in keeps its record of who was
+     * in it until its host ends the run or it ages out; after this that uid no
+     * longer belongs to any account.
+     *
+     * Does not sign in to do any of it: a player who never used multiplayer has
+     * nothing here to delete.
+     */
+    suspend fun forgetMe(): ForgetResult {
+        if (!isAvailable) return ForgetResult.NothingHeld
+        val be = backend ?: return ForgetResult.NothingHeld
+        val me = be.currentUid() ?: return ForgetResult.NothingHeld
+        leave()
+        runCatching { be.leaveQueue(me) }
+        val rooms = runCatching { be.roomsOf(me) }.getOrElse { return ForgetResult.Failed }
+        for (room in rooms) {
+            runCatching { be.relay.forget(room.id, me) }
+            if (room.hostUid == me || isOld(room)) deleteRoomEverywhere(be, room.id)
+        }
+        return if (runCatching { be.deleteAccount() }.isSuccess) ForgetResult.Deleted else ForgetResult.Failed
+    }
+
+    private suspend fun deleteRoomEverywhere(be: FirebaseBackend, roomId: String) {
+        runCatching { be.relay.deleteRoom(roomId) }
+        runCatching { be.deleteRoomRecord(roomId) }
+    }
+
+    /** Past the point any member may delete it -- the rules decide for real. */
+    private fun isOld(room: Room) = System.currentTimeMillis() - room.formedAtMs > ROOM_MAX_AGE_MS
+
+    /**
+     * Rooms this player was in that outlived their run, because everybody
+     * vanished before it ended. Removed the next time they queue.
+     */
+    private suspend fun sweepMyOldRooms(be: FirebaseBackend, me: String) {
+        for (room in be.roomsOf(me)) if (isOld(room)) deleteRoomEverywhere(be, room.id)
+    }
+
+    /**
      * Joins the public queue and waits for a room.
      *
      * The wait ends either because enough people turned up or because the
@@ -93,6 +163,7 @@ class Multiplayer(
         val be = backend ?: return null.also { _status.value = QueueStatus.Offline }
         return runCatching {
             val me = be.signIn().also { uid = it }
+            runCatching { sweepMyOldRooms(be, me) }
             // Times are placeholders: the backend stamps both on the server.
             val entry = QueueEntry(me, local.playerRole, dungeon.id, enqueuedAtMs = 0L)
             be.enqueue(entry)
@@ -189,6 +260,9 @@ class Multiplayer(
          */
         const val GROUP_WAIT_MS = 12_000L
         const val POLL_MS = 1_500L
+
+        /** Matches the members' clean-up rule in both rule files. */
+        const val ROOM_MAX_AGE_MS = 3_600_000L
 
         /**
          * The backend, or null when this build has no Firebase configuration.

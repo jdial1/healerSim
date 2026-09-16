@@ -122,6 +122,7 @@ private val MENU_TABS = listOf(
 private fun AegisApp(onReady: () -> Unit = {}) {
     val vm: AegisViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    val forgetResult by vm.forgetResult.collectAsStateWithLifecycle()
     // GameData parsed in the ViewModel's initialiser, so by here we are ready.
     LaunchedEffect(Unit) { onReady() }
 
@@ -237,6 +238,8 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                             engine = vm.engine,
                             onSettingsChange = { next -> vm.updateSettings { next } },
                             multiplayerAvailable = vm.multiplayerAvailable,
+                            forgetResult = forgetResult,
+                            onForgetMultiplayer = vm::forgetMultiplayerData,
                             onChangeClass = {
                                 vm.leaveCharacter()
                                 screen = Screen.ClassSelect

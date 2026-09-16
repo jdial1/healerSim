@@ -381,6 +381,8 @@ fun CharacterScreen(
     onSettingsChange: (UiSettings) -> Unit,
     /** False when this build has no server configuration; the row explains it. */
     multiplayerAvailable: Boolean = false,
+    forgetResult: com.jdial.aegis.mp.ForgetResult? = null,
+    onForgetMultiplayer: () -> Unit = {},
     onChangeClass: () -> Unit,
     onSetActionBarSlot: (Int, String) -> Unit = { _, _ -> },
 ) {
@@ -512,6 +514,8 @@ fun CharacterScreen(
                 settings = LocalUiSettings.current,
                 onChange = onSettingsChange,
                 multiplayerAvailable = multiplayerAvailable,
+                forgetResult = forgetResult,
+                onForgetMultiplayer = onForgetMultiplayer,
                 onDismiss = { showSettings = false },
             )
         }

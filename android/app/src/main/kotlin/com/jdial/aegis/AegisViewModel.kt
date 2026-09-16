@@ -3,6 +3,7 @@ package com.jdial.aegis
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jdial.aegis.mp.ForgetResult
 import com.jdial.aegis.mp.Multiplayer
 import com.jdial.aegis.mp.MultiplayerSession
 import com.jdial.aegis.data.Dungeon
@@ -66,6 +67,22 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Absent when this build has no Firebase configuration; then it is offline. */
     private val multiplayer = Multiplayer.forApp(engine, data, app)
+
+    private val _forgetResult = MutableStateFlow<ForgetResult?>(null)
+
+    /** The outcome of the last "delete my multiplayer data", for the settings row. */
+    val forgetResult: StateFlow<ForgetResult?> = _forgetResult.asStateFlow()
+
+    /**
+     * Deletes everything multiplayer holds about this player, and switches it
+     * off so the next lobby does not quietly create a new account.
+     */
+    fun forgetMultiplayerData() {
+        updateSettings { it.copy(multiplayer = false) }
+        viewModelScope.launch {
+            _forgetResult.value = runCatching { multiplayer.forgetMe() }.getOrDefault(ForgetResult.Failed)
+        }
+    }
 
     /** For the test that single player never touches the network. */
     internal val touchedNetwork: Boolean get() = multiplayer.backendCreated
@@ -238,7 +255,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
 
     fun abandonDungeon() {
         stopTicking()
-        multiplayer.leave()
+        viewModelScope.launch { runCatching { multiplayer.endRun(finished = false) } }
         store.clearSuspendedRun()
         dispatch(Action.AbandonDungeon)
         persist()
@@ -330,6 +347,10 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
                     // The run is over, so the snapshot must go — otherwise a wipe
                     // would still look resumable on the next class select.
                     store.clearSuspendedRun()
+                    // A finished run is over for everyone in the room; its
+                    // host deletes it, profiles and all. Launched before
+                    // stopTicking, which cancels this very loop.
+                    viewModelScope.launch { runCatching { multiplayer.endRun(finished = true) } }
                     stopTicking()
                     persist()
                     break
