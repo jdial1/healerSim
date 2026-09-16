@@ -18,15 +18,27 @@ import {
   assertSucceeds,
 } from "@firebase/rules-unit-testing";
 import { readFileSync } from "node:fs";
-import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
+import {
+  doc, getDoc, setDoc, deleteDoc, updateDoc, serverTimestamp, Timestamp,
+} from "firebase/firestore";
 
 let env;
 
+// A fresh entry, stamped by the server as the rules require.
 const entry = (uid, role = "TANK") => ({
   uid,
   role,
   dungeonId: "d1",
-  enqueuedAtMs: 1000,
+  enqueuedAt: serverTimestamp(),
+  lastSeen: serverTimestamp(),
+});
+
+// An entry as a killed app leaves it: last refreshed a long time ago. Seeded
+// past the rules, since no client could ever write a time like this.
+const abandoned = (uid) => ({
+  ...entry(uid),
+  enqueuedAt: Timestamp.fromMillis(Date.now() - 3_600_000),
+  lastSeen: Timestamp.fromMillis(Date.now() - 3_600_000),
 });
 
 const room = (host, members) => ({
@@ -87,7 +99,11 @@ test("a garbage queue entry is refused", async () => {
     setDoc(doc(as("alice"), "queue/alice"), { ...entry("alice"), role: "GOD" }),
   );
   await assertFails(
-    setDoc(doc(as("alice"), "queue/alice"), { ...entry("alice"), enqueuedAtMs: "soon" }),
+    setDoc(doc(as("alice"), "queue/alice"), { ...entry("alice"), enqueuedAt: "soon" }),
+  );
+  // Nor may an entry carry anything the queue does not need.
+  await assertFails(
+    setDoc(doc(as("alice"), "queue/alice"), { ...entry("alice"), note: "hi" }),
   );
 });
 
@@ -135,4 +151,44 @@ test("only the host can write the room, and cannot hand it to an outsider", asyn
   await assertFails(
     setDoc(doc(as("alice"), "rooms/r2"), room("carol", ["alice", "bob"])),
   );
+});
+
+test("queue times must be the server's, not the device's", async () => {
+  // The longest wait hosts, so a backdated join would make you host of every
+  // group; a forward-dated refresh would leave an entry that never looks dead.
+  await assertFails(setDoc(doc(as("alice"), "queue/alice"), {
+    ...entry("alice"), enqueuedAt: Timestamp.fromMillis(0),
+  }));
+  await assertFails(setDoc(doc(as("alice"), "queue/alice"), {
+    ...entry("alice"), lastSeen: Timestamp.fromMillis(Date.now() + 3_600_000),
+  }));
+});
+
+test("a refresh moves lastSeen and nothing else", async () => {
+  await assertSucceeds(setDoc(doc(as("dana"), "queue/dana"), entry("dana")));
+  await assertSucceeds(updateDoc(doc(as("dana"), "queue/dana"), { lastSeen: serverTimestamp() }));
+  // Switching role mid-wait would let a player jump into whichever seat is free.
+  await assertFails(updateDoc(doc(as("dana"), "queue/dana"), {
+    lastSeen: serverTimestamp(), role: "HEALER",
+  }));
+  await assertFails(updateDoc(doc(as("dana"), "queue/dana"), {
+    lastSeen: Timestamp.fromMillis(Date.now() + 3_600_000),
+  }));
+});
+
+test("a player can re-join over their own leftover entry", async () => {
+  // Otherwise one crash while queueing locks that player out for good.
+  await seed((db) => setDoc(doc(db, "queue/erin"), abandoned("erin")));
+  await assertSucceeds(setDoc(doc(as("erin"), "queue/erin"), entry("erin")));
+});
+
+test("anyone may sweep an abandoned entry, and nobody may sweep a live one", async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, "queue/ghost"), abandoned("ghost"));
+    await setDoc(doc(db, "queue/fresh"), entry("fresh"));
+  });
+  // A live entry is still protected from strangers...
+  await assertFails(deleteDoc(doc(as("mallory"), "queue/fresh")));
+  // ...but one nobody has refreshed in an hour is everybody's to remove.
+  await assertSucceeds(deleteDoc(doc(as("mallory"), "queue/ghost")));
 });

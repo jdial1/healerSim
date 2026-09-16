@@ -41,7 +41,7 @@ class WireTest {
     fun `firestore hands numbers back as Long, and that still parses`() {
         // Firestore normalises every integer to Long. A parser that only
         // accepted Int would work in these tests and fail against the service.
-        val m = entry.toMap() + ("enqueuedAtMs" to 7L)
+        val m = entry.toMap() + ("enqueuedAt" to 7L)
         assertEquals(7L, queueEntryFrom(m)?.enqueuedAtMs)
     }
 

@@ -19,18 +19,47 @@ service cloud.firestore {
     // A player waiting for a group. The document id *is* the uid, so a player
     // can only ever hold one queue entry and can only hold their own.
     match /queue/{uid} {
+      // A complete, freshly-joined entry. Both times must be the server's:
+      // the longest wait hosts the group, so a client that could backdate
+      // enqueuedAt could make itself host of every group it joined, and one
+      // that could forward-date lastSeen could leave an entry that never
+      // looks abandoned.
+      function freshEntry() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['uid', 'role', 'dungeonId', 'enqueuedAt', 'lastSeen'])
+          && d.uid == uid
+          && d.role in ['TANK', 'DPS', 'HEALER']
+          && d.dungeonId is string
+          && d.enqueuedAt == request.time
+          && d.lastSeen == request.time;
+      }
+
+      // "Still here". Only lastSeen may move, and only to the server's now,
+      // which is what keeps a queue position from being rewritten mid-wait.
+      function refresh() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen'])
+          && request.resource.data.lastSeen == request.time;
+      }
+
       // Every signed-in client reads the queue: matchmaking is done on the
       // clients, so they each need the same snapshot to agree on a group.
       allow read: if signedIn();
-      allow create, update: if signedIn()
-        && request.auth.uid == uid
-        && request.resource.data.uid == uid
-        && request.resource.data.role in ['TANK', 'DPS', 'HEALER']
-        && request.resource.data.dungeonId is string
-        && request.resource.data.enqueuedAtMs is int;
-      // Leaving the queue is yours alone. Without the uid check any signed-in
-      // stranger could empty the queue and nobody would ever be matched.
-      allow delete: if signedIn() && request.auth.uid == uid;
+
+      allow create: if signedIn() && request.auth.uid == uid && freshEntry();
+      // Re-joining over your own leftover entry is a fresh entry too;
+      // otherwise one crash would lock a player out of the queue for good.
+      allow update: if signedIn() && request.auth.uid == uid && (freshEntry() || refresh());
+
+      // Leaving is yours alone -- without the uid check any stranger could
+      // empty the queue. The one exception is an entry nobody has refreshed
+      // for a minute, judged on the server's clock: every client already
+      // ignores those (QUEUE_ENTRY_TTL_MS is far shorter), and this is how a
+      // killed app's entry actually leaves the database rather than lingering
+      // forever. 60s here must match QUEUE_ENTRY_SWEEP_MS in Matchmaking.kt.
+      allow delete: if signedIn() && (
+        request.auth.uid == uid
+        || resource.data.lastSeen < request.time - duration.value(60, 's')
+      );
     }
 
     // Live game state and the guests' action streams are NOT here: they live in

@@ -20,14 +20,49 @@ import kotlinx.serialization.Serializable
  * single player already is.
  */
 
-/** A player waiting in the public queue. */
+/**
+ * A player waiting in the public queue.
+ *
+ * Both times are stamped by the server, not the device -- the rules require it
+ * -- so every client compares them on one clock. [lastSeenMs] is refreshed
+ * while the player waits; see [QUEUE_ENTRY_TTL_MS] for why that matters.
+ */
 @Serializable
 data class QueueEntry(
     val uid: String,
     val role: UnitRole,
     val dungeonId: String,
     val enqueuedAtMs: Long,
+    val lastSeenMs: Long = enqueuedAtMs,
 )
+
+/**
+ * How long a queue entry may go unrefreshed before it is presumed abandoned.
+ *
+ * Without this a killed app's entry stayed in the queue forever, and because
+ * the longest wait hosts, it became the host of every group formed for that
+ * dungeon. A host is the only client that creates the room, so everyone else
+ * waited for a room that was never coming, timed out, and played alone -- the
+ * queue for that dungeon was dead until somebody deleted a document by hand.
+ * A phone being killed mid-queue is the ordinary case, not an edge.
+ *
+ * Several refresh intervals long, so one slow write is not a disappearance.
+ */
+const val QUEUE_ENTRY_TTL_MS = 10_000L
+
+/**
+ * How long past going quiet an entry may be deleted by *anyone*.
+ *
+ * Well beyond [QUEUE_ENTRY_TTL_MS], and enforced by the rules on the server's
+ * clock, so this can only ever remove an entry every client is already
+ * ignoring. It is how abandoned entries actually leave the database -- see
+ * [FirebaseBackend.sweepAbandoned].
+ */
+const val QUEUE_ENTRY_SWEEP_MS = 60_000L
+
+/** True when [entry] has not been refreshed recently enough to be a person. */
+fun isAbandoned(entry: QueueEntry, nowMs: Long, ttlMs: Long = QUEUE_ENTRY_TTL_MS): Boolean =
+    nowMs - entry.lastSeenMs > ttlMs
 
 /** One human's seat in a formed room. AI slots are simply absent. */
 @Serializable
@@ -83,9 +118,12 @@ private fun List<QueueEntry>.served() = sortedWith(compareBy({ it.enqueuedAtMs }
  * Overflow stays in the queue rather than being dropped: a fourth DPS is not
  * rejected, they are simply not in *this* group.
  */
-fun selectMembers(waiting: List<QueueEntry>, dungeonId: String): List<QueueEntry> {
+fun selectMembers(waiting: List<QueueEntry>, dungeonId: String, nowMs: Long): List<QueueEntry> {
     val taken = mutableMapOf<UnitRole, Int>()
-    return waiting.filter { it.dungeonId == dungeonId }.served().filter { entry ->
+    return waiting
+        .filter { it.dungeonId == dungeonId && !isAbandoned(it, nowMs) }
+        .served()
+        .filter { entry ->
         val used = taken.getOrDefault(entry.role, 0)
         if (used < capacity(entry.role)) {
             taken[entry.role] = used + 1
@@ -138,7 +176,7 @@ fun formRoom(
     nowMs: Long,
     maxWaitMs: Long,
 ): Room? {
-    val selected = selectMembers(waiting, dungeonId)
+    val selected = selectMembers(waiting, dungeonId, nowMs)
     if (selected.isEmpty()) return null
     val full = selected.size == PARTY_SIZE
     val waited = nowMs - selected.first().enqueuedAtMs
@@ -152,7 +190,12 @@ fun formRoom(
         pace = pace,
         members = members,
         memberUids = uids,
-        formedAtMs = nowMs,
+        // Never dated before any member joined. The host stamps its own "now"
+        // just before it reads the queue, so a player who joined in between
+        // would otherwise see a room that predates them -- and a returning
+        // player's filter for yesterday's rooms (FirebaseBackend.roomFor)
+        // would reject the room they were just put in.
+        formedAtMs = maxOf(nowMs, selected.maxOf { it.enqueuedAtMs }),
     )
 }
 

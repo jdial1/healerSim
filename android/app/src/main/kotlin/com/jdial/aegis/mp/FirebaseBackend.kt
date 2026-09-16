@@ -7,6 +7,8 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Filter
 import kotlinx.coroutines.tasks.await
 
@@ -131,9 +133,49 @@ class FirebaseBackend private constructor(
     suspend fun signIn(): String =
         auth.currentUser?.uid ?: auth.signInAnonymously().await().user!!.uid
 
-    /** Joins the queue. The document id is the uid, so joining twice replaces. */
+    /**
+     * Joins the queue, or re-joins over a leftover entry of our own.
+     *
+     * Both times are server timestamps, whatever [entry] carries -- the rules
+     * refuse anything else. The longest wait hosts, so a device clock would let
+     * a player make themselves host of every group they joined.
+     */
     suspend fun enqueue(entry: QueueEntry) {
-        db.collection("queue").document(entry.uid).set(entry.toMap()).await()
+        val stamped = entry.toMap() + mapOf(
+            "enqueuedAt" to FieldValue.serverTimestamp(),
+            "lastSeen" to FieldValue.serverTimestamp(),
+        )
+        db.collection("queue").document(entry.uid).set(stamped).await()
+    }
+
+    /**
+     * "Still here." An entry that stops being refreshed is ignored by every
+     * client within QUEUE_ENTRY_TTL_MS, which is what stops a killed app from
+     * hosting groups it will never create.
+     *
+     * Fails if the entry has gone -- swept, or removed by hand -- and the
+     * caller re-joins.
+     */
+    suspend fun touchQueue(uid: String) {
+        db.collection("queue").document(uid).update("lastSeen", FieldValue.serverTimestamp()).await()
+    }
+
+    /**
+     * Deletes entries nobody has refreshed for QUEUE_ENTRY_SWEEP_MS.
+     *
+     * This is how an abandoned entry actually leaves the database. The rules
+     * let anyone do it, judged on the server's clock, and only past a point
+     * where every client is already ignoring the entry -- so a sweep can never
+     * remove somebody who is still waiting. Best effort: a failure here costs
+     * nothing but tidiness.
+     */
+    suspend fun sweepAbandoned(nowMs: Long, limit: Long = 20) {
+        val cutoff = Timestamp(java.util.Date(nowMs - QUEUE_ENTRY_SWEEP_MS))
+        val stale = db.collection("queue")
+            .whereLessThan("lastSeen", cutoff)
+            .limit(limit)
+            .get().await()
+        for (doc in stale.documents) runCatching { doc.reference.delete().await() }
     }
 
     suspend fun leaveQueue(uid: String) {
@@ -151,7 +193,15 @@ class FirebaseBackend private constructor(
         db.collection("queue")
             .whereEqualTo("dungeonId", dungeonId)
             .get().await()
-            .documents.mapNotNull { doc -> doc.data?.let { queueEntryFrom(it) } }
+            .documents.mapNotNull { doc -> doc.data?.let { queueEntryFrom(it.withEpochMillis()) } }
+
+    /**
+     * Firestore hands server timestamps back as its own Timestamp type. Wire.kt
+     * takes plain epoch millis so it can stay free of Firebase and be tested on
+     * the JVM; this is the one place the two meet.
+     */
+    private fun Map<String, Any?>.withEpochMillis(): Map<String, Any?> =
+        mapValues { (_, v) -> if (v is Timestamp) v.toDate().time else v }
 
     /**
      * Publishes a formed room. Only its host may do this -- see
@@ -162,10 +212,20 @@ class FirebaseBackend private constructor(
         db.collection("rooms").document(room.id).set(room.toMap()).await()
     }
 
-    /** The room this player has been placed in, if one has formed yet. */
-    suspend fun roomFor(uid: String): Room? =
+    /**
+     * The room this player has been placed in *by this queue*, if one has
+     * formed yet.
+     *
+     * Filtered on dungeon and formation time, because an anonymous uid survives
+     * app restarts and a room document survives its run: without the filter a
+     * returning player was put straight back into yesterday's dead room, for
+     * whichever dungeon that was.
+     */
+    suspend fun roomFor(uid: String, dungeonId: String, formedSinceMs: Long): Room? =
         db.collection("rooms")
             .where(Filter.arrayContains("memberUids", uid))
             .get().await()
-            .documents.firstNotNullOfOrNull { doc -> doc.data?.let { roomFrom(it) } }
+            .documents.mapNotNull { doc -> doc.data?.let { roomFrom(it) } }
+            .filter { it.dungeonId == dungeonId && it.formedAtMs >= formedSinceMs }
+            .maxByOrNull { it.formedAtMs }
 }

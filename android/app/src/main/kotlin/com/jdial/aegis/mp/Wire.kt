@@ -29,18 +29,26 @@ private fun Map<String, Any?>.long(key: String): Long? = when (val v = this[key]
 private fun roleOf(name: String?): UnitRole? =
     UnitRole.entries.firstOrNull { it.name == name }
 
+/**
+ * The time fields here are placeholders on the way out: the backend replaces
+ * both with server timestamps, which the rules insist on. On the way in, the
+ * backend has already turned those timestamps into epoch millis, which is what
+ * keeps this file free of Firebase types and testable on the JVM.
+ */
 fun QueueEntry.toMap(): Map<String, Any> = mapOf(
     "uid" to uid,
     "role" to role.name,
     "dungeonId" to dungeonId,
-    "enqueuedAtMs" to enqueuedAtMs,
+    "enqueuedAt" to enqueuedAtMs,
+    "lastSeen" to lastSeenMs,
 )
 
 fun queueEntryFrom(m: Map<String, Any?>): QueueEntry? = QueueEntry(
     uid = m.str("uid") ?: return null,
     role = roleOf(m.str("role")) ?: return null,
     dungeonId = m.str("dungeonId") ?: return null,
-    enqueuedAtMs = m.long("enqueuedAtMs") ?: return null,
+    enqueuedAtMs = m.long("enqueuedAt") ?: return null,
+    lastSeenMs = m.long("lastSeen") ?: return null,
 )
 
 fun RoomMember.toMap(): Map<String, Any> =

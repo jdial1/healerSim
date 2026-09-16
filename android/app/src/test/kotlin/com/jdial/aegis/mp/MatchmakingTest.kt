@@ -17,8 +17,17 @@ class MatchmakingTest {
     private val wait = 20_000L
     private val dungeon = "d1"
 
-    private fun q(uid: String, role: UnitRole, at: Long, d: String = dungeon) =
-        QueueEntry(uid = uid, role = role, dungeonId = d, enqueuedAtMs = at)
+    /**
+     * A player who is still refreshing their entry. [seen] defaults to a moment
+     * after every clock reading these tests use, so a fixture is only
+     * abandoned when a test says so.
+     */
+    private fun q(uid: String, role: UnitRole, at: Long, d: String = dungeon, seen: Long = STILL_HERE) =
+        QueueEntry(uid = uid, role = role, dungeonId = d, enqueuedAtMs = at, lastSeenMs = seen)
+
+    private companion object {
+        const val STILL_HERE = 10_000_000L
+    }
 
     private fun fullQueue(at: Long = 0) = listOf(
         q("tank", UnitRole.TANK, at),
@@ -61,7 +70,7 @@ class MatchmakingTest {
     @Test
     fun `overflow stays in the queue rather than being dropped`() {
         val waiting = fullQueue() + q("d4", UnitRole.DPS, 99)
-        val selected = selectMembers(waiting, dungeon)
+        val selected = selectMembers(waiting, dungeon, nowMs = 0L)
         assertEquals(5, selected.size)
         assertTrue("the fourth dps is not in this group", selected.none { it.uid == "d4" })
     }
@@ -104,8 +113,8 @@ class MatchmakingTest {
     @Test
     fun `ties on enqueue time break on uid rather than on list order`() {
         val same = listOf(q("zeta", UnitRole.TANK, 5), q("alpha", UnitRole.TANK, 5))
-        assertEquals("alpha", selectMembers(same, dungeon).first().uid)
-        assertEquals("alpha", selectMembers(same.reversed(), dungeon).first().uid)
+        assertEquals("alpha", selectMembers(same, dungeon, nowMs = 0L).first().uid)
+        assertEquals("alpha", selectMembers(same.reversed(), dungeon, nowMs = 0L).first().uid)
     }
 
     @Test
@@ -192,5 +201,57 @@ class MatchmakingTest {
     fun `a member who has never been heard from is not elected`() {
         val seen = mapOf("carol" to 0L, "bob" to 9_000L)
         assertEquals("bob", electHost(members, seen, "carol", nowMs = 10_000L))
+    }
+
+    // --- abandoned entries ---------------------------------------------------
+
+    @Test
+    fun `an abandoned entry never hosts a live player's group`() {
+        // The bug this pins: a killed app's entry was the longest wait, so it
+        // hosted every group -- and a host that never creates the room left
+        // everybody else waiting for one until they gave up and played alone.
+        val now = 3_600_000L
+        val ghost = q("ghost", UnitRole.TANK, at = 0L, seen = 0L)
+        val live = q("live", UnitRole.HEALER, at = now - 20_000L, seen = now)
+        val room = formRoom(listOf(ghost, live), dungeon, "normal", nowMs = now, maxWaitMs = wait)
+        assertEquals("the live player hosts", "live", room?.hostUid)
+        assertEquals("and the ghost is not in the group", listOf("live"), room?.memberUids)
+    }
+
+    @Test
+    fun `an abandoned entry does not hold a seat`() {
+        // A ghost tank would otherwise take the only tank seat from a real one.
+        val now = 100_000L
+        val waiting = listOf(
+            q("ghost", UnitRole.TANK, at = 0L, seen = now - QUEUE_ENTRY_TTL_MS - 1),
+            q("tank", UnitRole.TANK, at = 50_000L, seen = now),
+        )
+        assertEquals(listOf("tank"), selectMembers(waiting, dungeon, now).map { it.uid })
+    }
+
+    @Test
+    fun `an entry refreshed within the ttl is still a person`() {
+        val now = 100_000L
+        val edge = q("slow", UnitRole.DPS, at = 0L, seen = now - QUEUE_ENTRY_TTL_MS)
+        assertEquals(listOf("slow"), selectMembers(listOf(edge), dungeon, now).map { it.uid })
+    }
+
+    @Test
+    fun `a sweep can only ever remove what matchmaking already ignores`() {
+        // The rules let anyone delete an entry past the sweep age. That is only
+        // safe while the sweep age is beyond the point every client has
+        // already stopped counting it.
+        assertTrue(QUEUE_ENTRY_SWEEP_MS > QUEUE_ENTRY_TTL_MS)
+    }
+
+    @Test
+    fun `a room is never dated before any of its members joined`() {
+        // The host's clock reading can predate a member who joined between
+        // the host's refresh and its read. That member must still accept the
+        // room as formed after they queued.
+        val waiting = fullQueue(at = 0) + q("late", UnitRole.DPS, at = 50_000L)
+        val room = formRoom(waiting.filter { it.uid != "d3" }, dungeon, "normal", nowMs = 40_000L, maxWaitMs = 1)!!
+        val joined = waiting.filter { it.uid in room.memberUids }.maxOf { it.enqueuedAtMs }
+        assertTrue("formed ${room.formedAtMs} before a member joined at $joined", room.formedAtMs >= joined)
     }
 }

@@ -306,7 +306,7 @@ class RelayFlowTest {
         repeat(5) { hostState = hostSession.hostStep(hostState, Rng(21)) }
 
         // The guest comes back knowing only who it is.
-        val found = guest.roomFor(guestUid)
+        val found = guest.roomFor(guestUid, room.dungeonId, formedSinceMs = 0L)
         assertNotNull("a returning player must be able to find their room", found)
         assertEquals(roomId, found!!.id)
         assertEquals("and their slot in it", "1", found.members.first { it.uid == guestUid }.unitId)

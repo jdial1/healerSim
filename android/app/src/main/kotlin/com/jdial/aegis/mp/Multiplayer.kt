@@ -79,7 +79,8 @@ class Multiplayer(
         val be = backend ?: return null.also { _status.value = QueueStatus.Offline }
         return runCatching {
             val me = be.signIn().also { uid = it }
-            val entry = QueueEntry(me, local.playerRole, dungeon.id, System.currentTimeMillis())
+            // Times are placeholders: the backend stamps both on the server.
+            val entry = QueueEntry(me, local.playerRole, dungeon.id, enqueuedAtMs = 0L)
             be.enqueue(entry)
             _status.value = QueueStatus.Waiting(1)
 
@@ -116,22 +117,41 @@ class Multiplayer(
         pace: String,
         entry: QueueEntry,
     ): Room? {
+        var joinedAt: Long? = null
+        var swept = false
         while (true) {
-            // Somebody else may already have formed and published our room.
-            be.roomFor(me)?.let { return it }
+            // Say "still here" first, so the snapshot below carries a fresh
+            // server time for us. If our entry has gone, join again.
+            if (runCatching { be.touchQueue(me) }.isFailure) be.enqueue(entry)
 
             val waiting = be.queueFor(dungeon.id)
-            _status.value = QueueStatus.Waiting(waiting.size.coerceAtLeast(1))
-            val formed = formRoom(
-                waiting = waiting,
-                dungeonId = dungeon.id,
-                pace = pace,
-                nowMs = System.currentTimeMillis(),
-                maxWaitMs = GROUP_WAIT_MS,
-            )
-            if (formed != null && formed.hostUid == me) {
-                be.createRoom(formed)
-                return formed
+            val mine = waiting.firstOrNull { it.uid == me }
+            if (mine != null) {
+                // "Now" is our own lastSeen, just stamped: every time in the
+                // snapshot is on the server's clock, so comparing against the
+                // device clock would measure skew rather than waiting.
+                val now = mine.lastSeenMs
+                joinedAt = joinedAt ?: mine.enqueuedAtMs
+                if (!swept) {
+                    swept = true
+                    runCatching { be.sweepAbandoned(now) }
+                }
+
+                // Somebody else may already have formed and published our room.
+                be.roomFor(me, dungeon.id, formedSinceMs = joinedAt)?.let { return it }
+
+                _status.value = QueueStatus.Waiting(selectMembers(waiting, dungeon.id, now).size.coerceAtLeast(1))
+                val formed = formRoom(
+                    waiting = waiting,
+                    dungeonId = dungeon.id,
+                    pace = pace,
+                    nowMs = now,
+                    maxWaitMs = GROUP_WAIT_MS,
+                )
+                if (formed != null && formed.hostUid == me) {
+                    be.createRoom(formed)
+                    return formed
+                }
             }
             delay(POLL_MS)
         }
