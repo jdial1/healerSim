@@ -52,13 +52,41 @@
   <code>ACCESS_NETWORK_STATE</code> (whether you are online),
   <code>READ_GSERVICES</code> and a private receiver permission. None of them
   grants access to your files, contacts, location or anything else personal.
-  Nothing is sent until you join a queue. When you do,
-  the app signs in anonymously &mdash; an account with no email, no name and no
-  password, identified only by a random id &mdash; and publishes the role you
-  are queueing as, which dungeon, and the time you joined, so that other players
-  can be matched with you. That entry is deleted when you leave the queue or the
-  group forms. While you are in a group, the state of the fight is relayed
-  between the players in it. There is no chat and no way to send anything else.
+  With multiplayer switched off, which is the default, none of the multiplayer
+  code runs at all.
+</p>
+<p>
+  Nothing is sent until you turn multiplayer on in Settings and open a dungeon.
+  Then:
+</p>
+<ul>
+  <li><strong>An anonymous account.</strong> The app signs in with Firebase
+    Authentication &mdash; no email, no name, no password, just a random id that
+    stays with this installation. Google's Firebase service also records the IP
+    address and app version of each connection, which it uses for security and
+    to prevent abuse.</li>
+  <li><strong>Your place in the queue:</strong> that id, the role you are
+    queueing as, the dungeon, and when you joined and were last seen. It is
+    deleted when you leave the queue or your group forms. If the app is closed
+    first, other players' games stop counting it within seconds, and once it has
+    been silent for a minute it is deleted by the next player to use the
+    queue.</li>
+  <li><strong>Your character, to the players in your group:</strong> class,
+    level, talent choices and action-bar order, so whoever is running the fight
+    can play your character as you built it.</li>
+  <li><strong>The fight itself:</strong> the spells you ask to cast and the state
+    of the encounter, relayed between the players in the group.</li>
+</ul>
+<p>
+  There is no chat and no way to send anything else. All of it travels over
+  HTTPS.
+</p>
+<p>
+  <strong>Retention, honestly:</strong> the record of a group &mdash; who was in
+  it, their characters and the last state of the fight &mdash; is currently kept
+  on the server after the run ends, and there is not yet a way to ask for it or
+  your anonymous account to be deleted. Both are being added before multiplayer
+  is released.
 </p>
 <p>
   One indirect exception is worth naming: if you have Android's system backup
@@ -70,8 +98,8 @@
 
 <h2>Children</h2>
 <p>
-  Overheal is not directed at children under 13 and collects no data from anyone,
-  including children.
+  Overheal is not directed at children under 13. Single player collects no data
+  from anyone; multiplayer collects only what is described above.
 </p>
 
 <h2>Changes</h2>

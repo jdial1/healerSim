@@ -126,9 +126,9 @@ Frames are thumb-sized and fixed height, so a debuff appearing never moves the
 target you were about to tap. Health colour is a hard signal, not a gradient.
 The action bar reorders by drag, so your muscle memory is yours.
 
-Works fully offline. No account, no ads, no timers, no energy, nothing to buy.
-No permissions and no networking code at all — your progress lives on your
-device and goes nowhere.
+Works fully offline. No sign-up, no ads, no timers, no energy, nothing to buy.
+Your progress lives on your device. Playing with others is optional and off
+until you turn it on; single player never connects to anything.
 
 If you have ever kept a group alive while three people stood in fire and
 nobody said thank you, this is that, in your pocket.

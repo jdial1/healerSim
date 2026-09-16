@@ -67,6 +67,8 @@ The `Release` workflow builds a signed AAB and uploads it, together with
 
 Keep every `mapping.txt`. Android Vitals crash stacks for a version are
 unreadable without the mapping from that exact build, and it is the only crash
-reporting this app has — deliberately, since adding Crashlytics would mean an
-`INTERNET` permission and a Data Safety answer that is no longer
-"no data collected".
+reporting this app has — deliberately. The app already has `INTERNET` for the
+opt-in public queue, but single player runs no network code at all, and
+Crashlytics would end that: it would send data from every player, including
+those who never opted in. Adding it means revisiting
+[`store/data-safety.md`](store/data-safety.md) and the privacy page.

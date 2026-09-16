@@ -498,7 +498,8 @@ fun SettingsDialog(
                         // Says what leaves the device, in the one place someone
                         // deciding whether to turn it on is actually looking.
                         "Queue publicly. Off, the game never connects at all. " +
-                            "On, it shares your role and level with the people you play with."
+                            "On, it signs in anonymously and shares your class, level and " +
+                            "talents with the people you play with."
                     } else {
                         "Unavailable in this build: it has no server configuration."
                     },

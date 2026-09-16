@@ -36,7 +36,7 @@ size Play wants.
 | Field | Answer | Why |
 |---|---|---|
 | Privacy policy | `https://jdial1.github.io/healerSim/privacy.html` | Required even with no data collection. Published from `public/privacy.html`. |
-| Data safety | No data collected, no data shared | True: no permissions, no networking code, one save file in `filesDir`. **This stops being true the moment any analytics or crash SDK is added.** |
+| Data safety | See [`data-safety.md`](data-safety.md) | **No longer "no data collected"** since the opt-in public queue. That page has the per-type answers, the Firebase sources, and the blockers that must close before submission. |
 | Ads | None | |
 | App access | All functionality available without special access | No login. |
 | Target audience | 13+ | Avoids Families policy and its extra requirements. |
