@@ -26,6 +26,26 @@ regenerates them from upstream; it is not part of any build.
 Cinzel by Natanael Gama, under the
 [SIL Open Font License 1.1](https://openfontlicense.org/).
 
+## Sound effects — CC0 (Android)
+
+Seven sounds from [Kenney](https://kenney.nl/)'s audio packs, released under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). CC0 needs no
+credit; it is given anyway, in-app and here. Chosen to stay fantasy-flavoured:
+nothing from the Sci-fi or Digital packs.
+
+| File in `android/app/src/main/res/raw/` | Kenney pack | Original file |
+|---|---|---|
+| `sfx_cast.ogg` | RPG Audio | `cloth4.ogg` |
+| `sfx_refused.ogg` | RPG Audio | `metalLatch.ogg` |
+| `sfx_crit.ogg` | Impact Sounds | `impactBell_heavy_004.ogg` |
+| `sfx_danger.ogg` | Impact Sounds | `impactPunch_medium_000.ogg` |
+| `sfx_death.ogg` | Impact Sounds | `impactSoft_heavy_001.ogg` |
+| `sfx_clear.ogg` | Music Jingles | `jingles_PIZZI01.ogg` |
+| `sfx_wipe.ogg` | Music Jingles | `jingles_HIT15.ogg` |
+
+To swap a sound, replace the file under the same name; `ui/Feedback.kt` maps
+cues to these names.
+
 ## Ability icons — Blizzard Entertainment
 
 `public/icons/wow/` contains World of Warcraft artwork. World of Warcraft and

@@ -53,6 +53,8 @@ data class UiSettings(
      * decides whether any of it ever does.
      */
     val multiplayer: Boolean = false,
+    val sound: Boolean = true,
+    val haptics: Boolean = true,
 )
 
 /**

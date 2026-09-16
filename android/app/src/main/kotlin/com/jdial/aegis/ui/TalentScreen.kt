@@ -791,6 +791,12 @@ private fun CreditsDialog(onDismiss: () -> Unit) {
                     )
                     Spacer(Modifier.height(10.dp))
                     BasicText(
+                        // CC0 asks for nothing, but credit costs nothing either.
+                        "Sound effects by Kenney (kenney.nl), CC0.",
+                        style = AegisType.body,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    BasicText(
                         // The app is distributed publicly, so it cannot describe
                         // itself as personal, non-commercial use.
                         "Ability icons are World of Warcraft artwork. World of Warcraft " +

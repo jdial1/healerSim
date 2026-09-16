@@ -23,7 +23,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import com.jdial.aegis.ui.CastFeedback
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -352,13 +356,27 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun castSpell(spellId: String, targetId: String?) {
         if (!multiplayer.isHost) {
+            // A guest cannot know yet whether the host will accept it.
+            _castFeedback.tryEmit(CastFeedback.SENT)
             viewModelScope.launch { runCatching { multiplayer.requestCast(spellId, targetId) } }
             return
         }
         // Crit is rolled per cast on 0..100, matching the web app's contract --
         // inside the lock, because the tick loop draws from the same stream.
-        mutate { engine.reduce(it, Action.CastSpell(spellId, targetId, rng.nextDouble() * 100.0), rng) }
+        var accepted = false
+        mutate { s ->
+            engine.reduce(s, Action.CastSpell(spellId, targetId, rng.nextDouble() * 100.0), rng)
+                // The engine hands back the very same state when it refuses a
+                // cast, so identity is exactly "did anything happen".
+                .also { accepted = it !== s }
+        }
+        _castFeedback.tryEmit(if (accepted) CastFeedback.ACCEPTED else CastFeedback.REFUSED)
     }
+
+    private val _castFeedback = MutableSharedFlow<CastFeedback>(extraBufferCapacity = 8)
+
+    /** Whether each cast tap went off, for sound and vibration. */
+    val castFeedback: SharedFlow<CastFeedback> = _castFeedback.asSharedFlow()
 
     fun unlockTalent(id: String) { dispatch(Action.UnlockTalent(id)); persist() }
     fun decrementTalent(id: String) { dispatch(Action.DecrementTalent(id)); persist() }

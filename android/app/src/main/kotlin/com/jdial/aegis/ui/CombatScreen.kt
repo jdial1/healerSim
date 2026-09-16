@@ -1,5 +1,10 @@
 package com.jdial.aegis.ui
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -214,6 +219,68 @@ fun CombatScreen(
 
 // --- encounter HUD ----------------------------------------------------------
 
+/** One rising number over the enemy bar. */
+private data class DamageFloat(val id: Long, val amount: Int)
+
+/**
+ * The damage the enemy just took, as numbers rising off its bar.
+ *
+ * Worked out from the enemy's health between updates rather than from casts,
+ * so it is the whole group's damage -- which is also what the bar shows. It is
+ * summed over [windowMs] so ten ticks a second read as a steady rhythm of hits
+ * rather than a blur. A new enemy (a pull ending, the boss arriving) resets it,
+ * so a fresh bar never reads as a hit.
+ */
+@Composable
+private fun EnemyDamageFloats(state: GameState, anchor: Float, windowMs: Long = 450) {
+    val floats = remember { mutableStateListOf<DamageFloat>() }
+    var lastHealth by remember { mutableStateOf(state.enemyHealth) }
+    var lastEnemy by remember { mutableStateOf(state.enemyMaxHealth to state.trashPullsRemaining) }
+    var pending by remember { mutableStateOf(0.0) }
+    var windowStart by remember { mutableStateOf(0L) }
+
+    LaunchedEffect(state.enemyHealth, state.enemyMaxHealth, state.trashPullsRemaining) {
+        val enemy = state.enemyMaxHealth to state.trashPullsRemaining
+        if (enemy != lastEnemy || !state.isCombatActive) {
+            lastEnemy = enemy
+            pending = 0.0
+        } else {
+            pending += (lastHealth - state.enemyHealth).coerceAtLeast(0.0)
+        }
+        lastHealth = state.enemyHealth
+        val now = System.currentTimeMillis()
+        if (now - windowStart >= windowMs && pending >= 1.0) {
+            floats += DamageFloat(now, pending.roundToInt())
+            if (floats.size > 4) floats.removeAt(0)
+            pending = 0.0
+            windowStart = now
+        }
+    }
+
+    // Fixed height, so a number appearing never nudges the threat bar below.
+    BoxWithConstraints(Modifier.fillMaxWidth().height(18.dp)) {
+        val lane = maxWidth
+        floats.forEach { f ->
+            key(f.id) {
+                val fall = remember { Animatable(0f) }
+                // Where the hit landed: the edge of the bar when it appeared.
+                val x = remember { (lane * anchor - 22.dp).coerceIn(0.dp, lane - 44.dp) }
+                LaunchedEffect(Unit) {
+                    fall.animateTo(1f, tween(900))
+                    floats.remove(f)
+                }
+                BasicText(
+                    "-${f.amount}",
+                    style = AegisType.numeric.copy(fontSize = 12.sp, color = Color(0xFFFCA5A5)),
+                    modifier = Modifier
+                        .offset(x = x + (8 * fall.value).dp, y = (1 + 5 * fall.value).dp)
+                        .graphicsLayer { alpha = 1f - fall.value * fall.value },
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
     val dungeon = state.currentDungeon ?: return
@@ -277,25 +344,47 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
             }
 
             Spacer(Modifier.height(6.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(Obsidian.abyss)
-                    .border(1.dp, Gilt.deep.copy(alpha = 0.5f), RoundedCornerShape(3.dp)),
-            ) {
+            // The enemy bar used to jump. It now moves like the party's, with the
+            // same trailing ghost, so a big hit reads as a big hit.
+            val animatedPct by animateFloatAsState(pct.coerceIn(0f, 1f), tween(160), label = "enemyHp")
+            val ghostPct by animateFloatAsState(
+                pct.coerceIn(0f, 1f),
+                tween(620, delayMillis = 260),
+                label = "enemyGhost",
+            )
+            Box {
                 Box(
                     Modifier
-                        .fillMaxWidth(pct.coerceIn(0f, 1f))
-                        .fillMaxHeight()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(Color(0xFF7F1D1D), Color(0xFFDC2626), Color(0xFFF87171)),
+                        .fillMaxWidth()
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Obsidian.abyss)
+                        .border(1.dp, Gilt.deep.copy(alpha = 0.5f), RoundedCornerShape(3.dp)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(ghostPct)
+                            .fillMaxHeight()
+                            // Same dark trail as the party frames: a bright one
+                            // never catches up under steady damage and reads as
+                            // health still left.
+                            .background(Color(0xFF450A0A).copy(alpha = 0.9f)),
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxWidth(animatedPct)
+                            .fillMaxHeight()
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF7F1D1D), Color(0xFFDC2626), Color(0xFFF87171)),
+                                ),
                             ),
-                        ),
-                )
+                    )
+                }
             }
+            // A lane of its own under the bar. Floated over the bar, the numbers
+            // rose straight into the health text above and were hard to read.
+            EnemyDamageFloats(state, anchor = animatedPct)
 
             // A non-healer needs two things a healer never did: what the enemy
             // is doing to *them* (threat) and what they have running on it

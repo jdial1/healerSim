@@ -55,6 +55,7 @@ import com.jdial.aegis.ui.GameIcon
 import com.jdial.aegis.ui.TalentScreen
 import com.jdial.aegis.ui.CombatScreen
 import com.jdial.aegis.ui.DungeonListScreen
+import com.jdial.aegis.ui.CombatFeedback
 import com.jdial.aegis.ui.DungeonQueueSheet
 import com.jdial.aegis.ui.OutcomeDialog
 import com.jdial.aegis.ui.SplashScreen
@@ -163,6 +164,16 @@ private fun AegisApp(onReady: () -> Unit = {}) {
     val uiSettings by vm.settings.collectAsStateWithLifecycle()
     AegisTheme(cls = state.playerClass) {
       CompositionLocalProvider(LocalUiSettings provides uiSettings) {
+        // Outside the screen switch on purpose: a run ends in the same frame the
+        // screen can change, and the clear or wipe cue must still play.
+        if (state.playerClass != null) {
+            CombatFeedback(
+                state = state,
+                casts = vm.castFeedback,
+                sound = uiSettings.sound,
+                haptics = uiSettings.haptics,
+            )
+        }
         Box(Modifier.fillMaxSize().background(Obsidian.abyss)) {
             // System back used to quit the app from every screen, including
             // mid-boss. Overlays unwind first — they can be up on any screen —

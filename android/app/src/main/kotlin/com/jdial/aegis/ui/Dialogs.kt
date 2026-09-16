@@ -498,6 +498,18 @@ fun SettingsDialog(
                     settings.largeFrames,
                 ) { onChange(settings.copy(largeFrames = it)) }
 
+                SettingRow(
+                    "Sound",
+                    "Casts, crits, allies in danger, and how the run ended.",
+                    settings.sound,
+                ) { onChange(settings.copy(sound = it)) }
+
+                SettingRow(
+                    "Vibration",
+                    "A tick when a cast goes off, a buzz when it can't.",
+                    settings.haptics,
+                ) { onChange(settings.copy(haptics = it)) }
+
                 Spacer(Modifier.height(14.dp))
                 BasicText("MULTIPLAYER", style = AegisType.title.copy(fontSize = 16.sp))
                 Spacer(Modifier.height(10.dp))
