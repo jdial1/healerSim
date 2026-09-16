@@ -196,7 +196,11 @@ fun CombatScreen(
                         Modifier.width(360.dp).fillMaxHeight(),
                         verticalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        EncounterHud(state, onLeave)
+                        Column {
+                            EncounterHud(state, onLeave)
+                            Spacer(Modifier.height(8.dp))
+                            BattleView(state)
+                        }
                         ActionBar(state, data, onCast, onReorder, dropTargetId, { dragPoint = it }) { spellId ->
                             dropTargetId?.let { onCastAt(spellId, it) }
                         }
@@ -205,7 +209,9 @@ fun CombatScreen(
             } else {
                 Column(Modifier.fillMaxSize()) {
                     EncounterHud(state, onLeave)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
+                    BattleView(state)
+                    Spacer(Modifier.height(8.dp))
                     PartyGrid(Modifier.weight(1f).fillMaxWidth())
                     Spacer(Modifier.height(10.dp))
                     ActionBar(state, data, onCast, onReorder, dropTargetId, { dragPoint = it }) { spellId ->
@@ -219,73 +225,11 @@ fun CombatScreen(
 
 // --- encounter HUD ----------------------------------------------------------
 
-/** One rising number over the enemy bar. */
-private data class DamageFloat(val id: Long, val amount: Int)
-
-/**
- * The damage the enemy just took, as numbers rising off its bar.
- *
- * Worked out from the enemy's health between updates rather than from casts,
- * so it is the whole group's damage -- which is also what the bar shows. It is
- * summed over [windowMs] so ten ticks a second read as a steady rhythm of hits
- * rather than a blur. A new enemy (a pull ending, the boss arriving) resets it,
- * so a fresh bar never reads as a hit.
- */
-@Composable
-private fun EnemyDamageFloats(state: GameState, anchor: Float, windowMs: Long = 450) {
-    val floats = remember { mutableStateListOf<DamageFloat>() }
-    var lastHealth by remember { mutableStateOf(state.enemyHealth) }
-    var lastEnemy by remember { mutableStateOf(state.enemyMaxHealth to state.trashPullsRemaining) }
-    var pending by remember { mutableStateOf(0.0) }
-    var windowStart by remember { mutableStateOf(0L) }
-
-    LaunchedEffect(state.enemyHealth, state.enemyMaxHealth, state.trashPullsRemaining) {
-        val enemy = state.enemyMaxHealth to state.trashPullsRemaining
-        if (enemy != lastEnemy || !state.isCombatActive) {
-            lastEnemy = enemy
-            pending = 0.0
-        } else {
-            pending += (lastHealth - state.enemyHealth).coerceAtLeast(0.0)
-        }
-        lastHealth = state.enemyHealth
-        val now = System.currentTimeMillis()
-        if (now - windowStart >= windowMs && pending >= 1.0) {
-            floats += DamageFloat(now, pending.roundToInt())
-            if (floats.size > 4) floats.removeAt(0)
-            pending = 0.0
-            windowStart = now
-        }
-    }
-
-    // Fixed height, so a number appearing never nudges the threat bar below.
-    BoxWithConstraints(Modifier.fillMaxWidth().height(18.dp)) {
-        val lane = maxWidth
-        floats.forEach { f ->
-            key(f.id) {
-                val fall = remember { Animatable(0f) }
-                // Where the hit landed: the edge of the bar when it appeared.
-                val x = remember { (lane * anchor - 22.dp).coerceIn(0.dp, lane - 44.dp) }
-                LaunchedEffect(Unit) {
-                    fall.animateTo(1f, tween(900))
-                    floats.remove(f)
-                }
-                BasicText(
-                    "-${f.amount}",
-                    style = AegisType.numeric.copy(fontSize = 12.sp, color = Color(0xFFFCA5A5)),
-                    modifier = Modifier
-                        .offset(x = x + (8 * fall.value).dp, y = (1 + 5 * fall.value).dp)
-                        .graphicsLayer { alpha = 1f - fall.value * fall.value },
-                )
-            }
-        }
-    }
-}
-
 @Composable
 private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
     val dungeon = state.currentDungeon ?: return
     val isBoss = state.combatPhase == CombatPhase.BOSS
-    val name = if (isBoss) dungeon.bossName else dungeon.enemies.firstOrNull()?.name ?: "Trash"
+    val name = enemyName(state)
     val pct = if (state.enemyMaxHealth > 0) (state.enemyHealth / state.enemyMaxHealth).toFloat() else 0f
 
     ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(10.dp)) {
@@ -382,9 +326,6 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
                     )
                 }
             }
-            // A lane of its own under the bar. Floated over the bar, the numbers
-            // rose straight into the health text above and were hard to read.
-            EnemyDamageFloats(state, anchor = animatedPct)
 
             // A non-healer needs two things a healer never did: what the enemy
             // is doing to *them* (threat) and what they have running on it

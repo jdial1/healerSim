@@ -46,6 +46,31 @@ nothing from the Sci-fi or Digital packs.
 To swap a sound, replace the file under the same name; `ui/Feedback.kt` maps
 cues to these names.
 
+## Battle sprites — CC0 (Android)
+
+The party and enemies in the battle window are 16×16 tiles from Kenney's
+[Tiny Dungeon](https://kenney.nl/assets/tiny-dungeon),
+[Tiny Farm](https://kenney.nl/assets/tiny-farm),
+[Tiny Ski](https://kenney.nl/assets/tiny-ski) and
+[Tiny Battle](https://kenney.nl/assets/tiny-battle) packs, under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Tiny Town was
+downloaded too, but it holds only buildings and scenery, so nothing from it
+ships.
+
+| Files in `android/app/src/main/res/drawable-nodpi/` | Pack | Original tiles |
+|---|---|---|
+| `spr_wizard`, `spr_peasant`, `spr_brawler`, `spr_viking`, `spr_rogue` | Tiny Dungeon | `tile_0084`–`tile_0088` |
+| `spr_knight_helm`, `spr_knight_visor`, `spr_fighter`, `spr_sorceress`, `spr_sage` | Tiny Dungeon | `tile_0096`–`tile_0100` |
+| `spr_slime`, `spr_cyclops`, `spr_crab`, `spr_monk`, `spr_ranger` | Tiny Dungeon | `tile_0108`–`tile_0112` |
+| `spr_ghost`, `spr_lizard` | Tiny Dungeon | `tile_0121`, `tile_0124` |
+| `spr_farmhand`, `spr_rancher` | Tiny Farm | `tile_0108`, `tile_0109` |
+| `spr_tree`, `spr_snowman`, `spr_yeti`, `spr_yeti_dark`, `spr_rock` | Tiny Ski | `tile_0018`, `tile_0069`, `tile_0078`, `tile_0080`, `tile_0081` |
+| `spr_tank`, `spr_mech` | Tiny Battle | `tile_0097`, `tile_0102` |
+| `spr_soldier_grey`, `spr_soldier_green`, `spr_soldier_red`, `spr_soldier_orange` | Tiny Battle | `tile_0106`, `tile_0124`, `tile_0160`, `tile_0178` |
+
+`ui/BattleView.kt` maps classes, and every enemy and boss by name, to these
+files; some enemies reuse a tile under a colour tint.
+
 ## Ability icons — Blizzard Entertainment
 
 `public/icons/wow/` contains World of Warcraft artwork. World of Warcraft and
