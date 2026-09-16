@@ -73,7 +73,7 @@ Each socket carries a countdown numeral bottom-right and a stack count
 top-left when stacks > 1 — `UnitBuff.stacks` and `UnitDebuff` remaining ticks,
 both already in the model.
 
-**The art is real.** Buffs use the game's own WoW jpgs (`public/icons/wow`);
+**The art is real.** Buffs use the game's own WoW icons (`public/icons/wow`);
 debuffs use the game-icons glyphs the boss debuff templates actually reference
 (`lorc/sunder-armor`, `lorc/skull-staff`, `lorc/vines` are Gut Slash, Curse of
 Shadowfang and Strangling Roots). The glyphs are recoloured off their alpha

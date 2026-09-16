@@ -124,7 +124,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_holy_crusade",
+    "icon": "wow/ability_monk_breathoffire",
     "gridX": 2,
     "gridY": 2,
     "prerequisites": [
@@ -163,7 +163,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_holy_crusade",
+    "icon": "wow/ability_monk_fortifyingale_new",
     "gridX": 1,
     "gridY": 3,
     "prerequisites": [

@@ -124,7 +124,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_holy_searinglightpriest",
+    "icon": "wow/spell_nature_starfall",
     "gridX": 2,
     "gridY": 2,
     "prerequisites": [
@@ -205,7 +205,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_holy_searinglightpriest",
+    "icon": "wow/ability_mage_livingbomb",
     "gridX": 0,
     "gridY": 4,
     "prerequisites": [

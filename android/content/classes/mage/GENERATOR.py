@@ -56,25 +56,25 @@ w('class.json', {
 # --- spells ----------------------------------------------------------------
 # `healing` is the magnitude; school DAMAGE routes it at the enemy. HOT + DAMAGE
 # is a DoT, which is why Living Bomb needs no new spell shape.
-w('spells.json', {
+SPELLS = {
     "frostbolt": {
         "id": "frostbolt", "name": "Frostbolt", "type": "DIRECT", "school": "damage",
         "manaCost": 16, "healing": 74, "cooldown": 0,
-        "icon": "wow/spell_nature_lightning", "tags": [],
+        "icon": "wow/spell_frost_frostbolt02", "tags": [],
         "threatMultiplier": 0.9,
         "color": "bg-sky-400", "actionBarBorderClass": "border-sky-400", "glowType": "spell",
     },
     "fireball": {
         "id": "fireball", "name": "Fireball", "type": "DIRECT", "school": "damage",
         "manaCost": 24, "healing": 108, "cooldown": 0,
-        "icon": "wow/spell_holy_searinglightpriest", "tags": [],
+        "icon": "wow/spell_fire_flamebolt", "tags": [],
         "threatMultiplier": 1.0,
         "color": "bg-orange-400", "actionBarBorderClass": "border-orange-400", "glowType": "spell",
     },
     "arcane_missiles": {
         "id": "arcane_missiles", "name": "Arcane Missiles", "type": "AOE", "school": "damage",
         "manaCost": 34, "healing": 62, "cooldown": 60,
-        "icon": "wow/spell_nature_wispsplode", "tags": [],
+        "icon": "wow/spell_nature_starfall", "tags": [],
         "threatMultiplier": 1.15,
         "color": "bg-violet-400", "actionBarBorderClass": "border-violet-400", "glowType": "spell",
     },
@@ -82,11 +82,12 @@ w('spells.json', {
         "id": "living_bomb", "name": "Living Bomb", "type": "HOT", "school": "damage",
         "manaCost": 28, "healing": 0, "cooldown": 80,
         "hotDuration": 60, "hotHealingPerTick": 9,
-        "icon": "wow/inv_misc_herb_felblossom", "tags": [],
+        "icon": "wow/ability_mage_livingbomb", "tags": [],
         "threatMultiplier": 0.85,
         "color": "bg-emerald-400", "actionBarBorderClass": "border-emerald-400", "glowType": "spell",
     },
-})
+}
+w('spells.json', SPELLS)
 
 # --- talents ---------------------------------------------------------------
 # Seven rows, matching the levelReq tiers every other class uses.
@@ -107,7 +108,8 @@ def t(row, col, name, desc, maxp, bonus, icon, spell=None, prereq=None, excl=Non
         "maxPoints": maxp,
         "levelReq": TIERS[row],
         "cost": 1,
-        "icon": ICON[icon],
+        # An unlock talent shows its spell's icon, as the healer trees do.
+        "icon": SPELLS[spell]["icon"] if spell else ICON[icon],
         "gridX": col,
         "gridY": row,
         "prerequisites": prereq or [],

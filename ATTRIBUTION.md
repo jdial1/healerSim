@@ -77,6 +77,12 @@ files; some enemies reuse a tile under a colour tint.
 Blizzard Entertainment are trademarks or registered trademarks of Blizzard
 Entertainment, Inc.
 
+The 23,474 icons are the game's `Interface/ICONS` folder as mirrored by
+[Gethe/wow-ui-textures](https://github.com/Gethe/wow-ui-textures) (`live`
+branch, commit `d23deaf`, WoW 9.2.7). Filenames were lowercased with spaces
+removed, 14 spaced duplicates of existing names were dropped, and every file
+was recompressed losslessly with Zopfli, so pixels are unchanged.
+
 Aegis is an unofficial fan project, not affiliated with, endorsed by, or
 sponsored by Blizzard Entertainment, Inc. These icons are used without a
 licence from the rightsholder; that is a deliberate decision by the project

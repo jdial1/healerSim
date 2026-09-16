@@ -30,8 +30,8 @@ import java.util.concurrent.ConcurrentHashMap
  * Loads icons straight out of `assets/icons`, mirroring the candidate-path logic
  * in `src/gameIcons.js`.
  *
- * No image library: these are a fixed set of ~178 small bundled files, so decode
- * once and hold them in a map. There is no network path — an icon that is not on
+ * No image library: these are small bundled files, decoded on first use and held
+ * in a map. There is no network path — an icon that is not on
  * disk falls back to the question-mark, exactly as the web app does.
  */
 object IconLoader {
@@ -39,7 +39,7 @@ object IconLoader {
     private val cache = ConcurrentHashMap<String, ImageBitmap>()
     private val missing = ConcurrentHashMap.newKeySet<String>()
 
-    /** `wow/foo` -> icons/wow/foo.{jpg,png}; `lorc/bar` -> icons/game-icons/lorc/bar.png. */
+    /** `wow/foo` -> icons/wow/foo.{png,jpg}; `lorc/bar` -> icons/game-icons/lorc/bar.png. */
     fun candidatePaths(iconPath: String): List<String> {
         val normalized = iconPath.trim().lowercase()
         if (normalized.isEmpty()) return candidatePaths(FALLBACK)
@@ -51,11 +51,11 @@ object IconLoader {
         if (normalized.startsWith("wow/")) {
             val icon = normalized.removePrefix("wow/").replace(" ", "")
             if (icon.isEmpty()) return candidatePaths(FALLBACK)
-            return listOf("icons/wow/$icon.jpg", "icons/wow/$icon.png")
+            return listOf("icons/wow/$icon.png", "icons/wow/$icon.jpg")
         }
         if (!normalized.contains("/")) {
             val icon = normalized.replace(" ", "")
-            return listOf("icons/wow/$icon.jpg", "icons/wow/$icon.png")
+            return listOf("icons/wow/$icon.png", "icons/wow/$icon.jpg")
         }
         val (author, icon) = normalized.split("/", limit = 2)
         if (author.isEmpty() || icon.isEmpty()) return candidatePaths(FALLBACK)

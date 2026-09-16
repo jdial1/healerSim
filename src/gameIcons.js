@@ -3,7 +3,9 @@ import theme from "./data/theme.json" with { type: "json" };
 const WOW_ICON_BASE = "https://wow.zamimg.com/images/wow/icons/large";
 const GAME_ICONS_BASE = "https://game-icons.net/icons";
 const LOCAL_ICON_BASE = `${import.meta.env.BASE_URL}icons`;
-const WOW_ICON_EXTS = ["jpg", "png"];
+// Bundled icons are .png (Gethe/wow-ui-textures); Wowhead's CDN serves .jpg.
+// GameIcon steps through candidates on error, so the order costs a request.
+const WOW_ICON_EXTS = ["png", "jpg"];
 const GAME_ICON_CANDIDATE_PATHS = ["ffffff/transparent", "ffffff/000000"];
 const FALLBACK_WOW_ICON = "inv_misc_questionmark";
 const LOCKED_DUNGEON_ICON = "lorc/padlock";

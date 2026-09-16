@@ -1,7 +1,8 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -19,6 +20,27 @@ function resolveBase() {
 function pwaStartUrl(base) {
   if (base === "/") return "/?source=pwa";
   return `${base.replace(/\/$/, "")}/?source=pwa`;
+}
+// public/icons/wow holds the full ~23k icon set (~100 MB). Precache only the
+// icons src/ refers to, plus gameIcons.js's fallback; the rest are fetched on
+// demand through the "images" runtime cache.
+function referencedWowIconEntries() {
+  const names = new Set(["inv_misc_questionmark"]);
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(js|jsx|json)$/.test(entry.name)) {
+        for (const m of readFileSync(full, "utf-8").matchAll(/["'`]wow\/([a-z0-9_]+)["'`]/gi)) names.add(m[1].toLowerCase());
+      }
+    }
+  };
+  walk(path.join(__dirname, "src"));
+  return [...names].sort().flatMap((name) => {
+    const url = ["png", "jpg"].map((ext) => `icons/wow/${name}.${ext}`).find((rel) => existsSync(path.join(__dirname, "public", rel)));
+    if (!url) return [];
+    return [{ url, revision: createHash("md5").update(readFileSync(path.join(__dirname, "public", url))).digest("hex") }];
+  });
 }
 var stdin_default = defineConfig(({ command }) => {
   const pkgPath = path.join(__dirname, "package.json");
@@ -97,6 +119,8 @@ var stdin_default = defineConfig(({ command }) => {
           clientsClaim: true,
           skipWaiting: false,
           globPatterns: ["**/*.{js,css,html,svg,ico,woff,woff2,ttf,png,jpg,jpeg,webp,webmanifest,json}"],
+          globIgnores: ["**/icons/wow/**"],
+          additionalManifestEntries: referencedWowIconEntries(),
           navigateFallback: `${base}index.html`,
           navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
@@ -144,7 +168,14 @@ var stdin_default = defineConfig(({ command }) => {
       }
     },
     server: {
-      hmr: process.env.DISABLE_HMR !== "true"
+      hmr: process.env.DISABLE_HMR !== "true",
+      // An Android build writes several copies of the ~23k icons under
+      // android/app/build; watching them exhausts file handles (EMFILE) and
+      // kills the dev server. The icon set itself is static, so a file added
+      // there is served after a restart.
+      watch: {
+        ignored: ["**/android/**", "**/public/icons/wow/**"]
+      }
     }
   };
 });

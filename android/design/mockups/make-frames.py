@@ -238,13 +238,13 @@ stone(os.path.join(OUT, '03-wotlk-stone-brass.png'))
 ICONS = r'C:\Users\justin.dial\Documents\GitHub\healerSim\public\icons'
 
 # Real art from the game's own asset set, so the mockup is not promising icons
-# the app does not ship. Buffs are the WoW jpgs used for HoTs; debuffs are the
+# the app does not ship. Buffs are the WoW icons used for HoTs; debuffs are the
 # game-icons glyphs the boss debuff templates actually reference.
 BUFF_ART = {
-    'renew': 'wow/spell_holy_renew.jpg',
-    'rejuv': 'wow/spell_nature_rejuvenation.jpg',
-    'shield': 'wow/spell_holy_powerwordshield.jpg',
-    'wild': 'wow/spell_nature_giftofthewild.jpg',
+    'renew': 'wow/spell_holy_renew.png',
+    'rejuv': 'wow/spell_nature_rejuvenation.png',
+    'shield': 'wow/spell_holy_powerwordshield.png',
+    'wild': 'wow/spell_nature_giftofthewild.png',
 }
 DEBUFF_ART = {
     'sunder': 'game-icons/lorc/sunder-armor.png',
