@@ -1,6 +1,6 @@
 // Asserts the healer-era tuning in src/data/balance.json has not moved.
 //
-// Role work adds new top-level keys (threat, roles). Everything else describes
+// Role work adds new top-level keys (threat, roles, classes). Everything else describes
 // a game that is finished and shipped, and the parity corpus was generated
 // against those exact numbers. A drive-by tweak to, say, partyDps while tuning
 // threat would silently re-balance the healer game and invalidate the goldens
@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
-const ROLE_KEYS = new Set(["threat", "roles"]);
+const ROLE_KEYS = new Set(["threat", "roles", "classes"]);
 const EXPECTED = "b70356ed7b4036665b59214f3a403b9612664c362f1ff6a265adff08505c71e7";
 
 const path = fileURLToPath(new URL("../src/data/balance.json", import.meta.url));

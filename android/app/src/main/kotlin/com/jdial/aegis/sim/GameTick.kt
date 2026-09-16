@@ -476,6 +476,8 @@ class GameTick(
         val paladinResolveHolyPower: Int,
         val healEffective: Double,
         val healOverheal: Double,
+        /** What each unit took this tick, absorbed included, by unit id. */
+        val damageTaken: Map<String, Double> = emptyMap(),
     )
 
     private fun processEnvironmentalTick(
@@ -507,6 +509,7 @@ class GameTick(
         var palHolyPower = 0
         var healEff = 0.0
         var healOh = 0.0
+        val taken = HashMap<String, Double>()
 
         for (unit in partyAfterBossAi) {
             var damage = 0.0
@@ -563,13 +566,18 @@ class GameTick(
             val dotLevelMult = s.currentDungeon
                 ?.let { progression.levelGapDamageMultiplier(unit.level, it.levelMax) } ?: 1.0
             val activeDebuffs = mutableListOf<UnitDebuff>()
+            var dotTaken = 0.0
             for (d in unit.debuffs) {
                 if (d.remainingTicks <= 0) continue
                 var dot = d.damagePerTick * dotLevelMult
                 if (s.currentDungeon?.endless == true) dot *= progression.endlessMultiplier(s.endlessStacks)
                 health = max(0.0, health - dot)
+                dotTaken += dot
                 activeDebuffs += d.copy(remainingTicks = d.remainingTicks - 1)
             }
+            // Only read by the tank and DPS mechanics, and summed on the side,
+            // so the healer arithmetic above is untouched.
+            if (damage + dotTaken > 0) taken[unit.id] = damage + dotTaken
 
             val activeBuffs = mutableListOf<UnitBuff>()
             for (buff in unit.buffs) {
@@ -654,7 +662,34 @@ class GameTick(
             palHolyPower,
             healEff + transition.healEffective,
             healOh + transition.healOverheal,
+            taken,
         )
+    }
+
+    /**
+     * One tick of every participant's class resource: rage from the hits they
+     * took, energy refilling, a Death Knight's memory of recent damage.
+     *
+     * Draws nothing from the rng. For a healer class the hook is the identity,
+     * so the recorded runs see exactly the participant they saw before.
+     */
+    internal fun classTick(s: GameState, damageTaken: Map<String, Double>): GameState {
+        val b = data.balance.classes
+        return s.withEachParticipant { p ->
+            if (p.role == UnitRole.HEALER) {
+                p
+            } else {
+                hooksFor(p.playerClass).classTick(
+                    ClassTick(
+                        participant = p,
+                        unit = s.party.firstOrNull { it.id == p.unitId },
+                        damageTaken = damageTaken[p.unitId] ?: 0.0,
+                        rating = stats.uniqueStatRating(p.playerClass, p.level, p.talents),
+                        balance = b,
+                    ),
+                )
+            }
+        }
     }
 
     /**
@@ -932,6 +967,7 @@ class GameTick(
         rng: Rng,
         healEffectiveThisTick: Double,
         aiHealerHealingThisTick: Double,
+        damageTaken: Map<String, Double> = emptyMap(),
     ): GameState {
         val pd = data.balance.partyDps
         val partyDps = pd.base + s.level.toDouble().pow(pd.levelExponent) * pd.levelMultiplier
@@ -975,7 +1011,7 @@ class GameTick(
                 capstoneForm = sys.capstoneForm,
                 holyPower = sys.holyPower,
             )
-        }.copy(
+        }.let { classTick(it.copy(party = sys.party), damageTaken) }.copy(
             party = accrueThreat(
                 sys.party,
                 healEffective = healEffectiveThisTick,
@@ -1125,6 +1161,21 @@ class GameTick(
         )
     }
 
+    /** The boss's hits, read off the party it changed, plus the environment's. */
+    private fun damageTakenThisTick(
+        before: List<Unit>,
+        afterBoss: List<Unit>,
+        env: Map<String, Double>,
+    ): Map<String, Double> {
+        val out = HashMap(env)
+        for (a in afterBoss) {
+            val b = before.firstOrNull { it.id == a.id } ?: continue
+            val hit = (b.health + b.shield) - (a.health + a.shield)
+            if (hit > 0) out[a.id] = (out[a.id] ?: 0.0) + hit
+        }
+        return out
+    }
+
     // --- the tick ------------------------------------------------------------
 
     fun advance(state: GameState, rng: Rng, dpsMultiplierOverride: Double? = null): GameState {
@@ -1207,6 +1258,7 @@ class GameTick(
             // player's.
             healEffectiveThisTick = env.healEffective + sys.healEffective,
             aiHealerHealingThisTick = ai.healed,
+            damageTaken = damageTakenThisTick(s.party, boss.party, env.damageTaken),
         )
             .let { if (it.isCombatActive) it.copy(floatingCombatTexts = floats) else it }
     }

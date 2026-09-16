@@ -4,7 +4,7 @@
     "name": "Shield Slam",
     "type": "DIRECT",
     "school": "damage",
-    "manaCost": 14,
+    "manaCost": 15,
     "healing": 58,
     "cooldown": 0,
     "icon": "wow/inv_shield_05",
@@ -12,7 +12,8 @@
     "threatMultiplier": 3.0,
     "color": "bg-amber-500",
     "actionBarBorderClass": "border-amber-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "resource": "RAGE"
   },
   "taunt": {
     "id": "taunt",

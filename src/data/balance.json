@@ -143,5 +143,50 @@
     "aiHealerHealPerLevel": 3.4,
     "aiHealerManaPerHealPoint": 0.34,
     "aiHealerHealBelowFraction": 0.92
+  },
+  "classes": {
+    "damageScale": {
+      "MAGE": 1.0,
+      "ROGUE": 1.12,
+      "WARRIOR": 1.0,
+      "DEATHKNIGHT": 1.0,
+      "MONK": 1.0,
+      "WARLOCK": 1.0
+    },
+    "damageRampFloor": {
+      "MAGE": 0.55,
+      "ROGUE": 0.45,
+      "WARRIOR": 0.45,
+      "DEATHKNIGHT": 0.45,
+      "MONK": 0.45,
+      "WARLOCK": 0.45
+    },
+    "damageRampLevels": 19,
+    "warrior": {
+      "rageCapBase": 100.0,
+      "rageCapPerRating": 2.0,
+      "ragePerFullHealthTaken": 160.0,
+      "rageOnDamageCast": 6.0,
+      "threatPerRating": 0.02
+    },
+    "deathKnight": {
+      "recentDamageDecayPerTick": 0.97,
+      "deathStrikeHealFraction": 0.3,
+      "deathStrikeMinHealFraction": 0.04,
+      "bloodShieldPerRating": 0.04,
+      "bloodShieldTicks": 60
+    },
+    "mage": {
+      "chillTicks": 50,
+      "shatterCritBase": 25.0,
+      "shatterCritPerRating": 2.0
+    },
+    "rogue": {
+      "energyMax": 100.0,
+      "energyPerTick": 1.25,
+      "comboPointsMax": 5,
+      "finisherPerPoint": 0.5,
+      "builderCritPerRating": 2.0
+    }
   }
 }

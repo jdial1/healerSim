@@ -77,6 +77,9 @@ data class Spell(
 ) {
     fun hasTag(tag: String) = tag in tags
 
+    /** "mana", "rage" or "energy", for anywhere a cost is written out. */
+    val resourceName: String get() = resource.lowercase()
+
     /** Convenience for the cast pipeline, which branches on this constantly. */
     val isDamage: Boolean get() = school == SpellSchool.DAMAGE
 }

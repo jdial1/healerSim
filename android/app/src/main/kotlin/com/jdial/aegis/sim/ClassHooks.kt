@@ -54,7 +54,50 @@ interface ClassHooks {
     /** Aegis Burst fires when a shield is fully consumed during a tick. */
     fun onShieldTransition(ctx: CastContext, before: List<Unit>, after: List<Unit>): LandResult =
         LandResult(after, emptyList(), 0.0, 0.0)
+
+    // --- the damage path. The healer hooks above are all shaped around a
+    // target unit; the enemy is not one, so damage casts have their own. ------
+
+    /** Whether a damage cast may go off at all, beyond cost and cooldown. */
+    fun damageCastAllowed(ctx: CastContext, spell: Spell, spellId: String): Boolean = true
+
+    /** Scales a damage cast's magnitude. */
+    fun damageMultiplier(ctx: CastContext, spell: Spell, spellId: String): Double = 1.0
+
+    /** Extra crit chance, in percent, for a damage cast. */
+    fun damageCritBonus(ctx: CastContext, spell: Spell, spellId: String): Double = 0.0
+
+    /** Scales the threat a damage cast generates. */
+    fun threatMultiplier(ctx: CastContext): Double = 1.0
+
+    /**
+     * A follow-up once a damage cast has landed. [after] is the state with the
+     * cast applied, still seated as the caster, so `withMe` reaches them.
+     */
+    fun onDamageLand(ctx: CastContext, after: GameState, land: DamageLand): GameState = after
+
+    /**
+     * One tick of a participant's class resource. [damageTaken] is what their
+     * unit took this tick, absorbed damage included.
+     */
+    fun classTick(tick: ClassTick): Participant = tick.participant
+
+    /** The class resource a participant starts a run with. */
+    fun startingResource(b: com.jdial.aegis.data.ClassesBalance): Double = 0.0
 }
+
+/** A damage cast that just landed. */
+data class DamageLand(val spell: Spell, val spellId: String, val isCrit: Boolean, val dealt: Double)
+
+/** Everything [ClassHooks.classTick] needs about one participant. */
+data class ClassTick(
+    val participant: Participant,
+    val unit: Unit?,
+    val damageTaken: Double,
+    /** The participant's signature stat. */
+    val rating: Double,
+    val balance: com.jdial.aegis.data.ClassesBalance,
+)
 
 /** Everything a hook needs about the caster; a narrow view over [GameState]. */
 class CastContext(
@@ -695,11 +738,11 @@ fun hooksFor(cls: PlayerClass?): ClassHooks = when (cls) {
     // The Mage tree is built entirely from statBonus, which the engine already
     // applies. `healing` doubles as the damage magnitude, so healingBoost
     // scales a Frostbolt exactly as it scales a Flash Heal -- no hook code.
-    PlayerClass.MAGE -> NoHooks
-    PlayerClass.WARRIOR -> NoHooks
-    // Every Android-owned class is statBonus-only, so none needs hook code.
-    PlayerClass.DEATHKNIGHT -> NoHooks
-    PlayerClass.ROGUE -> NoHooks
+    PlayerClass.MAGE -> MageHooks
+    PlayerClass.WARRIOR -> WarriorHooks
+    PlayerClass.DEATHKNIGHT -> DeathKnightHooks
+    PlayerClass.ROGUE -> RogueHooks
+    // Hidden and unfinished: stat bonuses only.
     PlayerClass.MONK -> NoHooks
     PlayerClass.WARLOCK -> NoHooks
     null -> NoHooks

@@ -90,6 +90,10 @@ import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.Ink
 import com.jdial.aegis.ui.theme.LocalAccent
 import com.jdial.aegis.sim.MANA_POTION_ID
+import com.jdial.aegis.sim.PlayerStats
+import com.jdial.aegis.sim.ResourceGauge
+import com.jdial.aegis.sim.canPay
+import com.jdial.aegis.sim.resourceGauge
 import com.jdial.aegis.sim.PLAYER_UNIT_ID
 import com.jdial.aegis.ui.theme.LocalUiSettings
 import com.jdial.aegis.ui.theme.Obsidian
@@ -167,7 +171,7 @@ fun CombatScreen(
                     // Sorted for display only — state.party is never reordered,
                     // because the engine and the save both index it positionally.
                     val ordered = if (ui.selfFirst) {
-                        state.party.sortedBy { if (it.id == PLAYER_UNIT_ID) 0 else 1 }
+                        state.party.sortedBy { if (it.id == state.localUnitId) 0 else 1 }
                     } else {
                         state.party
                     }
@@ -175,6 +179,8 @@ fun CombatScreen(
                         PartyRow(
                             unit = unit,
                             state = state,
+                            label = frameName(unit, state, data),
+                            otherPlayer = unit.id != state.localUnitId && state.isHuman(unit.id),
                             targetable = state.playerRole == UnitRole.HEALER,
                             selected = unit.id == targetId,
                             rowHeight = rowHeight,
@@ -645,6 +651,8 @@ private fun healthColor(pct: Float): Color = when {
 private fun PartyRow(
     unit: Unit,
     state: GameState,
+    label: String,
+    otherPlayer: Boolean,
     /** False for roles whose spells never take a party member. */
     targetable: Boolean,
     selected: Boolean,
@@ -719,9 +727,9 @@ private fun PartyRow(
                     if (unit.shield > 0) add("shielded")
                 }
                 contentDescription = if (dead) {
-                    "${unit.name}, $roleLabel, dead"
+                    "$label, $roleLabel, dead"
                 } else {
-                    "${unit.name}, $roleLabel, $pct percent health" +
+                    "$label, $roleLabel, $pct percent health" +
                         (if (auras.isEmpty()) "" else ", " + auras.joinToString(", ")) +
                         (if (selected) ", targeted" else "")
                 }
@@ -825,18 +833,25 @@ private fun PartyRow(
                         .fillMaxWidth(0.4f)
                         .padding(start = 8.dp, end = 4.dp),
                 ) {
-                    BasicText(
-                        unit.name,
-                        maxLines = 1,
-                        // maxLines alone clips mid-glyph; this ends the name
-                        // somewhere a reader recognises.
-                        overflow = TextOverflow.Ellipsis,
-                        style = AegisType.numeric.copy(
-                            fontSize = 13.sp,
-                            color = if (dead) Ink.muted else Ink.primary,
-                            shadow = TextOutline,
-                        ),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        BasicText(
+                            label,
+                            maxLines = 1,
+                            // maxLines alone clips mid-glyph; this ends the name
+                            // somewhere a reader recognises.
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                            style = AegisType.numeric.copy(
+                                fontSize = 13.sp,
+                                color = if (dead) Ink.muted else Ink.primary,
+                                shadow = TextOutline,
+                            ),
+                        )
+                        if (otherPlayer) {
+                            Spacer(Modifier.width(4.dp))
+                            PlayerBadge()
+                        }
+                    }
                     if (!dead && ui.healthTextPercent) {
                         val deficit = (unit.maxHealth - unit.health).roundToInt()
                         if (deficit > 0) {
@@ -1089,6 +1104,11 @@ private fun ActionBar(
                             style = AegisType.numeric.copy(fontSize = 15.sp),
                         )
                     }
+                    val stats = remember(data) { PlayerStats(data) }
+                    val gauge = state.playerClass?.let { cls ->
+                        resourceGauge(state, stats.uniqueStatRating(cls, state.level, state.talents), data.balance.classes)
+                    }
+                    if (gauge != null) ResourceReadout(gauge)
                     // Holy Power: a Paladin-only resource, shown only when held.
                     if (state.holyPower > 0) {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1130,7 +1150,7 @@ private fun ActionBar(
                                 state.spellCooldowns[spellId] ?: 0,
                                 if (spellId == MANA_POTION_ID) 0 else state.globalCooldownRemaining,
                             ),
-                            affordable = spell != null && state.mana >= spell.manaCost,
+                            affordable = spell != null && state.canPay(spell),
                             dragging = dragFrom == i,
                             dragOffsetPx = if (dragFrom == i) dragDx else 0f,
                             dragOffsetYPx = if (dragFrom == i) dragDy else 0f,
@@ -1148,7 +1168,7 @@ private fun ActionBar(
                                 val usable = spell != null &&
                                     (state.spellCooldowns[spellId] ?: 0) <= 0 &&
                                     (spellId == MANA_POTION_ID || state.globalCooldownRemaining <= 0) &&
-                                    state.mana >= spell.manaCost
+                                    state.canPay(spell)
                                 if (usable && dropTargetId != null) onDropCast(spell.id)
                                 onDragPoint(null)
                                 dragFrom = -1
@@ -1164,6 +1184,59 @@ private fun ActionBar(
                             },
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The name on a party frame.
+ *
+ * A person is shown as a person: their slot and their class, since the game
+ * holds no names. The AI keeps the name the generator gave it. The engine's own
+ * unit names are untouched -- the recorded runs compare them.
+ */
+internal fun frameName(unit: Unit, state: GameState, data: GameData): String {
+    val p = state.participants[unit.id]?.takeIf { it.isHuman } ?: return unit.name
+    val cls = p.playerClass?.let { data.bundle(it).meta.name } ?: return unit.name
+    return if (unit.id == state.localUnitId) "You · $cls" else "Player ${unit.id} · $cls"
+}
+
+/** Marks a frame another person is playing. */
+@Composable
+private fun PlayerBadge() {
+    BasicText(
+        "PLAYER",
+        style = AegisType.label.copy(fontSize = 8.sp, color = Obsidian.abyss),
+        modifier = Modifier
+            .clip(RoundedCornerShape(3.dp))
+            .background(Gilt.core)
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+    )
+}
+
+/** Rage, energy and combo points, or what Death Strike would heal for. */
+@Composable
+private fun ResourceReadout(gauge: ResourceGauge) {
+    Column(horizontalAlignment = Alignment.End) {
+        BasicText(gauge.label, style = AegisType.label.copy(color = Vital.hurt))
+        Spacer(Modifier.height(2.dp))
+        BasicText(
+            if (gauge.max != null) "${gauge.value} / ${gauge.max}" else "${gauge.value}",
+            style = AegisType.numeric.copy(fontSize = 15.sp),
+        )
+        val points = gauge.comboPoints
+        if (points != null) {
+            Spacer(Modifier.height(3.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                repeat(5) { i ->
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(if (i < points) Vital.hurt else Gilt.deep.copy(alpha = 0.4f)),
+                    )
                 }
             }
         }
@@ -1293,8 +1366,8 @@ private fun SpellSlot(
                     spell == null -> "Empty action slot $index"
                     onCooldown -> "${spell.name}, slot $index, " +
                         "ready in ${ceil(cooldownTicks / 10.0).toInt()} seconds"
-                    !affordable -> "${spell.name}, slot $index, not enough mana"
-                    else -> "${spell.name}, slot $index, ${spell.manaCost} mana"
+                    !affordable -> "${spell.name}, slot $index, not enough ${spell.resourceName}"
+                    else -> "${spell.name}, slot $index, ${spell.manaCost} ${spell.resourceName}"
                 }
                 if (!usable) disabled()
             },

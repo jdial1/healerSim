@@ -12,10 +12,10 @@
   "portraitIcon": "death_knight",
   "portraitGlow": "spell",
   "passiveTraitName": "Blood Shield",
-  "passiveTraitDescription": "Damage you absorb hardens into a shield.",
+  "passiveTraitDescription": "Death Strike heals you for a share of the damage you took recently, and hardens part of the heal into a shield.",
   "passiveTraitIcon": "wow/spell_holy_powerwordshield",
   "tutorial": {
-    "passiveDescription": "Blood Shield: Damage you absorb hardens into a shield."
+    "passiveDescription": "Blood Shield: Death Strike heals you for a share of the damage you took recently, and hardens part of the heal into a shield."
   },
   "statCurves": {
     "baseIntellect": 18,

@@ -4,7 +4,7 @@
     "name": "Sinister Strike",
     "type": "DIRECT",
     "school": "damage",
-    "manaCost": 14,
+    "manaCost": 40,
     "healing": 68,
     "cooldown": 0,
     "icon": "wow/spell_shadow_ritualofsacrifice",
@@ -12,14 +12,15 @@
     "threatMultiplier": 0.9,
     "color": "bg-yellow-500",
     "actionBarBorderClass": "border-yellow-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "resource": "ENERGY"
   },
   "rupture": {
     "id": "rupture",
     "name": "Rupture",
     "type": "HOT",
     "school": "damage",
-    "manaCost": 24,
+    "manaCost": 25,
     "healing": 0,
     "cooldown": 70,
     "hotDuration": 80,
@@ -29,14 +30,15 @@
     "threatMultiplier": 0.85,
     "color": "bg-red-400",
     "actionBarBorderClass": "border-red-400",
-    "glowType": "spell"
+    "glowType": "spell",
+    "resource": "ENERGY"
   },
   "eviscerate": {
     "id": "eviscerate",
     "name": "Eviscerate",
     "type": "DIRECT",
     "school": "damage",
-    "manaCost": 26,
+    "manaCost": 35,
     "healing": 124,
     "cooldown": 50,
     "icon": "wow/ability_rogue_eviscerate",
@@ -44,14 +46,15 @@
     "threatMultiplier": 1.0,
     "color": "bg-orange-500",
     "actionBarBorderClass": "border-orange-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "resource": "ENERGY"
   },
   "fan_of_knives": {
     "id": "fan_of_knives",
     "name": "Fan of Knives",
     "type": "AOE",
     "school": "damage",
-    "manaCost": 32,
+    "manaCost": 50,
     "healing": 58,
     "cooldown": 60,
     "icon": "wow/ability_rogue_fanofknives",
@@ -59,6 +62,7 @@
     "threatMultiplier": 1.15,
     "color": "bg-lime-500",
     "actionBarBorderClass": "border-lime-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "resource": "ENERGY"
   }
 }

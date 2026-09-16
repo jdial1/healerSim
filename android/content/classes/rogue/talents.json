@@ -119,12 +119,12 @@
   },
   {
     "id": "rg_r2c2",
-    "name": "Eviscerate",
-    "description": "Unlocks Eviscerate.",
+    "name": "Rupture",
+    "description": "Unlocks Rupture.",
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/ability_rogue_eviscerate",
+    "icon": "wow/ability_rogue_rupture",
     "gridX": 2,
     "gridY": 2,
     "prerequisites": [
@@ -135,7 +135,7 @@
     "maxRankBonusDescription": "",
     "statBonus": {},
     "points": 0,
-    "spellId": "eviscerate"
+    "spellId": "rupture"
   },
   {
     "id": "rg_r2c4",

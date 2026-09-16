@@ -12,10 +12,10 @@
   "portraitIcon": "rogue",
   "portraitGlow": "spell",
   "passiveTraitName": "Seal Fate",
-  "passiveTraitDescription": "Critical strikes sharpen the wound that follows.",
+  "passiveTraitDescription": "Strikes cost energy and build combo points, two on a crit. Eviscerate spends them all.",
   "passiveTraitIcon": "wow/spell_holy_surgeoflight",
   "tutorial": {
-    "passiveDescription": "Seal Fate: Critical strikes sharpen the wound that follows."
+    "passiveDescription": "Seal Fate: Strikes cost energy and build combo points, two on a crit. Eviscerate spends them all."
   },
   "statCurves": {
     "baseIntellect": 32,
@@ -28,12 +28,12 @@
   "progression": {
     "starterSpells": [
       "sinister_strike",
-      "rupture"
+      "eviscerate"
     ],
     "spellOrder": [
       "sinister_strike",
-      "rupture",
       "eviscerate",
+      "rupture",
       "fan_of_knives"
     ]
   }

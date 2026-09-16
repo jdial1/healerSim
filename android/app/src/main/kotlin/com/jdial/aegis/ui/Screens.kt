@@ -255,7 +255,10 @@ fun ClassSelectScreen(
                 // than one long list.
                 val byRole = PlayerClass.entries.groupBy { data.bundle(it).meta.role }
                 listOf("HEALER", "DPS", "TANK").forEach { role ->
-                    val classes = byRole[role].orEmpty()
+                    // Unfinished classes are not shown at all. A card that
+                    // can never be picked, with no way to change that, only
+                    // makes the game look smaller than it is.
+                    val classes = byRole[role].orEmpty().filterNot { data.bundle(it).meta.locked }
                     if (classes.isEmpty()) return@forEach
 
                     BasicText(
@@ -272,13 +275,9 @@ fun ClassSelectScreen(
                     )
                     classes.forEach { cls ->
                         val bundle = data.bundle(cls)
-                        // Two different kinds of locked. The Paladin is finished
-                        // and gated on a level; the rest are simply unbuilt, and
-                        // saying "reach level N" about them would be a lie.
                         val levelGated = cls == PlayerClass.PALADIN && maxLevel < unlockLevel
-                        val unbuilt = bundle.meta.locked
-                        ClassCard(cls, bundle, levelGated, unbuilt, unlockLevel) {
-                            if (!levelGated && !unbuilt) onPick(cls)
+                        ClassCard(cls, bundle, levelGated, unlockLevel) {
+                            if (!levelGated) onPick(cls)
                         }
                         Spacer(Modifier.height(12.dp))
                     }
@@ -294,12 +293,11 @@ private fun ClassCard(
     cls: PlayerClass,
     bundle: ClassBundle,
     levelGated: Boolean,
-    unbuilt: Boolean,
     unlockLevel: Int,
     onClick: () -> Unit,
 ) {
     val accent = accentFor(cls)
-    val locked = levelGated || unbuilt
+    val locked = levelGated
     ForgedPanel(
         modifier = Modifier
             .fillMaxWidth()
@@ -307,7 +305,6 @@ private fun ClassCard(
             .semantics {
                 role = Role.Button
                 contentDescription = when {
-                    unbuilt -> "${bundle.meta.name}, not available yet"
                     levelGated -> "${bundle.meta.name}, locked, reach level $unlockLevel to unlock"
                     else -> {
                         "${bundle.meta.name}. ${bundle.meta.passiveTraitName}. " +
@@ -357,9 +354,7 @@ private fun ClassCard(
                 Spacer(Modifier.height(4.dp))
                 if (locked) {
                     BasicText(
-                        // No goal for the unbuilt ones: there is nothing to
-                        // reach, and inventing a level would be a promise.
-                        if (unbuilt) "NOT AVAILABLE YET" else "REACH LVL $unlockLevel TO UNLOCK",
+                        "REACH LVL $unlockLevel TO UNLOCK",
                         style = AegisType.label.copy(color = Gilt.mid),
                     )
                 } else {

@@ -213,6 +213,7 @@ class Engine(val data: GameData) {
                 // Re-derived per run: a save written before roles existed decodes
                 // with the HEALER default, and this corrects it on the next pull.
                 role = it.playerClass?.let(::roleOf) ?: it.role,
+                classResource = hooksFor(it.playerClass).startingResource(data.balance.classes),
             )
         }.copy(
             runDpsJitter = runDpsJitter,

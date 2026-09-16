@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import com.jdial.aegis.sim.UnitRole
+import com.jdial.aegis.sim.masteryEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -481,6 +482,14 @@ fun CharacterScreen(
                         }
                         Spacer(Modifier.height(8.dp))
                         BasicText(meta.passiveTraitDescription, style = AegisType.body)
+                        // The signature stat, turned into what it currently buys.
+                        masteryEffect(cls, unique, engine.data.balance.classes)?.let { effect ->
+                            Spacer(Modifier.height(6.dp))
+                            BasicText(
+                                "${uniqueStatLabel(cls)} ${String.format("%.1f", unique)}: $effect",
+                                style = AegisType.body.copy(color = accent.bright),
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -704,7 +713,7 @@ private fun SpellRow(
  */
 private fun spellSummary(spell: Spell): String {
     val parts = buildList {
-        add(spell.manaCost.toString() + " mana")
+        add("${spell.manaCost} ${spell.resourceName}")
         if (spell.cooldown > 0) add(ceil(spell.cooldown / 10.0).toInt().toString() + "s cd")
         if (spell.healing > 0) {
             val word = if (spell.isDamage) " damage" else " healing"

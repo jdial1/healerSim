@@ -282,6 +282,16 @@ data class Participant(
     val pendingPlayerThreat: Double = 0.0,
     val manaPotionsUsedThisDungeon: Int = 0,
     /**
+     * The class's own resource, beside mana: a Warrior's rage, a Rogue's
+     * energy, or the damage a Death Knight has taken recently (which Death
+     * Strike turns back into health). Zero, and never read, for the classes
+     * that only use mana. A spell whose `resource` is not MANA pays its cost
+     * from here.
+     */
+    val classResource: Double = 0.0,
+    /** A Rogue's combo points: builders add them, the finisher spends them all. */
+    val comboPoints: Int = 0,
+    /**
      * False for a slot the AI is driving. Nothing reads it yet -- the AI party
      * is still scripted rather than participant-driven -- but the queue fills
      * empty slots with AI, and that is the flag it will set.
@@ -299,6 +309,8 @@ data class Participant(
         pendingEnemyDamage = 0.0,
         pendingPlayerThreat = 0.0,
         manaPotionsUsedThisDungeon = 0,
+        classResource = 0.0,
+        comboPoints = 0,
     )
 }
 
@@ -403,6 +415,8 @@ data class GameState(
     val holyPower: Int get() = me.holyPower
     val beaconTargetId: String get() = me.beaconTargetId
     val manaPotionsUsedThisDungeon: Int get() = me.manaPotionsUsedThisDungeon
+    val classResource: Double get() = me.classResource
+    val comboPoints: Int get() = me.comboPoints
 
     /** Damage every participant has dealt since the last tick consumed it. */
     val pendingEnemyDamage: Double get() = participants.values.sumOf { it.pendingEnemyDamage }

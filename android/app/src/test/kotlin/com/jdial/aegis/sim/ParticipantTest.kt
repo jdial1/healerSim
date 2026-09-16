@@ -22,7 +22,10 @@ class ParticipantTest {
     private val engine = Engine(Fixtures.data)
     private val dungeon = Fixtures.data.dungeons.first()
 
-    /** A mage in slot 5 and a warrior in slot 1, mid-pull. */
+    /**
+     * A mage in slot 5 and a warrior in slot 1, mid-pull. The warrior's first
+     * spell is Shield Slam, which spends rage, so they arrive with a full bar.
+     */
     private fun twoPlayers(): GameState {
         val mage = engine.reduce(
             engine.newCharacter(PlayerClass.MAGE, Rng(4)),
@@ -30,7 +33,9 @@ class ParticipantTest {
             Rng(4),
         )
         val warrior = engine.newCharacter(PlayerClass.WARRIOR, Rng(4)).me
-        return mage.withParticipant("1") { warrior.copy(unitId = "1", mana = warrior.maxMana.toDouble()) }
+        return mage.withParticipant("1") {
+            warrior.copy(unitId = "1", mana = warrior.maxMana.toDouble(), classResource = 100.0)
+        }
     }
 
     private fun firstSpell(s: GameState, id: String) =
@@ -48,10 +53,11 @@ class ParticipantTest {
     }
 
     @Test
-    fun `two participants casting draw from separate mana pools`() {
+    fun `two participants casting draw from separate pools`() {
         val s0 = twoPlayers()
         val mageMana0 = s0.participants.getValue(PLAYER_UNIT_ID).mana
         val warriorMana0 = s0.participants.getValue("1").mana
+        val warriorRage0 = s0.participants.getValue("1").classResource
 
         val s1 = engine.reduce(
             s0,
@@ -69,7 +75,11 @@ class ParticipantTest {
             Action.CastSpell(firstSpell(s1, "1"), null, 0.99, actorId = "1"),
             Rng(4),
         )
-        assertNotEquals("the warrior should have spent mana", warriorMana0, s2.participants.getValue("1").mana)
+        assertNotEquals("the warrior should have spent rage", warriorRage0, s2.participants.getValue("1").classResource)
+        assertEquals(
+            "and the mage's cast must not have touched it",
+            warriorRage0, s1.participants.getValue("1").classResource, 0.0,
+        )
         assertEquals(
             "and must not have touched the mage's again",
             s1.participants.getValue(PLAYER_UNIT_ID).mana,

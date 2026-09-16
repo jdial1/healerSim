@@ -175,8 +175,13 @@ class RelayFlowTest {
         }
 
         // The guest asks to cast something it could not possibly resolve itself.
+        // A mana-paid spell, because mana is what this test reads: Shield Slam
+        // spends rage, which also moves every tick the warrior is hit.
         val spell = hostState.participants.getValue("1")
-            .activeActionBars.first { it.isNotEmpty() && it != com.jdial.aegis.sim.MANA_POTION_ID }
+            .activeActionBars.first {
+                it.isNotEmpty() && it != com.jdial.aegis.sim.MANA_POTION_ID &&
+                    data.spell(it)?.resource == "MANA"
+            }
         guestSession.requestCast(seq = 1, spellId = spell, targetId = null)
 
         val rng = Rng(21)

@@ -72,6 +72,8 @@ class CastPipeline(
             val eff: Effective,
             val needMana: Int,
             val isCrit: Boolean,
+            /** Paid from the class resource rather than mana; see Spell.resource. */
+            val needResource: Double = 0.0,
         ) : Ready
         data class Swiftmend(
             val spell: Spell,
@@ -104,6 +106,9 @@ class CastPipeline(
         val spell = data.spell(spellId) ?: return null
         if (s.playerClass == null) return null
         if ((s.spellCooldowns[spellId] ?: 0) > 0) return null
+        // The dead do not cast. A healer's death ends the run, so this never
+        // mattered until other roles could die and keep going.
+        if (s.unit(s.localUnitId)?.isAlive == false) return null
         // The potion is off the global cooldown, as consumables conventionally
         // are -- being unable to drink because you just cast is the kind of
         // rule that only ever feels like a bug.
@@ -113,20 +118,27 @@ class CastPipeline(
 
         val eff = effectiveStats(ctx) ?: return null
         val surgeFree = s.playerCombatBuffs.hasBuff(BUFF_SURGE_OF_LIGHT) && PriestHooks.isSurgeFinisher(spell)
-        val needMana = manaCost(ctx, spell, spellId, surgeFree)
+        // `resource` was declared on every spell and read by nothing. A spell
+        // that names another resource pays its cost from that, not from mana.
+        val usesMana = spell.resource == "MANA"
+        val needMana = if (usesMana) manaCost(ctx, spell, spellId, surgeFree) else 0
         if (s.mana < needMana) return null
+        val needResource = if (usesMana) 0.0 else spell.manaCost.toDouble()
+        if (s.classResource < needResource) return null
 
         val target = s.party.firstOrNull { it.id == targetId }
         if (spell.type != SpellType.AOE && spell.isHeal() && target != null && target.health <= 0) return null
 
         if (spellId == MANA_POTION_ID) return Ready.ManaPotion(spell, eff)
 
+        val hooks = hooksFor(ctx.cls)
         if (spell.isDamage || spell.school == SpellSchool.UTILITY) {
-            val crit = critRoll < eff.critChancePercent(s.playerCombatBuffs.naturalPerfectionStacks(), 0.0)
-            return Ready.Damage(spell, spellId, eff, needMana, crit)
+            if (!hooks.damageCastAllowed(ctx, spell, spellId)) return null
+            val extra = hooks.damageCritBonus(ctx, spell, spellId)
+            val crit = critRoll < eff.critChancePercent(s.playerCombatBuffs.naturalPerfectionStacks(), extra)
+            return Ready.Damage(spell, spellId, eff, needMana, crit, needResource)
         }
 
-        val hooks = hooksFor(ctx.cls)
 
         // Swiftmend needs a consumable HoT on the target; without one the cast is
         // rejected rather than falling through to a standard heal.
@@ -202,12 +214,15 @@ class CastPipeline(
         // can produce a Ready.Damage.
         val cls = s.playerClass ?: return s
         val spell = ready.spell
+        val hooks = hooksFor(cls)
         val crit = if (ready.isCrit) 1.5 else 1.0
         val rank = stats.rankHealMult(stats.spellRank(ready.spellId, cls, s.level))
-        val amount = spell.healing * ready.eff.baseHealingMultiplier * rank * crit
+        val scale = damageScale(cls, s.level)
+        val amount = spell.healing * ready.eff.baseHealingMultiplier * rank * crit * scale *
+            hooks.damageMultiplier(ctx, spell, ready.spellId)
 
         val dots = spell.hotDuration?.takeIf { spell.school == SpellSchool.DAMAGE }?.let { dur ->
-            val perTick = (spell.hotHealingPerTick ?: 0.0) * ready.eff.baseHealingMultiplier * rank
+            val perTick = (spell.hotHealingPerTick ?: 0.0) * ready.eff.baseHealingMultiplier * rank * scale
             // Refresh by ability rather than append, and never replace the whole
             // list -- the party-side equivalent of this does replace it, which
             // is a bug this must not inherit.
@@ -239,11 +254,12 @@ class CastPipeline(
         // no damage at all. Both fields were declared on Spell and read by
         // nothing, which is why a "threat spell" moved the bar exactly as much
         // as any other spell of the same size.
-        val threat = dealt * spell.threatMultiplier + spell.flatThreat
+        val threat = (dealt * spell.threatMultiplier + spell.flatThreat) * hooks.threatMultiplier(ctx)
 
         val out = s.withMe {
             it.copy(
                 mana = max(0.0, it.mana - ready.needMana),
+                classResource = it.classResource - ready.needResource,
                 playerCombatBuffs = buffs,
                 pendingEnemyDamage = it.pendingEnemyDamage + dealt,
                 pendingPlayerThreat = it.pendingPlayerThreat + threat,
@@ -252,7 +268,7 @@ class CastPipeline(
                     cooldownTicks(spell.cooldown, ready.eff.hastePercent, 0),
                 ),
             )
-        }.copy(enemyDebuffs = dots)
+        }.copy(enemyDebuffs = dots).let { hooks.onDamageLand(ctx, it, DamageLand(spell, ready.spellId, ready.isCrit, dealt)) }
         // The caster's slot, not slot 5: a taunt is inherently "this unit".
         val caster = s.localUnitId
         return if (spell.tauntTicks == null) out else out.copy(
@@ -270,6 +286,15 @@ class CastPipeline(
             tauntedById = caster,
             tauntLockTicks = spell.tauntTicks,
         )
+    }
+
+    /** Player damage by class and level; see ClassesBalance.damageScale. */
+    fun damageScale(cls: PlayerClass, level: Int): Double {
+        val b = data.balance.classes
+        val base = b.damageScale[cls.name] ?: 1.0
+        val ramp = min(1.0, (max(1, level) - 1).toDouble() / max(1, b.damageRampLevels))
+        val floor = b.damageRampFloor[cls.name] ?: 1.0
+        return base * (floor + (1 - floor) * ramp)
     }
 
     /** Cooldowns are the one place haste applies; Power Infusion halves them. */

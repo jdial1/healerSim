@@ -104,6 +104,19 @@ class BattleSceneTest {
     }
 
     @Test
+    fun `a person's frame shows their slot and class, the AI keeps its name`() {
+        val guest = Participant(unitId = aiDps.id, playerClass = PlayerClass.MAGE, isHuman = true)
+        val shared = fight.copy(participants = fight.participants + (aiDps.id to guest))
+        assertEquals("Player ${aiDps.id} · Frost Mage", frameName(aiDps, shared, Fixtures.data))
+        assertEquals("You · Prot Warrior", frameName(me, shared, Fixtures.data))
+        val ai = fight.party.first { it.role == UnitRole.HEALER }
+        assertEquals(ai.name, frameName(ai, shared, Fixtures.data))
+        // A player who dropped is the AI's again, and named as such.
+        val dropped = shared.copy(participants = shared.participants + (aiDps.id to guest.copy(isHuman = false)))
+        assertEquals(aiDps.name, frameName(aiDps, dropped, Fixtures.data))
+    }
+
+    @Test
     fun `the tank leads and the healer stands at the back`() {
         val roles = lineUp(fight.party.shuffled(java.util.Random(1))).map { it.role }
         assertEquals(UnitRole.TANK, roles.first())

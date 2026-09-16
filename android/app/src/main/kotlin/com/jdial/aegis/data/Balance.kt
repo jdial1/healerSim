@@ -25,6 +25,85 @@ data class Balance(
     // including the one a suspended run was saved under.
     val threat: ThreatBalance = ThreatBalance(),
     val roles: RolesBalance = RolesBalance(),
+    val classes: ClassesBalance = ClassesBalance(),
+)
+
+/**
+ * The tank and DPS classes: what their mechanics are worth, and how hard they
+ * hit. Its own top-level key, like [RolesBalance], so none of it touches the
+ * frozen healer numbers.
+ */
+@Serializable
+data class ClassesBalance(
+    /**
+     * Player damage, by class name. Multiplied by a ramp that starts at the
+     * class's [damageRampFloor] at level 1 and reaches 1 after [damageRampLevels].
+     *
+     * The ramp is there because the two curves have different shapes. The AI
+     * party's damage is `16 + level^1.55`: the constant dominates early, so it
+     * starts low and climbs. A player's grows with spirit and spell ranks from
+     * a spell that already hits hard at level 1. Unramped, a DPS was 2.4-2.8x
+     * an AI at level 1 and about 1.2x from level 20 on -- flat after that, so
+     * a single scale cannot fix both ends. [com.jdial.aegis.sim.PlayerDamageBalanceTest]
+     * pins the result.
+     */
+    val damageScale: Map<String, Double> = emptyMap(),
+    /**
+     * Per class, because the low end differs: a level-1 Mage runs out of mana
+     * and a Rogue never does, so the same floor leaves one under the band and
+     * the other at its top.
+     */
+    val damageRampFloor: Map<String, Double> = emptyMap(),
+    val damageRampLevels: Int = 19,
+    val warrior: WarriorBalance = WarriorBalance(),
+    val deathKnight: DeathKnightBalance = DeathKnightBalance(),
+    val mage: MageBalance = MageBalance(),
+    val rogue: RogueBalance = RogueBalance(),
+)
+
+@Serializable
+data class WarriorBalance(
+    val rageCapBase: Double = 100.0,
+    /** Vengeance: each point of the signature stat raises the rage cap by this. */
+    val rageCapPerRating: Double = 2.0,
+    /** Rage for taking a whole health bar of damage; less damage, pro rata. */
+    val ragePerFullHealthTaken: Double = 160.0,
+    /** Rage for landing a damage spell that does not itself cost rage. */
+    val rageOnDamageCast: Double = 6.0,
+    /** Vengeance: threat bonus per point of the signature stat. */
+    val threatPerRating: Double = 0.02,
+)
+
+@Serializable
+data class DeathKnightBalance(
+    /** How much of the damage taken so far is still "recent" after one tick. */
+    val recentDamageDecayPerTick: Double = 0.97,
+    /** Death Strike heals this share of recent damage taken... */
+    val deathStrikeHealFraction: Double = 0.3,
+    /** ...but never less than this share of max health. */
+    val deathStrikeMinHealFraction: Double = 0.04,
+    /** Blood Shield: the heal also shields for rating * this, as a fraction of the heal. */
+    val bloodShieldPerRating: Double = 0.04,
+    val bloodShieldTicks: Int = 60,
+)
+
+@Serializable
+data class MageBalance(
+    val chillTicks: Int = 50,
+    /** Shatter: crit chance a chilled target grants the next non-Frostbolt spell. */
+    val shatterCritBase: Double = 25.0,
+    val shatterCritPerRating: Double = 2.0,
+)
+
+@Serializable
+data class RogueBalance(
+    val energyMax: Double = 100.0,
+    val energyPerTick: Double = 1.25,
+    val comboPointsMax: Int = 5,
+    /** A finisher's damage is its base times combo points times this. */
+    val finisherPerPoint: Double = 0.5,
+    /** Seal Fate: builder crit chance per point of the signature stat. */
+    val builderCritPerRating: Double = 2.0,
 )
 
 /**

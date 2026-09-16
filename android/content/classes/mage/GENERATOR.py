@@ -35,7 +35,7 @@ w('class.json', {
     "portraitIcon": "mage",
     "portraitGlow": "spell",
     "passiveTraitName": "Shatter",
-    "passiveTraitDescription": "Frost damage crits harder against a target that is already suffering.",
+    "passiveTraitDescription": "Frostbolt chills the enemy. Your next other spell against a chilled enemy is far more likely to crit.",
     "passiveTraitIcon": "wow/spell_nature_lightning",
     "tutorial": {"passiveDescription": "Shatter: Frost spells crit more."},
     "statCurves": {

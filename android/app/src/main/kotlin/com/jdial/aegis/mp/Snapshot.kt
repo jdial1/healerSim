@@ -83,6 +83,9 @@ data class WirePlayer(
     val playerCombatBuffs: List<PlayerBuff> = emptyList(),
     val holyPower: Int = 0,
     val capstoneForm: String? = null,
+    /** Rage, energy or recent damage -- a guest has to see what it can spend. */
+    val classResource: Double = 0.0,
+    val comboPoints: Int = 0,
 )
 
 fun Participant.toWire() = WirePlayer(
@@ -94,6 +97,8 @@ fun Participant.toWire() = WirePlayer(
     playerCombatBuffs = playerCombatBuffs,
     holyPower = holyPower,
     capstoneForm = capstoneForm,
+    classResource = classResource,
+    comboPoints = comboPoints,
 )
 
 fun GameState.toSnapshot(): Snapshot = Snapshot(
@@ -141,6 +146,8 @@ fun Snapshot.applyTo(local: GameState, dungeon: Dungeon?): GameState {
             playerCombatBuffs = w.playerCombatBuffs,
             holyPower = w.holyPower,
             capstoneForm = w.capstoneForm,
+            classResource = w.classResource,
+            comboPoints = w.comboPoints,
         )
     }
     return local.copy(

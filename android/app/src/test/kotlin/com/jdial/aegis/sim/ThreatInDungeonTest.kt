@@ -151,14 +151,17 @@ class ThreatInDungeonTest {
         // read by nothing, so a tank's Shield Slam (3.0x) generated exactly the
         // same threat as any other spell of the same size -- which is why
         // casting a threat spell did not move the bar.
-        val slam = Fixtures.data.bundle(PlayerClass.WARRIOR).spells.getValue("shield_slam")
+        //
+        // Death Strike rather than Shield Slam: a Warrior's threat is also
+        // scaled by Vengeance, and this is about the spell's own number.
+        val slam = Fixtures.data.bundle(PlayerClass.DEATHKNIGHT).spells.getValue("death_strike")
         assertTrue("fixture must declare a multiplier", slam.threatMultiplier > 1.0)
 
         val casts = CastPipeline(Fixtures.data, Fixtures.stats)
-        val s = run(start(PlayerClass.WARRIOR), 1)
+        val s = run(start(PlayerClass.DEATHKNIGHT), 1)
         val out = casts.tryCast(
             CastContext(s, Fixtures.data, Fixtures.stats, Rng(4)),
-            "shield_slam", null, 100.0,
+            "death_strike", null, 100.0,
         )
 
         assertTrue("the cast must deal damage", out.pendingEnemyDamage > 0.0)

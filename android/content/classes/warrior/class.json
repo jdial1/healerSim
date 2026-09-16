@@ -12,10 +12,10 @@
   "portraitIcon": "warrior",
   "portraitGlow": "spell",
   "passiveTraitName": "Vengeance",
-  "passiveTraitDescription": "Holding the enemy's attention sharpens your retaliation.",
+  "passiveTraitDescription": "Taking and dealing damage builds rage, and Shield Slam spends it. Vengeance raises your rage cap and the threat you generate.",
   "passiveTraitIcon": "wow/spell_holy_greaterblessingofsanctuary",
   "tutorial": {
-    "passiveDescription": "Vengeance: threat begets damage."
+    "passiveDescription": "Vengeance: Taking and dealing damage builds rage, and Shield Slam spends it. Vengeance raises your rage cap and the threat you generate."
   },
   "statCurves": {
     "baseIntellect": 18,
