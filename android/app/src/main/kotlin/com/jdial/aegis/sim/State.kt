@@ -209,6 +209,13 @@ data class DungeonOutcome(
     val leveledUp: Boolean = false,
     val upgradedSpellIds: List<String> = emptyList(),
     val upgradedPotion: Boolean = false,
+    /**
+     * True when [stats] describe the whole group rather than this player --
+     * a guest's outcome, built from the host's run accumulators. The dialog
+     * labels them as such rather than crediting a tank with the group's
+     * healing.
+     */
+    val groupStats: Boolean = false,
 )
 
 /**
@@ -354,6 +361,20 @@ data class GameState(
     val runHealEffective: Double = 0.0,
     val runHealOverheal: Double = 0.0,
     val runManaSpentHealing: Double = 0.0,
+    /**
+     * XP awarded this run, per party slot, for every human in it.
+     *
+     * The engine only ever applied XP to the local player, and the frame
+     * carried none of it, so a guest finished a whole dungeon with nothing. The
+     * host now credits every human here, each on *their own* level, and the
+     * frame carries the running total. Cumulative rather than per-event so a
+     * guest applies only the increase since the last frame it saw -- a missed
+     * or repeated frame can neither lose nor double an award, and endless waves,
+     * which award mid-run, work the same way.
+     *
+     * On a guest the same field records what it has already applied.
+     */
+    val runXpAwards: Map<String, Int> = emptyMap(),
 ) {
     /**
      * The participant this client drives.
@@ -445,6 +466,7 @@ data class GameState(
         runHealEffective = 0.0,
         runHealOverheal = 0.0,
         runManaSpentHealing = 0.0,
+        runXpAwards = emptyMap(),
     )
 }
 

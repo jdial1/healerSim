@@ -142,6 +142,12 @@ class Engine(val data: GameData) {
         )
     }
 
+    /**
+     * Applies XP a host awarded to this client's player: level, talent points
+     * and mana pool, exactly as the engine does for its own player.
+     */
+    fun awardXp(state: GameState, xp: Int): GameState = tick.awardXp(state, xp)
+
     fun reduce(state: GameState, action: Action, rng: Rng): GameState = when (action) {
         is Action.Tick -> applyTicks(state, action.ticks, rng)
         is Action.StartDungeon -> startDungeon(state, action.dungeon, action.pace, rng)

@@ -792,6 +792,24 @@ class GameTick(
         )
     }
 
+    /**
+     * Adds this award to the run's ledger for every human in the room.
+     *
+     * The local player's share is exactly [localXp] -- the number the engine
+     * already applied -- so single player records what it always awarded and
+     * nothing else moves. Everyone else is credited by [xpForLevel] on their
+     * own level, since the XP curve depends on it.
+     */
+    private fun creditEveryone(s: GameState, localXp: Int, xpForLevel: (Int) -> Int): Map<String, Int> {
+        val credited = s.participants.values.filter { it.isHuman }.associate { p ->
+            p.unitId to if (p.unitId == s.localUnitId) localXp else xpForLevel(p.level)
+        }
+        return s.runXpAwards + credited.mapValues { (id, xp) -> (s.runXpAwards[id] ?: 0) + xp }
+    }
+
+    /** An XP award applied to this client's player, as a guest receives one. */
+    internal fun awardXp(s: GameState, xp: Int): GameState = withPostRunProgress(s, xp)
+
     /** Recomputes level, talent points and mana pool after an XP award. */
     private fun withPostRunProgress(s: GameState, xpGained: Int): GameState {
         val newXp = s.xp + xpGained
@@ -875,6 +893,9 @@ class GameTick(
         val rewards = progression.levelUpRewards(ctx.cls, s.talents, s.level, advanced.level)
         return advanced.endedRun().copy(
             party = ctx.cls?.let { generateParty(it, advanced.level, rng) } ?: party,
+            runXpAwards = creditEveryone(s, xpGained) { level ->
+                (progression.dungeonFailureXpGain(dungeon, level, pullsCleared) * paceXp).roundToInt()
+            },
             dungeonOutcome = DungeonOutcome(
                 kind = if (allDead) DungeonOutcomeKind.PARTY_WIPE else DungeonOutcomeKind.HEALER_DOWN,
                 dungeonId = dungeon.id,
@@ -1022,6 +1043,9 @@ class GameTick(
                 if (!dungeon.endless && dungeon.id !in s.completedDungeonIds) s.completedDungeonIds + dungeon.id
                 else s.completedDungeonIds,
             party = ctx.cls?.let { generateParty(it, advanced.level, rng) } ?: sys.party,
+            runXpAwards = creditEveryone(s, xpGained) { level ->
+                (progression.dungeonXpGain(dungeon, level) * paceXp).roundToInt()
+            },
             dungeonOutcome = DungeonOutcome(
                 kind = DungeonOutcomeKind.SUCCESS,
                 dungeonId = dungeon.id,
@@ -1075,9 +1099,14 @@ class GameTick(
         val trashHp = max(1.0, progression.trashMaxHealth(next))
         val profile = combatProfile(next)
 
+        val credited = creditEveryone(s, waveXp) { level ->
+            (progression.dungeonXpGain(source, level) * data.balance.endless.bossKillXpFraction * paceXp).roundToInt()
+        }
+
         return finalizeProgress(
             advanced.copy(
                 party = party,
+                runXpAwards = credited,
                 currentDungeon = next,
                 endlessStacks = stacks,
                 combatPhase = CombatPhase.TRASH,

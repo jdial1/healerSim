@@ -299,6 +299,7 @@ private fun trimZeros(v: Double): String =
 fun OutcomeDialog(
     outcome: DungeonOutcome,
     data: GameData,
+    playerRole: UnitRole,
     onDismiss: () -> kotlin.Unit,
 ) {
     val success = outcome.kind == DungeonOutcomeKind.SUCCESS
@@ -306,8 +307,12 @@ fun OutcomeDialog(
     val headline = when (outcome.kind) {
         DungeonOutcomeKind.SUCCESS -> "Dungeon Cleared"
         DungeonOutcomeKind.PARTY_WIPE -> "Party Wiped"
-        DungeonOutcomeKind.HEALER_DOWN -> "You Fell"
+        // "You fell" was only ever true for the healer. A tank or DPS whose
+        // healer died -- AI or another player -- was told it had died itself.
+        DungeonOutcomeKind.HEALER_DOWN -> if (playerRole == UnitRole.HEALER) "You Fell" else "Healer Down"
     }
+    // A guest's numbers are the group's: the host's accumulators, not theirs.
+    val group = outcome.groupStats
     val accentColor = if (success) Gilt.core else Vital.critical
 
     Scrim(onDismiss = null) {
@@ -327,10 +332,13 @@ fun OutcomeDialog(
                 Spacer(Modifier.height(14.dp))
 
                 StatRow("Experience", "+${outcome.xpGained}")
-                StatRow("Healing done", outcome.stats.totalHealing.toInt().toString())
-                StatRow("HPS", String.format("%.1f", outcome.stats.hps))
-                StatRow("Overheal", "${outcome.stats.overhealPct.toInt()}%")
-                StatRow("Healing per mana", String.format("%.2f", outcome.stats.hpm))
+                StatRow(if (group) "Group healing" else "Healing done", outcome.stats.totalHealing.toInt().toString())
+                StatRow(if (group) "Group HPS" else "HPS", String.format("%.1f", outcome.stats.hps))
+                StatRow(if (group) "Group overheal" else "Overheal", "${outcome.stats.overhealPct.toInt()}%")
+                StatRow(
+                    if (group) "Group healing per mana" else "Healing per mana",
+                    String.format("%.2f", outcome.stats.hpm),
+                )
 
                 // Levelling up can unlock a spell rank or a stronger potion. The
                 // web app shows this; Android computed it and dropped it.

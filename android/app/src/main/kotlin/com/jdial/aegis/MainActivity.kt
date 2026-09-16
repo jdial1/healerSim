@@ -322,6 +322,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                 OutcomeDialog(
                     outcome = outcome,
                     data = vm.data,
+                    playerRole = state.playerRole,
                     onDismiss = { vm.dismissOutcome() },
                 )
             }

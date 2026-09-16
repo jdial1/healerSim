@@ -206,6 +206,9 @@ class MultiplayerSession(
      * from [local] and never taken from the wire. A host has no authority over
      * who you are, only over what is happening.
      */
-    fun render(local: GameState, frame: Snapshot): GameState =
-        frame.applyTo(local, data.dungeon(frame.dungeonId))
+    fun render(local: GameState, frame: Snapshot): GameState {
+        val shown = frame.applyTo(local, data.dungeon(frame.dungeonId))
+        val slot = localUnitId ?: return shown
+        return frame.rewardGuest(engine, before = local, shown = shown, slot = slot)
+    }
 }

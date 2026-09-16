@@ -96,10 +96,18 @@ class Multiplayer(
      * Best effort throughout. Anything left because a call failed is removed
      * by the members' hour-old clean-up the next time one of them queues.
      */
-    suspend fun endRun(finished: Boolean) {
+    suspend fun endRun(finished: Boolean, finalState: GameState? = null) {
         val s = session ?: return
         val be = backend ?: return
         leave()
+        // The frame that says how the run ended -- and carries every guest's
+        // XP -- has to reach them before the room goes. The relay job stops
+        // with the tick loop, so it may never have sent it; send it here, and
+        // give guests a moment to receive it before deleting anything.
+        if (finished && s.isHost && finalState != null) {
+            runCatching { s.publish(finalState) }
+            delay(FINAL_FRAME_GRACE_MS)
+        }
         val deleteRoom = s.isHost && (finished || !runCatching { s.othersAlive() }.getOrDefault(false))
         when {
             deleteRoom -> deleteRoomEverywhere(be, s.room.id)
@@ -260,6 +268,13 @@ class Multiplayer(
          */
         const val GROUP_WAIT_MS = 12_000L
         const val POLL_MS = 1_500L
+
+        /**
+         * How long a host keeps the room after publishing the final frame. A
+         * guest that misses it gets no result and no XP, so this errs long; a
+         * room that outlives it is still removed by the hour-old clean-up.
+         */
+        const val FINAL_FRAME_GRACE_MS = 5_000L
 
         /** Matches the members' clean-up rule in both rule files. */
         const val ROOM_MAX_AGE_MS = 3_600_000L

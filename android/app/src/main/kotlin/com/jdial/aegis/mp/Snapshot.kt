@@ -3,6 +3,9 @@ package com.jdial.aegis.mp
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.sim.BossBuff
 import com.jdial.aegis.sim.CombatPhase
+import com.jdial.aegis.sim.DungeonOutcomeKind
+import com.jdial.aegis.sim.Engine
+import com.jdial.aegis.sim.DungeonOutcome
 import com.jdial.aegis.sim.FloatingText
 import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.Participant
@@ -51,6 +54,17 @@ data class Snapshot(
     val party: List<Unit> = emptyList(),
     val players: List<WirePlayer> = emptyList(),
     val floats: List<FloatingText> = emptyList(),
+    /**
+     * XP awarded this run so far, per party slot -- the host's ledger. A guest
+     * applies the increase over what it has already applied. See
+     * GameState.runXpAwards.
+     */
+    val xpAwarded: Map<String, Int> = emptyMap(),
+    /**
+     * How the run ended, in the final frame only. The host's own copy: a guest
+     * rebuilds its outcome around it with its own XP and level-up.
+     */
+    val outcome: DungeonOutcome? = null,
 )
 
 /**
@@ -100,6 +114,8 @@ fun GameState.toSnapshot(): Snapshot = Snapshot(
     // which is what lets a test compare frames rather than parse them.
     players = participants.values.sortedBy { it.unitId }.map { it.toWire() },
     floats = floatingCombatTexts,
+    xpAwarded = runXpAwards,
+    outcome = dungeonOutcome,
 )
 
 /**
@@ -143,5 +159,53 @@ fun Snapshot.applyTo(local: GameState, dungeon: Dungeon?): GameState {
         party = party,
         combatElapsedTicks = tick,
         floatingCombatTexts = floats,
+    )
+}
+
+/**
+ * What the host awarded this player, applied once.
+ *
+ * The award is the host's to decide -- that is the accepted trade of a
+ * host-authoritative room -- but the progression is this client's own:
+ * its level, talent points and mana pool move exactly as the engine moves
+ * them for a player who earned the XP locally, and the result is saved like
+ * any other run. Only the *increase* over what was already applied is
+ * added, so a frame seen twice adds nothing.
+ */
+fun Snapshot.rewardGuest(engine: Engine, before: GameState, shown: GameState, slot: String): GameState {
+    val awarded = xpAwarded[slot] ?: 0
+    val applied = before.runXpAwards[slot] ?: 0
+    var s = shown
+    if (awarded > applied) {
+        s = engine.awardXp(s, awarded - applied)
+            .copy(runXpAwards = before.runXpAwards + (slot to awarded))
+    }
+
+    val hostOutcome = outcome
+    if (hostOutcome == null || before.dungeonOutcome != null) return s
+
+    // The run just ended for this player. Build the result around the
+    // host's -- same ending, same dungeon, the group's numbers -- with this
+    // player's own XP and whatever their own level-up unlocked.
+    val cls = s.playerClass
+    val rewards = if (cls != null && s.level > before.level) {
+        engine.progression.levelUpRewards(cls, s.talents, before.level, s.level)
+    } else {
+        null
+    }
+    return s.copy(
+        dungeonOutcome = hostOutcome.copy(
+            xpGained = awarded,
+            leveledUp = s.level > before.level,
+            upgradedSpellIds = rewards?.upgradedSpellIds.orEmpty(),
+            upgradedPotion = rewards?.upgradedPotion == true,
+            groupStats = true,
+        ),
+        completedDungeonIds =
+            if (hostOutcome.kind == DungeonOutcomeKind.SUCCESS && hostOutcome.dungeonId !in s.completedDungeonIds) {
+                s.completedDungeonIds + hostOutcome.dungeonId
+            } else {
+                s.completedDungeonIds
+            },
     )
 }

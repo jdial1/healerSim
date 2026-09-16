@@ -19,6 +19,7 @@ import com.jdial.aegis.sim.SaveStore
 import com.jdial.aegis.sim.UiSettings
 import com.jdial.aegis.sim.SUSPEND_SNAPSHOT_TICK_INTERVAL
 import com.jdial.aegis.sim.TICK_RATE_MS
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -281,10 +282,30 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
     private fun startRendering(session: MultiplayerSession) {
         renderJob?.cancel()
         renderJob = viewModelScope.launch(Dispatchers.Default) {
-            session.frames().collect { frame ->
-                mutate { session.render(it, frame) }
+            try {
+                session.frames().collect { frame ->
+                    mutate { session.render(it, frame) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The room went away under us: deleted by its host, or by a
+                // "delete my data". The listener fails with a permission error
+                // rather than ending, and uncaught here it crashed the app.
+                // A run whose result already arrived is left alone; otherwise
+                // the run ends as if the player had left it.
+                if (_state.value.isCombatActive) onRoomLost()
             }
         }
+    }
+
+    /** A guest whose room no longer exists: end the run rather than freeze on it. */
+    private fun onRoomLost() {
+        stopTicking()
+        multiplayer.leave()
+        store.clearSuspendedRun()
+        dispatch(Action.AbandonDungeon)
+        persist()
     }
 
     /**
@@ -419,7 +440,8 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
                     // A finished run is over for everyone in the room; its
                     // host deletes it, profiles and all. Launched before
                     // stopTicking, which cancels this very loop.
-                    viewModelScope.launch { runCatching { multiplayer.endRun(finished = true) } }
+                    val finalState = _state.value
+                    viewModelScope.launch { runCatching { multiplayer.endRun(finished = true, finalState) } }
                     stopTicking()
                     persist()
                     break

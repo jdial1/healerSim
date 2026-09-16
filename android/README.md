@@ -124,6 +124,18 @@ suite, which is how the multiplayer UI is reachable without owning a Firebase
 project. Release builds do not: there, no configuration means multiplayer is
 unavailable and the settings row says so.
 
+**Guests are rewarded by the host.** The host credits every human in the
+room, each on their own level, in a per-slot ledger (`GameState.runXpAwards`)
+that frames carry. A guest applies only the increase since the last frame it
+saw, so a missed or repeated frame changes nothing, and endless waves (which
+award mid-run) work the same way. The result screen a guest sees is the host's
+ending with the guest's own XP and level-up, and its numbers are labelled as
+the group's. This is the host-authority trade in practice: the host decides
+everyone's XP. The host also sends the final frame itself and waits
+`FINAL_FRAME_GRACE_MS` before deleting the room, because the relay job stops
+with the run. A guest whose room disappears mid-run ends the run instead of
+crashing.
+
 ### Surviving the host being a phone
 
 A host is somebody's phone, so it will be backgrounded, throttled and killed.
