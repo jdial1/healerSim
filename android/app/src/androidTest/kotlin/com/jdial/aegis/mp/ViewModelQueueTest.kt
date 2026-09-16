@@ -48,6 +48,37 @@ class ViewModelQueueTest {
         )
     }
 
+    /**
+     * The privacy promise, made checkable: with multiplayer off, a whole
+     * session -- settings, lobby open and closed, a run played and abandoned --
+     * never builds the backend, so no Firebase code runs and nothing connects.
+     *
+     * Firebase's own startup provider is removed from the manifest, and the app
+     * has no other networking code, so the backend is the only way out. Run
+     * this with the device in airplane mode too; see the README.
+     */
+    @Test
+    fun singlePlayerNeverBuildsTheBackend() = runBlocking {
+        val vm = vm()
+        vm.selectClass(PlayerClass.PRIEST)
+        val dungeon = vm.data.dungeons.first()
+
+        // Everything the UI does on the way to a run.
+        vm.multiplayerAvailable
+        vm.enterQueue(dungeon, "normal")
+        vm.cancelQueue()
+        vm.enterQueue(dungeon, "normal")
+        vm.startDungeon(dungeon, "normal")
+
+        withTimeout(20_000) { while (!vm.state.value.isCombatActive) delay(100) }
+        val at = vm.state.value.combatElapsedTicks
+        withTimeout(20_000) { while (vm.state.value.combatElapsedTicks <= at + 20) delay(200) }
+        vm.abandonDungeon()
+        delay(500)
+
+        assertTrue("single player built the multiplayer backend", !vm.touchedNetwork)
+    }
+
     @Test
     fun withMultiplayerOnOpeningTheLobbyStartsLooking() = runBlocking {
         val vm = vm()

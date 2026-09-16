@@ -45,8 +45,21 @@ class FirebaseBackend private constructor(
          * rather than crashing on launch. That is a supported state, not a
          * broken one.
          */
+        /**
+         * Whether multiplayer can work in this build, without starting it.
+         *
+         * Reads the generated resources and nothing else. The settings screen
+         * asks this on every open, and asking must not be what initialises
+         * Firebase -- with multiplayer off, nothing of it runs.
+         */
+        fun isConfigured(context: Context): Boolean =
+            FirebaseOptions.fromResource(context) != null || isDebuggable(context)
+
         fun createOrNull(context: Context): FirebaseBackend? {
-            val app = runCatching { FirebaseApp.initializeApp(context) }.getOrNull()
+            // The startup provider is removed from the manifest, so the default
+            // app exists only if this has run before in this process.
+            val app = runCatching { FirebaseApp.getInstance() }.getOrNull()
+                ?: runCatching { FirebaseApp.initializeApp(context) }.getOrNull()
             if (app != null) {
                 return FirebaseBackend(
                     FirebaseAuth.getInstance(app),

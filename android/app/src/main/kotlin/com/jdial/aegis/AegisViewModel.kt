@@ -65,7 +65,10 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
     private var renderJob: Job? = null
 
     /** Absent when this build has no Firebase configuration; then it is offline. */
-    private val multiplayer = Multiplayer(engine, data, Multiplayer.backendFor(app))
+    private val multiplayer = Multiplayer.forApp(engine, data, app)
+
+    /** For the test that single player never touches the network. */
+    internal val touchedNetwork: Boolean get() = multiplayer.backendCreated
     val queueStatus get() = multiplayer.status
 
     /** False when this build has no Firebase configuration; the row says so. */

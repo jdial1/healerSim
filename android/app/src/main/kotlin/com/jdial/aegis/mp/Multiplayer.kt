@@ -23,16 +23,29 @@ sealed interface QueueStatus {
 /**
  * The multiplayer half of the app, kept out of the view model.
  *
- * Everything here is optional by construction: [connect] returns false when
- * multiplayer is switched off or unconfigured, and the caller carries on with
- * the single-player path it already had. There is no half-connected state to
- * reason about -- either there is a [session] or there is not.
+ * Everything here is optional by construction: [joinQueue] returns null when
+ * multiplayer is unconfigured or anything goes wrong, and the caller carries on
+ * with the single-player path it already had. There is no half-connected state
+ * to reason about -- either there is a [session] or there is not. And until
+ * somebody queues, the backend is not even built.
  */
 class Multiplayer(
     private val engine: Engine,
     private val data: GameData,
-    private val backend: FirebaseBackend?,
+    /** Whether this build can do multiplayer at all. Must not build a backend. */
+    val isAvailable: Boolean,
+    /**
+     * Builds the backend. Called at most once, and only when somebody queues:
+     * with multiplayer off it never runs, and neither does any Firebase code.
+     */
+    backendFactory: () -> FirebaseBackend?,
 ) {
+    private val lazyBackend = lazy(backendFactory)
+    private val backend: FirebaseBackend? get() = lazyBackend.value
+
+    /** True once anything has touched Firebase. Offline, it stays false. */
+    val backendCreated: Boolean get() = lazyBackend.isInitialized()
+
     private val _status = MutableStateFlow<QueueStatus>(QueueStatus.Offline)
     val status: StateFlow<QueueStatus> = _status.asStateFlow()
 
@@ -41,8 +54,6 @@ class Multiplayer(
 
     private var uid: String? = null
     private var castSeq = 0L
-
-    val isAvailable: Boolean get() = backend != null
 
     /** True while this client should be simulating: hosting, or playing alone. */
     val isHost: Boolean get() = session?.isHost ?: true
@@ -56,6 +67,9 @@ class Multiplayer(
      * reason.
      */
     suspend fun cancel() {
+        // Never queued, so nothing to take back -- and asking for the backend
+        // here would build it for a player who never opted in.
+        if (!backendCreated) return leave()
         val be = backend
         val me = uid
         if (be != null && me != null) runCatching { be.leaveQueue(me) }
@@ -183,6 +197,11 @@ class Multiplayer(
          * here and plays offline. That is a supported state: the settings row
          * says multiplayer is unavailable rather than the app misbehaving.
          */
-        fun backendFor(context: Context): FirebaseBackend? = FirebaseBackend.createOrNull(context)
+        fun forApp(engine: Engine, data: GameData, context: Context) = Multiplayer(
+            engine = engine,
+            data = data,
+            isAvailable = FirebaseBackend.isConfigured(context),
+            backendFactory = { FirebaseBackend.createOrNull(context) },
+        )
     }
 }
