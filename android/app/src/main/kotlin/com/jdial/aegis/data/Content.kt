@@ -271,6 +271,29 @@ data class Encounters(
     /** A frenzied enemy's damage multiplier (AttackTemplate.grantsState). */
     val frenzyDamageMultiplier: Double = 1.0,
     val rules: Map<String, DungeonRules> = emptyMap(),
+    /**
+     * What the tank takes from the boss while a person is healing.
+     *
+     * A tank run mitigates the tank (roles.tankBossDamageTaken) because an AI
+     * healer is covering it. A healer run never did, so the seat with the
+     * largest intake was unmitigated in exactly the runs where one person has
+     * to cover all five. 1.0 is the old behaviour, which is what the parity
+     * corpus replays.
+     */
+    val healerRunTankDamage: Double = 1.0,
+    /**
+     * The ambient chip damage while a person is healing. One healer covers
+     * five people against it, and at the later tiers it outran anything they
+     * could cast. 1.0 is the old behaviour.
+     */
+    val healerRunChipDamage: Double = 1.0,
+    /**
+     * A player healer's power against the later dungeons. The AI healer heals
+     * by a formula that grows with level; a person heals with spell ranks,
+     * which do not keep up. Off by default, which is what the parity corpus
+     * replays.
+     */
+    val healPower: HealPower = HealPower(),
     /** Run XP for everyone when two or more people are in the party. */
     val groupXpMultiplier: Double = 1.0,
     val hard: HardMode = HardMode(),
@@ -304,6 +327,15 @@ data class PullTuning(
     val adds: List<AddTemplate> = emptyList(),
     /** The pull's own mechanic rotation, as a boss has: bleeds, casts, states. */
     val combat: BossCombat? = null,
+)
+
+/** See [Encounters.healPower]. */
+@Serializable
+data class HealPower(
+    val base: Double = 1.0,
+    /** Added per level above [fromLevel]. */
+    val perLevel: Double = 0.0,
+    val fromLevel: Int = 20,
 )
 
 /** Rules one dungeon plays by. */

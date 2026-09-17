@@ -1,5 +1,5 @@
 {
-  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it; tell is what the boss says as it starts. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure). trash: per dungeon, per pull, the adds a pull brings (mender, runner, add; see AddTemplate). bosses.<id>.adds: adds a boss calls at a share of its health. addRules: their timings, and how much of the AI's damage goes to adds when a human deals damage. unkickedDamageMultiplier: how much harder a kickable cast lands when a human damage dealer let it through. trash.<id>[n].combat: a pull's own rotation (debuffs, casts); a cast may grant a state (grantsState: reflect, shield, frenzy). rules.<id>.noRests: pull after pull. bosses.<id>.adds is a list of waves. groupXpMultiplier: run XP for everyone with two or more people in the party. hard: what hard mode scales, including per level above the dungeon's range. bosses.<id>.phases: what a boss starts doing past a share of its health (BossPhase); replace swaps its rotation outright.",
+  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it; tell is what the boss says as it starts. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure). trash: per dungeon, per pull, the adds a pull brings (mender, runner, add; see AddTemplate). bosses.<id>.adds: adds a boss calls at a share of its health. addRules: their timings, and how much of the AI's damage goes to adds when a human deals damage. unkickedDamageMultiplier: how much harder a kickable cast lands when a human damage dealer let it through. trash.<id>[n].combat: a pull's own rotation (debuffs, casts); a cast may grant a state (grantsState: reflect, shield, frenzy). rules.<id>.noRests: pull after pull. bosses.<id>.adds is a list of waves. groupXpMultiplier: run XP for everyone with two or more people in the party. hard: what hard mode scales, including per level above the dungeon's range. bosses.<id>.phases: what a boss starts doing past a share of its health (BossPhase); replace swaps its rotation outright. healerRunTankDamage / healerRunChipDamage: what a healer run takes, against what one person can cover.",
   "attacks": {
     "vc_ambush": {
       "castTicks": 20,
@@ -1656,5 +1656,12 @@
     "xpMultiplier": 1.5,
     "overLevelStep": 0.12,
     "enrageScale": 0.6
+  },
+  "healerRunTankDamage": 0.7,
+  "healerRunChipDamage": 0.7,
+  "healPower": {
+    "base": 1.0,
+    "perLevel": 0.02,
+    "fromLevel": 20
   }
 }

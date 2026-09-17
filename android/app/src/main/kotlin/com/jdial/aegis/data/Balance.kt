@@ -60,6 +60,7 @@ data class ClassesBalance(
      * pool, which no rotation could ever spend.
      */
     val manaPoolScale: Map<String, Double> = emptyMap(),
+
     val damageRampLevels: Int = 19,
     val warrior: WarriorBalance = WarriorBalance(),
     val deathKnight: DeathKnightBalance = DeathKnightBalance(),

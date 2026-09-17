@@ -3,6 +3,7 @@ package com.jdial.aegis.sim
 import com.jdial.aegis.data.AddTemplate
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.SpellSchool
+import com.jdial.aegis.data.SpellType
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -91,10 +92,13 @@ class PlaytestHarness {
             .sortedByDescending { it.healing }
             .map { it.id }
         // Smallest first: the bot picks the cheapest heal that will do.
-        val heals = data.bundle(cls).spells.values
-            .filter { it.school == SpellSchool.HEAL && it.healing > 0 }
-            .sortedBy { it.healing }
-            .map { it.id }
+        val healSpells = data.bundle(cls).spells.values.filter { it.school == SpellSchool.HEAL }
+        val heals = healSpells.filter { it.healing > 0 }.sortedBy { it.healing }.map { it.id }
+        // A healer with heal-over-time spells keeps them running, and reaches
+        // for the group heal when the group needs one. Playing a healer as a
+        // list of single-target heals is what made them look weak.
+        val hots = healSpells.filter { it.hotDuration != null }.map { it.id }
+        val groupHeals = healSpells.filter { it.type == SpellType.AOE }.map { it.id }
         val kick = s.unlockedSpells.firstOrNull { data.spell(it)?.interrupts == true }
         val wall = s.unlockedSpells.firstOrNull { data.spell(it)?.damageReduction != null }
         val cleanse = s.unlockedSpells.firstOrNull { data.spell(it)?.dispels == true }
@@ -176,10 +180,45 @@ class PlaytestHarness {
                 // in the book: a healer who casts Greater Heal on a scratch is
                 // out of mana by the boss, and that is the bot's fault, not the
                 // encounter's.
-                if (hurt != null && hurt.health < hurt.maxHealth * 0.85) {
+                // A telegraph is a promise: top up whoever it names before it
+                // lands. A healer who waits for the damage is always behind.
+                val incoming = s.enemyCast?.targets.orEmpty()
+                    .mapNotNull { s.unit(it) }
+                    .filter { it.isAlive && it.health < it.maxHealth * 0.9 }
+                    .minByOrNull { it.health / it.maxHealth }
+                if (incoming != null) {
+                    for (id in heals.reversed()) {
+                        val out = cast(s, id, incoming.id, rng)
+                        if (out !== s) { s = out; break }
+                    }
+                }
+                val wounded = s.party.count { it.isAlive && it.health < it.maxHealth * 0.8 }
+                val tank = s.party.firstOrNull { it.isAlive && it.role == UnitRole.TANK }
+                var acted = false
+                // Three or more hurt is what a group heal is for.
+                if (wounded >= 3) {
+                    for (id in groupHeals) {
+                        val out = cast(s, id, hurt?.id, rng)
+                        if (out !== s) { s = out; acted = true; break }
+                    }
+                }
+                // A heal-over-time on the tank pays for itself before the next hit.
+                if (!acted && tank != null && hots.isNotEmpty()) {
+                    val missing = hots.firstOrNull { id -> tank.buffs.none { it.sourceSpellId == id } }
+                    if (missing != null && tank.health < tank.maxHealth * 0.95) {
+                        val out = cast(s, missing, tank.id, rng)
+                        if (out !== s) { s = out; acted = true }
+                    }
+                }
+                if (!acted && hurt != null && hurt.health < hurt.maxHealth * 0.85) {
                     val deficit = hurt.maxHealth - hurt.health
-                    val pick = heals.lastOrNull { (data.spell(it)?.healing ?: 0.0) <= deficit } ?: heals.lastOrNull()
-                    for (id in listOfNotNull(pick) + heals) {
+                    // In trouble, the biggest thing in the book; otherwise the
+                    // cheapest that covers the wound.
+                    val urgent = hurt.health < hurt.maxHealth * 0.4
+                    val pick = if (urgent) heals.lastOrNull() else {
+                        heals.lastOrNull { (data.spell(it)?.healing ?: 0.0) <= deficit } ?: heals.lastOrNull()
+                    }
+                    for (id in listOfNotNull(pick) + heals.reversed()) {
                         val out = cast(s, id, hurt.id, rng)
                         if (out !== s) { s = out; break }
                     }

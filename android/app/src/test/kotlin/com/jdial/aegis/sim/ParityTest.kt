@@ -29,12 +29,15 @@ private fun JsonArray.strings(): List<String> = map { it.jsonPrimitive.content }
  */
 class ParityTest {
 
-    private val stats = Fixtures.stats
-    private val prog = Fixtures.progression
+    // The shared content, not the app's: Android lays its own trees, tuning and
+    // curves over this, and is allowed to. What the golden file pins is that
+    // the Kotlin engine reproduces the JS one on the same input.
+    private val stats = PlayerStats(Fixtures.sharedData)
+    private val prog = Progression(Fixtures.sharedData, stats)
     private val golden = Fixtures.golden
 
     private fun zeroTalents(cls: PlayerClass): List<TalentRank> =
-        Fixtures.data.bundle(cls).talents.map { TalentRank(it, 0) }
+        Fixtures.sharedData.bundle(cls).talents.map { TalentRank(it, 0) }
 
     @Test
     fun primaryAndDerivedStatsMatch() {
@@ -133,7 +136,7 @@ class ParityTest {
         golden.arr("dungeonScaling").forEach { row ->
             val e = row.jsonObject
             val id = e.str("id")
-            val d = Fixtures.data.dungeon(id)!!
+            val d = Fixtures.sharedData.dungeon(id)!!
             assertEquals("$id baseXp", e.i("baseXp"), prog.dungeonBaseXp(d.difficulty))
             assertEquals("$id tierMultiplier", e.num("tierMultiplier"), prog.dungeonXpTierMultiplier(d.difficulty), EPS)
             assertEquals("$id bossDamageMultiplier", e.num("bossDamageMultiplier"), prog.bossDamageMultiplier(d.difficulty), EPS)

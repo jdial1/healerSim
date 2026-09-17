@@ -97,7 +97,13 @@ class PlayerStats(private val data: GameData) {
         if (cls == null) return 1.0
         val spirit = primaryStats(cls, level).spirit
         val talentPct = talentStats(talents).healingBoostPct
-        return 1.0 + (spirit * ps.healingPctPerSpirit + talentPct) / 100.0
+        // A healer's power against the later dungeons; exactly 1.0 by default,
+        // so the recorded runs cannot move. Healers only: a damage class reads
+        // this same multiplier for its own spells.
+        val hp = data.encounters.healPower
+        val heals = data.classes[cls]?.meta?.role == "HEALER"
+        val curve = if (!heals) 1.0 else hp.base + maxOf(0, level - hp.fromLevel) * hp.perLevel
+        return (1.0 + (spirit * ps.healingPctPerSpirit + talentPct) / 100.0) * curve
     }
 
     fun uniqueStatRating(cls: PlayerClass?, level: Int, talents: List<TalentRank>): Double {

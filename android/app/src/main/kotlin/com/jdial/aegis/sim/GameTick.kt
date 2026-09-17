@@ -610,8 +610,12 @@ class GameTick(
             dmg *= hooks.damageTakenMultiplier(ctx, "boss_attack", u)
             dmg *= activeMitigation(s, u)
             if (tpl.interruptible && tpl.castTicks > 0 && kickWasReady) dmg *= data.encounters.unkickedDamageMultiplier
-            if (s.playerRole != UnitRole.HEALER && u.role == UnitRole.TANK) {
-                dmg *= data.balance.roles.tankBossDamageTaken
+            if (u.role == UnitRole.TANK) {
+                dmg *= if (s.playerRole == UnitRole.HEALER) {
+                    data.encounters.healerRunTankDamage
+                } else {
+                    data.balance.roles.tankBossDamageTaken
+                }
             }
             // With the tank down, everyone else takes double.
             if (tankDead && (u.role == UnitRole.DPS || u.role == UnitRole.HEALER)) dmg *= 2
@@ -699,6 +703,7 @@ class GameTick(
                     val packs = s.adds.count { it.kind == AddTemplate.PACK && it.isAlive }
                     if (packs > 0) damage *= (1 + packs).toDouble()
                 }
+                if (s.playerRole == UnitRole.HEALER) damage *= data.encounters.healerRunChipDamage
                 damage *= hardDamage(s)
                 damage *= hooks.damageTakenMultiplier(ctx, "trash_tick", unit)
                 damage *= activeMitigation(ctx.state, unit)
