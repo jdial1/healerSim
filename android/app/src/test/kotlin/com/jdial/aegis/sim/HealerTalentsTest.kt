@@ -3,16 +3,10 @@ package com.jdial.aegis.sim
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.Talent
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * The healers' trees, which Android now owns (content/classes-overrides).
- *
- * The web app and the parity corpus keep the shared trees: that is the point
- * of the override, and the first test here is what proves the seam holds.
- */
+/** The healers' trees: no repeats, no filler, and every node doing a job. */
 class HealerTalentsTest {
     private val data = Fixtures.data
     private val engine = Engine(data)
@@ -35,22 +29,6 @@ class HealerTalentsTest {
     private fun healed(s: GameState, id: String, target: String = "1"): Double {
         val before = s.unit(target)!!.health
         return engine.reduce(s, Action.CastSpell(id, target, 99.9), Rng(1)).unit(target)!!.health - before
-    }
-
-    @Test
-    fun `the app plays its own trees, the parity corpus keeps the shared ones`() {
-        for (cls in healers) {
-            val mine = data.bundle(cls).talents
-            val shared = Fixtures.sharedData.bundle(cls).talents
-            assertNotEquals("$cls should differ from the frozen tree", shared, mine)
-            // Same tree, not a new one: the ids a save holds still mean something.
-            assertTrue("$cls keeps its ids", mine.map { it.id }.all { it in shared.map { s -> s.id } })
-        }
-        // The classes Android already owned are untouched by the seam.
-        assertEquals(
-            Fixtures.sharedData.bundle(PlayerClass.MAGE).talents,
-            data.bundle(PlayerClass.MAGE).talents,
-        )
     }
 
     @Test

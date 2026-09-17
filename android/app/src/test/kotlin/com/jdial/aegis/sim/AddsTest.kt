@@ -45,8 +45,7 @@ class AddsTest {
     private fun one(s: GameState, t: AddTemplate) = tick.spawnAdds(listOf(t), s.enemyMaxHealth, "t").single()
 
     @Test
-    fun `the shared data has no adds, and every add is drawn`() {
-        assertTrue(Fixtures.sharedData.encounters.trash.isEmpty())
+    fun `every add has a sprite`() {
         val all = data.encounters.trash.values.flatten().flatMap { it.adds } +
             data.encounters.bosses.values.flatMap { it.adds }.flatMap { it.spawn }
         assertTrue(all.isNotEmpty())

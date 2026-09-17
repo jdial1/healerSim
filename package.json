@@ -1,43 +1,11 @@
 {
   "name": "aegis",
-  "private": true,
   "version": "0.1.141",
+  "private": true,
   "type": "module",
+  "description": "Tooling for Overheal. The game itself is the Android app in android/; this holds only the icon scripts, which need no dependencies.",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview",
-    "clean": "rm -rf dist",
     "icons:refresh": "node scripts/download-icons.mjs",
-    "icons:verify": "node scripts/verify-wow-icons.mjs",
-    "test": "node scripts/test-meta.js",
-    "test:golden": "node scripts/check-golden-frozen.mjs",
-    "test:balance": "node scripts/check-balance-frozen.mjs",
-    "test:dungeons": "node scripts/test-dungeons.js",
-    "test:class": "node scripts/test-classes.js",
-    "test:spells": "node scripts/test-spells.js",
-    "test:progression": "node scripts/test-progression.js",
-    "test:boss-spikes": "node scripts/test-boss-spikes.js",
-    "test:healing-stress": "node scripts/test-healing-stress.js",
-    "test:talent-roi": "node scripts/test-talent-roi.js",
-    "test:fail-states": "node scripts/test-fail-states.js",
-    "tests": "node scripts/test-runner-full.js"
-  },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
-    "lucide-react": "^0.546.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "vite": "^6.2.0",
-    "express": "^4.21.2",
-    "dotenv": "^17.2.3",
-    "motion": "^12.23.24"
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.21",
-    "tailwindcss": "^4.1.14",
-    "vite": "^6.2.0",
-    "vite-plugin-pwa": "^1.1.0"
+    "icons:verify": "node scripts/verify-wow-icons.mjs"
   }
 }

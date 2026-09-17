@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - "android/**"
-      - "src/**"
       - "public/**"
       - ".github/workflows/android.yml"
   pull_request:
@@ -16,29 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Node is here only for the golden check below. The icons and content
-      # JSON that syncGameData copies are all tracked, so the Android *build*
-      # still does not depend on a web install or on any CDN being reachable.
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      # parity/golden.json is the reference the Kotlin engine is tested against,
-      # and it is only worth anything if it still describes the JS engine. This
-      # regenerates it twice and requires both runs to equal the committed
-      # bytes, which catches two different failures: a JS engine change nobody
-      # regenerated for, and unseeded randomness making the file a record of one
-      # past dice roll. The latter was true until the tick's seeded rng was
-      # threaded through generateRandomParty.
-      - name: Golden corpus is frozen and reproducible
-        run: node scripts/check-golden-frozen.mjs
-
-      # Role work adds new top-level keys to balance.json. Everything else
-      # describes the finished healer game and is what the goldens were
-      # generated against, so a drive-by tweak there has to be deliberate.
-      - name: Healer-era balance is frozen
-        run: node scripts/check-balance-frozen.mjs
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -46,9 +22,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # The parity suite is the gate: it proves the Kotlin engine still matches
-      # the JavaScript one that generated parity/golden.json.
-      - name: Unit tests (includes engine parity)
+      # The suite is the gate. It used to be backed by a corpus recorded from
+      # the JavaScript engine; that engine is gone, so these tests are the whole
+      # guard and are written to be.
+      - name: Unit tests
         working-directory: android
         run: ./gradlew --no-daemon :app:testDebugUnitTest
 

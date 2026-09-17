@@ -1,8 +1,7 @@
 # Attribution
 
 Third-party assets bundled with Aegis, and the terms they are used under.
-The same list is shown to players at `/credits.html` in the web app and in the
-in-game Credits dialog on Android.
+The same list is shown to players in the in-game Credits dialog.
 
 ## Interface icons — CC BY 3.0
 

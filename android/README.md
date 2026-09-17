@@ -1,24 +1,27 @@
-# Aegis — Android
+# Overheal — Android
 
-Native Kotlin/Compose port of the web app in the repository root.
+The game. Kotlin and Compose, one Gradle module.
 
-## Content is not duplicated
+## Content is one tree
 
-All game content (dungeons, spells, talents, balance constants) is read from the
-web app's JSON at build time by the `syncGameData` task in `app/build.gradle.kts`,
-which copies into `app/build/generated/gameAssets`:
+All game content (dungeons, spells, talents, balance constants, encounters) is
+JSON under `../content`, copied into `app/build/generated/gameAssets` at build
+time by the `syncGameData` task in `app/build.gradle.kts`:
 
-| From (repo root) | To (assets) |
+| From | To (assets) |
 |---|---|
-| `src/data/*.json` | `data/` |
-| `src/classes/*/{class,spells,talents}.json` | `classes/` |
+| `android/content/data/*.json` | `data/` |
+| `android/content/classes/*/{class,spells,talents}.json` | `classes/` |
 | `public/icons/**` | `icons/` |
 
-Editing `src/data/balance.json` therefore retunes **both** apps. Everything the
-sync copies is tracked, so no setup step is needed — the Android build does not
-require Node. To pull fresh artwork from upstream, run `npm run icons:refresh`
-deliberately and review the diff; it is not wired into any build, so a release
-binary never depends on a CDN.
+Only the icons the content and the Kotlin sources actually name are packaged;
+`public/icons/wow` holds 23,474 files and the app asks for a few hundred.
+`IconPruneTest` checks that independently.
+
+Everything the sync copies is tracked, so there is no setup step and the
+Android build does not require Node. To pull fresh artwork from upstream, run
+`npm run icons:refresh` deliberately and review the diff; it is wired into no
+build, so a release binary never depends on a CDN.
 
 ## The player is a map, not a field
 
@@ -40,8 +43,9 @@ Two things make the refactor survivable:
   them at once instead of threading an actor parameter through each and hoping
   nobody forgets one. `Engine.castAs` always hands the seat back.
 
-`parity/golden.json` is still byte-identical, which is the evidence that the
-map-of-one produces the numbers the JS engine did.
+The map-of-one was proved against the JS engine's recorded numbers, byte for
+byte, at the time it was made. That corpus is gone with the web app; the suite
+is the guard now.
 
 Still single-player-shaped, deliberately: `generateParty` builds one human in
 slot 5; passive and HoT healing (`resolvePlayerSystems`) resolves for this
@@ -94,7 +98,7 @@ projects to **0.081 GB per room-hour** at 4 Hz with four readers, against the
 plan's 0.17 GB budget. `SnapshotTest` asserts both numbers.
 
 **A relayed crit roll is thrown away.** `critRoll` reaches the engine as action
-data because the web app rolled it client-side, and `validate` only compares it
+data, rolled at the call site, and `validate` only compares it
 against crit chance — so a guest sending `0.0` would crit every cast forever.
 `Engine.castAs` redraws it for any actor that is not the local one, and
 `WireAction` does not carry the field at all, so there is nothing to be tempted
@@ -158,8 +162,8 @@ declare the host dead immediately.
 the AI simply resumes doing their damage. A separate "somebody left" path would
 be one that only runs when something has already gone wrong, which is the worst
 kind to have. The arithmetic is `1.0 - Σ(1 - share)` specifically so that a lone
-healer still yields exactly `1.0` and the enemy-damage expression stays the
-bit-identical identity `golden.json` was recorded against.
+healer still yields exactly `1.0`, so the enemy-damage expression reduces to
+`scripted * 1.0 + 0.0` rather than to something within an epsilon of it.
 
 **Backgrounding stands the host down.** Heartbeats are written by the tick loop,
 so `onEnterBackground` stopping the loop stops the heartbeat and the room

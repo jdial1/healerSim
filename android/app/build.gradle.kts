@@ -20,7 +20,11 @@ if (hasFirebaseConfig) {
 
 // The web app under ../../ is the single source of truth for all game content.
 // Rather than duplicating 3,252 lines of JSON, sync it into assets at build time.
-val webRoot = rootProject.layout.projectDirectory.dir("..")
+/** The repo root. It holds public/icons, and the privacy policy Play links to. */
+val repoRoot = rootProject.layout.projectDirectory.dir("..")
+
+/** Every piece of game content, in one tree. */
+val contentRoot = layout.projectDirectory.dir("../content")
 
 val generatedAssetsDir = layout.buildDirectory.dir("generated/gameAssets").get().asFile
 
@@ -36,12 +40,7 @@ val generatedAssetsDir = layout.buildDirectory.dir("generated/gameAssets").get()
  * nothing unreferenced ships, and nothing referenced is missing.
  */
 val iconFieldNames = setOf("icon", "bossIcon", "cardIcon", "passiveTraitIcon")
-val contentJsonDirs = listOf(
-    webRoot.dir("src/data").asFile,
-    webRoot.dir("src/classes").asFile,
-    // The Android-owned content: classes, encounters, utility spells.
-    layout.projectDirectory.dir("../content").asFile,
-)
+val contentJsonDirs = listOf(contentRoot.asFile)
 val kotlinSourceDir = layout.projectDirectory.dir("src/main/kotlin").asFile
 
 fun iconAssetPaths(name: String): List<String> {
@@ -69,7 +68,7 @@ fun referencedIconAssets(): Set<String> {
     }
     contentJsonDirs.flatMap { dir -> dir.walkTopDown().filter { it.extension == "json" }.toList() }
         .forEach { walk(groovy.json.JsonSlurper().parse(it)) }
-    val authors = webRoot.dir("public/icons/game-icons").asFile.list()?.toList().orEmpty()
+    val authors = repoRoot.dir("public/icons/game-icons").asFile.list()?.toList().orEmpty()
     val literal = Regex("\"((?:wow|class-icons|${authors.joinToString("|")})/[A-Za-z0-9_ .-]+)\"")
     kotlinSourceDir.walkTopDown().filter { it.extension == "kt" }.forEach { f ->
         literal.findAll(f.readText()).forEach { names += it.groupValues[1] }
@@ -78,42 +77,22 @@ fun referencedIconAssets(): Set<String> {
 }
 
 val syncGameData = tasks.register<Sync>("syncGameData") {
-    description = "Copies game content JSON, and the icons it uses, from the web app into Android assets."
+    description = "Copies game content JSON, and the icons it uses, into Android assets."
     into(generatedAssetsDir)
     // The icon filter reads these, so a new reference re-runs the sync.
     contentJsonDirs.forEach { inputs.dir(it) }
     inputs.dir(kotlinSourceDir)
     val wanted by lazy { referencedIconAssets() }
 
-    from(webRoot.dir("src/data")) {
-        include("*.json")
-        into("data")
+    // One tree, copied as it is laid out. Content used to come from four
+    // places at once -- the web app's src/data and src/classes, Android's own
+    // content/, and a content/classes-overrides/ that existed only so Android
+    // could change a talent without disturbing a recorded corpus. The web app
+    // is gone, so all four collapse into one.
+    from(contentRoot) {
+        include("data/*.json", "classes/*/class.json", "classes/*/spells.json", "classes/*/talents.json")
     }
-    from(webRoot.dir("src/classes")) {
-        include("*/class.json", "*/spells.json", "*/talents.json")
-        into("classes")
-    }
-    // Android-owned classes. These deliberately do NOT live in src/classes:
-    // the frozen web app builds a static class registry from that directory and
-    // validates class names on load, so a fourth class there would break it.
-    // Same destination, so GameData.load sees one merged tree.
-    // Android-only encounter tuning (boss cast times), beside the shared data.
-    from(layout.projectDirectory.dir("../content")) {
-        include("encounters.json", "utility_spells.json")
-        into("data")
-    }
-    from(layout.projectDirectory.dir("../content/classes")) {
-        include("*/class.json", "*/spells.json", "*/talents.json")
-        into("classes")
-    }
-    // Android's own trees for the classes it shares with the web app. A separate
-    // destination, not an overwrite: the shared file stays exactly as recorded,
-    // which is what the parity corpus replays.
-    from(layout.projectDirectory.dir("../content/classes-overrides")) {
-        include("*/talents.json")
-        into("classes-overrides")
-    }
-    from(webRoot.dir("public/icons")) {
+    from(repoRoot.dir("public/icons")) {
         into("icons")
         include { it.isDirectory || it.relativePath.pathString in wanted }
         // Directories the filter emptied are not packaged either.
@@ -253,10 +232,9 @@ tasks.matching { it.name.contains("lint", ignoreCase = true) }.configureEach {
     dependsOn(syncGameData)
 }
 
-// Tests need the synced content, and the parity goldens live outside the module.
+// Tests read the same synced content the app does.
 tasks.withType<Test>().configureEach {
     dependsOn(syncGameData)
-    systemProperty("aegis.parityDir", rootProject.file("../parity").absolutePath)
     systemProperty("aegis.assetsDir", generatedAssetsDir.absolutePath)
     // The recorded tick snapshots, and the deliberate switch that rewrites them.
     // Forwarded explicitly: a bare -D on the Gradle command line does not reach
@@ -298,8 +276,9 @@ val verifyGameAssets = tasks.register("verifyGameAssets") {
         val data = File(dir, "data").listFiles()?.count { it.extension == "json" } ?: 0
         check(icons >= 150 && data >= 5) {
             "Game assets are incomplete (icons=$icons, data=$data). " +
-                "public/icons and src/data are tracked, so this usually means a partial " +
-                "checkout. Restore them with `git checkout -- public/icons src/data`."
+                "public/icons and android/content are tracked, so this usually means a " +
+                "partial checkout. Restore them with " +
+                "`git checkout -- public/icons android/content`."
         }
     }
 }

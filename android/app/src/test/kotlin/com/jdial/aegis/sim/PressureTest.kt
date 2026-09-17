@@ -40,15 +40,6 @@ class PressureTest {
     }
 
     @Test
-    fun `the shared data the parity corpus replays has no pressure`() {
-        val shared = Fixtures.sharedData.encounters.pressure
-        assertEquals(0, shared.enrageAfterTicks)
-        assertEquals(0, shared.restTicks)
-        assertEquals(0, shared.exposedTicks)
-        assertEquals(0.0, shared.earlyPullXpPerTick, 0.0)
-    }
-
-    @Test
     fun `the boss clock only runs at the boss, and enrage ramps after it`() {
         assertEquals(0, step(run(), 5).bossTicks)
         val b = boss()

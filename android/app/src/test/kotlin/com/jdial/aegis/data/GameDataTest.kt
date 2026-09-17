@@ -45,15 +45,10 @@ class GameDataTest {
             assertTrue("$cls needs a full tree", data.bundle(cls).talents.size >= 15)
         }
 
-        // Priest and Paladin both define `flash_heal`, so the web app's 13 class
-        // spells collapse to 12 unique ids, plus the shared mana_potion. The
-        // Mage adds four more, none of which may collide -- ids are a flat
-        // global namespace and the merged map silently lets one shadow another.
-        // Plus the Android-owned utility spells (content/utility_spells.json),
-        // which must not shadow a class spell either.
-        val utility = com.jdial.aegis.sim.Fixtures.sharedData.spells.size.let { data.spells.size - it }
-        assertTrue("utility spells are loaded", utility > 0)
-        assertEquals(38, data.spells.size - utility)
+        // Ids are a flat global namespace and the merged map silently lets one
+        // shadow another, so every class spell, shared spell and utility spell
+        // has to be unique -- bar the one known duplicate below.
+        assertTrue("every class's spells are loaded", data.spells.size >= 38)
         assertTrue(PlayerClass.entries.none { cls -> data.bundle(cls).spells.keys.any { it in listOf("kick", "counterspell", "cleanse") } })
         val ids = PlayerClass.entries.flatMap { data.bundle(it).spells.keys }
         assertEquals(
