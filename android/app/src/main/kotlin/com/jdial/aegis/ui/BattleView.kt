@@ -53,6 +53,9 @@ import com.jdial.aegis.R
 import com.jdial.aegis.data.AddTemplate
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.sim.CombatPhase
+import com.jdial.aegis.sim.STATE_FRENZY
+import com.jdial.aegis.sim.STATE_REFLECT
+import com.jdial.aegis.sim.STATE_SHIELD
 import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.TRASH_PACK_COUNT
 import com.jdial.aegis.sim.Unit
@@ -530,6 +533,8 @@ fun BattleView(state: GameState, targetId: String? = null, modifier: Modifier = 
             flash.value > 0f -> ColorFilter.tint(Color.White.copy(alpha = flash.value), BlendMode.SrcAtop)
             state.enemyCast != null ->
                 ColorFilter.tint(WindUp.copy(alpha = 0.15f + 0.45f * windUp), BlendMode.SrcAtop)
+            state.enemyState != null && state.enemyStateTicks > 0 ->
+                ColorFilter.tint(StateColour.getValue(state.enemyState).copy(alpha = 0.45f), BlendMode.SrcAtop)
             else -> look.tint?.let { ColorFilter.tint(it, BlendMode.Modulate) }
         }
         // The tiles face right; the enemy faces the party.
@@ -627,6 +632,20 @@ fun BattleView(state: GameState, targetId: String? = null, modifier: Modifier = 
         cast?.let {
             CastBar(it, Modifier.offset(x = w - 146.dp, y = 5.dp).width(132.dp))
         }
+        // What state the enemy is in, and what to do about it.
+        val stateLabel = when (state.enemyState.takeIf { state.enemyStateTicks > 0 }) {
+            STATE_REFLECT -> "REFLECTING  ·  STOP  ${ceil(state.enemyStateTicks / 10.0).toInt()}s"
+            STATE_SHIELD -> "SHIELDED  ·  KICK TO OPEN"
+            STATE_FRENZY -> "FRENZY  ${ceil(state.enemyStateTicks / 10.0).toInt()}s"
+            else -> null
+        }
+        if (stateLabel != null) {
+            BasicText(
+                stateLabel,
+                style = AegisType.label.copy(fontSize = 10.sp, color = StateColour.getValue(state.enemyState!!)),
+                modifier = Modifier.offset(x = w - 200.dp, y = h - 40.dp),
+            )
+        }
         if (state.exposedTicks > 0) {
             BasicText(
                 "EXPOSED  ${ceil(state.exposedTicks / 10.0).toInt()}s",
@@ -684,6 +703,11 @@ fun BattleView(state: GameState, targetId: String? = null, modifier: Modifier = 
 
 private val WindUp = Color(0xFFF97316)
 private val Danger = Color(0xFFDC2626)
+private val StateColour = mapOf(
+    STATE_REFLECT to Color(0xFFC084FC),
+    STATE_SHIELD to Color(0xFF93C5FD),
+    STATE_FRENZY to Color(0xFFEF4444),
+)
 
 /** A cast that can be kicked, and the kick that lands. */
 private val Kick = Color(0xFFFACC15)

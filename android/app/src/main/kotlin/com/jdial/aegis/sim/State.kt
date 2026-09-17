@@ -130,6 +130,8 @@ data class UnitDebuff(
     val charm: Boolean = false,
     /** A wound: the carrier's defensive takes it off. */
     val clearedByDefensive: Boolean = false,
+    /** Heal absorb: healing still to be eaten before any lands. */
+    val absorbLeft: Double = 0.0,
 ) {
     val isArmed: Boolean get() = armedTicks > 0 && remainingTicks > armedTicks
 }
@@ -198,6 +200,11 @@ data class EnemyCast(
     /** 0 at the start of the wind-up, 1 as it lands. */
     val progress: Float get() = if (totalTicks <= 0) 1f else 1f - remainingTicks.toFloat() / totalTicks
 }
+
+/** Enemy states; see [com.jdial.aegis.data.AttackTemplate.grantsState]. */
+const val STATE_REFLECT = "reflect"
+const val STATE_SHIELD = "shield"
+const val STATE_FRENZY = "frenzy"
 
 /** An enemy beside the main one; see [com.jdial.aegis.data.AddTemplate]. */
 @Serializable
@@ -450,7 +457,11 @@ data class GameState(
     val adds: List<EnemyAdd> = emptyList(),
     /** Pulls a runner brought, fought before the next planned one. */
     val extraPulls: Int = 0,
-    val bossAddsSpawned: Boolean = false,
+    /** How many of the boss's add waves have come. */
+    val bossAddWaves: Int = 0,
+    /** A state the enemy is in (AttackTemplate.grantsState), and for how long. */
+    val enemyState: String? = null,
+    val enemyStateTicks: Int = 0,
     val combatElapsedTicks: Int = 0,
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
@@ -575,7 +586,9 @@ data class GameState(
         earlyPullBonus = 0.0,
         adds = emptyList(),
         extraPulls = 0,
-        bossAddsSpawned = false,
+        bossAddWaves = 0,
+        enemyState = null,
+        enemyStateTicks = 0,
         enemyDebuffs = emptyList(),
         aiHealerMana = 0.0,
         combatElapsedTicks = 0,
@@ -609,6 +622,8 @@ fun GameState.endedRun(): GameState = withEachParticipant {
     mechanicOrdinal = 0,
     enemyCast = null,
     adds = emptyList(),
+    enemyState = null,
+    enemyStateTicks = 0,
     floatingCombatTexts = emptyList(),
     endlessStacks = 0,
 )

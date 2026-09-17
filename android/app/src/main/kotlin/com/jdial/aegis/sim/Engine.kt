@@ -154,7 +154,7 @@ class Engine(val data: GameData) {
     fun reduce(state: GameState, action: Action, rng: Rng): GameState = when (action) {
         is Action.Tick -> applyTicks(state, action.ticks, rng)
         is Action.StartDungeon -> startDungeon(state, action.dungeon, action.pace, rng)
-        is Action.CastSpell -> castAs(state, action, rng)
+        is Action.CastSpell -> absorbHealing(state, castAs(state, action, rng))
         is Action.Taunt -> taunt(state, action.actorId, action.ticks)
         is Action.UnlockTalent -> unlockTalent(state, action.talentId)
         is Action.DecrementTalent -> decrementTalent(state, action.talentId)
@@ -177,10 +177,32 @@ class Engine(val data: GameData) {
     private fun applyTicks(state: GameState, ticks: Int, rng: Rng): GameState {
         var s = state
         repeat(ticks) {
-            s = if (s.isTutorialPaused) tickCooldowns(s) else tickCooldowns(tick.advance(s, rng))
+            s = if (s.isTutorialPaused) tickCooldowns(s) else tickCooldowns(absorbHealing(s, tick.advance(s, rng)))
             if (!s.isCombatActive) return s
         }
         return s
+    }
+
+    /**
+     * Heal absorb: whatever health a carrier gained since [before] is eaten
+     * first. One place, after every step, rather than in each heal path.
+     */
+    private fun absorbHealing(before: GameState, after: GameState): GameState {
+        if (after.party.none { u -> u.debuffs.any { it.absorbLeft > 0 } }) return after
+        val was = before.party.associateBy { it.id }
+        return after.copy(
+            party = after.party.map { u ->
+                val d = u.debuffs.firstOrNull { it.absorbLeft > 0 } ?: return@map u
+                val gain = u.health - (was[u.id]?.health ?: u.health)
+                if (gain <= 0) return@map u
+                val eaten = min(gain, d.absorbLeft)
+                val left = d.absorbLeft - eaten
+                u.copy(
+                    health = u.health - eaten,
+                    debuffs = if (left <= 0) u.debuffs - d else u.debuffs.map { if (it == d) it.copy(absorbLeft = left) else it },
+                )
+            },
+        )
     }
 
     /**
@@ -231,6 +253,7 @@ class Engine(val data: GameData) {
             enemyHealth = trashHp,
             enemyMaxHealth = trashHp,
             adds = tick.pullAdds(dungeon.id, 0, trashHp, "p0"),
+            mechanicCooldown = tick.firstMechanicIn(dungeon.id, 0),
             isCombatActive = true,
             party = tick.generateParty(cls, state.level, rng),
             dungeonOutcome = null,

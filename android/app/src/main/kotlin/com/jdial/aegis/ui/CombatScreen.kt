@@ -86,6 +86,7 @@ import com.jdial.aegis.sim.offGlobalCooldown
 import com.jdial.aegis.sim.toDispel
 import com.jdial.aegis.data.enrageAfterTicks
 import com.jdial.aegis.data.AddTemplate
+import com.jdial.aegis.data.pullCombat
 import androidx.compose.ui.graphics.Path
 import com.jdial.aegis.sim.FloatingKind
 import com.jdial.aegis.sim.GameState
@@ -215,7 +216,7 @@ fun CombatScreen(
                         verticalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column {
-                            EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, enrageAfter, data.encounters.pressure.enrageRampPerTick, targetId, onTarget)
+                            EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, data, enrageAfter, data.encounters.pressure.enrageRampPerTick, targetId, onTarget)
                             // A landscape phone has about 400dp of height: the
                             // HUD and the action bar need all of it, and the
                             // scene pushed the bar off the screen. Tablets have
@@ -232,7 +233,7 @@ fun CombatScreen(
                 }
             } else {
                 Column(Modifier.fillMaxSize()) {
-                    EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, enrageAfter, data.encounters.pressure.enrageRampPerTick, targetId, onTarget)
+                    EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, data, enrageAfter, data.encounters.pressure.enrageRampPerTick, targetId, onTarget)
                     Spacer(Modifier.height(8.dp))
                     BattleView(state, targetId)
                     Spacer(Modifier.height(8.dp))
@@ -258,6 +259,7 @@ private fun EncounterHud(
     onLeave: () -> kotlin.Unit,
     onPullNow: () -> kotlin.Unit,
     earlyPullXpPerTick: Double,
+    data: GameData,
     enrageAfterTicks: Int,
     enrageRampPerTick: Double,
     targetId: String?,
@@ -387,7 +389,7 @@ private fun EncounterHud(
             // has always been in the state and was never shown.
             // Reserved whatever the phase, so the telegraph appearing at the
             // boss does not resize the card either.
-            val next = nextMechanic(state)
+            val next = nextMechanic(state, data)
             val cast = state.enemyCast
             Spacer(Modifier.height(8.dp))
             Box(Modifier.height(22.dp)) {
@@ -635,9 +637,13 @@ private data class NextMechanic(val icon: String, val name: String, val whom: St
  * "two of you", never "these two" — naming the targets would be a guess, and
  * peeking at the RNG would desync the parity stream.
  */
-private fun nextMechanic(state: GameState): NextMechanic? {
-    if (state.combatPhase != CombatPhase.BOSS) return null
-    val c = state.currentDungeon?.bossCombat ?: return null
+private fun nextMechanic(state: GameState, data: GameData): NextMechanic? {
+    val dungeon = state.currentDungeon ?: return null
+    val c = if (state.combatPhase == CombatPhase.BOSS) {
+        dungeon.bossCombat
+    } else {
+        data.encounters.pullCombat(dungeon.id, TRASH_PACK_COUNT - state.trashPullsRemaining)
+    } ?: return null
 
     val kinds = buildList {
         if (c.debuffTemplates.isNotEmpty()) add("debuff")
@@ -698,6 +704,7 @@ private fun AddRows(state: GameState, targetId: String?, onTarget: (String) -> k
             a.kind == AddTemplate.MENDER -> "HEALER" to Vital.healthy
             a.kind == AddTemplate.RUNNER -> "RUNNER" to Gilt.core
             a.kind == AddTemplate.PACK -> "2× DAMAGE" to Vital.critical
+            a.kind == AddTemplate.BOMB -> "BOMB  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical
             else -> "ADD" to Ink.secondary
         }
         Row(
@@ -1168,7 +1175,8 @@ private fun PartyRow(
                             maxTicks = debuffMax[d.sourceAbilityId] ?: d.remainingTicks,
                             hostile = true,
                             size = auraSize,
-                            stacks = d.stacks,
+                            // A heal absorb shows how much healing it still eats.
+                            stacks = if (d.absorbLeft > 0) d.absorbLeft.roundToInt() else d.stacks,
                             kerbColor = when {
                                 d.isArmed -> Color(0xFFF97316)
                                 d.dispellable -> Dispel

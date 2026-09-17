@@ -48,7 +48,7 @@ class AddsTest {
     fun `the shared data has no adds, and every add is drawn`() {
         assertTrue(Fixtures.sharedData.encounters.trash.isEmpty())
         val all = data.encounters.trash.values.flatten().flatMap { it.adds } +
-            data.encounters.bosses.values.mapNotNull { it.adds }.flatMap { it.spawn }
+            data.encounters.bosses.values.flatMap { it.adds }.flatMap { it.spawn }
         assertTrue(all.isNotEmpty())
         assertEquals(emptyList<String>(), all.map { it.looksLike }.filter { it !in enemyLooks })
     }
@@ -156,9 +156,9 @@ class AddsTest {
             party = base.party.map { it.copy(maxHealth = 1e6, health = 1e6) },
         )
         val called = step(boss)
-        val spawn = data.encounters.bosses.getValue("deadmines").adds!!.spawn
+        val spawn = data.encounters.bosses.getValue("deadmines").adds.first().spawn
         assertEquals(spawn.size, called.adds.size)
-        assertTrue(called.bossAddsSpawned)
+        assertEquals(1, called.bossAddWaves)
         assertEquals(spawn.size, step(called).adds.size)
 
         val healer = called.party.first { it.role == UnitRole.HEALER }.id
@@ -180,8 +180,9 @@ class AddsTest {
         assertEquals(before - 1, rushed.trashPullsRemaining)
         val pack = rushed.adds.single { it.kind == AddTemplate.PACK }
         assertEquals(killed.enemyMaxHealth, pack.maxHealth, 0.0)
-        // It brings its own pull's adds too: Deadmines' third pull has none, the second's runner is already here.
-        assertEquals(killed.adds.size + 1, rushed.adds.size)
+        // It brings its own pull's adds too (Deadmines' third pull: a powder keg).
+        val third = data.encounters.trash.getValue("deadmines")[2].adds.size
+        assertEquals(killed.adds.size + 1 + third, rushed.adds.size)
 
         // Both have to fall, and then the pull after the rushed one is next.
         val mainDown = step(rushed.copy(enemyHealth = 0.001))

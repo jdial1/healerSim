@@ -235,6 +235,14 @@ data class AttackTemplate(
     val castTicks: Int = 0,
     /** A DPS can cancel it while it winds up. */
     val interruptible: Boolean = false,
+    /**
+     * Landing, this puts the enemy in a state for [stateTicks]: `reflect`
+     * (direct damage comes back to whoever dealt it; the AI holds), `shield`
+     * (no damage until a kick exposes it) or `frenzy` (it hits harder).
+     * Kicking the cast stops it.
+     */
+    val grantsState: String? = null,
+    val stateTicks: Int = 0,
     /** What the boss says as the wind-up starts: its fixed tell. */
     val tell: String = "",
 )
@@ -260,11 +268,29 @@ data class Encounters(
      * kicked it hits this much harder: a lesson, not a nuisance.
      */
     val unkickedDamageMultiplier: Double = 1.0,
+    /** A frenzied enemy's damage multiplier (AttackTemplate.grantsState). */
+    val frenzyDamageMultiplier: Double = 1.0,
+    val rules: Map<String, DungeonRules> = emptyMap(),
 )
+
+/** What this moment's enemy rotates through: the boss's, or this trash pull's. */
+fun Encounters.pullCombat(dungeonId: String?, pullIndex: Int): BossCombat? =
+    dungeonId?.let { trash[it] }?.getOrNull(pullIndex)?.combat
 
 /** One trash pull's extra enemies (see [AddTemplate]). */
 @Serializable
-data class PullTuning(val adds: List<AddTemplate> = emptyList())
+data class PullTuning(
+    val adds: List<AddTemplate> = emptyList(),
+    /** The pull's own mechanic rotation, as a boss has: bleeds, casts, states. */
+    val combat: BossCombat? = null,
+)
+
+/** Rules one dungeon plays by. */
+@Serializable
+data class DungeonRules(
+    /** Pull after pull, no breather between. */
+    val noRests: Boolean = false,
+)
 
 /** Adds a boss calls in once, on falling to [atHealth] of its health. */
 @Serializable
@@ -279,6 +305,8 @@ data class BossAdds(val atHealth: Double, val spawn: List<AddTemplate>)
  * - `runner` flees on falling below AddRules.runnerFleeBelow and, unless it
  *   dies in time, brings one more pull.
  * - `add` just hurts: [damagePerTick] on the party's healer.
+ * - `bomb` goes off on the whole party for [blast] when its fuse
+ *   (AddRules.bombFuseTicks) runs out, unless it dies first.
  * - `pack` is the next pull, brought in early by "Pull now": while it stands
  *   the party takes double trash damage.
  */
@@ -292,12 +320,14 @@ data class AddTemplate(
     val health: Double,
     val damagePerTick: Double = 0.0,
     val healFraction: Double = 0.0,
+    val blast: Double = 0.0,
 ) {
     companion object {
         const val MENDER = "mender"
         const val RUNNER = "runner"
         const val ADD = "add"
         const val PACK = "pack"
+        const val BOMB = "bomb"
     }
 }
 
@@ -313,6 +343,7 @@ data class AddRules(
      * adds first.
      */
     val aiAddShareWithHumanDps: Double = 0.2,
+    val bombFuseTicks: Int = 100,
 )
 
 /**
@@ -348,6 +379,7 @@ data class Pressure(
  *   runs out; each stack is another tick of damage.
  * - `mind_control`: the carrier hits its most-hurt ally every [everyTicks].
  * - `curse_chain`: jumps to an uncursed ally every [everyTicks].
+ * - `heal_absorb`: the carrier's next [absorb] healing is eaten.
  * - `wound`: stacks like poison on whoever holds threat; at [maxStacks] the
  *   next stack bursts for [burstDamage] instead. The carrier's defensive
  *   clears it -- the tank's signature moment.
@@ -362,6 +394,7 @@ data class DebuffMechanic(
     val burstDamage: Double = 0.0,
     val safeBelowTicks: Int = 0,
     val hitDamage: Double = 0.0,
+    val absorb: Double = 0.0,
 ) {
     companion object {
         const val BOMB = "bomb"
@@ -369,6 +402,7 @@ data class DebuffMechanic(
         const val MIND_CONTROL = "mind_control"
         const val CURSE_CHAIN = "curse_chain"
         const val WOUND = "wound"
+        const val HEAL_ABSORB = "heal_absorb"
     }
 }
 
@@ -382,7 +416,8 @@ data class BossTuning(
     val extraDebuffs: List<DebuffTemplate> = emptyList(),
     /** This boss's own enrage timer, if not the shared one. */
     val enrageAfterTicks: Int? = null,
-    val adds: BossAdds? = null,
+    /** Waves of adds, each called once as the boss falls past its share of health. */
+    val adds: List<BossAdds> = emptyList(),
 )
 
 /** Boss ticks before [dungeonId]'s boss enrages; 0 means never. */

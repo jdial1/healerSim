@@ -6,6 +6,7 @@ import com.jdial.aegis.data.BossCombat
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.DebuffMechanic
 import com.jdial.aegis.data.enrageAfterTicks
+import com.jdial.aegis.data.pullCombat
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.Targeting
@@ -32,8 +33,12 @@ class GameTick(
     private val defaultMechanicMin = 2 * TICKS_PER_SECOND
     private val defaultMechanicMax = 5 * TICKS_PER_SECOND
 
-    private fun combatProfile(dungeon: Dungeon): BossCombat {
-        val c = dungeon.bossCombat
+    private fun combatProfile(dungeon: Dungeon, s: GameState? = null): BossCombat {
+        val c = if (s != null && s.combatPhase == CombatPhase.TRASH) {
+            data.encounters.pullCombat(dungeon.id, TRASH_PACK_COUNT - s.trashPullsRemaining)
+        } else {
+            dungeon.bossCombat
+        }
         return BossCombat(
             debuffTemplates = c?.debuffTemplates ?: emptyList(),
             selfBuffTemplates = c?.selfBuffTemplates ?: emptyList(),
@@ -382,6 +387,8 @@ class GameTick(
         val mechanicOrdinal: Int,
         val naturalPerfectionAdd: Int,
         val enemyCast: EnemyCast? = null,
+        /** A state the landed cast put the enemy in. */
+        val state: Pair<String, Int>? = null,
     )
 
     /**
@@ -396,12 +403,15 @@ class GameTick(
         var ordinal = s.mechanicOrdinal
         var npAdd = 0
 
-        val dungeon = s.currentDungeon
-        if (s.combatPhase != CombatPhase.BOSS || dungeon == null) {
+        val dungeon = s.currentDungeon ?: return BossAi(party, bossBuffs, cooldown, ordinal, 0)
+        // Trash fights only if its pull has a rotation of its own.
+        if (s.combatPhase != CombatPhase.BOSS &&
+            data.encounters.pullCombat(dungeon.id, TRASH_PACK_COUNT - s.trashPullsRemaining) == null
+        ) {
             return BossAi(party, bossBuffs, cooldown, ordinal, 0)
         }
 
-        val profile = combatProfile(dungeon)
+        val profile = combatProfile(dungeon, s)
         val kinds = buildList {
             if (profile.debuffTemplates.isNotEmpty()) add("debuff")
             if (profile.selfBuffTemplates.isNotEmpty()) add("buff")
@@ -419,7 +429,7 @@ class GameTick(
                 ?: return BossAi(party, bossBuffs, cooldown, ordinal, 0, null)
             val multNow = bossBuffs.maxOfOrNull { it.partyDamageMultiplier } ?: 1.0
             val (landed, np) = hitTargets(ctx, party, tpl, dungeon, multNow, cast.targets.toSet())
-            return BossAi(landed, bossBuffs, cooldown, ordinal, np, null)
+            return BossAi(landed, bossBuffs, cooldown, ordinal, np, null, tpl.grantsState?.let { it to tpl.stateTicks })
         }
 
         cooldown -= 1
@@ -462,6 +472,7 @@ class GameTick(
                                     clearedByDefensive = mech?.kind == DebuffMechanic.WOUND,
                                     armedTicks = if (mech?.kind == DebuffMechanic.BOMB) mech.safeBelowTicks else 0,
                                     charm = mech?.kind == DebuffMechanic.MIND_CONTROL,
+                                    absorbLeft = if (mech?.kind == DebuffMechanic.HEAL_ABSORB) mech.absorb else 0.0,
                                 ),
                             ),
                         )
@@ -1170,21 +1181,30 @@ class GameTick(
             else -> data.encounters.addRules.aiAddShareWithHumanDps
         }
         val toAdds = scriptedDamage * addShare
-        var enemyHealth = s.enemyHealth - (scriptedDamage - toAdds + playerDamage) * exposed
+        // Enemy states: a shield holds until a kick exposes it; a reflect sends
+        // each player's direct damage back to them, and the AI holds its fire.
+        val state = s.enemyState.takeIf { s.enemyStateTicks > 0 }
+        val shieldBroken = state == STATE_SHIELD && s.exposedTicks > 0
+        val warded = state == STATE_REFLECT || (state == STATE_SHIELD && !shieldBroken)
+        var enemyHealth = s.enemyHealth - if (warded) 0.0 else (scriptedDamage - toAdds + playerDamage) * exposed
+        val struck = if (state != STATE_REFLECT) sys.party else sys.party.map { u ->
+            val back = s.participants[u.id]?.pendingEnemyDamage ?: 0.0
+            if (back > 0 && u.isAlive) u.copy(health = max(0.0, u.health - back)) else u
+        }
         val aimed = HashMap<String, Double>()
         s.participants.values.forEach { p -> p.pendingAddDamage.forEach { (id, d) -> aimed[id] = (aimed[id] ?: 0.0) + d } }
         // The AI's share goes to menders first, then runners, then the rest.
         val aiFocus = living.minByOrNull {
-            when (it.kind) { AddTemplate.MENDER -> 0; AddTemplate.RUNNER -> 1; AddTemplate.PACK -> 3; else -> 2 }
+            when (it.kind) { AddTemplate.BOMB -> -1; AddTemplate.MENDER -> 0; AddTemplate.RUNNER -> 1; AddTemplate.PACK -> 3; else -> 2 }
         }?.id
         val addsAfter = s.adds.map { a ->
             val hit = ((aimed[a.id] ?: 0.0) + if (a.id == aiFocus) toAdds else 0.0) * exposed
             if (hit <= 0) a else a.copy(health = max(0.0, a.health - hit))
         }.filter { it.isAlive }
-        val bossAdds = s.currentDungeon?.let { data.encounters.bosses[it.id]?.adds }
-        val callAdds = s.combatPhase == CombatPhase.BOSS && bossAdds != null && !s.bossAddsSpawned &&
-            enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * bossAdds.atHealth
-        val addsNow = if (callAdds) addsAfter + spawnAdds(bossAdds!!.spawn, s.enemyMaxHealth, "b${s.combatElapsedTicks}") else addsAfter
+        val wave = s.currentDungeon?.let { data.encounters.bosses[it.id]?.adds?.getOrNull(s.bossAddWaves) }
+        val callAdds = s.combatPhase == CombatPhase.BOSS && wave != null &&
+            enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * wave.atHealth
+        val addsNow = if (callAdds) addsAfter + spawnAdds(wave!!.spawn, s.enemyMaxHealth, "b${s.combatElapsedTicks}") else addsAfter
         val exposeNow = s.combatPhase == CombatPhase.BOSS && pressure.exposedBelowHealth > 0 && !s.exposedAtHalf &&
             enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * pressure.exposedBelowHealth
 
@@ -1201,7 +1221,7 @@ class GameTick(
             )
         }.let { classTick(it.copy(party = sys.party), damageTaken) }.copy(
             party = accrueThreat(
-                sys.party,
+                struck,
                 healEffective = healEffectiveThisTick,
                 scriptedPartyDamage = scriptedDamage,
                 threatByActor = threatByActor,
@@ -1217,7 +1237,9 @@ class GameTick(
             // This client's own damage: its casts and its DoTs (see threatByActor).
             runDamageDealt = s.runDamageDealt + s.me.pendingEnemyDamage + enemyDots + s.me.pendingAddDamage.values.sum(),
             adds = addsNow,
-            bossAddsSpawned = s.bossAddsSpawned || callAdds,
+            bossAddWaves = s.bossAddWaves + if (callAdds) 1 else 0,
+            enemyState = if (shieldBroken || s.enemyStateTicks <= 1) null else s.enemyState,
+            enemyStateTicks = if (shieldBroken) 0 else max(0, s.enemyStateTicks - 1),
             exposedTicks = if (exposeNow) pressure.exposedTicks else max(0, s.exposedTicks - 1),
             exposedAtHalf = s.exposedAtHalf || exposeNow,
         )
@@ -1233,7 +1255,10 @@ class GameTick(
             // Whoever a runner brought comes first, and is not one of the planned pulls.
             if (s.extraPulls > 0) {
                 return finalizeProgress(
-                    base.copy(extraPulls = s.extraPulls - 1, enemyHealth = hp, enemyMaxHealth = hp, restTicks = pressure.restTicks),
+                    base.copy(
+                        extraPulls = s.extraPulls - 1, enemyHealth = hp, enemyMaxHealth = hp, restTicks = restAfterPull(s),
+                        enemyCast = null, enemyState = null, enemyStateTicks = 0,
+                    ),
                 )
             }
             val remaining = s.trashPullsRemaining - 1
@@ -1241,9 +1266,14 @@ class GameTick(
                 val index = TRASH_PACK_COUNT - remaining
                 return finalizeProgress(
                     base.copy(
-                        trashPullsRemaining = remaining, enemyHealth = hp, enemyMaxHealth = hp, restTicks = pressure.restTicks,
+                        trashPullsRemaining = remaining, enemyHealth = hp, enemyMaxHealth = hp, restTicks = restAfterPull(s),
                         adds = pullAdds(dungeon?.id, index, hp, "p${s.combatElapsedTicks}"),
-                    ),
+                        enemyCast = null, enemyState = null, enemyStateTicks = 0,
+                    ).let {
+                        // A pull with a rotation of its own starts it fresh; the rest carry on as they always did.
+                        if (data.encounters.pullCombat(dungeon?.id, index) == null) it
+                        else it.copy(mechanicOrdinal = 0, mechanicCooldown = firstMechanicIn(dungeon?.id, index))
+                    },
                 )
             }
             // Trash cleared: the boss engages and the mechanic rotation resets.
@@ -1253,10 +1283,12 @@ class GameTick(
                 base.copy(
                     trashPullsRemaining = 0,
                     combatPhase = CombatPhase.BOSS,
-                    restTicks = pressure.restTicks,
+                    restTicks = restAfterPull(s),
                     bossTicks = 0,
                     adds = emptyList(),
-                    bossAddsSpawned = false,
+                    bossAddWaves = 0,
+                    enemyState = null,
+                    enemyStateTicks = 0,
                     enemyHealth = bossHp,
                     enemyMaxHealth = bossHp,
                     enemyCast = null,
@@ -1366,7 +1398,9 @@ class GameTick(
                 bossSelfBuffs = emptyList(),
                 enemyCast = null,
                 adds = emptyList(),
-                bossAddsSpawned = false,
+                bossAddWaves = 0,
+                enemyState = null,
+                enemyStateTicks = 0,
                 mechanicCooldown = rng.nextInt(
                     profile.mechanicIntervalTicksMin ?: defaultMechanicMin,
                     profile.mechanicIntervalTicksMax ?: defaultMechanicMax,
@@ -1428,13 +1462,21 @@ class GameTick(
         return out
     }
 
-    /** Boss damage grows once the boss has lasted past its enrage timer. */
+    /**
+     * Enemy damage growth: the enrage, once the boss has lasted past its
+     * timer, and a frenzy while one is up.
+     */
     internal fun enrageMultiplier(s: GameState): Double {
         val p = data.encounters.pressure
+        val frenzy = if (s.enemyState == STATE_FRENZY && s.enemyStateTicks > 0) data.encounters.frenzyDamageMultiplier else 1.0
         val after = data.encounters.enrageAfterTicks(s.currentDungeon?.id)
-        if (after <= 0 || s.bossTicks <= after) return 1.0
-        return 1 + (s.bossTicks - after) * p.enrageRampPerTick
+        if (after <= 0 || s.bossTicks <= after) return frenzy
+        return (1 + (s.bossTicks - after) * p.enrageRampPerTick) * frenzy
     }
+
+    /** The breather after a pull, unless this dungeon has none. */
+    private fun restAfterPull(s: GameState): Int =
+        if (s.currentDungeon?.let { data.encounters.rules[it.id]?.noRests } == true) 0 else data.encounters.pressure.restTicks
 
     /**
      * A breather between pulls: nothing attacks, nobody deals damage, and the
@@ -1467,12 +1509,23 @@ class GameTick(
                 health = hp,
                 maxHealth = hp,
                 damagePerTick = t.damagePerTick,
-                healAmount = t.healFraction * mainMaxHealth,
-                timer = if (t.kind == AddTemplate.MENDER) every else 0,
-                timerTotal = if (t.kind == AddTemplate.MENDER) every else 0,
+                // A bomb carries its blast where a mender carries its heal.
+                healAmount = if (t.kind == AddTemplate.BOMB) t.blast else t.healFraction * mainMaxHealth,
+                timer = fuse(t.kind),
+                timerTotal = fuse(t.kind),
             )
         }
     }
+
+    private fun fuse(kind: String): Int = when (kind) {
+        AddTemplate.MENDER -> data.encounters.addRules.menderEveryTicks
+        AddTemplate.BOMB -> data.encounters.addRules.bombFuseTicks
+        else -> 0
+    }
+
+    /** A trash pull's first mechanic comes after a fixed beat: no rng on the trash path. */
+    internal fun firstMechanicIn(dungeonId: String?, index: Int): Int =
+        data.encounters.pullCombat(dungeonId, index)?.let { it.mechanicIntervalTicksMin ?: defaultMechanicMin } ?: 0
 
     /** What trash pull [index] of [dungeonId] brings besides its pack. */
     internal fun pullAdds(dungeonId: String?, index: Int, mainMaxHealth: Double, tag: String): List<EnemyAdd> {
@@ -1508,6 +1561,7 @@ class GameTick(
         val rules = data.encounters.addRules
         var enemyHealth = s.enemyHealth
         var extra = s.extraPulls
+        var blast = 0.0
         val adds = s.adds.mapNotNull { a ->
             if (!a.isAlive) return@mapNotNull null
             when (a.kind) {
@@ -1519,6 +1573,7 @@ class GameTick(
                     }
                     else -> a.copy(casting = true, timer = rules.menderCastTicks, timerTotal = rules.menderCastTicks)
                 }
+                AddTemplate.BOMB -> if (a.timer <= 1) { blast += a.healAmount; null } else a.copy(timer = a.timer - 1)
                 AddTemplate.RUNNER -> when {
                     !a.fleeing && a.health < a.maxHealth * rules.runnerFleeBelow ->
                         a.copy(fleeing = true, timer = rules.runnerEscapeTicks, timerTotal = rules.runnerEscapeTicks)
@@ -1532,9 +1587,9 @@ class GameTick(
         // Adds go for whoever keeps the party alive.
         val hurt = adds.sumOf { it.damagePerTick } * (s.currentDungeon?.let { progression.bossDamageMultiplier(it.difficulty) } ?: 1.0)
         val victim = party.firstOrNull { it.isAlive && it.role == UnitRole.HEALER } ?: party.firstOrNull { it.isAlive }
-        val hit = if (hurt <= 0 || victim == null) party else party.map {
+        val hit = (if (hurt <= 0 || victim == null) party else party.map {
             if (it.id == victim.id) it.copy(health = max(0.0, it.health - hurt)) else it
-        }
+        }).map { if (blast > 0 && it.isAlive) it.copy(health = max(0.0, it.health - blast)) else it }
         return s.copy(adds = adds, enemyHealth = enemyHealth, extraPulls = extra) to hit
     }
 
@@ -1589,6 +1644,8 @@ class GameTick(
                 mechanicCooldown = boss.mechanicCooldown,
                 mechanicOrdinal = boss.mechanicOrdinal,
                 enemyCast = boss.enemyCast,
+                enemyState = boss.state?.first ?: s.enemyState,
+                enemyStateTicks = boss.state?.second ?: s.enemyStateTicks,
                 interruptibleCasts = s.interruptibleCasts + if (castStarted && boss.enemyCast?.interruptible == true) 1 else 0,
             ),
         )
