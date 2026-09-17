@@ -49,7 +49,7 @@ class AddsTest {
         val all = data.encounters.trash.values.flatten().flatMap { it.adds } +
             data.encounters.bosses.values.flatMap { it.adds }.flatMap { it.spawn }
         assertTrue(all.isNotEmpty())
-        assertEquals(emptyList<String>(), all.map { it.looksLike }.filter { it !in enemyLooks })
+        assertEquals(emptyList<String>(), all.map { it.looksLike }.filter { it !in enemyLooks(data) })
     }
 
     @Test

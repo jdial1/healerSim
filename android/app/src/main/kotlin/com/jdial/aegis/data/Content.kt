@@ -348,6 +348,21 @@ data class HealPower(
     val fromLevel: Int = 20,
 )
 
+/**
+ * What one enemy looks like: a sprite the app has, and a colour laid over it
+ * so one tile can serve several creatures.
+ *
+ * Content, not code. Adding a boss is a JSON edit; only *new art* touches
+ * Kotlin, in `BattleView.spriteFiles`.
+ */
+@Serializable
+data class EnemyLookDef(
+    val sprite: String,
+    val tint: String? = null,
+    /** Which dungeon it belongs to. Read by nobody: it keeps the file legible. */
+    val from: String = "",
+)
+
 /** Rules one dungeon plays by. */
 @Serializable
 data class DungeonRules(
@@ -393,7 +408,7 @@ data class BossAdds(val atHealth: Double, val spawn: List<AddTemplate>)
 data class AddTemplate(
     val kind: String,
     val name: String,
-    /** An enemy name the battle view already draws (enemyLooks). */
+    /** An enemy name `content/data/looks.json` gives a sprite to. */
     val looksLike: String = name,
     /** Its max health, as a share of the main enemy's. */
     val health: Double,

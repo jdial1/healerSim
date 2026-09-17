@@ -304,3 +304,31 @@ org.gradle.jvmargs=... -Djdk.net.unixdomain.tmpdir=C:/Users/<you>/.gradle/tmp
 Icons under `assets/icons/game-icons` are from game-icons.net, CC BY 3.0.
 Icons under `assets/icons/wow` are Blizzard artwork — acceptable for local and
 sideloaded builds, but must be replaced before any public store release.
+
+## Authoring a boss
+
+It used to take six files: `encounters.json` for the fight, `Content.kt` for a
+field, `GameTick.kt` for the behaviour, `State.kt` for anything remembered,
+`BattleView.kt` for the sprite, and a test. Five of those were fixed costs
+paid once and then paid again for every boss, which is the actual reason
+eleven bosses shipped as a health bar with a name.
+
+A boss built from parts that already exist is now **one file**:
+
+```jsonc
+// content/data/encounters.json
+"bosses": {
+  "shadowfang_keep": {
+    "extraAttacks":  [ /* AttackTemplate: damage, targeting, castTicks, tell, grantsState */ ],
+    "extraDebuffs":  [ /* DebuffTemplate: a mechanic id from "mechanics" */ ],
+    "adds":          [ { "atHealth": 0.6, "spawn": [ /* AddTemplate */ ] } ],
+    "phases":        [ { "atHealth": 0.35, "tell": "...", "attacks": [...] } ]
+  }
+}
+```
+
+Anything an add or boss `looksLike` needs a line in `content/data/looks.json`,
+which is also JSON. Kotlin is touched only when the fight needs something the
+engine cannot yet do — a new `DebuffMechanic` kind, a new `Targeting`, a new
+enemy state — or when new *art* is added, which is a line in
+`BattleView.spriteFiles`.

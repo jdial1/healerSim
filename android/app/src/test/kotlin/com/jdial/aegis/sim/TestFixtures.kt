@@ -20,7 +20,7 @@ object Fixtures {
 
 /** The same content with some parts replaced -- for tests that isolate one rule. */
 fun GameData.with(balance: Balance = this.balance, dungeons: List<Dungeon> = this.dungeons): GameData =
-    GameData(balance, dungeons, npcPools, pacing, auras, consumables, mechanics, sharedSpells, classes, grants, encounters)
+    GameData(balance, dungeons, npcPools, pacing, auras, consumables, mechanics, sharedSpells, classes, grants, encounters, looks)
 
 /** Every boss attack landing at once, with no wind-up -- for tests about damage, not timing. */
 fun GameData.withoutCasts(): GameData = with(

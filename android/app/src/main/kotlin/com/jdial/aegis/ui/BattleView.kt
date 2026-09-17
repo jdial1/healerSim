@@ -56,6 +56,8 @@ import com.jdial.aegis.sim.CombatPhase
 import com.jdial.aegis.sim.STATE_FRENZY
 import com.jdial.aegis.sim.STATE_REFLECT
 import com.jdial.aegis.sim.STATE_SHIELD
+import com.jdial.aegis.data.GameData
+import com.jdial.aegis.ui.theme.LocalGameData
 import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.TRASH_PACK_COUNT
 import com.jdial.aegis.sim.Unit
@@ -140,96 +142,59 @@ private val Rust = Color(0xFFD6A26B)
 private fun look(@DrawableRes sprite: Int, tint: Color? = null) = EnemyLook(sprite, tint)
 
 /**
- * Every enemy and boss in the content, by name. A missing name falls back to
- * a slime; a test keeps this list complete.
+ * The art the app has, by the name content uses for it.
+ *
+ * This is an inventory of files, so it changes when a sprite is *added* --
+ * which is rare. Which creature wears which sprite is content, and lives in
+ * `content/data/looks.json`, so adding a boss is a JSON edit and touches no
+ * Kotlin at all. It used to be 68 hand-written entries here, which is the
+ * real reason eleven bosses stayed empty.
  */
-val enemyLooks: Map<String, EnemyLook> = mapOf(
-    // Deadmines
-    "Defias Pirate" to look(R.drawable.spr_soldier_red),
-    "Defias Miner" to look(R.drawable.spr_brawler),
-    "Smite" to look(R.drawable.spr_viking),
-    "Edwin VanCleef" to look(R.drawable.spr_rogue),
-    // Shadowfang Keep
-    "Shadowfang Worgen" to look(R.drawable.spr_yeti_dark),
-    "Haunted Static" to look(R.drawable.spr_ghost),
-    "Fenrus the Devourer" to look(R.drawable.spr_yeti_dark, Rust),
-    "Archmage Arugal" to look(R.drawable.spr_wizard),
-    // Wailing Caverns
-    "Raptor" to look(R.drawable.spr_lizard, Rust),
-    "Ooze" to look(R.drawable.spr_slime),
-    "Druid of the Fang" to look(R.drawable.spr_ranger),
-    "Verdan the Everliving" to look(R.drawable.spr_tree),
-    // Gnomeregan
-    "Leper Gnome" to look(R.drawable.spr_peasant, Green),
-    "Arcane Nullifier" to look(R.drawable.spr_mech),
-    "Mecha-Tank" to look(R.drawable.spr_tank),
-    "Mekgineer Thermaplugg" to look(R.drawable.spr_mech, Orange),
-    // Scarlet Monastery
-    "Scarlet Knight" to look(R.drawable.spr_soldier_red),
-    "Scarlet Monk" to look(R.drawable.spr_monk, Red),
-    "Mograine" to look(R.drawable.spr_knight_helm, Red),
-    "High Inspector Whitemane" to look(R.drawable.spr_sage),
-    // Razorfen Downs
-    "Quilboar Zombie" to look(R.drawable.spr_yeti, Green),
-    "Death's Head Necromancer" to look(R.drawable.spr_wizard, Ashen),
-    "Coldbringer Ward" to look(R.drawable.spr_snowman),
-    "Amnennar the Coldbringer" to look(R.drawable.spr_yeti),
-    // Zul'Farrak
-    "Sandfury Troll" to look(R.drawable.spr_brawler, Teal),
-    "Shadowcaster" to look(R.drawable.spr_monk, Purple),
-    "Basilisk" to look(R.drawable.spr_lizard),
-    "Chief Ukorz Sandscalp" to look(R.drawable.spr_cyclops, Teal),
-    // Maraudon
-    "Centaur Outcast" to look(R.drawable.spr_soldier_orange),
-    "Corrupt Elemental" to look(R.drawable.spr_rock),
-    "Hydra" to look(R.drawable.spr_lizard, Green),
-    "Princess Theradras" to look(R.drawable.spr_rock, Green),
-    // Sunken Temple
-    "Atal'ai Exile" to look(R.drawable.spr_ranger, Teal),
-    "Nightmare Wyrm" to look(R.drawable.spr_lizard, Purple),
-    "Dragonkin" to look(R.drawable.spr_lizard, Green),
-    "Shade of Eranikus" to look(R.drawable.spr_ghost, Green),
-    // Blackrock Depths
-    "Dark Iron Dwarf" to look(R.drawable.spr_soldier_grey),
-    "Fire Elemental" to look(R.drawable.spr_slime, Orange),
-    "Houndmaster" to look(R.drawable.spr_fighter),
-    "Emperor Thaurissan" to look(R.drawable.spr_viking),
-    // Lower Blackrock Spire
-    "Blackrock Orc" to look(R.drawable.spr_soldier_green),
-    "Ogre Warmonger" to look(R.drawable.spr_cyclops),
-    "Firebrand Grunt" to look(R.drawable.spr_soldier_orange),
-    "Overlord Wyrmthalak" to look(R.drawable.spr_cyclops, Green),
-    // Stratholme
-    "Plague Ghoul" to look(R.drawable.spr_slime),
-    "Patchwork Horror" to look(R.drawable.spr_cyclops, Green),
-    "Banshee" to look(R.drawable.spr_ghost),
-    "Baron Rivendare" to look(R.drawable.spr_knight_visor, Ashen),
-    // Scholomance
-    "Risen Guard" to look(R.drawable.spr_knight_helm),
-    "Necromancer" to look(R.drawable.spr_wizard, Ashen),
-    "Voidwalker" to look(R.drawable.spr_ghost, Purple),
-    "Darkmaster Gandling" to look(R.drawable.spr_wizard),
-    // Dire Maul
-    "Gordok Ogre" to look(R.drawable.spr_cyclops),
-    "Warpwood Guardian" to look(R.drawable.spr_tree),
-    "Eldreth Spirit" to look(R.drawable.spr_ghost, Frost),
-    "King Gordok" to look(R.drawable.spr_cyclops, Red),
-    // Upper Blackrock Spire
-    "Blackhand Elite" to look(R.drawable.spr_soldier_grey),
-    "Chromatic Dragonkin" to look(R.drawable.spr_lizard, Purple),
-    "Drakonid Slayer" to look(R.drawable.spr_lizard, Red),
-    "General Drakkisath" to look(R.drawable.spr_lizard, Orange),
-    // Molten Core
-    "Molten Giant" to look(R.drawable.spr_rock, Orange),
-    "Fire Lord" to look(R.drawable.spr_slime, Orange),
-    "Core Hound" to look(R.drawable.spr_yeti_dark, Orange),
-    "Ragnaros" to look(R.drawable.spr_crab),
-    // Endless
-    "Spiteful Shade" to look(R.drawable.spr_ghost, Purple),
-    "Endless Thrall" to look(R.drawable.spr_rogue, Ashen),
-    "Twisted Echo" to look(R.drawable.spr_ghost, Frost),
-    "The Timeless One" to look(R.drawable.spr_wizard),
+private val spriteFiles: Map<String, Int> = mapOf(
+    "brawler" to R.drawable.spr_brawler,
+    "crab" to R.drawable.spr_crab,
+    "cyclops" to R.drawable.spr_cyclops,
+    "farmhand" to R.drawable.spr_farmhand,
+    "fighter" to R.drawable.spr_fighter,
+    "ghost" to R.drawable.spr_ghost,
+    "knight_helm" to R.drawable.spr_knight_helm,
+    "knight_visor" to R.drawable.spr_knight_visor,
+    "lizard" to R.drawable.spr_lizard,
+    "mech" to R.drawable.spr_mech,
+    "monk" to R.drawable.spr_monk,
+    "peasant" to R.drawable.spr_peasant,
+    "rancher" to R.drawable.spr_rancher,
+    "ranger" to R.drawable.spr_ranger,
+    "rock" to R.drawable.spr_rock,
+    "rogue" to R.drawable.spr_rogue,
+    "sage" to R.drawable.spr_sage,
+    "slime" to R.drawable.spr_slime,
+    "snowman" to R.drawable.spr_snowman,
+    "soldier_green" to R.drawable.spr_soldier_green,
+    "soldier_grey" to R.drawable.spr_soldier_grey,
+    "soldier_orange" to R.drawable.spr_soldier_orange,
+    "soldier_red" to R.drawable.spr_soldier_red,
+    "sorceress" to R.drawable.spr_sorceress,
+    "tank" to R.drawable.spr_tank,
+    "tree" to R.drawable.spr_tree,
+    "viking" to R.drawable.spr_viking,
+    "wizard" to R.drawable.spr_wizard,
+    "yeti" to R.drawable.spr_yeti,
+    "yeti_dark" to R.drawable.spr_yeti_dark,
 )
+
+/** The colours one sprite can be re-dressed in, so a tile serves several creatures. */
+private val tints: Map<String, Color> = mapOf(
+    "green" to Green, "red" to Red, "orange" to Orange, "purple" to Purple,
+    "teal" to Teal, "ashen" to Ashen, "frost" to Frost, "rust" to Rust,
+)
+
+/** Resolves `content/data/looks.json` against the art that exists. */
+fun enemyLooks(data: GameData): Map<String, EnemyLook> =
+    data.looks.mapNotNull { (name, look) ->
+        spriteFiles[look.sprite]?.let { name to EnemyLook(it, look.tint?.let(tints::get)) }
+    }.toMap()
+
 
 /** Who is being fought: the boss, or this pull's pack -- each pull is a different one. */
 fun enemyName(state: GameState): String {
@@ -240,8 +205,8 @@ fun enemyName(state: GameState): String {
     return dungeon.enemies[pull % dungeon.enemies.size].name
 }
 
-fun lookForEnemy(state: GameState): EnemyLook =
-    enemyLooks[enemyName(state)] ?: EnemyLook(R.drawable.spr_slime)
+fun lookForEnemy(looks: Map<String, EnemyLook>, state: GameState): EnemyLook =
+    looks[enemyName(state)] ?: EnemyLook(R.drawable.spr_slime)
 
 /** How many of a trash pack are still standing: they drop out as its health falls. */
 fun packStanding(state: GameState, size: Int = 3): Int {
@@ -402,6 +367,9 @@ private const val BOSS = 72
 
 @Composable
 fun BattleView(state: GameState, targetId: String? = null, modifier: Modifier = Modifier) {
+    // Resolved once per content load, not per frame.
+    val data = LocalGameData.current
+    val looks = remember(data) { enemyLooks(data) }
     val party = lineUp(state.party)
     val lunge = remember { mutableStateMapOf<String, Int>() }      // unitId -> nonce
     val flinch = remember { mutableStateMapOf<String, Int>() }
@@ -524,7 +492,7 @@ fun BattleView(state: GameState, targetId: String? = null, modifier: Modifier = 
 
         // The enemy on the right: a pack that thins as it loses health, or one
         // big boss.
-        val look = lookForEnemy(state)
+        val look = lookForEnemy(looks, state)
         val flash = remember { Animatable(0f) }
         LaunchedEffect(enemyFlash) {
             if (enemyFlash > 0) { flash.snapTo(0.6f); flash.animateTo(0f, tween(220)) }
@@ -573,7 +541,7 @@ fun BattleView(state: GameState, targetId: String? = null, modifier: Modifier = 
         // a mender glows while it casts; the chosen one wears a marker.
         state.adds.filter { it.kind == AddTemplate.PACK }.forEachIndexed { p, a ->
             key(a.id) {
-                val packLook = enemyLooks[a.looksLike] ?: EnemyLook(R.drawable.spr_slime)
+                val packLook = looks[a.looksLike] ?: EnemyLook(R.drawable.spr_slime)
                 val packTint = packLook.tint?.let { ColorFilter.tint(it, BlendMode.Modulate) }
                 val standing = ceil((a.health / a.maxHealth).coerceIn(0.0, 1.0) * 3).toInt()
                 val slots = listOf(0.dp to 0.dp, (-26).dp to 30.dp, 2.dp to 60.dp)
@@ -595,7 +563,7 @@ fun BattleView(state: GameState, targetId: String? = null, modifier: Modifier = 
         }
         state.adds.filter { it.kind != AddTemplate.PACK }.forEachIndexed { i, a ->
             key(a.id) {
-                val addLook = enemyLooks[a.looksLike] ?: EnemyLook(R.drawable.spr_slime)
+                val addLook = looks[a.looksLike] ?: EnemyLook(R.drawable.spr_slime)
                 val away = if (a.fleeing && a.timerTotal > 0) 1f - a.timer.toFloat() / a.timerTotal else 0f
                 val ax = (if (boss) bossX - 48.dp else w - SPRITE.dp - 118.dp) - (i % 2 * 30).dp + (50 * away).dp
                 val ay = (10 + (i % 3) * 36).dp

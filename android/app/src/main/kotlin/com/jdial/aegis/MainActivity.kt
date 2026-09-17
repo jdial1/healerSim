@@ -75,6 +75,7 @@ import com.jdial.aegis.ui.theme.AegisType
 import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.Ink
 import com.jdial.aegis.ui.theme.LocalAccent
+import com.jdial.aegis.ui.theme.LocalGameData
 import androidx.compose.runtime.CompositionLocalProvider
 import com.jdial.aegis.ui.theme.LocalUiSettings
 import com.jdial.aegis.ui.theme.Obsidian
@@ -176,7 +177,10 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
     val uiSettings by vm.settings.collectAsStateWithLifecycle()
     AegisTheme(cls = state.playerClass) {
-      CompositionLocalProvider(LocalUiSettings provides uiSettings) {
+      CompositionLocalProvider(
+          LocalUiSettings provides uiSettings,
+          LocalGameData provides vm.data,
+      ) {
         // Outside the screen switch on purpose: a run ends in the same frame the
         // screen can change, and the clear or wipe cue must still play.
         if (state.playerClass != null) {

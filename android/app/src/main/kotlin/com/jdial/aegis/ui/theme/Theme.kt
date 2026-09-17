@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.jdial.aegis.data.GameData
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
@@ -98,6 +99,18 @@ fun accentFor(cls: PlayerClass?): ClassAccent = when (cls) {
 }
 
 val LocalAccent = staticCompositionLocalOf { ClassAccent(Gilt.bright, Gilt.core, Gilt.deep) }
+
+/**
+ * The loaded content, for the few composables that need to read it.
+ *
+ * There is exactly one GameData for the app's lifetime, and threading it
+ * through every battle-scene parameter to reach the sprite table was worse
+ * than a local. No default: reading it outside the provider is a bug, and
+ * should say so rather than draw an empty game.
+ */
+val LocalGameData = staticCompositionLocalOf<GameData> {
+    error("No GameData provided; wrap the UI in CompositionLocalProvider(LocalGameData provides ...)")
+}
 
 /**
  * Display preferences, read deep in the frame (PartyRow) and set far away

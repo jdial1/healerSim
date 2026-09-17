@@ -51,6 +51,8 @@ class GameData(
     /** Who learns the Android-owned utility spells, and when. */
     val grants: List<SpellGrant> = emptyList(),
     val encounters: Encounters = Encounters(),
+    /** What each enemy looks like, by the name content calls it. */
+    val looks: Map<String, EnemyLookDef> = emptyMap(),
 ) {
     /** The utility spells [cls] has learned by [level], in content order. */
     fun grantsFor(cls: PlayerClass, level: Int): List<String> {
@@ -104,6 +106,7 @@ class GameData(
                 classes = classes,
                 grants = utility.grants,
                 encounters = encounters,
+                looks = parse("data/looks.json") { json.decodeFromString<Map<String, EnemyLookDef>>(it) },
             )
         }
     }

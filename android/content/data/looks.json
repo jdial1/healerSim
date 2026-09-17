@@ -1,0 +1,308 @@
+{
+  "Defias Pirate": {
+    "sprite": "soldier_red",
+    "from": "Deadmines"
+  },
+  "Defias Miner": {
+    "sprite": "brawler",
+    "from": "Deadmines"
+  },
+  "Smite": {
+    "sprite": "viking",
+    "from": "Deadmines"
+  },
+  "Edwin VanCleef": {
+    "sprite": "rogue",
+    "from": "Deadmines"
+  },
+  "Shadowfang Worgen": {
+    "sprite": "yeti_dark",
+    "from": "Shadowfang Keep"
+  },
+  "Haunted Static": {
+    "sprite": "ghost",
+    "from": "Shadowfang Keep"
+  },
+  "Fenrus the Devourer": {
+    "sprite": "yeti_dark",
+    "tint": "rust",
+    "from": "Shadowfang Keep"
+  },
+  "Archmage Arugal": {
+    "sprite": "wizard",
+    "from": "Shadowfang Keep"
+  },
+  "Raptor": {
+    "sprite": "lizard",
+    "tint": "rust",
+    "from": "Wailing Caverns"
+  },
+  "Ooze": {
+    "sprite": "slime",
+    "from": "Wailing Caverns"
+  },
+  "Druid of the Fang": {
+    "sprite": "ranger",
+    "from": "Wailing Caverns"
+  },
+  "Verdan the Everliving": {
+    "sprite": "tree",
+    "from": "Wailing Caverns"
+  },
+  "Leper Gnome": {
+    "sprite": "peasant",
+    "tint": "green",
+    "from": "Gnomeregan"
+  },
+  "Arcane Nullifier": {
+    "sprite": "mech",
+    "from": "Gnomeregan"
+  },
+  "Mecha-Tank": {
+    "sprite": "tank",
+    "from": "Gnomeregan"
+  },
+  "Mekgineer Thermaplugg": {
+    "sprite": "mech",
+    "tint": "orange",
+    "from": "Gnomeregan"
+  },
+  "Scarlet Knight": {
+    "sprite": "soldier_red",
+    "from": "Scarlet Monastery"
+  },
+  "Scarlet Monk": {
+    "sprite": "monk",
+    "tint": "red",
+    "from": "Scarlet Monastery"
+  },
+  "Mograine": {
+    "sprite": "knight_helm",
+    "tint": "red",
+    "from": "Scarlet Monastery"
+  },
+  "High Inspector Whitemane": {
+    "sprite": "sage",
+    "from": "Scarlet Monastery"
+  },
+  "Quilboar Zombie": {
+    "sprite": "yeti",
+    "tint": "green",
+    "from": "Razorfen Downs"
+  },
+  "Death's Head Necromancer": {
+    "sprite": "wizard",
+    "tint": "ashen",
+    "from": "Razorfen Downs"
+  },
+  "Coldbringer Ward": {
+    "sprite": "snowman",
+    "from": "Razorfen Downs"
+  },
+  "Amnennar the Coldbringer": {
+    "sprite": "yeti",
+    "from": "Razorfen Downs"
+  },
+  "Sandfury Troll": {
+    "sprite": "brawler",
+    "tint": "teal",
+    "from": "Zul'Farrak"
+  },
+  "Shadowcaster": {
+    "sprite": "monk",
+    "tint": "purple",
+    "from": "Zul'Farrak"
+  },
+  "Basilisk": {
+    "sprite": "lizard",
+    "from": "Zul'Farrak"
+  },
+  "Chief Ukorz Sandscalp": {
+    "sprite": "cyclops",
+    "tint": "teal",
+    "from": "Zul'Farrak"
+  },
+  "Centaur Outcast": {
+    "sprite": "soldier_orange",
+    "from": "Maraudon"
+  },
+  "Corrupt Elemental": {
+    "sprite": "rock",
+    "from": "Maraudon"
+  },
+  "Hydra": {
+    "sprite": "lizard",
+    "tint": "green",
+    "from": "Maraudon"
+  },
+  "Princess Theradras": {
+    "sprite": "rock",
+    "tint": "green",
+    "from": "Maraudon"
+  },
+  "Atal'ai Exile": {
+    "sprite": "ranger",
+    "tint": "teal",
+    "from": "Sunken Temple"
+  },
+  "Nightmare Wyrm": {
+    "sprite": "lizard",
+    "tint": "purple",
+    "from": "Sunken Temple"
+  },
+  "Dragonkin": {
+    "sprite": "lizard",
+    "tint": "green",
+    "from": "Sunken Temple"
+  },
+  "Shade of Eranikus": {
+    "sprite": "ghost",
+    "tint": "green",
+    "from": "Sunken Temple"
+  },
+  "Dark Iron Dwarf": {
+    "sprite": "soldier_grey",
+    "from": "Blackrock Depths"
+  },
+  "Fire Elemental": {
+    "sprite": "slime",
+    "tint": "orange",
+    "from": "Blackrock Depths"
+  },
+  "Houndmaster": {
+    "sprite": "fighter",
+    "from": "Blackrock Depths"
+  },
+  "Emperor Thaurissan": {
+    "sprite": "viking",
+    "from": "Blackrock Depths"
+  },
+  "Blackrock Orc": {
+    "sprite": "soldier_green",
+    "from": "Lower Blackrock Spire"
+  },
+  "Ogre Warmonger": {
+    "sprite": "cyclops",
+    "from": "Lower Blackrock Spire"
+  },
+  "Firebrand Grunt": {
+    "sprite": "soldier_orange",
+    "from": "Lower Blackrock Spire"
+  },
+  "Overlord Wyrmthalak": {
+    "sprite": "cyclops",
+    "tint": "green",
+    "from": "Lower Blackrock Spire"
+  },
+  "Plague Ghoul": {
+    "sprite": "slime",
+    "from": "Stratholme"
+  },
+  "Patchwork Horror": {
+    "sprite": "cyclops",
+    "tint": "green",
+    "from": "Stratholme"
+  },
+  "Banshee": {
+    "sprite": "ghost",
+    "from": "Stratholme"
+  },
+  "Baron Rivendare": {
+    "sprite": "knight_visor",
+    "tint": "ashen",
+    "from": "Stratholme"
+  },
+  "Risen Guard": {
+    "sprite": "knight_helm",
+    "from": "Scholomance"
+  },
+  "Necromancer": {
+    "sprite": "wizard",
+    "tint": "ashen",
+    "from": "Scholomance"
+  },
+  "Voidwalker": {
+    "sprite": "ghost",
+    "tint": "purple",
+    "from": "Scholomance"
+  },
+  "Darkmaster Gandling": {
+    "sprite": "wizard",
+    "from": "Scholomance"
+  },
+  "Gordok Ogre": {
+    "sprite": "cyclops",
+    "from": "Dire Maul"
+  },
+  "Warpwood Guardian": {
+    "sprite": "tree",
+    "from": "Dire Maul"
+  },
+  "Eldreth Spirit": {
+    "sprite": "ghost",
+    "tint": "frost",
+    "from": "Dire Maul"
+  },
+  "King Gordok": {
+    "sprite": "cyclops",
+    "tint": "red",
+    "from": "Dire Maul"
+  },
+  "Blackhand Elite": {
+    "sprite": "soldier_grey",
+    "from": "Upper Blackrock Spire"
+  },
+  "Chromatic Dragonkin": {
+    "sprite": "lizard",
+    "tint": "purple",
+    "from": "Upper Blackrock Spire"
+  },
+  "Drakonid Slayer": {
+    "sprite": "lizard",
+    "tint": "red",
+    "from": "Upper Blackrock Spire"
+  },
+  "General Drakkisath": {
+    "sprite": "lizard",
+    "tint": "orange",
+    "from": "Upper Blackrock Spire"
+  },
+  "Molten Giant": {
+    "sprite": "rock",
+    "tint": "orange",
+    "from": "Molten Core"
+  },
+  "Fire Lord": {
+    "sprite": "slime",
+    "tint": "orange",
+    "from": "Molten Core"
+  },
+  "Core Hound": {
+    "sprite": "yeti_dark",
+    "tint": "orange",
+    "from": "Molten Core"
+  },
+  "Ragnaros": {
+    "sprite": "crab",
+    "from": "Molten Core"
+  },
+  "Spiteful Shade": {
+    "sprite": "ghost",
+    "tint": "purple",
+    "from": "Endless"
+  },
+  "Endless Thrall": {
+    "sprite": "rogue",
+    "tint": "ashen",
+    "from": "Endless"
+  },
+  "Twisted Echo": {
+    "sprite": "ghost",
+    "tint": "frost",
+    "from": "Endless"
+  },
+  "The Timeless One": {
+    "sprite": "wizard",
+    "from": "Endless"
+  }
+}

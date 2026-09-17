@@ -80,7 +80,7 @@ class BattleSceneTest {
     @Test
     fun `every enemy and boss in the content has its own look`() {
         val names = Fixtures.data.dungeons.flatMap { d -> d.enemies.map { it.name } + d.bossName }
-        assertEquals(emptyList<String>(), names.filter { it !in enemyLooks })
+        assertEquals(emptyList<String>(), names.filter { it !in enemyLooks(Fixtures.data) })
     }
 
     @Test
