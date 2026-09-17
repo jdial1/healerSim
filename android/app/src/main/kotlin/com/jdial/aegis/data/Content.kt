@@ -117,6 +117,13 @@ data class Talent(
     val synergyWith: List<String> = emptyList(),
     val maxRankBonusDescription: String? = null,
     val statBonus: StatBonus? = null,
+    /**
+     * Per-rank tuning of one mechanic, by key: `damage:<spell>`,
+     * `cooldown:<spell>` (ticks), `cost:<spell>`, `execute`, `threat`, and the
+     * class keys read in RoleHooks. Lets a tree say something other than "+x%
+     * power" without a hook per talent.
+     */
+    val effects: Map<String, Double> = emptyMap(),
 )
 
 // --- class metadata ---------------------------------------------------------

@@ -15,6 +15,7 @@ exactly as it scales a Flash Heal. No hook code for any of them.
 
 Talent and spell icons are made unique afterwards by
 scripts/assign-unique-icons.py; run it after regenerating.
+What each talent does is set by classes/TALENTS.py, which runs at the end.
 """
 import io, json, os
 
@@ -278,3 +279,9 @@ write("warlock",
             (3, 1, "Seed of Corruption", "seed_of_corruption", "r2c0")]))
 
 print("done")
+
+# The template trees repeat themselves; TALENTS.py gives each talent its own job.
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '.'))
+import TALENTS
+TALENTS.main()

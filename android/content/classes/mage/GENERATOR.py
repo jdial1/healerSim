@@ -12,6 +12,7 @@ as it scales a Flash Heal. A whole DPS tree therefore needs no new engine code
 
 Talent and spell icons are made unique afterwards by
 scripts/assign-unique-icons.py; run it after regenerating.
+What each talent does is set by classes/TALENTS.py, which runs at the end.
 """
 import io, json, os
 
@@ -162,3 +163,9 @@ TAL = [
 ]
 w('talents.json', TAL)
 print('talents:', len(TAL), 'rows:', sorted({x["gridY"] for x in TAL}))
+
+# The template trees repeat themselves; TALENTS.py gives each talent its own job.
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+import TALENTS
+TALENTS.main()

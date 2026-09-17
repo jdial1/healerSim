@@ -26,6 +26,9 @@ data class TalentRank(val talent: Talent, val points: Int) {
     val mechanicId: String? get() = talent.mechanicId
 }
 
+/** A talent effect ([Talent.effects]) summed over the ranks invested. */
+fun List<TalentRank>.effect(key: String): Double = sumOf { (it.talent.effects[key] ?: 0.0) * it.points }
+
 data class PrimaryStats(val intellect: Double, val spirit: Double)
 
 data class TalentStats(

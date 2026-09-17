@@ -35,7 +35,7 @@ const val MAGE_CHILL_ID = "shatter_chill"
  */
 fun GameState.canPay(spell: Spell): Boolean {
     val have = if (spell.resource == "MANA") mana else classResource
-    if (have < spell.manaCost) return false
+    if (have < spell.manaCost - talents.effect("cost:${spell.id}")) return false
     return !(playerClass == PlayerClass.ROGUE && spell.id == RogueHooks.FINISHER && comboPoints <= 0)
 }
 
@@ -55,7 +55,8 @@ fun resourceGauge(state: GameState, rating: Double, b: ClassesBalance): Resource
             // is played around.
             val maxHp = state.unit(state.localUnitId)?.maxHealth ?: 0.0
             val d = b.deathKnight
-            val heal = maxOf(p.classResource * d.deathStrikeHealFraction, maxHp * d.deathStrikeMinHealFraction)
+            val fraction = d.deathStrikeHealFraction + p.talents.effect("deathStrikeHeal") / 100
+            val heal = maxOf(p.classResource * fraction, maxHp * d.deathStrikeMinHealFraction)
             ResourceGauge("DEATH STRIKE HEALS", heal.roundToInt(), null)
         }
         else -> null
@@ -97,13 +98,15 @@ object WarriorHooks : ClassHooks {
         if (land.spell.resource == RESOURCE_RAGE || land.dealt <= 0) return after
         val b = ctx.data.balance.classes
         val cap = rageCap(ctx.uniqueStatRating(), b)
-        return after.withMe { it.copy(classResource = min(cap, it.classResource + b.warrior.rageOnDamageCast)) }
+        val gain = b.warrior.rageOnDamageCast + ctx.talentEffect("rageOnCast")
+        return after.withMe { it.copy(classResource = min(cap, it.classResource + gain)) }
     }
 
     override fun classTick(tick: ClassTick): Participant {
         val u = tick.unit ?: return tick.participant
         if (tick.damageTaken <= 0 || u.maxHealth <= 0) return tick.participant
-        val gained = tick.damageTaken / u.maxHealth * tick.balance.warrior.ragePerFullHealthTaken
+        val gained = tick.damageTaken / u.maxHealth * tick.balance.warrior.ragePerFullHealthTaken *
+            (1 + tick.participant.talents.effect("rageFromDamage") / 100)
         val cap = rageCap(tick.rating, tick.balance)
         return tick.participant.copy(classResource = min(cap, tick.participant.classResource + gained))
     }
@@ -124,8 +127,9 @@ object DeathKnightHooks : ClassHooks {
         val b = ctx.data.balance.classes.deathKnight
         val me = after.me
         val self = after.unit(after.localUnitId)?.takeIf { it.isAlive } ?: return after
-        val heal = max(me.classResource * b.deathStrikeHealFraction, self.maxHealth * b.deathStrikeMinHealFraction)
-        val shield = heal * ctx.uniqueStatRating() * b.bloodShieldPerRating
+        val fraction = b.deathStrikeHealFraction + ctx.talentEffect("deathStrikeHeal") / 100
+        val heal = max(me.classResource * fraction, self.maxHealth * b.deathStrikeMinHealFraction)
+        val shield = heal * ctx.uniqueStatRating() * b.bloodShieldPerRating * (1 + ctx.talentEffect("bloodShield") / 100)
         val healed = applyHealToUnit(self, heal)
         return after.copy(
             party = after.party.map {
@@ -162,8 +166,11 @@ object MageHooks : ClassHooks {
     override fun damageCritBonus(ctx: CastContext, spell: Spell, spellId: String): Double {
         if (spellId == FROSTBOLT || !chilled(ctx.state)) return 0.0
         val m = ctx.data.balance.classes.mage
-        return m.shatterCritBase + ctx.uniqueStatRating() * m.shatterCritPerRating
+        return m.shatterCritBase + ctx.uniqueStatRating() * m.shatterCritPerRating + ctx.talentEffect("shatterCrit")
     }
+
+    override fun damageMultiplier(ctx: CastContext, spell: Spell, spellId: String): Double =
+        if (chilled(ctx.state)) 1 + ctx.talentEffect("chilledDamage") / 100 else 1.0
 
     override fun onDamageLand(ctx: CastContext, after: GameState, land: DamageLand): GameState {
         val others = after.enemyDebuffs.filterNot { it.id == MAGE_CHILL_ID }
@@ -172,7 +179,7 @@ object MageHooks : ClassHooks {
                 enemyDebuffs = others + UnitDebuff(
                     id = MAGE_CHILL_ID,
                     name = "Chilled",
-                    remainingTicks = ctx.data.balance.classes.mage.chillTicks,
+                    remainingTicks = ctx.data.balance.classes.mage.chillTicks + ctx.talentEffect("chillTicks").roundToInt(),
                     damagePerTick = 0.0,
                     icon = land.spell.icon,
                     sourceAbilityId = FROSTBOLT,
@@ -199,7 +206,9 @@ object RogueHooks : ClassHooks {
         spellId != FINISHER || ctx.state.comboPoints > 0
 
     override fun damageMultiplier(ctx: CastContext, spell: Spell, spellId: String): Double =
-        if (spellId == FINISHER) ctx.state.comboPoints * ctx.data.balance.classes.rogue.finisherPerPoint else 1.0
+        if (spellId == FINISHER) {
+            ctx.state.comboPoints * (ctx.data.balance.classes.rogue.finisherPerPoint + ctx.talentEffect("finisherPerPoint"))
+        } else 1.0
 
     override fun damageCritBonus(ctx: CastContext, spell: Spell, spellId: String): Double =
         if (spellId == FINISHER) 0.0
@@ -208,7 +217,10 @@ object RogueHooks : ClassHooks {
     override fun onDamageLand(ctx: CastContext, after: GameState, land: DamageLand): GameState {
         val max = ctx.data.balance.classes.rogue.comboPointsMax
         return after.withMe {
-            if (land.spellId == FINISHER) it.copy(comboPoints = 0)
+            if (land.spellId == FINISHER) {
+                val refund = ctx.talentEffect("finisherRefund")
+                it.copy(comboPoints = 0, classResource = min(ctx.data.balance.classes.rogue.energyMax, it.classResource + refund))
+            }
             else it.copy(comboPoints = min(max, it.comboPoints + 1 + if (land.isCrit) 1 else 0))
         }
     }
@@ -219,6 +231,7 @@ object RogueHooks : ClassHooks {
         val r = tick.balance.rogue
         val p = tick.participant
         if (p.classResource >= r.energyMax) return p
-        return p.copy(classResource = min(r.energyMax, p.classResource + r.energyPerTick))
+        val regen = r.energyPerTick * (1 + p.talents.effect("energyRegen") / 100)
+        return p.copy(classResource = min(r.energyMax, p.classResource + regen))
     }
 }

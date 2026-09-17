@@ -121,9 +121,10 @@ class CastPipeline(
         // `resource` was declared on every spell and read by nothing. A spell
         // that names another resource pays its cost from that, not from mana.
         val usesMana = spell.resource == "MANA"
-        val needMana = if (usesMana) manaCost(ctx, spell, spellId, surgeFree) else 0
+        val discount = s.talents.effect("cost:$spellId")
+        val needMana = if (usesMana) max(0, manaCost(ctx, spell, spellId, surgeFree) - discount.roundToInt()) else 0
         if (s.mana < needMana) return null
-        val needResource = if (usesMana) 0.0 else spell.manaCost.toDouble()
+        val needResource = if (usesMana) 0.0 else max(0.0, spell.manaCost - discount)
         if (s.classResource < needResource) return null
 
         val target = s.party.firstOrNull { it.id == targetId }
@@ -218,11 +219,14 @@ class CastPipeline(
         val crit = if (ready.isCrit) 1.5 else 1.0
         val rank = stats.rankHealMult(stats.spellRank(ready.spellId, cls, s.level))
         val scale = damageScale(cls, s.level)
+        val spellBonus = 1 + ctx.talentEffect("damage:${ready.spellId}") / 100
+        val low = s.enemyMaxHealth > 0 && s.enemyHealth < s.enemyMaxHealth * EXECUTE_BELOW
+        val execute = if (low) 1 + ctx.talentEffect("execute") / 100 else 1.0
         val amount = spell.healing * ready.eff.baseHealingMultiplier * rank * crit * scale *
-            hooks.damageMultiplier(ctx, spell, ready.spellId)
+            hooks.damageMultiplier(ctx, spell, ready.spellId) * spellBonus * execute
 
         val dots = spell.hotDuration?.takeIf { spell.school == SpellSchool.DAMAGE }?.let { dur ->
-            val perTick = (spell.hotHealingPerTick ?: 0.0) * ready.eff.baseHealingMultiplier * rank * scale
+            val perTick = (spell.hotHealingPerTick ?: 0.0) * ready.eff.baseHealingMultiplier * rank * scale * spellBonus
             // Refresh by ability rather than append, and never replace the whole
             // list -- the party-side equivalent of this does replace it, which
             // is a bug this must not inherit.
@@ -254,7 +258,8 @@ class CastPipeline(
         // no damage at all. Both fields were declared on Spell and read by
         // nothing, which is why a "threat spell" moved the bar exactly as much
         // as any other spell of the same size.
-        val threat = (dealt * spell.threatMultiplier + spell.flatThreat) * hooks.threatMultiplier(ctx)
+        val threat = (dealt * spell.threatMultiplier + spell.flatThreat) * hooks.threatMultiplier(ctx) *
+            (1 + ctx.talentEffect("threat") / 100)
 
         val out = s.withMe {
             it.copy(
@@ -265,7 +270,11 @@ class CastPipeline(
                 pendingPlayerThreat = it.pendingPlayerThreat + threat,
                 spellCooldowns = it.spellCooldowns.withCooldown(
                     ready.spellId,
-                    cooldownTicks(spell.cooldown, ready.eff.hastePercent, 0),
+                    cooldownTicks(
+                        max(0, spell.cooldown - ctx.talentEffect("cooldown:${ready.spellId}").roundToInt()),
+                        ready.eff.hastePercent,
+                        0,
+                    ),
                 ),
             )
         }.copy(enemyDebuffs = dots).let { hooks.onDamageLand(ctx, it, DamageLand(spell, ready.spellId, ready.isCrit, dealt)) }
@@ -313,6 +322,9 @@ class CastPipeline(
         (rawTicks * (1 - hastePct / 100.0) * (if (piStacks > 0) 0.5 else 1.0)).roundToInt()
 
     /** Only positive cooldowns are recorded — a zero entry is not stored at all. */
+    /** The enemy health share below which `execute` talents apply. */
+    private val EXECUTE_BELOW = 0.35
+
     private fun Map<String, Int>.withCooldown(spellId: String, ticks: Int): Map<String, Int> =
         if (ticks > 0) this + (spellId to ticks) else this
 

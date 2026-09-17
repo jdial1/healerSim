@@ -2,7 +2,7 @@
   {
     "id": "dk_r0c0",
     "name": "Bloodworms",
-    "description": "Increases power by 2% per rank.",
+    "description": "Blood Shield absorbs 10% more per rank.",
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
@@ -13,10 +13,11 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "healingBoost": 2
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "bloodShield": 10
+    }
   },
   {
     "id": "dk_r0c2",
@@ -40,7 +41,7 @@
   {
     "id": "dk_r0c4",
     "name": "Rune Tap",
-    "description": "Increases maximum resource by 3% per rank.",
+    "description": "Increases maximum mana by 3% per rank.",
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
@@ -59,7 +60,7 @@
   {
     "id": "dk_r1c1",
     "name": "Improved Death Strike",
-    "description": "Increases power by 3% per rank.",
+    "description": "Death Strike heals for a further 5% of recent damage per rank.",
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
@@ -72,15 +73,16 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "healingBoost": 3
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "deathStrikeHeal": 5
+    }
   },
   {
     "id": "dk_r1c3",
     "name": "Subversion",
-    "description": "Increases critical strike chance by 2% per rank.",
+    "description": "Generates 6% more threat per rank.",
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
@@ -93,10 +95,11 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "critChance": 2
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "threat": 6
+    }
   },
   {
     "id": "dk_r2c0",
@@ -140,7 +143,7 @@
   {
     "id": "dk_r2c4",
     "name": "Scent of Blood",
-    "description": "Returns resource on each direct cast.",
+    "description": "Death Strike costs 2 less mana per rank.",
     "maxPoints": 3,
     "levelReq": 9,
     "cost": 1,
@@ -151,10 +154,11 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "manaReturnOnDirectHeal": 1
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cost:death_strike": 2
+    }
   },
   {
     "id": "dk_r3c1",
@@ -179,7 +183,7 @@
   {
     "id": "dk_r3c3",
     "name": "Butchery",
-    "description": "Increases critical strike chance by 3% per rank.",
+    "description": "Heart Strike deals 10% more damage per rank.",
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
@@ -192,15 +196,16 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "critChance": 3
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:heart_strike": 10
+    }
   },
   {
     "id": "dk_r4c2",
     "name": "Vendetta",
-    "description": "Increases power by 5% per rank.",
+    "description": "Increases damage by 5% per rank.",
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
@@ -221,7 +226,7 @@
   {
     "id": "dk_r4c4",
     "name": "Veteran of the Third War",
-    "description": "Increases toughness by 4% per rank.",
+    "description": "Increases Blood Shield rating by 2 per rank.",
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
@@ -235,14 +240,14 @@
     "synergyWith": [],
     "maxRankBonusDescription": "",
     "statBonus": {
-      "manaPool": 4
+      "uniqueStat": 2
     },
     "points": 0
   },
   {
     "id": "dk_r5c1",
     "name": "Bone Shield",
-    "description": "Increases haste by 4% per rank.",
+    "description": "Icebound Fortitude's cooldown is 5 seconds shorter per rank.",
     "maxPoints": 2,
     "levelReq": 21,
     "cost": 1,
@@ -255,15 +260,16 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "haste": 4
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:icebound_fortitude": 50
+    }
   },
   {
     "id": "dk_r5c3",
     "name": "Crimson Scourge",
-    "description": "Increases power by 6% per rank.",
+    "description": "Heart Strike's cooldown is 1 second shorter per rank.",
     "maxPoints": 2,
     "levelReq": 21,
     "cost": 1,
@@ -276,15 +282,16 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "healingBoost": 6
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:heart_strike": 10
+    }
   },
   {
     "id": "dk_r6c2",
     "name": "Dancing Rune Weapon",
-    "description": "Increases power by 10%.",
+    "description": "Death Strike deals 25% more damage.",
     "maxPoints": 1,
     "levelReq": 25,
     "cost": 1,
@@ -297,9 +304,10 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "healingBoost": 10
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:death_strike": 25
+    }
   }
 ]

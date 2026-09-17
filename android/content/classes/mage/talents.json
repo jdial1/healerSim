@@ -2,7 +2,7 @@
   {
     "id": "m_r0c0",
     "name": "Improved Frostbolt",
-    "description": "Increases spell damage by 2% per rank.",
+    "description": "Frostbolt deals 5% more damage per rank.",
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
@@ -13,10 +13,11 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "healingBoost": 2
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:frostbolt": 5
+    }
   },
   {
     "id": "m_r0c2",
@@ -80,7 +81,7 @@
   {
     "id": "m_r1c3",
     "name": "Piercing Ice",
-    "description": "Increases critical strike chance by 2% per rank.",
+    "description": "Frostbolt's chill lasts 1.5 seconds longer per rank.",
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
@@ -93,10 +94,11 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "critChance": 2
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "chillTicks": 15
+    }
   },
   {
     "id": "m_r2c0",
@@ -140,7 +142,7 @@
   {
     "id": "m_r2c4",
     "name": "Arcane Meditation",
-    "description": "Returns mana on each direct cast.",
+    "description": "Frostbolt costs 2 less mana per rank.",
     "maxPoints": 3,
     "levelReq": 9,
     "cost": 1,
@@ -151,15 +153,16 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "manaReturnOnDirectHeal": 1
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cost:frostbolt": 2
+    }
   },
   {
     "id": "m_r3c1",
     "name": "Empowered Fireball",
-    "description": "Increases spell damage by 4% per rank.",
+    "description": "Fireball deals 8% more damage per rank.",
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
@@ -172,15 +175,16 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "healingBoost": 4
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:fireball": 8
+    }
   },
   {
     "id": "m_r3c3",
     "name": "Shatter",
-    "description": "Increases critical strike chance by 3% per rank.",
+    "description": "Shatter grants a further 8% critical strike chance per rank.",
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
@@ -193,10 +197,11 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "critChance": 3
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "shatterCrit": 8
+    }
   },
   {
     "id": "m_r4c0",
@@ -221,7 +226,7 @@
   {
     "id": "m_r4c2",
     "name": "Molten Fury",
-    "description": "Increases spell damage by 5% per rank.",
+    "description": "Deals 8% more damage per rank to an enemy below 35% health.",
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
@@ -236,15 +241,16 @@
     ],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "healingBoost": 5
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "execute": 8
+    }
   },
   {
     "id": "m_r4c4",
     "name": "Arcane Potency",
-    "description": "Increases critical strike chance by 4% per rank.",
+    "description": "Arcane Missiles deals 10% more damage per rank.",
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
@@ -259,15 +265,16 @@
     ],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "critChance": 4
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:arcane_missiles": 10
+    }
   },
   {
     "id": "m_r5c1",
     "name": "Netherwind Presence",
-    "description": "Increases haste by 4% per rank.",
+    "description": "Counterspell's cooldown is 3 seconds shorter per rank.",
     "maxPoints": 2,
     "levelReq": 21,
     "cost": 1,
@@ -280,15 +287,16 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "haste": 4
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:counterspell": 30
+    }
   },
   {
     "id": "m_r5c3",
     "name": "Torment the Weak",
-    "description": "Increases spell damage by 6% per rank.",
+    "description": "Deals 6% more damage per rank to a chilled enemy.",
     "maxPoints": 2,
     "levelReq": 21,
     "cost": 1,
@@ -301,15 +309,16 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "healingBoost": 6
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "chilledDamage": 6
+    }
   },
   {
     "id": "m_r6c2",
     "name": "Arcane Power",
-    "description": "Increases spell damage by 10%.",
+    "description": "Living Bomb deals 25% more damage, and its cooldown is 3 seconds shorter.",
     "maxPoints": 1,
     "levelReq": 25,
     "cost": 1,
@@ -322,9 +331,11 @@
     "exclusiveWith": [],
     "synergyWith": [],
     "maxRankBonusDescription": "",
-    "statBonus": {
-      "healingBoost": 10
-    },
-    "points": 0
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:living_bomb": 25,
+      "cooldown:living_bomb": 30
+    }
   }
 ]
