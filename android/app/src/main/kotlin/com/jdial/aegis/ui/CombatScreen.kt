@@ -840,43 +840,47 @@ private fun PartyRow(
                         // they overlap rather than push each other. Capping the
                         // name is what keeps a long one out from under the
                         // centred sockets.
-                        .fillMaxWidth(0.4f)
+                        .fillMaxWidth(if (otherPlayer) 0.5f else 0.4f)
                         .padding(start = 8.dp, end = 4.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        BasicText(
-                            label,
-                            maxLines = 1,
-                            // maxLines alone clips mid-glyph; this ends the name
-                            // somewhere a reader recognises.
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                            style = AegisType.numeric.copy(
-                                fontSize = 13.sp,
-                                color = if (dead) Ink.muted else Ink.primary,
-                                shadow = TextOutline,
-                            ),
-                        )
-                        if (otherPlayer) {
-                            Spacer(Modifier.width(4.dp))
-                            PlayerBadge()
-                        }
-                    }
-                    if (!dead && ui.healthTextPercent) {
-                        val deficit = (unit.maxHealth - unit.health).roundToInt()
-                        if (deficit > 0) {
-                            BasicText(
-                                "-$deficit",
-                                style = AegisType.numeric.copy(
-                                    fontSize = 11.sp,
-                                    // Not Vital.hurt: the fill under this text
-                                    // is already that colour because the unit is
-                                    // hurt. The bar carries the urgency, this
-                                    // carries the number.
-                                    color = Ink.primary,
-                                    shadow = TextOutline,
-                                ),
-                            )
+                    BasicText(
+                        label,
+                        maxLines = 1,
+                        // maxLines alone clips mid-glyph; this ends the name
+                        // somewhere a reader recognises.
+                        overflow = TextOverflow.Ellipsis,
+                        style = AegisType.numeric.copy(
+                            // "Player 2 · Frost Mage" is twice an AI's name, and
+                            // the column is capped so it clears the auras.
+                            fontSize = if (otherPlayer) 12.sp else 13.sp,
+                            color = if (dead) Ink.muted else Ink.primary,
+                            shadow = TextOutline,
+                        ),
+                    )
+                    // The badge shares the second line with the deficit, so the
+                    // name keeps the whole first line.
+                    val deficit = (unit.maxHealth - unit.health).roundToInt()
+                    val showDeficit = !dead && ui.healthTextPercent && deficit > 0
+                    if (otherPlayer || showDeficit) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (otherPlayer) {
+                                PlayerBadge()
+                                if (showDeficit) Spacer(Modifier.width(4.dp))
+                            }
+                            if (showDeficit) {
+                                BasicText(
+                                    "-$deficit",
+                                    style = AegisType.numeric.copy(
+                                        fontSize = 11.sp,
+                                        // Not Vital.hurt: the fill under this text
+                                        // is already that colour because the unit is
+                                        // hurt. The bar carries the urgency, this
+                                        // carries the number.
+                                        color = Ink.primary,
+                                        shadow = TextOutline,
+                                    ),
+                                )
+                            }
                         }
                     }
                 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.jdial.aegis.mp.ForgetResult
 import com.jdial.aegis.mp.Multiplayer
 import com.jdial.aegis.mp.MultiplayerSession
+import com.jdial.aegis.mp.mergeSeats
 import com.jdial.aegis.sim.Participant
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.GameData
@@ -269,7 +270,17 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
                 delay(heartbeatIntervalMs)
                 val session = multiplayer.session ?: break
                 val tookOver = runCatching { session.reconcileHost() }.getOrDefault(false)
-                if (!tookOver) continue
+                if (!tookOver) {
+                    // A host keeps its seating current: guests whose profile
+                    // arrived after the run began, and guests who went quiet.
+                    if (session.isHost) {
+                        val slot = session.localUnitId ?: continue
+                        runCatching { session.buildParticipants() }.getOrNull()?.let { built ->
+                            mutate { s -> s.copy(participants = mergeSeats(s.participants, built, slot)) }
+                        }
+                    }
+                    continue
+                }
                 // Inherit the party as it stands, then simulate from here.
                 runCatching { session.buildParticipants() }.getOrNull()?.let { built ->
                     val slot = session.localUnitId ?: return@let

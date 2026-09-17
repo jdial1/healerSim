@@ -212,3 +212,31 @@ class MultiplayerSession(
         return frame.rewardGuest(engine, before = local, shown = shown, slot = slot)
     }
 }
+
+/**
+ * The host's seating, brought up to date with [built] from the latest profiles
+ * and heartbeats.
+ *
+ * Someone who has just arrived is seated fresh. Someone already seated keeps
+ * their mana, cooldowns and resources -- only whether a person is still
+ * driving the slot changes, which is what hands a dropped player's slot to the
+ * AI and back. The host's own seat is never touched.
+ *
+ * Seating used to be built once, when the run started. A guest publishes its
+ * profile only after it has found the room, so a host that started first
+ * never seated it: the guest's casts were dropped as coming from nobody, and
+ * it finished the run with no XP.
+ */
+fun mergeSeats(
+    current: Map<String, Participant>,
+    built: Map<String, Participant>,
+    localSlot: String,
+): Map<String, Participant> {
+    var out = current
+    for ((slot, p) in built) {
+        if (slot == localSlot) continue
+        val seated = current[slot]
+        out = out + (slot to (seated?.copy(isHuman = p.isHuman) ?: p))
+    }
+    return out
+}
