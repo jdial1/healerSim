@@ -185,6 +185,8 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                 casts = vm.castFeedback,
                 sound = uiSettings.sound,
                 haptics = uiSettings.haptics,
+                spell = { vm.data.spell(it) },
+                target = targetId,
             )
         }
         Box(Modifier.fillMaxSize().background(Obsidian.abyss)) {

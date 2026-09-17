@@ -32,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import com.jdial.aegis.ui.CastFeedback
+import com.jdial.aegis.ui.CastResult
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -428,7 +429,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
     fun castSpell(spellId: String, targetId: String?) {
         if (!multiplayer.isHost) {
             // A guest cannot know yet whether the host will accept it.
-            _castFeedback.tryEmit(CastFeedback.SENT)
+            _castFeedback.tryEmit(CastFeedback(spellId, CastResult.SENT))
             viewModelScope.launch { runCatching { multiplayer.requestCast(spellId, targetId) } }
             return
         }
@@ -441,7 +442,9 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
                 // cast, so identity is exactly "did anything happen".
                 .also { accepted = it !== s }
         }
-        _castFeedback.tryEmit(if (accepted) CastFeedback.ACCEPTED else CastFeedback.REFUSED)
+        _castFeedback.tryEmit(
+            CastFeedback(spellId, if (accepted) CastResult.ACCEPTED else CastResult.REFUSED),
+        )
     }
 
     private val _castFeedback = MutableSharedFlow<CastFeedback>(extraBufferCapacity = 8)

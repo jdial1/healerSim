@@ -15,6 +15,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.jdial.aegis.R
+import com.jdial.aegis.data.Spell
+import com.jdial.aegis.data.SpellSchool
+import com.jdial.aegis.data.SpellType
 import com.jdial.aegis.sim.DungeonOutcomeKind
 import com.jdial.aegis.sim.GameState
 import kotlinx.coroutines.flow.Flow
@@ -27,14 +30,45 @@ import kotlinx.coroutines.flow.Flow
  * engine already produces, so the simulation -- and the recorded single-player
  * runs it has to reproduce exactly -- is untouched.
  *
- * Sounds are Kenney's CC0 packs (see ATTRIBUTION.md). Deliberately fantasy:
- * cloth, metal, bells, strings -- nothing from the sci-fi or digital packs.
- * There is no sound per hit or per heal tick; at ten ticks a second that is
- * noise, not feedback.
+ * Sounds are CC0 and CC BY packs (see ATTRIBUTION.md). Deliberately fantasy:
+ * cloth, metal, bells, strings, and a few real spell sounds -- nothing from
+ * the sci-fi or digital packs. There is no sound per hit or per heal tick; at
+ * ten ticks a second that is noise, not feedback.
+ *
+ * A cast sounds like what it does, because a healer's hands are on the party
+ * frames and their eyes are on health bars: one sound for every spell told you
+ * only that the tap registered, which you could already feel.
  */
 enum class Cue(val sound: Int, val volume: Float) {
-    /** Your cast went off. Quiet: it happens constantly. */
+    /** A cast with nothing more specific to say -- utility. Quiet: constant. */
     CAST(R.raw.sfx_cast, 0.35f),
+
+    // What you cast. Heals are the loudest of these because they are the job.
+    HEAL(R.raw.sfx_heal, 0.5f),
+    HEAL_GROUP(R.raw.sfx_heal_group, 0.55f),
+    HOT(R.raw.sfx_hot, 0.45f),
+    DISPEL(R.raw.sfx_dispel, 0.5f),
+    DEFENSIVE(R.raw.sfx_defensive, 0.6f),
+
+    /** A damage spell, and the same thing swung rather than cast. */
+    SPELL(R.raw.sfx_spell, 0.4f),
+    SWING(R.raw.sfx_swing, 0.45f),
+
+    /** An absorb landed on somebody. Not a cast: no spell applies one. */
+    SHIELD(R.raw.sfx_shield, 0.45f),
+
+    // The window, and the enemy side of it.
+    /** You picked a different target. */
+    SELECT(R.raw.sfx_select, 0.3f),
+
+    /** A pack engaged -- walked into, or dragged in early. */
+    PULL(R.raw.sfx_pull, 0.5f),
+
+    /** An add went down. The thing a DPS is told to watch for. */
+    ENEMY_DOWN(R.raw.sfx_enemy_down, 0.5f),
+
+    /** The boss changed phase. */
+    PHASE(R.raw.sfx_phase, 0.7f),
 
     /** Your cast was refused -- on cooldown, or out of mana. */
     REFUSED(R.raw.sfx_refused, 0.55f),
@@ -54,7 +88,29 @@ enum class Cue(val sound: Int, val volume: Float) {
 }
 
 /** What a cast tap turned into, as the view model saw it. */
-enum class CastFeedback { ACCEPTED, REFUSED, SENT }
+enum class CastResult { ACCEPTED, REFUSED, SENT }
+
+/** A cast tap: what was cast, and what came of it. */
+data class CastFeedback(val spellId: String, val result: CastResult)
+
+/**
+ * The cue a cast of [spell] makes.
+ *
+ * Read off what the spell does rather than a table of ids, so a new spell is
+ * audible the day it is added and nothing here has to be kept in step with
+ * content. A damage spell splits on its resource: mana is cast, rage and
+ * energy are swung.
+ */
+fun castCue(spell: Spell?): Cue = when {
+    spell == null -> Cue.CAST
+    spell.dispels -> Cue.DISPEL
+    spell.damageReduction != null -> Cue.DEFENSIVE
+    spell.school == SpellSchool.DAMAGE -> if (spell.resource == "MANA") Cue.SPELL else Cue.SWING
+    spell.school != SpellSchool.HEAL -> Cue.CAST
+    spell.type == SpellType.AOE -> Cue.HEAL_GROUP
+    spell.hotDuration != null -> Cue.HOT
+    else -> Cue.HEAL
+}
 
 /** Below this fraction of health an ally is in danger, once per crossing. */
 const val DANGER_FRACTION = 0.3
@@ -86,12 +142,24 @@ fun cuesBetween(prev: GameState, cur: GameState): List<Cue> = buildList {
     val seen = prev.floatingCombatTexts.mapTo(HashSet()) { it.id }
     if (cur.floatingCombatTexts.any { it.crit && it.id !in seen }) add(Cue.CRIT)
 
+    if (cur.bossPhase > prev.bossPhase) add(Cue.PHASE)
+
+    // An add going down, and a pack arriving. Both are things a player is
+    // asked to react to and neither was audible.
+    val standing = prev.adds.count { it.isAlive }
+    if (standing > 0 && cur.adds.count { it.isAlive } < standing) add(Cue.ENEMY_DOWN)
+    if (cur.trashPullsRemaining < prev.trashPullsRemaining || cur.extraPulls > prev.extraPulls) {
+        add(Cue.PULL)
+    }
+
     val lastHealth = prev.party.associateBy { it.id }
     var died = false
     var danger = false
+    var shielded = false
     for (u in cur.party) {
         val was = lastHealth[u.id] ?: continue
         if (was.isAlive && !u.isAlive) died = true
+        if (u.shield > was.shield) shielded = true
         if (u.isAlive && u.maxHealth > 0 && was.maxHealth > 0 &&
             was.health / was.maxHealth >= DANGER_FRACTION &&
             u.health / u.maxHealth < DANGER_FRACTION
@@ -99,15 +167,19 @@ fun cuesBetween(prev: GameState, cur: GameState): List<Cue> = buildList {
             danger = true
         }
     }
+    if (shielded) add(Cue.SHIELD)
     // A death outranks the warning that usually comes a moment before it.
     if (died) add(Cue.DEATH) else if (danger) add(Cue.DANGER)
 }
 
 private fun Cue.haptic(): HapticFeedbackType = when (this) {
-    Cue.CAST, Cue.TELEGRAPH -> HapticFeedbackType.SegmentTick
+    Cue.CAST, Cue.TELEGRAPH, Cue.HOT, Cue.SELECT, Cue.ENEMY_DOWN, Cue.SHIELD ->
+        HapticFeedbackType.SegmentTick
     Cue.REFUSED -> HapticFeedbackType.Reject
-    Cue.CRIT, Cue.INTERRUPT -> HapticFeedbackType.Confirm
-    Cue.DANGER, Cue.DEATH, Cue.WIPE -> HapticFeedbackType.LongPress
+    Cue.CRIT, Cue.INTERRUPT, Cue.HEAL, Cue.HEAL_GROUP, Cue.DISPEL, Cue.SPELL, Cue.SWING ->
+        HapticFeedbackType.Confirm
+    Cue.DANGER, Cue.DEATH, Cue.WIPE, Cue.PHASE, Cue.PULL, Cue.DEFENSIVE ->
+        HapticFeedbackType.LongPress
     Cue.CLEAR -> HapticFeedbackType.Confirm
 }
 
@@ -119,7 +191,11 @@ private fun Cue.haptic(): HapticFeedbackType = when (this) {
 private fun Cue.minGapMs(): Long = when (this) {
     Cue.DANGER -> 1_500
     Cue.CRIT -> 400
-    Cue.CAST, Cue.REFUSED -> 80
+    // Heals are spammed, and a heal sound layered over itself ten times a
+    // second is a drone. One per cast, but never two inside a cast's own sound.
+    Cue.HEAL, Cue.HEAL_GROUP, Cue.SPELL -> 220
+    Cue.SHIELD, Cue.ENEMY_DOWN -> 300
+    Cue.CAST, Cue.REFUSED, Cue.HOT, Cue.SWING, Cue.SELECT -> 80
     else -> 0
 }
 
@@ -156,7 +232,16 @@ private class SoundBoard(context: Context) {
  * reported on [casts]. Place it once, alongside the combat screen.
  */
 @Composable
-fun CombatFeedback(state: GameState, casts: Flow<CastFeedback>, sound: Boolean, haptics: Boolean) {
+fun CombatFeedback(
+    state: GameState,
+    casts: Flow<CastFeedback>,
+    sound: Boolean,
+    haptics: Boolean,
+    /** Looks a cast up, so the cue can be the spell's rather than one for all. */
+    spell: (String) -> Spell?,
+    /** Who the player has targeted; a change is a tap worth hearing. */
+    target: String?,
+) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val board = remember { SoundBoard(context.applicationContext) }
@@ -184,10 +269,19 @@ fun CombatFeedback(state: GameState, casts: Flow<CastFeedback>, sound: Boolean, 
     }
     LaunchedEffect(casts) {
         casts.collect {
-            when (it) {
-                CastFeedback.ACCEPTED, CastFeedback.SENT -> fire(Cue.CAST)
-                CastFeedback.REFUSED -> fire(Cue.REFUSED)
+            when (it.result) {
+                CastResult.ACCEPTED, CastResult.SENT -> fire(castCue(spell(it.spellId)))
+                CastResult.REFUSED -> fire(Cue.REFUSED)
             }
+        }
+    }
+
+    // Not on first composition: the opening target is one nobody picked.
+    var lastTarget by remember { mutableStateOf(target) }
+    LaunchedEffect(target) {
+        if (target != lastTarget) {
+            lastTarget = target
+            if (target != null) fire(Cue.SELECT)
         }
     }
 }

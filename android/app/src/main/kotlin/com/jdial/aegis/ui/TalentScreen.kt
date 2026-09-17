@@ -812,7 +812,17 @@ private fun CreditsDialog(onDismiss: () -> Unit) {
                     Spacer(Modifier.height(10.dp))
                     BasicText(
                         // CC0 asks for nothing, but credit costs nothing either.
-                        "Sound effects and battle sprites by Kenney (kenney.nl), CC0.",
+                        "Battle sprites and most sound effects by Kenney (kenney.nl), " +
+                            "with more sounds from artisticdude's RPG Sound Pack. Both CC0.",
+                        style = AegisType.body,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    BasicText(
+                        // This one is not optional: CC BY requires the credit
+                        // to travel with the work.
+                        "Spell sounds from the Fantasy Sound Effects Library by " +
+                            "Little Robot Sound Factory (littlerobotsoundfactory.com), " +
+                            "used under CC BY 3.0. Shortened and re-encoded.",
                         style = AegisType.body,
                     )
                     Spacer(Modifier.height(10.dp))

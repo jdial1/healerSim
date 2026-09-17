@@ -26,25 +26,58 @@ regenerates them from upstream; it is not part of any build.
 Cinzel by Natanael Gama, under the
 [SIL Open Font License 1.1](https://openfontlicense.org/).
 
-## Sound effects — CC0 (Android)
+## Sound effects (Android)
 
-Seven sounds from [Kenney](https://kenney.nl/)'s audio packs, released under
-[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). CC0 needs no
-credit; it is given anyway, in-app and here. Chosen to stay fantasy-flavoured:
-nothing from the Sci-fi or Digital packs.
+Nineteen sounds, from three libraries. Chosen to stay fantasy-flavoured: nothing
+from the Sci-fi or Digital packs. Kenney has no magic in any of its ten audio
+packs, which is why the spell sounds come from elsewhere.
 
-| File in `android/app/src/main/res/raw/` | Kenney pack | Original file |
+Every file was cut to length, made mono, faded and re-encoded to Vorbis, so
+none is the original bytes; the script that does it is in the commit that
+added them.
+
+### CC0 1.0 — [Kenney](https://kenney.nl/) and [artisticdude](https://opengameart.org/content/rpg-sound-pack)
+
+[CC0](https://creativecommons.org/publicdomain/zero/1.0/) needs no credit; it
+is given anyway, in-app and here.
+
+| File in `android/app/src/main/res/raw/` | Pack | Original file |
 |---|---|---|
-| `sfx_cast.ogg` | RPG Audio | `cloth4.ogg` |
-| `sfx_refused.ogg` | RPG Audio | `metalLatch.ogg` |
-| `sfx_crit.ogg` | Impact Sounds | `impactBell_heavy_004.ogg` |
-| `sfx_danger.ogg` | Impact Sounds | `impactPunch_medium_000.ogg` |
-| `sfx_death.ogg` | Impact Sounds | `impactSoft_heavy_001.ogg` |
-| `sfx_clear.ogg` | Music Jingles | `jingles_PIZZI01.ogg` |
-| `sfx_wipe.ogg` | Music Jingles | `jingles_HIT15.ogg` |
+| `sfx_cast.ogg` | Kenney RPG Audio | `cloth4.ogg` |
+| `sfx_refused.ogg` | Kenney RPG Audio | `metalLatch.ogg` |
+| `sfx_crit.ogg` | Kenney Impact Sounds | `impactBell_heavy_004.ogg` |
+| `sfx_danger.ogg` | Kenney Impact Sounds | `impactPunch_medium_000.ogg` |
+| `sfx_death.ogg` | Kenney Impact Sounds | `impactSoft_heavy_001.ogg` |
+| `sfx_clear.ogg` | Kenney Music Jingles | `jingles_PIZZI01.ogg` |
+| `sfx_wipe.ogg` | Kenney Music Jingles | `jingles_HIT15.ogg` |
+| `sfx_hot.ogg` | Kenney Interface Sounds | `pluck_002.ogg` |
+| `sfx_dispel.ogg` | Kenney Interface Sounds | `glass_002.ogg` |
+| `sfx_pull.ogg` | Kenney Impact Sounds | `impactWood_heavy_001.ogg` |
+| `sfx_enemy_down.ogg` | Kenney Impact Sounds | `impactSoft_medium_003.ogg` |
+| `sfx_spell.ogg` | RPG Sound Pack (artisticdude) | `battle/magic1.wav` |
+| `sfx_swing.ogg` | RPG Sound Pack (artisticdude) | `battle/swing.wav` |
+| `sfx_defensive.ogg` | RPG Sound Pack (artisticdude) | `inventory/armor-light.wav` |
+
+### CC BY 3.0 — Little Robot Sound Factory
+
+The spell sounds, from the
+[Fantasy Sound Effects Library](https://opengameart.org/content/fantasy-sound-effects-library)
+by [Little Robot Sound Factory](https://www.littlerobotsoundfactory.com/),
+under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Attribution is
+required, and is given in-app as well as here. The files were shortened and
+re-encoded; changes were made.
+
+| File in `android/app/src/main/res/raw/` | Original file |
+|---|---|
+| `sfx_heal.ogg` | `Spell_01.wav` |
+| `sfx_heal_group.ogg` | `Spell_03.wav` |
+| `sfx_shield.ogg` | `Spell_02.wav` |
+| `sfx_select.ogg` | `Menu_Select_00.wav` |
+| `sfx_phase.ogg` | `Dragon_Growl_00.wav` |
 
 To swap a sound, replace the file under the same name; `ui/Feedback.kt` maps
-cues to these names.
+cues to these names, and `castCue` picks one from what a spell does rather than
+from its id.
 
 ## Battle sprites — CC0 (Android)
 

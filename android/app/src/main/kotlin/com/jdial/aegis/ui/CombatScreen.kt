@@ -89,6 +89,7 @@ import com.jdial.aegis.data.AddTemplate
 import com.jdial.aegis.data.pullCombat
 import androidx.compose.ui.graphics.Path
 import com.jdial.aegis.sim.FloatingKind
+import com.jdial.aegis.sim.EnemyAdd
 import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.TRASH_PACK_COUNT
 import com.jdial.aegis.sim.Unit
@@ -306,11 +307,6 @@ private fun EncounterHud(
                 )
             }
 
-            if (state.restTicks > 0) {
-                Spacer(Modifier.height(8.dp))
-                RestRow(state, earlyPullXpPerTick, onPullNow)
-            }
-
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // For a role that only ever hits the enemy, say so once here
@@ -374,7 +370,14 @@ private fun EncounterHud(
                 }
             }
 
-            AddRows(state, targetId, onTarget)
+            // One reserved tray for everything that comes and goes: the adds
+            // standing, or the breather between pulls. Both used to push the
+            // rest of the card around as they appeared, so the enemy bar, the
+            // threat bar and the telegraph all sat at a different height from
+            // one second to the next -- on a screen the player is reading under
+            // time pressure, while aiming taps at it.
+            Spacer(Modifier.height(8.dp))
+            EnemyTray(state, targetId, onTarget, earlyPullXpPerTick, onPullNow)
 
             // A non-healer needs two things a healer never did: what the enemy
             // is doing to *them* (threat) and what they have running on it
@@ -693,71 +696,137 @@ private fun nextMechanic(state: GameState, data: GameData): NextMechanic? {
  * a mender mid-heal, a runner getting away, a boss's add on the healer.
  */
 @Composable
-private fun AddRows(state: GameState, targetId: String?, onTarget: (String) -> kotlin.Unit) {
-    val choosable = state.playerRole != UnitRole.HEALER
-    state.adds.forEach { a ->
-        Spacer(Modifier.height(6.dp))
-        val chosen = choosable && a.id == targetId
-        val (tag, colour) = when {
-            a.fleeing -> "FLEEING  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical
-            a.casting -> "MENDING  ·  KICK" to Color(0xFFFACC15)
-            a.kind == AddTemplate.MENDER -> "HEALER" to Vital.healthy
-            a.kind == AddTemplate.RUNNER -> "RUNNER" to Gilt.core
-            a.kind == AddTemplate.PACK -> "2× DAMAGE" to Vital.critical
-            a.kind == AddTemplate.BOMB -> "BOMB  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical
-            else -> "ADD" to Ink.secondary
-        }
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(26.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .border(
-                    if (chosen) 2.dp else 1.dp,
-                    if (chosen) Gilt.core else Gilt.deep.copy(alpha = 0.4f),
-                    RoundedCornerShape(4.dp),
-                )
-                .then(
-                    if (choosable) {
-                        Modifier.clickable(onClickLabel = "Target ${a.name}") { onTarget(a.id) }
-                    } else {
-                        Modifier
-                    },
-                )
-                .padding(horizontal = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BasicText(
-                (if (chosen) "▶ " else "") + a.name.uppercase(),
-                maxLines = 1,
-                style = AegisType.label.copy(fontSize = 10.sp, color = if (chosen) Gilt.core else Ink.primary),
-                modifier = Modifier.width(130.dp),
+private fun EnemyTray(
+    state: GameState,
+    targetId: String?,
+    onTarget: (String) -> kotlin.Unit,
+    earlyPullXpPerTick: Double,
+    onPullNow: () -> kotlin.Unit,
+) {
+    // Two rows' worth, always. A tray that grew with what was in it is what
+    // made the card breathe; an empty one is a place things appear, which is
+    // information of its own on a pull that has no adds.
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(TrayHeight)
+            .clip(RoundedCornerShape(4.dp))
+            .background(Obsidian.abyss.copy(alpha = 0.45f))
+            .padding(horizontal = 5.dp, vertical = 4.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        val adds = state.adds.filter { it.isAlive }
+        when {
+            adds.isNotEmpty() -> AddRows(adds, targetId, onTarget, state.playerRole != UnitRole.HEALER)
+            state.restTicks > 0 -> RestRow(state, earlyPullXpPerTick, onPullNow)
+            else -> BasicText(
+                "NOTHING ELSE UP",
+                style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted.copy(alpha = 0.5f)),
+                modifier = Modifier.padding(horizontal = 4.dp),
             )
-            Box(
+        }
+    }
+}
+
+/** Two add rows and a gap: what the tray reserves. */
+private val TrayHeight = 62.dp
+private val AddRowHeight = 26.dp
+
+/**
+ * The adds standing, most urgent first, capped at what the tray holds.
+ *
+ * Urgency is the order a player should deal with them in: something casting is
+ * about to undo the pull, a bomb is on a clock, a runner is leaving with the
+ * rest of the room. Anything past the second row is counted rather than drawn
+ * -- a list that scrolls is not something anybody reads mid-pull.
+ */
+@Composable
+private fun AddRows(
+    adds: List<EnemyAdd>,
+    targetId: String?,
+    onTarget: (String) -> kotlin.Unit,
+    choosable: Boolean,
+) {
+    val sorted = adds.sortedBy { a ->
+        when {
+            a.casting -> 0
+            a.kind == AddTemplate.BOMB -> 1
+            a.fleeing || a.kind == AddTemplate.RUNNER -> 2
+            a.kind == AddTemplate.MENDER -> 3
+            else -> 4
+        }
+    }
+    val shown = sorted.take(2)
+    val hidden = sorted.size - shown.size
+    Column(Modifier.fillMaxWidth()) {
+        shown.forEachIndexed { i, a ->
+            if (i > 0) Spacer(Modifier.height(2.dp))
+            val chosen = choosable && a.id == targetId
+            val (tag, colour) = when {
+                a.fleeing -> "FLEEING  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical
+                a.casting -> "MENDING  ·  KICK" to Color(0xFFFACC15)
+                a.kind == AddTemplate.MENDER -> "HEALER" to Vital.healthy
+                a.kind == AddTemplate.RUNNER -> "RUNNER" to Gilt.core
+                a.kind == AddTemplate.PACK -> "2× DAMAGE" to Vital.critical
+                a.kind == AddTemplate.BOMB -> "BOMB  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical
+                else -> "ADD" to Ink.secondary
+            }
+            Row(
                 Modifier
-                    .weight(1f)
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(Obsidian.abyss),
+                    .fillMaxWidth()
+                    .height(AddRowHeight)
+                    .clip(RoundedCornerShape(4.dp))
+                    .border(
+                        if (chosen) 2.dp else 1.dp,
+                        if (chosen) Gilt.core else Gilt.deep.copy(alpha = 0.4f),
+                        RoundedCornerShape(4.dp),
+                    )
+                    .then(
+                        if (choosable) {
+                            Modifier.clickable(onClickLabel = "Target ${a.name}") { onTarget(a.id) }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                BasicText(
+                    (if (chosen) "▶ " else "") + a.name.uppercase(),
+                    maxLines = 1,
+                    style = AegisType.label.copy(fontSize = 10.sp, color = if (chosen) Gilt.core else Ink.primary),
+                    modifier = Modifier.width(130.dp),
+                )
                 Box(
                     Modifier
-                        .fillMaxWidth((a.health / a.maxHealth).toFloat().coerceIn(0f, 1f))
-                        .fillMaxHeight()
-                        .background(Color(0xFFDC2626)),
-                )
-                if (a.casting) {
+                        .weight(1f)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Obsidian.abyss),
+                ) {
                     Box(
                         Modifier
-                            .fillMaxWidth(a.castProgress)
-                            .height(3.dp)
-                            .align(Alignment.BottomStart)
-                            .background(Color(0xFFFACC15)),
+                            .fillMaxWidth((a.health / a.maxHealth).toFloat().coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .background(Color(0xFFDC2626)),
                     )
+                    if (a.casting) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(a.castProgress)
+                                .height(3.dp)
+                                .align(Alignment.BottomStart)
+                                .background(Color(0xFFFACC15)),
+                        )
+                    }
                 }
+                Spacer(Modifier.width(6.dp))
+                BasicText(
+                    if (i == 1 && hidden > 0) "+$hidden MORE" else tag,
+                    maxLines = 1,
+                    style = AegisType.label.copy(fontSize = 9.sp, color = colour),
+                )
             }
-            Spacer(Modifier.width(6.dp))
-            BasicText(tag, maxLines = 1, style = AegisType.label.copy(fontSize = 9.sp, color = colour))
         }
     }
 }
