@@ -288,6 +288,16 @@ data class Encounters(
      */
     val healerRunChipDamage: Double = 1.0,
     /**
+     * What a boss hits a non-tank for, while a person is tanking.
+     *
+     * Holding the line is the tank's whole job, and nothing measured it: a
+     * tank who pressed nothing all run still won, because the boss beating on
+     * a damage dealer cost the party no more than beating on the tank. 1.0 is
+     * the old behaviour. Healer runs are excluded -- their boss picks at
+     * random, not by threat, and the recorded runs replay that.
+     */
+    val unheldTargetDamage: Double = 1.0,
+    /**
      * A player healer's power against the later dungeons. The AI healer heals
      * by a formula that grows with level; a person heals with spell ranks,
      * which do not keep up. Off by default, which is what the parity corpus

@@ -107,14 +107,27 @@ class ThreatInDungeonTest {
     }
 
     @Test
-    fun `the enemy settles on the tank without anyone taunting`() {
-        // The point of the tank's threat multiplier. If this fails the role does
-        // not work, however correct the arithmetic is in isolation.
-        val s = run(start(PlayerClass.WARRIOR), 80)
-        assertEquals(
-            "the enemy should be on the player tank",
-            PLAYER_UNIT_ID,
-            s.enemyTargetId,
+    fun `the enemy settles on a tank who is playing, and leaves one who is not`() {
+        // The point of the tank's threat multiplier -- and of the tank doing
+        // anything at all. A human tank earns threat from what they cast, not
+        // from the party's scripted damage, because being credited for damage
+        // the AI dealt is what let a tank hold a boss all dungeon while doing
+        // nothing.
+        val rng = Rng(4)
+        var s = start(PlayerClass.WARRIOR)
+        val strike = s.activeActionBars.first { it.isNotEmpty() }
+        repeat(80) {
+            if (!s.isCombatActive) return@repeat
+            val next = engine.reduce(s, Action.CastSpell(strike, s.enemyTargetId, 0.99), rng)
+            if (next !== s) s = next
+            s = engine.reduce(s, Action.Tick(1), rng)
+        }
+        assertEquals("the enemy should be on the tank who is playing", PLAYER_UNIT_ID, s.enemyTargetId)
+
+        val idle = run(start(PlayerClass.WARRIOR), 80)
+        assertTrue(
+            "a tank who never casts should lose the enemy to someone who does",
+            idle.enemyTargetId != PLAYER_UNIT_ID,
         )
     }
 

@@ -111,6 +111,15 @@ class GameTick(
         aiHealerHealing: Double = 0.0,
         /** Which slot the passive and HoT healing in [healEffective] belongs to. */
         localUnitId: String = PLAYER_UNIT_ID,
+        /**
+         * Whether the tank is credited with its share of the party's scripted
+         * damage. True for an AI tank, which is doing the work the scripted
+         * number stands for. False for a person: a player tank holds the line
+         * with what they actually cast, or does not hold it. Without this a
+         * tank who pressed nothing all run still kept the boss on themselves,
+         * and so could not lose.
+         */
+        tankEarnsScriptedThreat: Boolean = true,
     ): List<Unit> {
         val cfg = data.balance.threat
         val living = party.filter { it.isAlive }
@@ -119,7 +128,8 @@ class GameTick(
         // table when the pull resets.
         val tank = living.firstOrNull { it.role == UnitRole.TANK }
         val dps = living.filter { it.role == UnitRole.DPS }
-        val tankDamage = if (tank != null) scriptedPartyDamage * cfg.tankDamageShare else 0.0
+        val tankDamage =
+            if (tank != null && tankEarnsScriptedThreat) scriptedPartyDamage * cfg.tankDamageShare else 0.0
         val perDps = if (dps.isEmpty()) 0.0 else (scriptedPartyDamage - tankDamage) / dps.size
 
         fun mult(role: UnitRole) = cfg.roleMultiplier[role.name] ?: 1.0
@@ -275,6 +285,9 @@ class GameTick(
      * Draws nothing from the rng, for the same reason nothing else added since
      * increment 1 does.
      */
+    /** The AI healer's heal over time, so its work shows on the party frames. */
+    private val AI_HEAL_BUFF = "ai_mending"
+
     internal fun aiHealerTick(s: GameState, party: List<Unit>): AiHealResult {
         val cfg = data.balance.roles
         val healer = party.firstOrNull {
@@ -291,21 +304,41 @@ class GameTick(
         )
 
         // Lowest health fraction, ties broken by id so the choice cannot depend
-        // on party order.
+        // on party order. Someone already carrying the AI's heal is skipped:
+        // it is a heal over time now, and stacking it on one target would be
+        // the AI paying twice for healing that lands once.
         val hurt = party.filter { it.isAlive && it.maxHealth > 0 }
             .filter { it.health / it.maxHealth < cfg.aiHealerHealBelowFraction }
+            .filter { u -> u.buffs.none { it.id == AI_HEAL_BUFF } }
             .minWithOrNull(compareBy<Unit> { it.health / it.maxHealth }.thenBy { it.id })
             ?: return AiHealResult(party, mana, 0.0)
 
+        // Paid in full, on the heal it commits to rather than the part that
+        // lands. A healer topping someone up who was nearly full has spent the
+        // mana either way, and charging only for what fit is why the AI's mana
+        // never moved: it could carry a party through a whole dungeon without
+        // tiring, which made the tank's seat optional.
         val amount = cfg.aiHealerHeal(healer.level)
-        val effective = min(amount, hurt.maxHealth - hurt.health)
-        val cost = effective * cfg.aiHealerManaPerHealPoint
-        if (effective <= 0 || cost > mana) return AiHealResult(party, mana, 0.0)
+        val cost = amount * cfg.aiHealerManaPerHealPoint
+        if (cost > mana) return AiHealResult(party, mana, 0.0)
 
+        val ticks = cfg.aiHealerHotTicks
+        val buff = UnitBuff(
+            id = AI_HEAL_BUFF,
+            name = "Mending",
+            remainingTicks = ticks,
+            healingPerTick = amount / ticks,
+            icon = "wow/spell_holy_renew",
+            durationTicksMax = ticks,
+        )
         return AiHealResult(
-            party = party.map { if (it.id == hurt.id) it.copy(health = it.health + effective) else it },
+            party = party.map { if (it.id == hurt.id) it.copy(buffs = it.buffs + buff) else it },
             manaLeft = mana - cost,
-            healed = effective,
+            // Threat is banked on the commitment, not the landing: the healing
+            // is already paid for and already on the target, and crediting it
+            // as the buff ticks would mean walking it back out of whatever the
+            // *player* healed that tick.
+            healed = amount,
         )
     }
 
@@ -1265,6 +1298,8 @@ class GameTick(
                 threatByActor = threatByActor,
                 aiHealerHealing = aiHealerHealingThisTick,
                 localUnitId = s.localUnitId,
+                tankEarnsScriptedThreat = sys.party.firstOrNull { it.role == UnitRole.TANK }
+                    ?.let { !s.isHuman(it.id) } ?: true,
             ),
             enemyDebuffs = s.enemyDebuffs
                 .map { it.copy(remainingTicks = it.remainingTicks - 1) }
@@ -1556,6 +1591,10 @@ class GameTick(
                     (if (dungeon?.endless == true) progression.endlessMultiplier(s.endlessStacks) else 1.0) *
                     partyDamageMult * enrageMultiplier(s)
                 mult *= progression.levelGapDamageMultiplier(unit.level, dungeon?.levelMax ?: unit.level)
+                // Loose: nobody is holding it, and the squishy it found pays for that.
+                if (s.playerRole != UnitRole.HEALER && unit.role != UnitRole.TANK) {
+                    mult *= data.encounters.unheldTargetDamage
+                }
                 mult
             }
             DamageSource.AMBIENT -> {

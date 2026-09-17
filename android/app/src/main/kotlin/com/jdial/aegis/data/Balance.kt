@@ -145,6 +145,8 @@ data class RolesBalance(
     val aiHealerHealBase: Double = 9.0,
     val aiHealerHealPerLevel: Double = 3.4,
     val aiHealerManaPerHealPoint: Double = 0.34,
+    /** How many ticks the AI healer's heal lands over. */
+    val aiHealerHotTicks: Int = 6,
     /** It triages: nobody gets topped off, so chip damage accumulates. */
     val aiHealerHealBelowFraction: Double = 0.92,
     /**

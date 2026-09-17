@@ -439,6 +439,8 @@ data class GameState(
      * pool or healing yourself would starve the party.
      */
     val aiHealerMana: Double = 0.0,
+    /** What [aiHealerMana] started at, so a frame can draw it as a fraction. */
+    val aiHealerManaMax: Double = 0.0,
     /**
      * DoTs the player has on the enemy. Reuses [UnitDebuff], which already
      * carries remainingTicks, damagePerTick, icon and sourceAbilityId.

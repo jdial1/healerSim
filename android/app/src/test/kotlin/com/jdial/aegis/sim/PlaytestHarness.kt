@@ -31,6 +31,9 @@ class PlaytestHarness {
         val levels = prop("playtest.levels", "3,8,12,20,34,47").split(",").map { it.trim().toInt() }
         val runs = prop("playtest.runs", "5").toInt()
         val hard = prop("playtest.hard", "false").toBoolean()
+        // "What happens if the player does nothing?" -- the question that says
+        // whether a seat matters at all.
+        val idle = prop("playtest.idle", "false").toBoolean()
         val pace = prop("playtest.pace", "normal")
 
         println("PLAYTEST-BEGIN")
@@ -38,18 +41,19 @@ class PlaytestHarness {
             for (level in levels) {
                 val dungeon = data.dungeons.firstOrNull { !it.endless && level in it.levelMin..it.levelMax }
                     ?: data.dungeons.last { !it.endless && it.levelMin <= level }
-                repeat(runs) { seed -> println(play(cls, level, dungeon.id, hard, pace, seed + 1).json()) }
+                repeat(runs) { seed -> println(play(cls, level, dungeon.id, hard, pace, seed + 1, idle).json()) }
             }
         }
         println("PLAYTEST-END")
     }
 
     /** One run's story, in the numbers a tuning pass cares about. */
-    private data class Run(
+    internal data class Run(
         val cls: String, val level: Int, val dungeon: String, val hard: Boolean, val seed: Int,
         val outcome: String, val ticks: Int, val deaths: Int, val missedKicks: Int,
         val kicks: Int, val dispels: Int, val defensives: Int, val addsKilled: Int,
         val xp: Int, val dps: Double, val hps: Double, val lowestHealthPct: Double,
+        val aiHealerLowPct: Double,
         /** Resources, sampled every tick: how full, how often capped, how often stuck. */
         val resAvgPct: Double, val resCapPct: Double, val manaAvgPct: Double, val starvedPct: Double,
     ) {
@@ -58,11 +62,20 @@ class PlaytestHarness {
             """"kicks":$kicks,"dispels":$dispels,"defensives":$defensives,"addsKilled":$addsKilled,""" +
             """"xp":$xp,"dps":${"%.1f".format(dps)},"hps":${"%.1f".format(hps)},""" +
             """"lowestHealthPct":${"%.1f".format(lowestHealthPct)},""" +
+            """"aiHealerLowPct":${"%.1f".format(aiHealerLowPct)},""" +
             """"resAvgPct":${"%.1f".format(resAvgPct)},"resCapPct":${"%.1f".format(resCapPct)},""" +
             """"manaAvgPct":${"%.1f".format(manaAvgPct)},"starvedPct":${"%.1f".format(starvedPct)}}"""
     }
 
-    private fun play(cls: PlayerClass, level: Int, dungeonId: String, hard: Boolean, pace: String, seed: Int): Run {
+    internal fun play(
+        cls: PlayerClass,
+        level: Int,
+        dungeonId: String,
+        hard: Boolean,
+        pace: String,
+        seed: Int,
+        idle: Boolean = false,
+    ): Run {
         val rng = Rng(seed)
         var s = engine.newCharacter(cls, rng)
         val maxMana = engine.stats.maxMana(cls, level, s.talents)
@@ -109,6 +122,7 @@ class PlaytestHarness {
         var addsSeen = 0
         var addsKilled = 0
         var lowest = 100.0
+        var aiLow = 100.0
         var ticks = 0
         // Resource sampling. The Death Knight's "resource" is its memory of
         // recent damage rather than a pool, so its cap is meaningless here.
@@ -124,6 +138,7 @@ class PlaytestHarness {
             val me = s.unit(s.localUnitId)
             val hurt = s.party.filter { it.isAlive }.minByOrNull { it.health / it.maxHealth }
             hurt?.let { lowest = minOf(lowest, it.health / it.maxHealth * 100) }
+            if (s.aiHealerManaMax > 0) aiLow = minOf(aiLow, s.aiHealerMana / s.aiHealerManaMax * 100)
 
             // What the bar looks like before this tick's decisions.
             val cap = when (cls) {
@@ -148,6 +163,12 @@ class PlaytestHarness {
                     s.canPay(spell) && (s.spellCooldowns[id] ?: 0) <= 0
                 }
                 if (!couldAct) starved++
+            }
+
+            if (idle) {
+                s = engine.reduce(s, Action.Tick(1), rng)
+                ticks++
+                continue
             }
 
             // Drink before it is too late.
@@ -254,6 +275,7 @@ class PlaytestHarness {
             dps = outcome?.stats?.dps ?: 0.0,
             hps = outcome?.stats?.hps ?: 0.0,
             lowestHealthPct = lowest,
+            aiHealerLowPct = aiLow,
             resAvgPct = if (sampled > 0) resSum / sampled else 0.0,
             resCapPct = if (sampled > 0) resCapped * 100.0 / sampled else 0.0,
             manaAvgPct = if (sampled > 0) manaSum / sampled else 0.0,

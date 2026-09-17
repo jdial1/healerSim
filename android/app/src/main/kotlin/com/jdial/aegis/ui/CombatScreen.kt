@@ -974,6 +974,18 @@ private fun PartyRow(
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             // The role stripe doubles as the selection marker: it widens and
             // brightens, so selection reads from the edge of the screen.
+            // The AI healer's stripe doubles as its mana gauge, drawn from the
+            // bottom: a tank or a damage dealer has no other way to see the
+            // person keeping them alive running out, and it is the one thing
+            // that decides whether a long fight is survivable.
+            val aiMana = if (
+                unit.role == UnitRole.HEALER && !state.isHuman(unit.id) &&
+                state.aiHealerManaMax > 0
+            ) {
+                (state.aiHealerMana / state.aiHealerManaMax).toFloat().coerceIn(0f, 1f)
+            } else {
+                null
+            }
             Box(
                 Modifier
                     .width(if (selected) 7.dp else 4.dp)
@@ -982,12 +994,23 @@ private fun PartyRow(
                         when {
                             dead -> Ink.muted.copy(alpha = 0.3f)
                             selected -> accent.bright
+                            aiMana != null -> Obsidian.abyss
                             unit.role == UnitRole.TANK -> Vital.shield
                             unit.role == UnitRole.HEALER -> accent.core
                             else -> Gilt.deep
                         },
                     ),
-            )
+            ) {
+                if (aiMana != null && !dead) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .fillMaxHeight(aiMana)
+                            .background(if (aiMana < 0.25f) Vital.critical else Vital.mana),
+                    )
+                }
+            }
             // The bar IS the cell. VuhDo and HealBot spend the whole row on it
             // and overlay the text, because a title line above a bar is height
             // that carries no data. Everything below is layered on this one box,

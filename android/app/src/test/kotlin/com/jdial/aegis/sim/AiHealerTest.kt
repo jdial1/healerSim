@@ -11,6 +11,11 @@ import org.junit.Test
  *
  * It is a budget, not a rotation, because the player cannot observe an AI's
  * spell choice -- only whether the bars stayed up and whether it ran dry.
+ *
+ * It heals over time rather than instantly, so its work shows on the party
+ * frames like any other heal, and it pays for the whole heal at cast: a healer
+ * topping someone up has spent the mana whether or not it all fit. Charging
+ * only for the part that landed is why its mana never moved.
  */
 class AiHealerTest {
     private val tick = GameTick(Fixtures.data, Fixtures.stats, Fixtures.progression)
@@ -67,21 +72,41 @@ class AiHealerTest {
         )
         val r = tick.aiHealerTick(s, party)
         assertTrue("slot 5 has no human and should have healed", r.healed > 0)
-        assertTrue(r.party.first { it.id == "1" }.health > 10.0)
+        assertTrue(healing(r, "1") > 0)
     }
 
     @Test
     fun `heals the unit furthest from full`() {
         val r = tick.aiHealerTick(state(999.0), dpsParty(30.0, 80.0, 100.0, 90.0))
         assertTrue("something should have been healed", r.healed > 0)
-        assertTrue("the tank was lowest", r.party.first { it.id == "1" }.health > 30.0)
-        assertEquals("nobody else", 80.0, r.party.first { it.id == "2" }.health, 0.0)
+        assertTrue("the tank was lowest", healing(r, "1") > 0)
+        assertEquals("nobody else", 0.0, healing(r, "2"), 0.0)
+    }
+
+    /** The heal the AI put on [id] this tick, as a heal over time. */
+    private fun healing(r: GameTick.AiHealResult, id: String): Double =
+        r.party.first { it.id == id }.buffs.sumOf { it.healingPerTick * it.remainingTicks }
+
+    @Test
+    fun `it heals over time, and does not stack its own heal on one target`() {
+        val r = tick.aiHealerTick(state(999.0), dpsParty(30.0, 80.0, 100.0, 90.0))
+        val tank = r.party.first { it.id == "1" }
+        assertEquals("health does not jump; the buff does the work", 30.0, tank.health, 0.0)
+        assertEquals(cfg.aiHealerHeal(10), healing(r, "1"), 1e-9)
+
+        // Already carrying it, so the next tick goes to the next lowest.
+        val again = tick.aiHealerTick(state(999.0), r.party)
+        assertEquals("not a second copy on the same target", 1, again.party.first { it.id == "1" }.buffs.size)
+        assertTrue("the next lowest instead", healing(again, "2") > 0)
     }
 
     @Test
-    fun `never heals past full`() {
+    fun `overhealing costs full price`() {
         // Eligible (below the triage threshold) but missing less than one heal:
-        // 80/100 with a level-10 heal, which is far more than 20.
+        // 80/100 with a level-10 heal, which is far more than 20. The heal is
+        // cast anyway, and the whole thing is paid for -- that is the cost of
+        // healing someone who did not need all of it, and it is what makes a
+        // long fight drain the AI at all.
         val heal = cfg.aiHealerHeal(10)
         assertTrue("test needs an overheal case", heal > 20.0)
 
@@ -89,12 +114,9 @@ class AiHealerTest {
         // is measuring the cap rather than the charge.
         val start = 100.0
         val r = tick.aiHealerTick(state(start), dpsParty(80.0, 100.0, 100.0, 100.0))
-        val tank = r.party.first { it.id == "1" }
-        assertEquals(100.0, tank.health, 0.0)
-        assertEquals("only the missing 20 was paid for", 20.0, r.healed, 1e-9)
         assertEquals(
-            "and only the missing 20 was charged",
-            start + cfg.aiHealerRegen(10) - 20.0 * cfg.aiHealerManaPerHealPoint,
+            "the whole heal was charged, not the part that fit",
+            start + cfg.aiHealerRegen(10) - heal * cfg.aiHealerManaPerHealPoint,
             r.manaLeft,
             1e-9,
         )
@@ -156,8 +178,8 @@ class AiHealerTest {
         val a = dpsParty(30.0, 30.0, 100.0, 90.0)
         val b = listOf(a[1], a[0], a[2], a[3])
         // Both are tied at 30/100; ascending id must decide, not list position.
-        val ra = tick.aiHealerTick(state(999.0), a).party.first { it.health > 30.0 }.id
-        val rb = tick.aiHealerTick(state(999.0), b).party.first { it.health > 30.0 }.id
+        val ra = tick.aiHealerTick(state(999.0), a).party.first { it.buffs.isNotEmpty() }.id
+        val rb = tick.aiHealerTick(state(999.0), b).party.first { it.buffs.isNotEmpty() }.id
         assertEquals(ra, rb)
         assertEquals("1", ra)
     }

@@ -261,8 +261,10 @@ class Engine(val data: GameData) {
             // The AI healer starts a run full, like the player does. Zero while
             // the player is the healer, where there is no AI one.
             aiHealerMana = if (roleOf(cls) == UnitRole.HEALER) 0.0 else {
-                val r = data.balance.roles
-                r.aiHealerMaxMana(state.level)
+                data.balance.roles.aiHealerMaxMana(state.level)
+            },
+            aiHealerManaMax = if (roleOf(cls) == UnitRole.HEALER) 0.0 else {
+                data.balance.roles.aiHealerMaxMana(state.level)
             },
         )
     }
