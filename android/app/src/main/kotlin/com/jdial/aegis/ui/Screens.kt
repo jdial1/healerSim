@@ -516,19 +516,19 @@ fun TrophyCase(records: Map<String, DungeonRecord>, data: GameData) {
     Spacer(Modifier.height(12.dp))
 }
 
-/** One earned mark on a dungeon card: lit when it has been done. */
+/**
+ * One earned mark on a dungeon card: its own icon, lit when it has been done
+ * and greyed while it has not. Three gold words read as a sentence; three
+ * icons read as a row of achievements, which is what they are.
+ */
 @Composable
-private fun Mark(label: String, earned: Boolean) {
-    BasicText(
-        label,
-        style = AegisType.label.copy(
-            fontSize = 8.sp,
-            color = if (earned) Obsidian.abyss else Ink.muted,
-        ),
-        modifier = Modifier
-            .clip(RoundedCornerShape(3.dp))
-            .background(if (earned) Gilt.core else Obsidian.deep)
-            .padding(horizontal = 5.dp, vertical = 2.dp),
+private fun Mark(icon: String, label: String, earned: Boolean) {
+    GameIcon(
+        icon,
+        size = 22.dp,
+        accent = if (earned) Gilt.core else Gilt.deep.copy(alpha = 0.4f),
+        dimmed = !earned,
+        contentDescription = if (earned) "$label, earned" else "$label, not earned",
     )
 }
 
@@ -582,11 +582,13 @@ private fun DungeonCard(
                     )
                     Spacer(Modifier.weight(1f))
                     // Cleared, Clean, Sharp: what this dungeon has seen you do.
-                    Mark("CLEARED", true)
+                    // Cleared: a trophy. Clean: nobody went down. Sharp: nothing
+                    // kickable was allowed to land.
+                    Mark("wow/inv_misc_trophy_argent", "Cleared", true)
                     Spacer(Modifier.width(6.dp))
-                    Mark("CLEAN", record.clean)
+                    Mark("wow/spell_holy_devotionaura", "Clean", record.clean)
                     Spacer(Modifier.width(6.dp))
-                    Mark("SHARP", record.sharp)
+                    Mark("wow/ability_kick", "Sharp", record.sharp)
                 }
                 if (hardRecord != null && hardRecord.clears > 0) {
                     Spacer(Modifier.height(4.dp))
