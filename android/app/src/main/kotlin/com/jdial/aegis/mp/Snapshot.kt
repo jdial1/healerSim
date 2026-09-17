@@ -6,6 +6,7 @@ import com.jdial.aegis.sim.CombatPhase
 import com.jdial.aegis.sim.DungeonOutcomeKind
 import com.jdial.aegis.sim.Engine
 import com.jdial.aegis.sim.DungeonOutcome
+import com.jdial.aegis.sim.EnemyCast
 import com.jdial.aegis.sim.FloatingText
 import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.Participant
@@ -50,6 +51,8 @@ data class Snapshot(
     val enemyMaxHealth: Double,
     val enemyTargetId: String?,
     val bossSelfBuffs: List<BossBuff> = emptyList(),
+    /** A boss attack winding up: a guest has to see the warning too. */
+    val enemyCast: EnemyCast? = null,
     val enemyDebuffs: List<UnitDebuff> = emptyList(),
     val party: List<Unit> = emptyList(),
     val players: List<WirePlayer> = emptyList(),
@@ -113,6 +116,7 @@ fun GameState.toSnapshot(): Snapshot = Snapshot(
     enemyMaxHealth = enemyMaxHealth,
     enemyTargetId = enemyTargetId,
     bossSelfBuffs = bossSelfBuffs,
+    enemyCast = enemyCast,
     enemyDebuffs = enemyDebuffs,
     party = party,
     // Sorted so two hosts serialising the same state produce the same bytes,
@@ -162,6 +166,7 @@ fun Snapshot.applyTo(local: GameState, dungeon: Dungeon?): GameState {
         enemyMaxHealth = enemyMaxHealth,
         enemyTargetId = enemyTargetId,
         bossSelfBuffs = bossSelfBuffs,
+        enemyCast = enemyCast,
         enemyDebuffs = enemyDebuffs,
         party = party,
         combatElapsedTicks = tick,

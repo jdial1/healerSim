@@ -49,7 +49,11 @@ import kotlinx.serialization.json.add
  */
 class TickParityTest {
 
-    private val data = Fixtures.data
+    // Without the Android-only boss cast times (content/encounters.json): these
+    // recordings pin the shared engine, and an attack with no cast time must
+    // behave -- and draw from the rng -- exactly as it did. Casts have their own
+    // tests in EnemyCastTest.
+    private val data = Fixtures.data.withoutCasts()
     private val engine = Engine(data)
 
     private val snapshotFile = File(

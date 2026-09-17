@@ -86,7 +86,9 @@ class SnapshotTest {
 
     @Test
     fun `a frame survives a json round trip`() {
-        val snap = midFight().toSnapshot()
+        val cast = com.jdial.aegis.sim.EnemyCast("vc_ambush", "Ambush", targets = listOf("1"), remainingTicks = 7, totalTicks = 20)
+        val snap = midFight().copy(enemyCast = cast).toSnapshot()
+        assertEquals("a guest sees the wind-up", cast, snap.enemyCast)
         val back = json.decodeFromString(Snapshot.serializer(), json.encodeToString(Snapshot.serializer(), snap))
         assertEquals(snap, back)
     }

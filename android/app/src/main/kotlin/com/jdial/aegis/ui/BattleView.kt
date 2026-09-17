@@ -12,7 +12,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -433,6 +436,7 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
                     sparkle = sparkle[u.id] ?: 0,
                     say = says[u.id]?.text,
                     isYou = u.id == state.localUnitId,
+                    targeted = state.enemyCast?.targets?.contains(u.id) == true,
                 )
             }
         }
@@ -449,10 +453,13 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
         LaunchedEffect(enemyLunge) {
             if (enemyLunge > 0) { step.animateTo(1f, tween(110)); step.animateTo(0f, tween(200)) }
         }
-        val tint = if (flash.value > 0f) {
-            ColorFilter.tint(Color.White.copy(alpha = flash.value), BlendMode.SrcAtop)
-        } else {
-            look.tint?.let { ColorFilter.tint(it, BlendMode.Modulate) }
+        // A wind-up glows hotter as it nears landing.
+        val windUp = state.enemyCast?.progress ?: 0f
+        val tint = when {
+            flash.value > 0f -> ColorFilter.tint(Color.White.copy(alpha = flash.value), BlendMode.SrcAtop)
+            state.enemyCast != null ->
+                ColorFilter.tint(WindUp.copy(alpha = 0.15f + 0.45f * windUp), BlendMode.SrcAtop)
+            else -> look.tint?.let { ColorFilter.tint(it, BlendMode.Modulate) }
         }
         // The tiles face right; the enemy faces the party.
         val facing = Modifier.graphicsLayer { scaleX = -1f }
@@ -473,6 +480,10 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
             }
         }
 
+        state.enemyCast?.let { cast ->
+            CastBar(cast, Modifier.offset(x = w - 146.dp, y = 5.dp).width(132.dp))
+        }
+
         // Damage numbers over the enemy, as the old side-on games did it.
         bursts.forEach { b ->
             key(b.id) {
@@ -491,6 +502,29 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
                         .graphicsLayer { alpha = 1f - rise.value * rise.value },
                 )
             }
+        }
+    }
+}
+
+private val WindUp = Color(0xFFF97316)
+
+/** The boss's wind-up: what is coming, filling toward the moment it lands. */
+@Composable
+private fun CastBar(cast: com.jdial.aegis.sim.EnemyCast, modifier: Modifier) {
+    Column(modifier) {
+        BasicText(
+            cast.name.uppercase(),
+            maxLines = 1,
+            style = AegisType.label.copy(fontSize = 9.sp, color = Color.White),
+        )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color(0xAA000000)),
+        ) {
+            Box(Modifier.fillMaxWidth(cast.progress).fillMaxHeight().background(WindUp))
         }
     }
 }
@@ -520,6 +554,8 @@ private fun PartySprite(
     sparkle: Int,
     say: String?,
     isYou: Boolean,
+    /** A boss cast is aimed at this unit. */
+    targeted: Boolean = false,
 ) {
     val step = remember { Animatable(0f) }
     LaunchedEffect(lunge) {
@@ -559,6 +595,14 @@ private fun PartySprite(
                     .offset(x = (SPRITE / 2 - 2).dp, y = (-4).dp)
                     .size(4.dp)
                     .background(Gilt.core),
+            )
+        }
+        if (targeted && !dead) {
+            // The victim of the cast, marked where the eye already is.
+            BasicText(
+                "!",
+                style = AegisType.numeric.copy(fontSize = 15.sp, color = Color(0xFFF87171)),
+                modifier = Modifier.offset(x = (SPRITE / 2 - 3).dp, y = (-17).dp),
             )
         }
         if (glow.value > 0f) {

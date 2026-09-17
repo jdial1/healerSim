@@ -163,6 +163,26 @@ data class PlayerBuff(
     val magnitude: Double? = null,
 )
 
+/**
+ * A boss attack winding up: who it will hit, and how long until it does.
+ *
+ * The targets are chosen when the cast starts -- from the same draws, in the
+ * same order, as an attack that lands at once -- so the warning names the real
+ * victims and a healer can act on it.
+ */
+@Serializable
+data class EnemyCast(
+    val abilityId: String,
+    val name: String,
+    val icon: String = "",
+    val targets: List<String>,
+    val remainingTicks: Int,
+    val totalTicks: Int,
+) {
+    /** 0 at the start of the wind-up, 1 as it lands. */
+    val progress: Float get() = if (totalTicks <= 0) 1f else 1f - remainingTicks.toFloat() / totalTicks
+}
+
 @Serializable
 data class BossBuff(
     val id: String,
@@ -350,6 +370,8 @@ data class GameState(
     val bossSelfBuffs: List<BossBuff> = emptyList(),
     val mechanicCooldown: Int = 0,
     val mechanicOrdinal: Int = 0,
+    /** The boss attack currently winding up, if any. */
+    val enemyCast: EnemyCast? = null,
     /** Who the enemy is currently on. Null until the first threat is generated. */
     /**
      * The AI healer's mana. Zero and unused while the player is the healer.
@@ -478,6 +500,7 @@ data class GameState(
         bossSelfBuffs = emptyList(),
         mechanicCooldown = 0,
         mechanicOrdinal = 0,
+        enemyCast = null,
         enemyTargetId = null,
         tauntLockTicks = 0,
         tauntedById = null,
@@ -513,6 +536,7 @@ fun GameState.endedRun(): GameState = withEachParticipant {
     bossSelfBuffs = emptyList(),
     mechanicCooldown = 0,
     mechanicOrdinal = 0,
+    enemyCast = null,
     floatingCombatTexts = emptyList(),
     endlessStacks = 0,
 )

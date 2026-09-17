@@ -80,7 +80,8 @@ class GameData(
             }
             return GameData(
                 balance = parse("data/balance.json") { json.decodeFromString<Balance>(it) },
-                dungeons = parse("data/dungeons.json") { json.decodeFromString<List<Dungeon>>(it) },
+                dungeons = parse("data/dungeons.json") { json.decodeFromString<List<Dungeon>>(it) }
+                    .withEncounters(parse("data/encounters.json") { json.decodeFromString<Encounters>(it) }),
                 npcPools = parse("data/npc_pools.json") { json.decodeFromString<NpcPools>(it) },
                 pacing = parse("data/pacing.json") { json.decodeFromString<Pacing>(it) },
                 auras = parse("data/auras.json") { json.decodeFromString<Auras>(it) },

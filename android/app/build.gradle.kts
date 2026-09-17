@@ -96,6 +96,11 @@ val syncGameData = tasks.register<Sync>("syncGameData") {
     // the frozen web app builds a static class registry from that directory and
     // validates class names on load, so a fourth class there would break it.
     // Same destination, so GameData.load sees one merged tree.
+    // Android-only encounter tuning (boss cast times), beside the shared data.
+    from(layout.projectDirectory.dir("../content")) {
+        include("encounters.json")
+        into("data")
+    }
     from(layout.projectDirectory.dir("../content/classes")) {
         include("*/class.json", "*/spells.json", "*/talents.json")
         into("classes")

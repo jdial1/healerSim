@@ -360,6 +360,7 @@ class GameTick(
         val mechanicCooldown: Int,
         val mechanicOrdinal: Int,
         val naturalPerfectionAdd: Int,
+        val enemyCast: EnemyCast? = null,
     )
 
     /**
@@ -387,10 +388,24 @@ class GameTick(
         }
         if (kinds.isEmpty()) return BossAi(party, bossBuffs, cooldown, ordinal, 0)
 
+        // A cast in progress holds the rotation: it counts down, and lands on
+        // the targets it chose when it started. Mechanics never overlap.
+        s.enemyCast?.let { cast ->
+            if (cast.remainingTicks > 1) {
+                return BossAi(party, bossBuffs, cooldown, ordinal, 0, cast.copy(remainingTicks = cast.remainingTicks - 1))
+            }
+            val tpl = profile.attackTemplates.firstOrNull { it.abilityId == cast.abilityId }
+                ?: return BossAi(party, bossBuffs, cooldown, ordinal, 0, null)
+            val multNow = bossBuffs.maxOfOrNull { it.partyDamageMultiplier } ?: 1.0
+            val (landed, np) = hitTargets(ctx, party, tpl, dungeon, multNow, cast.targets.toSet())
+            return BossAi(landed, bossBuffs, cooldown, ordinal, np, null)
+        }
+
         cooldown -= 1
         if (cooldown > 0) return BossAi(party, bossBuffs, cooldown, ordinal, 0)
 
         val partyDamageMultPre = bossBuffs.maxOfOrNull { it.partyDamageMultiplier } ?: 1.0
+        var newCast: EnemyCast? = null
         val kind = kinds[ordinal % kinds.size]
         val cycle = ordinal / kinds.size
         ordinal += 1
@@ -443,9 +458,25 @@ class GameTick(
 
             else -> {
                 val tpl = profile.attackTemplates[cycle % profile.attackTemplates.size]
-                val result = applyAttackTemplate(ctx, party, tpl, dungeon, partyDamageMultPre, rng)
-                party = result.first
-                npAdd += result.second
+                if (tpl.castTicks > 0) {
+                    // The same draw an instant attack makes, at the same point:
+                    // only when the damage lands has changed.
+                    val targets = selectTargets(party, effectiveTargeting(s, tpl.targeting), rng, s.enemyTargetId)
+                    if (targets.isNotEmpty()) {
+                        newCast = EnemyCast(
+                            abilityId = tpl.abilityId,
+                            name = tpl.name,
+                            icon = tpl.icon,
+                            targets = party.map { it.id }.filter { it in targets },
+                            remainingTicks = tpl.castTicks,
+                            totalTicks = tpl.castTicks,
+                        )
+                    }
+                } else {
+                    val result = applyAttackTemplate(ctx, party, tpl, dungeon, partyDamageMultPre, rng)
+                    party = result.first
+                    npAdd += result.second
+                }
             }
         }
 
@@ -453,7 +484,7 @@ class GameTick(
             profile.mechanicIntervalTicksMin ?: defaultMechanicMin,
             profile.mechanicIntervalTicksMax ?: defaultMechanicMax,
         )
-        return BossAi(party, bossBuffs, cooldown, ordinal, npAdd)
+        return BossAi(party, bossBuffs, cooldown, ordinal, npAdd, newCast)
     }
 
     private fun applyAttackTemplate(
@@ -466,6 +497,23 @@ class GameTick(
     ): Pair<List<Unit>, Int> {
         val s = ctx.state
         val targets = selectTargets(party, effectiveTargeting(s, tpl.targeting), rng, s.enemyTargetId)
+        return hitTargets(ctx, party, tpl, dungeon, partyDamageMult, targets)
+    }
+
+    /**
+     * An attack landing on [targets]. Shared by instant attacks and casts, so a
+     * telegraphed hit is the same hit, a moment later -- with the mitigation
+     * that is up when it lands, which is what makes a well-timed defensive count.
+     */
+    private fun hitTargets(
+        ctx: CastContext,
+        party: List<Unit>,
+        tpl: AttackTemplate,
+        dungeon: Dungeon,
+        partyDamageMult: Double,
+        targets: Set<String>,
+    ): Pair<List<Unit>, Int> {
+        val s = ctx.state
         if (targets.isEmpty()) return party to 0
 
         val tank = party.firstOrNull { it.role == UnitRole.TANK }
@@ -1086,6 +1134,7 @@ class GameTick(
                     combatPhase = CombatPhase.BOSS,
                     enemyHealth = bossHp,
                     enemyMaxHealth = bossHp,
+                    enemyCast = null,
                     mechanicCooldown = profile?.let {
                         rng.nextInt(
                             it.mechanicIntervalTicksMin ?: defaultMechanicMin,
@@ -1189,6 +1238,7 @@ class GameTick(
                 enemyMaxHealth = trashHp,
                 dungeonProgress = 0.0,
                 bossSelfBuffs = emptyList(),
+                enemyCast = null,
                 mechanicCooldown = rng.nextInt(
                     profile.mechanicIntervalTicksMin ?: defaultMechanicMin,
                     profile.mechanicIntervalTicksMax ?: defaultMechanicMax,
@@ -1244,6 +1294,7 @@ class GameTick(
             bossSelfBuffs = boss.bossSelfBuffs,
             mechanicCooldown = boss.mechanicCooldown,
             mechanicOrdinal = boss.mechanicOrdinal,
+            enemyCast = boss.enemyCast,
         )
 
         val env = processEnvironmentalTick(

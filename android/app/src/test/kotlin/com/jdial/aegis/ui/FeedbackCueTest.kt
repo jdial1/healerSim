@@ -62,6 +62,17 @@ class FeedbackCueTest {
     }
 
     @Test
+    fun `a boss wind-up warns once, when it starts`() {
+        val cast = EnemyCast("vc_ambush", "Ambush", targets = listOf("1"), remainingTicks = 20, totalTicks = 20)
+        val started = fight.copy(enemyCast = cast)
+        assertEquals(listOf(Cue.TELEGRAPH), cuesBetween(fight, started))
+        val ticking = started.copy(enemyCast = cast.copy(remainingTicks = 19))
+        assertEquals(emptyList<Cue>(), cuesBetween(started, ticking))
+        // The next cast, right after the last one landed, warns again.
+        assertEquals(listOf(Cue.TELEGRAPH), cuesBetween(ticking.copy(enemyCast = cast.copy(remainingTicks = 1)), started))
+    }
+
+    @Test
     fun `outside a fight nothing plays`() {
         val idle = fight.copy(isCombatActive = false)
         assertTrue(cuesBetween(idle, withHealth(idle, "1", 0.0)).isEmpty())

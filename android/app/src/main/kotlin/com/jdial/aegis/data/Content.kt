@@ -216,7 +216,32 @@ data class AttackTemplate(
     val icon: String = "",
     val damage: Double,
     val targeting: Targeting,
+    /**
+     * Ticks the attack winds up before it lands -- the telegraph. Zero lands
+     * at once, as every attack did before. Supplied by the Android-owned
+     * content/encounters.json, never by the web app's dungeons.json.
+     */
+    val castTicks: Int = 0,
 )
+
+/** content/encounters.json: Android-only tuning layered onto the shared dungeons. */
+@Serializable
+data class Encounters(val attacks: Map<String, AttackTuning> = emptyMap())
+
+@Serializable
+data class AttackTuning(val castTicks: Int = 0)
+
+/** The dungeons with [encounters] applied. Unknown ability ids are ignored. */
+fun List<Dungeon>.withEncounters(encounters: Encounters): List<Dungeon> = map { d ->
+    val combat = d.bossCombat ?: return@map d
+    d.copy(
+        bossCombat = combat.copy(
+            attackTemplates = combat.attackTemplates.map { a ->
+                encounters.attacks[a.abilityId]?.let { a.copy(castTicks = it.castTicks) } ?: a
+            },
+        ),
+    )
+}
 
 @Serializable
 data class BossCombat(

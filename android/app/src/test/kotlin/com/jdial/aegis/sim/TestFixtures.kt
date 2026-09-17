@@ -1,5 +1,7 @@
 package com.jdial.aegis.sim
 
+import com.jdial.aegis.data.Balance
+import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.GameData
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -25,3 +27,15 @@ object Fixtures {
         Json.parseToJsonElement(f.readText()) as JsonObject
     }
 }
+
+/** The same content with some parts replaced -- for tests that isolate one rule. */
+fun GameData.with(balance: Balance = this.balance, dungeons: List<Dungeon> = this.dungeons): GameData =
+    GameData(balance, dungeons, npcPools, pacing, auras, consumables, mechanics, sharedSpells, classes)
+
+/** The shared content as the web app has it: every boss attack lands at once. */
+fun GameData.withoutCasts(): GameData = with(
+    dungeons = dungeons.map { d ->
+        val c = d.bossCombat ?: return@map d
+        d.copy(bossCombat = c.copy(attackTemplates = c.attackTemplates.map { it.copy(castTicks = 0) }))
+    },
+)

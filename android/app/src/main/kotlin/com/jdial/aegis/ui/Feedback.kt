@@ -42,6 +42,9 @@ enum class Cue(val sound: Int, val volume: Float) {
 
     /** Somebody just dropped into the danger band. */
     DANGER(R.raw.sfx_danger, 0.6f),
+
+    /** A boss attack started winding up. Quieter than a real danger. */
+    TELEGRAPH(R.raw.sfx_danger, 0.3f),
     DEATH(R.raw.sfx_death, 0.8f),
     CLEAR(R.raw.sfx_clear, 0.9f),
     WIPE(R.raw.sfx_wipe, 0.9f),
@@ -69,14 +72,20 @@ fun cuesBetween(prev: GameState, cur: GameState): List<Cue> = buildList {
     }
     if (!prev.isCombatActive || !cur.isCombatActive) return@buildList
 
+    val cast = cur.enemyCast
+    val before = prev.enemyCast
+    if (cast != null && (before == null || before.abilityId != cast.abilityId || before.remainingTicks < cast.remainingTicks)) {
+        add(Cue.TELEGRAPH)
+    }
+
     val seen = prev.floatingCombatTexts.mapTo(HashSet()) { it.id }
     if (cur.floatingCombatTexts.any { it.crit && it.id !in seen }) add(Cue.CRIT)
 
-    val before = prev.party.associateBy { it.id }
+    val lastHealth = prev.party.associateBy { it.id }
     var died = false
     var danger = false
     for (u in cur.party) {
-        val was = before[u.id] ?: continue
+        val was = lastHealth[u.id] ?: continue
         if (was.isAlive && !u.isAlive) died = true
         if (u.isAlive && u.maxHealth > 0 && was.maxHealth > 0 &&
             was.health / was.maxHealth >= DANGER_FRACTION &&
@@ -90,7 +99,7 @@ fun cuesBetween(prev: GameState, cur: GameState): List<Cue> = buildList {
 }
 
 private fun Cue.haptic(): HapticFeedbackType = when (this) {
-    Cue.CAST -> HapticFeedbackType.SegmentTick
+    Cue.CAST, Cue.TELEGRAPH -> HapticFeedbackType.SegmentTick
     Cue.REFUSED -> HapticFeedbackType.Reject
     Cue.CRIT -> HapticFeedbackType.Confirm
     Cue.DANGER, Cue.DEATH, Cue.WIPE -> HapticFeedbackType.LongPress

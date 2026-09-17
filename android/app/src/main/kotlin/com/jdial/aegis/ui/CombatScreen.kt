@@ -357,9 +357,13 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
             // Reserved whatever the phase, so the telegraph appearing at the
             // boss does not resize the card either.
             val next = nextMechanic(state)
+            val cast = state.enemyCast
             Spacer(Modifier.height(8.dp))
             Box(Modifier.height(22.dp)) {
-                if (next != null && state.mechanicCooldown > 0) {
+                if (cast != null) {
+                    // The warning itself: what, at whom, and how long.
+                    CastingRow(cast, state)
+                } else if (next != null && state.mechanicCooldown > 0) {
                     val secs = ceil(state.mechanicCooldown / 10.0).toInt()
                     val imminent = state.mechanicCooldown <= 20
                     val everyone = next.whom == "everyone"
@@ -434,7 +438,7 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
 @Composable
 private fun ThreatStrip(state: GameState) {
     val living = state.party.filter { it.isAlive }
-    val self = living.firstOrNull { it.id == PLAYER_UNIT_ID } ?: return
+    val self = living.firstOrNull { it.id == state.localUnitId } ?: return
     val holder = living.firstOrNull { it.id == state.enemyTargetId }
     val hasAggro = holder?.id == self.id
     val wantsAggro = state.playerRole == UnitRole.TANK
@@ -551,6 +555,36 @@ private fun EncounterPip(filled: Boolean, active: Boolean, boss: Boolean = false
 
 // Row geometry. The row height is fixed and derived from these, so adding an
 // aura can never change it: 5 + 18 (name) + 3 + bar + 3 + strip + 5.
+/** A boss attack winding up, named with its real victims. */
+@Composable
+private fun CastingRow(cast: com.jdial.aegis.sim.EnemyCast, state: GameState) {
+    val names = cast.targets.mapNotNull { id ->
+        if (id == state.localUnitId) "you" else state.party.firstOrNull { it.id == id }?.name
+    }
+    val whom = when {
+        names.size > 2 -> "everyone"
+        else -> names.joinToString(" & ")
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        GameIcon(cast.icon, size = 22.dp, accent = Vital.critical)
+        Spacer(Modifier.width(6.dp))
+        BasicText("CASTING", style = AegisType.label.copy(fontSize = 10.sp, color = Vital.critical))
+        Spacer(Modifier.width(6.dp))
+        BasicText(
+            "${cast.name.uppercase()} \u2192 $whom",
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+            style = AegisType.label.copy(color = Ink.primary),
+        )
+        Spacer(Modifier.width(6.dp))
+        BasicText(
+            String.format("%.1fs", cast.remainingTicks / 10.0),
+            style = AegisType.numeric.copy(fontSize = 13.sp, color = Vital.critical),
+        )
+    }
+}
+
 /** The boss's next mechanic: what it is, and who it can land on. */
 private data class NextMechanic(val icon: String, val name: String, val whom: String)
 
@@ -703,6 +737,7 @@ private fun PartyRow(
     val shieldEnd = (committedEnd + shieldFrac).coerceIn(0f, 1f)
     val accent = LocalAccent.current
     val dead = !unit.isAlive
+    val incoming = !dead && state.enemyCast?.targets?.contains(unit.id) == true
 
     ForgedPanel(
         modifier = Modifier
@@ -741,6 +776,7 @@ private fun PartyRow(
                 } else {
                     "$label, $roleLabel, $pct percent health" +
                         (if (auras.isEmpty()) "" else ", " + auras.joinToString(", ")) +
+                        (if (incoming) ", ${state.enemyCast?.name} incoming" else "") +
                         (if (selected) ", targeted" else "")
                 }
                 if (dead) disabled()
@@ -777,7 +813,13 @@ private fun PartyRow(
                     .padding(horizontal = 6.dp, vertical = 6.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(Obsidian.abyss)
-                    .border(1.dp, Gilt.deep.copy(alpha = 0.55f), RoundedCornerShape(2.dp)),
+                    // A boss cast aimed at this unit outlines it red -- the
+                    // place a healer pre-shields.
+                    .border(
+                        if (incoming) 2.dp else 1.dp,
+                        if (incoming) Vital.critical else Gilt.deep.copy(alpha = 0.55f),
+                        RoundedCornerShape(2.dp),
+                    ),
             ) {
                     // Bands are layered widest-first and each is drawn from the
                     // left, so the narrower one on top leaves the previous band
