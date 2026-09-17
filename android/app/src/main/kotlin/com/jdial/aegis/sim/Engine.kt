@@ -162,7 +162,7 @@ class Engine(val data: GameData) {
         is Action.ReorderActionBar -> reorderActionBar(state, action.from, action.to)
         is Action.SetActionBarSlot -> setActionBarSlot(state, action.index, action.spellId)
         Action.AbandonDungeon -> state.clearedCombat().copy(isCombatActive = false)
-        Action.PullNow -> if (state.restTicks <= 0) state else state.copy(
+        Action.PullNow -> if (state.restTicks <= 0) state else tick.rushNextPull(state).copy(
             restTicks = 0,
             earlyPullBonus = state.earlyPullBonus + state.restTicks * data.encounters.pressure.earlyPullXpPerTick,
         )
@@ -230,6 +230,7 @@ class Engine(val data: GameData) {
             trashPullsRemaining = TRASH_PACK_COUNT,
             enemyHealth = trashHp,
             enemyMaxHealth = trashHp,
+            adds = tick.pullAdds(dungeon.id, 0, trashHp, "p0"),
             isCombatActive = true,
             party = tick.generateParty(cls, state.level, rng),
             dungeonOutcome = null,

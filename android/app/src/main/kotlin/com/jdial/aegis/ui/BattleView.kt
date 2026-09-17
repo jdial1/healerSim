@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.R
+import com.jdial.aegis.data.AddTemplate
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.sim.CombatPhase
 import com.jdial.aegis.sim.GameState
@@ -307,6 +308,26 @@ fun sceneEventsBetween(prev: GameState, cur: GameState): List<SceneEvent> = buil
         add(SceneEvent.Bark(healer.id, "Out of mana!"))
     }
 
+    // Adds: a runner bolting, a runner gone, a mender's heal kicked or landing.
+    val addsBefore = prev.adds.associateBy { it.id }
+    for (a in cur.adds) {
+        val was = addsBefore[a.id] ?: continue
+        if (a.fleeing && !was.fleeing) add(SceneEvent.Tell("${a.name} runs for help!"))
+        if (was.casting && !a.casting) {
+            if (was.timer > 1) {
+                val by = cur.lastInterruptBy
+                add(SceneEvent.Interrupted(by))
+                if (by != null && ai(by)) add(SceneEvent.Bark(by, "Kicked!"))
+            } else {
+                add(SceneEvent.Tell("${a.name} mends the others."))
+            }
+        }
+    }
+    if (cur.extraPulls > prev.extraPulls) {
+        val gone = prev.adds.firstOrNull { it.fleeing && cur.adds.none { a -> a.id == it.id } }
+        add(SceneEvent.Tell("${gone?.name ?: "One"} got away. More are coming!"))
+    }
+
     val cast = cur.enemyCast
     if (cast != null && cast.tell.isNotEmpty() && prev.enemyCast?.abilityId != cast.abilityId) add(SceneEvent.Tell(cast.tell))
 
@@ -371,7 +392,7 @@ const val ROW = 25
 private const val BOSS = 72
 
 @Composable
-fun BattleView(state: GameState, modifier: Modifier = Modifier) {
+fun BattleView(state: GameState, targetId: String? = null, modifier: Modifier = Modifier) {
     val party = lineUp(state.party)
     val lunge = remember { mutableStateMapOf<String, Int>() }      // unitId -> nonce
     val flinch = remember { mutableStateMapOf<String, Int>() }
@@ -534,6 +555,68 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
                     look.sprite, SPRITE.dp, tint,
                     Modifier.offset(x = w - SPRITE.dp - 30.dp + dx + stepX, y = 14.dp + dy).then(facing),
                 )
+            }
+        }
+
+        // Adds stand in front of the enemy they belong to. A runner edges away;
+        // a mender glows while it casts; the chosen one wears a marker.
+        state.adds.filter { it.kind == AddTemplate.PACK }.forEachIndexed { p, a ->
+            key(a.id) {
+                val packLook = enemyLooks[a.looksLike] ?: EnemyLook(R.drawable.spr_slime)
+                val packTint = packLook.tint?.let { ColorFilter.tint(it, BlendMode.Modulate) }
+                val standing = ceil((a.health / a.maxHealth).coerceIn(0.0, 1.0) * 3).toInt()
+                val slots = listOf(0.dp to 0.dp, (-26).dp to 30.dp, 2.dp to 60.dp)
+                repeat(standing) { i ->
+                    val (dx, dy) = slots[i]
+                    PixelSprite(
+                        packLook.sprite, 26.dp, packTint,
+                        Modifier.offset(x = w - SPRITE.dp - 84.dp - (p * 40).dp + dx, y = 22.dp + dy).then(facing),
+                    )
+                }
+                if (a.id == targetId) {
+                    BasicText(
+                        "▼",
+                        style = AegisType.label.copy(fontSize = 10.sp, color = Gilt.core),
+                        modifier = Modifier.offset(x = w - SPRITE.dp - 76.dp - (p * 40).dp, y = 8.dp),
+                    )
+                }
+            }
+        }
+        state.adds.filter { it.kind != AddTemplate.PACK }.forEachIndexed { i, a ->
+            key(a.id) {
+                val addLook = enemyLooks[a.looksLike] ?: EnemyLook(R.drawable.spr_slime)
+                val away = if (a.fleeing && a.timerTotal > 0) 1f - a.timer.toFloat() / a.timerTotal else 0f
+                val ax = (if (boss) bossX - 48.dp else w - SPRITE.dp - 118.dp) - (i % 2 * 30).dp + (50 * away).dp
+                val ay = (10 + (i % 3) * 36).dp
+                val addTint = when {
+                    a.casting -> ColorFilter.tint(Kick.copy(alpha = 0.25f + 0.4f * a.castProgress), BlendMode.SrcAtop)
+                    else -> addLook.tint?.let { ColorFilter.tint(it, BlendMode.Modulate) }
+                }
+                PixelSprite(
+                    addLook.sprite, 28.dp, addTint,
+                    Modifier.offset(x = ax, y = ay).graphicsLayer { alpha = 1f - 0.5f * away }.then(facing),
+                )
+                Box(
+                    Modifier
+                        .offset(x = ax, y = ay + 29.dp)
+                        .width(28.dp)
+                        .height(3.dp)
+                        .background(Color(0xAA000000)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth((a.health / a.maxHealth).toFloat().coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .background(Danger),
+                    )
+                }
+                if (a.id == targetId) {
+                    BasicText(
+                        "▼",
+                        style = AegisType.label.copy(fontSize = 10.sp, color = Gilt.core),
+                        modifier = Modifier.offset(x = ax + 9.dp, y = ay - 12.dp),
+                    )
+                }
             }
         }
 

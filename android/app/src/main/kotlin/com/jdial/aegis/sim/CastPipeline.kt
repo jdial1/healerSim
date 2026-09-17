@@ -266,12 +266,16 @@ class CastPipeline(
         val threat = (dealt * spell.threatMultiplier + spell.flatThreat) * hooks.threatMultiplier(ctx) *
             (1 + ctx.talentEffect("threat") / 100)
 
+        // A damage dealer's chosen add takes the hit; anything else goes to the main enemy.
+        val addTarget = s.adds.firstOrNull { it.id == ready.targetId && it.isAlive }?.id
         val out = s.withMe {
             it.copy(
                 mana = max(0.0, it.mana - ready.needMana),
                 classResource = it.classResource - ready.needResource,
                 playerCombatBuffs = buffs,
-                pendingEnemyDamage = it.pendingEnemyDamage + dealt,
+                pendingEnemyDamage = it.pendingEnemyDamage + if (addTarget == null) dealt else 0.0,
+                pendingAddDamage = if (addTarget == null || dealt <= 0) it.pendingAddDamage
+                else it.pendingAddDamage + (addTarget to (it.pendingAddDamage[addTarget] ?: 0.0) + dealt),
                 pendingPlayerThreat = it.pendingPlayerThreat + threat,
                 spellCooldowns = it.spellCooldowns.withCooldown(
                     ready.spellId,
@@ -283,7 +287,7 @@ class CastPipeline(
                 ),
             )
         }.copy(enemyDebuffs = dots).let { hooks.onDamageLand(ctx, it, DamageLand(spell, ready.spellId, ready.isCrit, dealt)) }
-            .let { interrupted(it, spell) }
+            .let { interrupted(it, spell, ready.targetId) }
             .let { cleansed(it, spell, ready.targetId) }
         // The caster's slot, not slot 5: a taunt is inherently "this unit".
         val caster = s.localUnitId
@@ -320,8 +324,22 @@ class CastPipeline(
         return s.copy(party = party.map { if (it.isAlive) it.copy(health = max(0.0, it.health - burst)) else it })
     }
 
-    private fun interrupted(s: GameState, spell: Spell): GameState {
-        if (!spell.interrupts || s.enemyCast?.interruptible != true) return s
+    /**
+     * What a kick stops: the mender it was aimed at, else the boss's cast,
+     * else any mender mid-cast.
+     */
+    private fun interrupted(s: GameState, spell: Spell, targetId: String?): GameState {
+        if (!spell.interrupts) return s
+        val aimed = s.adds.firstOrNull { it.id == targetId && it.casting }
+        val mender = aimed ?: s.adds.firstOrNull { it.casting }.takeIf { s.enemyCast?.interruptible != true }
+        if (mender != null) {
+            val every = data.encounters.addRules.menderEveryTicks
+            return s.copy(
+                adds = s.adds.map { if (it.id == mender.id) it.copy(casting = false, timer = every, timerTotal = every) else it },
+                lastInterruptBy = s.localUnitId,
+            )
+        }
+        if (s.enemyCast?.interruptible != true) return s
         return s.copy(enemyCast = null, lastInterruptBy = s.localUnitId, exposedTicks = data.encounters.pressure.exposedTicks)
     }
 

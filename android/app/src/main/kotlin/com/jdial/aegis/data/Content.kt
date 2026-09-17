@@ -252,6 +252,67 @@ data class Encounters(
     /** How often an AI healer may dispel; 0 means it never does. */
     val aiDispelEveryTicks: Int = 0,
     val pressure: Pressure = Pressure(),
+    /** Per dungeon id, per trash pull in order: what the pull brings besides its pack. */
+    val trash: Map<String, List<PullTuning>> = emptyMap(),
+    val addRules: AddRules = AddRules(),
+    /**
+     * A kickable cast that lands while a human damage dealer could have
+     * kicked it hits this much harder: a lesson, not a nuisance.
+     */
+    val unkickedDamageMultiplier: Double = 1.0,
+)
+
+/** One trash pull's extra enemies (see [AddTemplate]). */
+@Serializable
+data class PullTuning(val adds: List<AddTemplate> = emptyList())
+
+/** Adds a boss calls in once, on falling to [atHealth] of its health. */
+@Serializable
+data class BossAdds(val atHealth: Double, val spawn: List<AddTemplate>)
+
+/**
+ * An enemy beside the main one, with its own health bar -- a target a damage
+ * dealer has to choose to switch to.
+ *
+ * - `mender` keeps casting a heal on the main enemy, [healFraction] of its
+ *   max health each; a kick or its death stops it.
+ * - `runner` flees on falling below AddRules.runnerFleeBelow and, unless it
+ *   dies in time, brings one more pull.
+ * - `add` just hurts: [damagePerTick] on the party's healer.
+ * - `pack` is the next pull, brought in early by "Pull now": while it stands
+ *   the party takes double trash damage.
+ */
+@Serializable
+data class AddTemplate(
+    val kind: String,
+    val name: String,
+    /** An enemy name the battle view already draws (enemyLooks). */
+    val looksLike: String = name,
+    /** Its max health, as a share of the main enemy's. */
+    val health: Double,
+    val damagePerTick: Double = 0.0,
+    val healFraction: Double = 0.0,
+) {
+    companion object {
+        const val MENDER = "mender"
+        const val RUNNER = "runner"
+        const val ADD = "add"
+        const val PACK = "pack"
+    }
+}
+
+@Serializable
+data class AddRules(
+    val menderEveryTicks: Int = 80,
+    val menderCastTicks: Int = 25,
+    val runnerFleeBelow: Double = 0.3,
+    val runnerEscapeTicks: Int = 50,
+    /**
+     * With a human damage dealer in the run, this share of the AI's damage
+     * goes to adds; the rest is the human's call. Without one, the AI kills
+     * adds first.
+     */
+    val aiAddShareWithHumanDps: Double = 0.2,
 )
 
 /**
@@ -321,6 +382,7 @@ data class BossTuning(
     val extraDebuffs: List<DebuffTemplate> = emptyList(),
     /** This boss's own enrage timer, if not the shared one. */
     val enrageAfterTicks: Int? = null,
+    val adds: BossAdds? = null,
 )
 
 /** Boss ticks before [dungeonId]'s boss enrages; 0 means never. */

@@ -85,6 +85,7 @@ import com.jdial.aegis.sim.FLOATING_TEXT_LIFETIME_TICKS
 import com.jdial.aegis.sim.offGlobalCooldown
 import com.jdial.aegis.sim.toDispel
 import com.jdial.aegis.data.enrageAfterTicks
+import com.jdial.aegis.data.AddTemplate
 import androidx.compose.ui.graphics.Path
 import com.jdial.aegis.sim.FloatingKind
 import com.jdial.aegis.sim.GameState
@@ -214,14 +215,14 @@ fun CombatScreen(
                         verticalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column {
-                            EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, enrageAfter, data.encounters.pressure.enrageRampPerTick)
+                            EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, enrageAfter, data.encounters.pressure.enrageRampPerTick, targetId, onTarget)
                             // A landscape phone has about 400dp of height: the
                             // HUD and the action bar need all of it, and the
                             // scene pushed the bar off the screen. Tablets have
                             // room for it.
                             if (roomForScene) {
                                 Spacer(Modifier.height(8.dp))
-                                BattleView(state)
+                                BattleView(state, targetId)
                             }
                         }
                         ActionBar(state, data, onCast, onReorder, dropTargetId, { dragPoint = it }) { spellId ->
@@ -231,9 +232,9 @@ fun CombatScreen(
                 }
             } else {
                 Column(Modifier.fillMaxSize()) {
-                    EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, enrageAfter, data.encounters.pressure.enrageRampPerTick)
+                    EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, enrageAfter, data.encounters.pressure.enrageRampPerTick, targetId, onTarget)
                     Spacer(Modifier.height(8.dp))
-                    BattleView(state)
+                    BattleView(state, targetId)
                     Spacer(Modifier.height(8.dp))
                     PartyGrid(Modifier.weight(1f).fillMaxWidth())
                     Spacer(Modifier.height(10.dp))
@@ -259,6 +260,8 @@ private fun EncounterHud(
     earlyPullXpPerTick: Double,
     enrageAfterTicks: Int,
     enrageRampPerTick: Double,
+    targetId: String?,
+    onTarget: (String) -> kotlin.Unit,
 ) {
     val dungeon = state.currentDungeon ?: return
     val isBoss = state.combatPhase == CombatPhase.BOSS
@@ -368,6 +371,8 @@ private fun EncounterHud(
                     )
                 }
             }
+
+            AddRows(state, targetId, onTarget)
 
             // A non-healer needs two things a healer never did: what the enemy
             // is doing to *them* (threat) and what they have running on it
@@ -678,6 +683,79 @@ private fun nextMechanic(state: GameState): NextMechanic? {
  * serialized state (which would land in the parity-covered GameState).
  */
 /**
+ * The enemies beside the main one. A damage dealer taps one to aim at it:
+ * a mender mid-heal, a runner getting away, a boss's add on the healer.
+ */
+@Composable
+private fun AddRows(state: GameState, targetId: String?, onTarget: (String) -> kotlin.Unit) {
+    val choosable = state.playerRole != UnitRole.HEALER
+    state.adds.forEach { a ->
+        Spacer(Modifier.height(6.dp))
+        val chosen = choosable && a.id == targetId
+        val (tag, colour) = when {
+            a.fleeing -> "FLEEING  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical
+            a.casting -> "MENDING  ·  KICK" to Color(0xFFFACC15)
+            a.kind == AddTemplate.MENDER -> "HEALER" to Vital.healthy
+            a.kind == AddTemplate.RUNNER -> "RUNNER" to Gilt.core
+            a.kind == AddTemplate.PACK -> "2× DAMAGE" to Vital.critical
+            else -> "ADD" to Ink.secondary
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(26.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .border(
+                    if (chosen) 2.dp else 1.dp,
+                    if (chosen) Gilt.core else Gilt.deep.copy(alpha = 0.4f),
+                    RoundedCornerShape(4.dp),
+                )
+                .then(
+                    if (choosable) {
+                        Modifier.clickable(onClickLabel = "Target ${a.name}") { onTarget(a.id) }
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(
+                (if (chosen) "▶ " else "") + a.name.uppercase(),
+                maxLines = 1,
+                style = AegisType.label.copy(fontSize = 10.sp, color = if (chosen) Gilt.core else Ink.primary),
+                modifier = Modifier.width(130.dp),
+            )
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Obsidian.abyss),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth((a.health / a.maxHealth).toFloat().coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .background(Color(0xFFDC2626)),
+                )
+                if (a.casting) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(a.castProgress)
+                            .height(3.dp)
+                            .align(Alignment.BottomStart)
+                            .background(Color(0xFFFACC15)),
+                    )
+                }
+            }
+            Spacer(Modifier.width(6.dp))
+            BasicText(tag, maxLines = 1, style = AegisType.label.copy(fontSize = 9.sp, color = colour))
+        }
+    }
+}
+
+/**
  * The boss's enrage timer: an hourglass draining toward it, then how much
  * harder the boss is hitting for every second past it.
  */
@@ -728,8 +806,10 @@ private fun RestRow(state: GameState, earlyPullXpPerTick: Double, onPullNow: () 
             style = AegisType.label.copy(color = Vital.healthy),
             modifier = Modifier.weight(1f),
         )
+        // Rushing brings the next pack along, unless the boss is next.
+        val stacks = state.combatPhase == CombatPhase.TRASH && state.trashPullsRemaining > 1
         BasicText(
-            "PULL NOW  +${(bonus * 100).roundToInt()}% XP",
+            "PULL NOW  +${(bonus * 100).roundToInt()}% XP" + if (stacks) "  ·  +1 PACK" else "",
             style = AegisType.label.copy(color = Obsidian.abyss),
             modifier = Modifier
                 .clip(RoundedCornerShape(4.dp))
@@ -1303,7 +1383,8 @@ private fun ActionBar(
                     state.activeActionBars.forEachIndexed { i, spellId ->
                         val spell = data.spell(spellId)
                         // The kick lights up while there is something to kick.
-                        val kickNow = spell?.interrupts == true && state.enemyCast?.interruptible == true
+                        val kickNow = spell?.interrupts == true &&
+                            (state.enemyCast?.interruptible == true || state.adds.any { it.casting })
                         // ...and the dispel while someone carries something to take.
                         val cleanseNow = spell?.dispels == true &&
                             state.party.any { it.isAlive && it.debuffs.toDispel() != null }

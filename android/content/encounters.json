@@ -1,5 +1,5 @@
 {
-  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it; tell is what the boss says as it starts. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure).",
+  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it; tell is what the boss says as it starts. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure). trash: per dungeon, per pull, the adds a pull brings (mender, runner, add; see AddTemplate). bosses.<id>.adds: adds a boss calls at a share of its health. addRules: their timings, and how much of the AI's damage goes to adds when a human deals damage. unkickedDamageMultiplier: how much harder a kickable cast lands when a human damage dealer let it through.",
   "attacks": {
     "vc_ambush": {
       "castTicks": 20,
@@ -90,7 +90,26 @@
           "interruptible": true,
           "tell": "VanCleef waves to the ship: \"Fire!\""
         }
-      ]
+      ],
+      "adds": {
+        "atHealth": 0.5,
+        "spawn": [
+          {
+            "kind": "add",
+            "name": "Defias Henchman",
+            "looksLike": "Defias Pirate",
+            "health": 0.08,
+            "damagePerTick": 0.6
+          },
+          {
+            "kind": "add",
+            "name": "Defias Henchman",
+            "looksLike": "Defias Pirate",
+            "health": 0.08,
+            "damagePerTick": 0.6
+          }
+        ]
+      }
     },
     "scarlet_monastery": {
       "extraDebuffs": [
@@ -103,7 +122,19 @@
           "targeting": "single_random",
           "dispellable": true
         }
-      ]
+      ],
+      "adds": {
+        "atHealth": 0.5,
+        "spawn": [
+          {
+            "kind": "mender",
+            "name": "Scarlet Chaplain",
+            "looksLike": "Scarlet Monk",
+            "health": 0.1,
+            "healFraction": 0.05
+          }
+        ]
+      }
     },
     "gnomeregan": {
       "extraDebuffs": [
@@ -143,6 +174,76 @@
           "dispellable": false
         }
       ]
+    },
+    "maraudon": {
+      "adds": {
+        "atHealth": 0.7,
+        "spawn": [
+          {
+            "kind": "mender",
+            "name": "Earthen Shard",
+            "looksLike": "Corrupt Elemental",
+            "health": 0.08,
+            "healFraction": 0.04
+          },
+          {
+            "kind": "mender",
+            "name": "Earthen Shard",
+            "looksLike": "Corrupt Elemental",
+            "health": 0.08,
+            "healFraction": 0.04
+          }
+        ]
+      }
+    },
+    "stratholme": {
+      "adds": {
+        "atHealth": 0.5,
+        "spawn": [
+          {
+            "kind": "add",
+            "name": "Risen Ghoul",
+            "looksLike": "Plague Ghoul",
+            "health": 0.08,
+            "damagePerTick": 1.2
+          },
+          {
+            "kind": "add",
+            "name": "Risen Ghoul",
+            "looksLike": "Plague Ghoul",
+            "health": 0.08,
+            "damagePerTick": 1.2
+          }
+        ]
+      }
+    },
+    "molten_core": {
+      "adds": {
+        "atHealth": 0.5,
+        "spawn": [
+          {
+            "kind": "add",
+            "name": "Son of Flame",
+            "looksLike": "Fire Lord",
+            "health": 0.03,
+            "damagePerTick": 1.5
+          },
+          {
+            "kind": "add",
+            "name": "Son of Flame",
+            "looksLike": "Fire Lord",
+            "health": 0.03,
+            "damagePerTick": 1.5
+          },
+          {
+            "kind": "add",
+            "name": "Son of Flame",
+            "looksLike": "Fire Lord",
+            "health": 0.03,
+            "damagePerTick": 1.5
+          }
+        ]
+      }
     }
   },
   "aiDispelEveryTicks": 50,
@@ -187,5 +288,154 @@
     "restHealthPerTick": 0.02,
     "restManaPerTick": 0.02,
     "earlyPullXpPerTick": 0.0015
-  }
+  },
+  "addRules": {
+    "menderEveryTicks": 80,
+    "menderCastTicks": 25,
+    "runnerFleeBelow": 0.3,
+    "runnerEscapeTicks": 50,
+    "aiAddShareWithHumanDps": 0.2
+  },
+  "trash": {
+    "deadmines": [
+      {},
+      {
+        "adds": [
+          {
+            "kind": "runner",
+            "name": "Defias Lookout",
+            "looksLike": "Defias Pirate",
+            "health": 0.4
+          }
+        ]
+      },
+      {}
+    ],
+    "wailing_caverns": [
+      {},
+      {
+        "adds": [
+          {
+            "kind": "mender",
+            "name": "Fang Healer",
+            "looksLike": "Druid of the Fang",
+            "health": 0.35,
+            "healFraction": 0.2
+          }
+        ]
+      },
+      {}
+    ],
+    "scarlet_monastery": [
+      {
+        "adds": [
+          {
+            "kind": "mender",
+            "name": "Scarlet Acolyte",
+            "looksLike": "High Inspector Whitemane",
+            "health": 0.35,
+            "healFraction": 0.2
+          }
+        ]
+      },
+      {},
+      {}
+    ],
+    "zul_farrak": [
+      {},
+      {},
+      {
+        "adds": [
+          {
+            "kind": "runner",
+            "name": "Sandfury Scout",
+            "looksLike": "Sandfury Troll",
+            "health": 0.4
+          }
+        ]
+      }
+    ],
+    "sunken_temple": [
+      {
+        "adds": [
+          {
+            "kind": "mender",
+            "name": "Atal'ai Witch Doctor",
+            "looksLike": "Atal'ai Exile",
+            "health": 0.35,
+            "healFraction": 0.2
+          }
+        ]
+      },
+      {},
+      {}
+    ],
+    "blackrock_depths": [
+      {
+        "adds": [
+          {
+            "kind": "runner",
+            "name": "Dark Iron Watchman",
+            "looksLike": "Dark Iron Dwarf",
+            "health": 0.4
+          }
+        ]
+      },
+      {},
+      {}
+    ],
+    "lbrs": [
+      {
+        "adds": [
+          {
+            "kind": "mender",
+            "name": "Smolderthorn Mystic",
+            "looksLike": "Firebrand Grunt",
+            "health": 0.35,
+            "healFraction": 0.2
+          }
+        ]
+      },
+      {},
+      {}
+    ],
+    "scholomance": [
+      {
+        "adds": [
+          {
+            "kind": "mender",
+            "name": "Scholomance Student",
+            "looksLike": "Necromancer",
+            "health": 0.35,
+            "healFraction": 0.2
+          }
+        ]
+      },
+      {},
+      {}
+    ],
+    "ubrs": [
+      {
+        "adds": [
+          {
+            "kind": "add",
+            "name": "Rage Talon Whelp",
+            "looksLike": "Chromatic Dragonkin",
+            "health": 0.2,
+            "damagePerTick": 0.6
+          },
+          {
+            "kind": "add",
+            "name": "Rage Talon Whelp",
+            "looksLike": "Chromatic Dragonkin",
+            "health": 0.2,
+            "damagePerTick": 0.6
+          }
+        ]
+      },
+      {},
+      {}
+    ]
+  },
+  "unkickedDamageMultiplier": 2.5
 }

@@ -1,5 +1,6 @@
 package com.jdial.aegis.sim
 
+import com.jdial.aegis.data.AddTemplate
 import com.jdial.aegis.data.AttackTemplate
 import com.jdial.aegis.data.BossCombat
 import com.jdial.aegis.data.Dungeon
@@ -552,12 +553,19 @@ class GameTick(
             partyDamageMult * enrageMultiplier(s)
         val natRank = ctx.ranks("natural_perfection")
 
+        // A lesson only when someone could have learned it: a human damage
+        // dealer with their kick off cooldown as the cast landed.
+        val kickWasReady = s.participants.values.any { p ->
+            p.isHuman && p.role == UnitRole.DPS && s.unit(p.unitId)?.isAlive == true &&
+                p.unlockedSpells.any { id -> data.spell(id)?.interrupts == true && (p.spellCooldowns[id] ?: 0) <= 0 }
+        }
         var npAdd = 0
         val next = party.map { u ->
             if (u.health <= 0 || u.id !in targets) return@map u
             var dmg = tpl.damage * baseMult * progression.levelGapDamageMultiplier(u.level, dungeon.levelMax)
             dmg *= hooks.damageTakenMultiplier(ctx, "boss_attack", u)
             dmg *= activeMitigation(s, u)
+            if (tpl.interruptible && tpl.castTicks > 0 && kickWasReady) dmg *= data.encounters.unkickedDamageMultiplier
             if (s.playerRole != UnitRole.HEALER && u.role == UnitRole.TANK) {
                 dmg *= data.balance.roles.tankBossDamageTaken
             }
@@ -642,6 +650,10 @@ class GameTick(
                 if (s.currentDungeon?.endless == true) damage *= progression.endlessMultiplier(s.endlessStacks)
                 if (s.currentDungeon != null) {
                     damage *= progression.levelGapDamageMultiplier(unit.level, s.currentDungeon.levelMax)
+                }
+                if (s.combatPhase == CombatPhase.TRASH) {
+                    val packs = s.adds.count { it.kind == AddTemplate.PACK && it.isAlive }
+                    if (packs > 0) damage *= (1 + packs).toDouble()
                 }
                 damage *= hooks.damageTakenMultiplier(ctx, "trash_tick", unit)
                 damage *= activeMitigation(ctx.state, unit)
@@ -1147,13 +1159,38 @@ class GameTick(
         val pressure = data.encounters.pressure
         // Exposed, everything hits harder. Off, this is `x * 1.0`: exact.
         val exposed = if (s.exposedTicks > 0) pressure.exposedDamageMultiplier else 1.0
-        var enemyHealth = s.enemyHealth - (scriptedDamage + playerDamage) * exposed
+        // Adds: the AI clears them first unless a human damage dealer is there
+        // to choose; with the main enemy down they take everything. With no
+        // adds this is `scriptedDamage - 0.0`, exact.
+        val living = s.adds.filter { it.isAlive }
+        val humanDps = s.participants.values.any { it.isHuman && it.role == UnitRole.DPS }
+        val addShare = when {
+            living.isEmpty() -> 0.0
+            s.enemyHealth <= 0 || !humanDps -> 1.0
+            else -> data.encounters.addRules.aiAddShareWithHumanDps
+        }
+        val toAdds = scriptedDamage * addShare
+        var enemyHealth = s.enemyHealth - (scriptedDamage - toAdds + playerDamage) * exposed
+        val aimed = HashMap<String, Double>()
+        s.participants.values.forEach { p -> p.pendingAddDamage.forEach { (id, d) -> aimed[id] = (aimed[id] ?: 0.0) + d } }
+        // The AI's share goes to menders first, then runners, then the rest.
+        val aiFocus = living.minByOrNull {
+            when (it.kind) { AddTemplate.MENDER -> 0; AddTemplate.RUNNER -> 1; AddTemplate.PACK -> 3; else -> 2 }
+        }?.id
+        val addsAfter = s.adds.map { a ->
+            val hit = ((aimed[a.id] ?: 0.0) + if (a.id == aiFocus) toAdds else 0.0) * exposed
+            if (hit <= 0) a else a.copy(health = max(0.0, a.health - hit))
+        }.filter { it.isAlive }
+        val bossAdds = s.currentDungeon?.let { data.encounters.bosses[it.id]?.adds }
+        val callAdds = s.combatPhase == CombatPhase.BOSS && bossAdds != null && !s.bossAddsSpawned &&
+            enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * bossAdds.atHealth
+        val addsNow = if (callAdds) addsAfter + spawnAdds(bossAdds!!.spawn, s.enemyMaxHealth, "b${s.combatElapsedTicks}") else addsAfter
         val exposeNow = s.combatPhase == CombatPhase.BOSS && pressure.exposedBelowHealth > 0 && !s.exposedAtHalf &&
             enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * pressure.exposedBelowHealth
 
         val base = s.withEachParticipant {
             // Drained every tick: what each participant dealt has now landed.
-            it.copy(pendingEnemyDamage = 0.0, pendingPlayerThreat = 0.0)
+            it.copy(pendingEnemyDamage = 0.0, pendingPlayerThreat = 0.0, pendingAddDamage = emptyMap())
         }.withMe {
             it.copy(
                 mana = sys.mana,
@@ -1178,20 +1215,35 @@ class GameTick(
             mechanicOrdinal = boss.mechanicOrdinal,
             bossSelfBuffs = if (s.combatPhase == CombatPhase.BOSS) bossBuffsNext else emptyList(),
             // This client's own damage: its casts and its DoTs (see threatByActor).
-            runDamageDealt = s.runDamageDealt + s.me.pendingEnemyDamage + enemyDots,
+            runDamageDealt = s.runDamageDealt + s.me.pendingEnemyDamage + enemyDots + s.me.pendingAddDamage.values.sum(),
+            adds = addsNow,
+            bossAddsSpawned = s.bossAddsSpawned || callAdds,
             exposedTicks = if (exposeNow) pressure.exposedTicks else max(0, s.exposedTicks - 1),
             exposedAtHalf = s.exposedAtHalf || exposeNow,
         )
 
-        if (enemyHealth > 0) return finalizeProgress(base.copy(enemyHealth = enemyHealth))
+        // A pull is over when its adds are too; a boss's adds go with it.
+        if (enemyHealth > 0 || (s.combatPhase == CombatPhase.TRASH && addsNow.isNotEmpty())) {
+            return finalizeProgress(base.copy(enemyHealth = max(0.0, enemyHealth)))
+        }
 
         val dungeon = s.currentDungeon
         if (s.combatPhase == CombatPhase.TRASH) {
+            val hp = dungeon?.let { max(1.0, progression.trashMaxHealth(it)) } ?: 1.0
+            // Whoever a runner brought comes first, and is not one of the planned pulls.
+            if (s.extraPulls > 0) {
+                return finalizeProgress(
+                    base.copy(extraPulls = s.extraPulls - 1, enemyHealth = hp, enemyMaxHealth = hp, restTicks = pressure.restTicks),
+                )
+            }
             val remaining = s.trashPullsRemaining - 1
             if (remaining > 0) {
-                val hp = dungeon?.let { max(1.0, progression.trashMaxHealth(it)) } ?: 1.0
+                val index = TRASH_PACK_COUNT - remaining
                 return finalizeProgress(
-                    base.copy(trashPullsRemaining = remaining, enemyHealth = hp, enemyMaxHealth = hp, restTicks = pressure.restTicks),
+                    base.copy(
+                        trashPullsRemaining = remaining, enemyHealth = hp, enemyMaxHealth = hp, restTicks = pressure.restTicks,
+                        adds = pullAdds(dungeon?.id, index, hp, "p${s.combatElapsedTicks}"),
+                    ),
                 )
             }
             // Trash cleared: the boss engages and the mechanic rotation resets.
@@ -1203,6 +1255,8 @@ class GameTick(
                     combatPhase = CombatPhase.BOSS,
                     restTicks = pressure.restTicks,
                     bossTicks = 0,
+                    adds = emptyList(),
+                    bossAddsSpawned = false,
                     enemyHealth = bossHp,
                     enemyMaxHealth = bossHp,
                     enemyCast = null,
@@ -1311,6 +1365,8 @@ class GameTick(
                 dungeonProgress = 0.0,
                 bossSelfBuffs = emptyList(),
                 enemyCast = null,
+                adds = emptyList(),
+                bossAddsSpawned = false,
                 mechanicCooldown = rng.nextInt(
                     profile.mechanicIntervalTicksMin ?: defaultMechanicMin,
                     profile.mechanicIntervalTicksMax ?: defaultMechanicMax,
@@ -1396,6 +1452,90 @@ class GameTick(
         ).withEachParticipant {
             it.copy(mana = min(it.maxMana.toDouble(), it.mana + it.maxMana * p.restManaPerTick))
         }
+    }
+
+    /** The adds [templates] make, sized against [mainMaxHealth]; ids unique to this moment. */
+    internal fun spawnAdds(templates: List<AddTemplate>, mainMaxHealth: Double, tag: String): List<EnemyAdd> {
+        val every = data.encounters.addRules.menderEveryTicks
+        return templates.mapIndexed { i, t ->
+            val hp = max(1.0, t.health * mainMaxHealth)
+            EnemyAdd(
+                id = "add-$tag-$i",
+                kind = t.kind,
+                name = t.name,
+                looksLike = t.looksLike,
+                health = hp,
+                maxHealth = hp,
+                damagePerTick = t.damagePerTick,
+                healAmount = t.healFraction * mainMaxHealth,
+                timer = if (t.kind == AddTemplate.MENDER) every else 0,
+                timerTotal = if (t.kind == AddTemplate.MENDER) every else 0,
+            )
+        }
+    }
+
+    /** What trash pull [index] of [dungeonId] brings besides its pack. */
+    internal fun pullAdds(dungeonId: String?, index: Int, mainMaxHealth: Double, tag: String): List<EnemyAdd> {
+        val pull = dungeonId?.let { data.encounters.trash[it] }?.getOrNull(index) ?: return emptyList()
+        return spawnAdds(pull.adds, mainMaxHealth, tag)
+    }
+
+    /**
+     * "Pull now": the next planned pack joins this fight as an add, with
+     * whatever that pull brings, and counts as fought. Not the last trash
+     * pull's successor -- the boss does not come early.
+     */
+    internal fun rushNextPull(s: GameState): GameState {
+        val dungeon = s.currentDungeon ?: return s
+        if (s.combatPhase != CombatPhase.TRASH || s.trashPullsRemaining <= 1) return s
+        val index = TRASH_PACK_COUNT - s.trashPullsRemaining + 1
+        val hp = max(1.0, progression.trashMaxHealth(dungeon))
+        val name = dungeon.enemies.takeIf { it.isNotEmpty() }?.let { it[index % it.size].name } ?: "Trash"
+        val tag = "r${s.combatElapsedTicks}"
+        val pack = EnemyAdd(id = "pack-$tag", kind = AddTemplate.PACK, name = name, looksLike = name, health = hp, maxHealth = hp)
+        return s.copy(
+            trashPullsRemaining = s.trashPullsRemaining - 1,
+            adds = s.adds + pack + pullAdds(dungeon.id, index, hp, tag),
+        )
+    }
+
+    /**
+     * The adds' own clocks: menders cast and heal, runners run, and adds hit
+     * the healer. Damage to adds is resolved with the rest of the damage.
+     */
+    internal fun processAdds(s: GameState, party: List<Unit>): Pair<GameState, List<Unit>> {
+        if (s.adds.isEmpty()) return s to party
+        val rules = data.encounters.addRules
+        var enemyHealth = s.enemyHealth
+        var extra = s.extraPulls
+        val adds = s.adds.mapNotNull { a ->
+            if (!a.isAlive) return@mapNotNull null
+            when (a.kind) {
+                AddTemplate.MENDER -> when {
+                    a.timer > 1 -> a.copy(timer = a.timer - 1)
+                    a.casting -> {
+                        if (enemyHealth > 0) enemyHealth = min(s.enemyMaxHealth, enemyHealth + a.healAmount)
+                        a.copy(casting = false, timer = rules.menderEveryTicks, timerTotal = rules.menderEveryTicks)
+                    }
+                    else -> a.copy(casting = true, timer = rules.menderCastTicks, timerTotal = rules.menderCastTicks)
+                }
+                AddTemplate.RUNNER -> when {
+                    !a.fleeing && a.health < a.maxHealth * rules.runnerFleeBelow ->
+                        a.copy(fleeing = true, timer = rules.runnerEscapeTicks, timerTotal = rules.runnerEscapeTicks)
+                    a.fleeing && a.timer <= 1 -> { extra += 1; null }
+                    a.fleeing -> a.copy(timer = a.timer - 1)
+                    else -> a
+                }
+                else -> a
+            }
+        }
+        // Adds go for whoever keeps the party alive.
+        val hurt = adds.sumOf { it.damagePerTick } * (s.currentDungeon?.let { progression.bossDamageMultiplier(it.difficulty) } ?: 1.0)
+        val victim = party.firstOrNull { it.isAlive && it.role == UnitRole.HEALER } ?: party.firstOrNull { it.isAlive }
+        val hit = if (hurt <= 0 || victim == null) party else party.map {
+            if (it.id == victim.id) it.copy(health = max(0.0, it.health - hurt)) else it
+        }
+        return s.copy(adds = adds, enemyHealth = enemyHealth, extraPulls = extra) to hit
     }
 
     /**
@@ -1484,8 +1624,10 @@ class GameTick(
         // Before the failure check, so a heal that lands this tick actually
         // saves the unit rather than being applied to a corpse.
         val ai = aiHealerTick(acc, sys.party)
-        val (partyAfterAi, dispelCooldown) = aiDispel(acc, ai.party)
+        val (partyAfterDispel, dispelCooldown) = aiDispel(acc, ai.party)
         acc = acc.copy(aiHealerMana = ai.manaLeft, aiDispelCooldown = dispelCooldown)
+        val (withAdds, partyAfterAi) = processAdds(acc, partyAfterDispel)
+        acc = withAdds
 
         resolveFailure(ctx, acc, partyAfterAi, rng)?.let { return it }
 

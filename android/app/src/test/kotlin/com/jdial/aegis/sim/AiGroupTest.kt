@@ -24,7 +24,7 @@ class AiGroupTest {
         var s = engine.newCharacter(cls, rng)
         val maxMana = engine.stats.maxMana(cls, level, s.talents)
         s = s.withMe {
-            it.copy(level = level, maxMana = maxMana, mana = maxMana.toDouble(), unlockedSpells = data.bundle(cls).spells.keys.toList())
+            it.copy(level = level, maxMana = maxMana, mana = maxMana.toDouble(), unlockedSpells = data.bundle(cls).spells.keys.toList() + data.grantsFor(cls, level))
         }
         val dungeon = data.dungeons.first { !it.endless && level in it.levelMin..it.levelMax }
         s = engine.reduce(s, Action.StartDungeon(dungeon, "normal"), rng)
@@ -33,8 +33,16 @@ class AiGroupTest {
         val order = if (cls == PlayerClass.WARRIOR) listOf("shield_slam", "revenge") else listOf("fireball", "frostbolt")
         var ticks = 0
         while (s.isCombatActive && ticks < 3000) {
+            // It does switch to adds: leaving a mender or a healer-killer up is
+            // not carelessness, it is not playing.
+            val aim = s.adds.firstOrNull { it.isAlive }?.id
+            // And it kicks what can be kicked: a landed kickable cast is meant to hurt.
+            if (cls == PlayerClass.MAGE && (s.enemyCast?.interruptible == true || s.adds.any { it.casting })) {
+                val kicked = engine.reduce(s, Action.CastSpell("counterspell", aim, 99.0), rng)
+                if (kicked !== s) s = kicked
+            }
             for (id in order) {
-                val next = engine.reduce(s, Action.CastSpell(id, null, rng.nextDouble() * 100), rng)
+                val next = engine.reduce(s, Action.CastSpell(id, aim, rng.nextDouble() * 100), rng)
                 if (next !== s) { s = next; break }
             }
             s = engine.reduce(s, Action.Tick(1), rng)

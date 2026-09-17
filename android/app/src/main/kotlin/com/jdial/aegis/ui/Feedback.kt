@@ -77,7 +77,8 @@ fun cuesBetween(prev: GameState, cur: GameState): List<Cue> = buildList {
 
     val cast = cur.enemyCast
     val before = prev.enemyCast
-    if (before != null && cast == null && before.remainingTicks > 1) add(Cue.INTERRUPT)
+    val menderKicked = prev.adds.any { was -> was.casting && was.timer > 1 && cur.adds.any { it.id == was.id && !it.casting } }
+    if ((before != null && cast == null && before.remainingTicks > 1) || menderKicked) add(Cue.INTERRUPT)
     if (cast != null && (before == null || before.abilityId != cast.abilityId || before.remainingTicks < cast.remainingTicks)) {
         add(Cue.TELEGRAPH)
     }

@@ -199,6 +199,27 @@ data class EnemyCast(
     val progress: Float get() = if (totalTicks <= 0) 1f else 1f - remainingTicks.toFloat() / totalTicks
 }
 
+/** An enemy beside the main one; see [com.jdial.aegis.data.AddTemplate]. */
+@Serializable
+data class EnemyAdd(
+    val id: String,
+    val kind: String,
+    val name: String,
+    val looksLike: String,
+    val health: Double,
+    val maxHealth: Double,
+    val damagePerTick: Double = 0.0,
+    val healAmount: Double = 0.0,
+    /** A mender's ticks to its next cast (or left on it); a runner's ticks left to get away. */
+    val timer: Int = 0,
+    val timerTotal: Int = 0,
+    val casting: Boolean = false,
+    val fleeing: Boolean = false,
+) {
+    val isAlive: Boolean get() = health > 0
+    val castProgress: Float get() = if (!casting || timerTotal <= 0) 0f else 1f - timer.toFloat() / timerTotal
+}
+
 @Serializable
 data class BossBuff(
     val id: String,
@@ -311,6 +332,8 @@ data class Participant(
      * before the next Tick action, so there is never more than a tick's worth
      * of it outstanding.
      */
+    /** Damage this participant aimed at adds since the last tick, by add id. */
+    val pendingAddDamage: Map<String, Double> = emptyMap(),
     val pendingEnemyDamage: Double = 0.0,
     /**
      * Threat this participant's casts have generated since the last tick
@@ -423,6 +446,11 @@ data class GameState(
     val restTicks: Int = 0,
     /** Extra run XP, as a share, banked by pulling before a rest was over. */
     val earlyPullBonus: Double = 0.0,
+    /** Enemies beside the main one: menders, runners, a boss's adds. */
+    val adds: List<EnemyAdd> = emptyList(),
+    /** Pulls a runner brought, fought before the next planned one. */
+    val extraPulls: Int = 0,
+    val bossAddsSpawned: Boolean = false,
     val combatElapsedTicks: Int = 0,
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
@@ -545,6 +573,9 @@ data class GameState(
         exposedAtHalf = false,
         restTicks = 0,
         earlyPullBonus = 0.0,
+        adds = emptyList(),
+        extraPulls = 0,
+        bossAddsSpawned = false,
         enemyDebuffs = emptyList(),
         aiHealerMana = 0.0,
         combatElapsedTicks = 0,
@@ -577,6 +608,7 @@ fun GameState.endedRun(): GameState = withEachParticipant {
     mechanicCooldown = 0,
     mechanicOrdinal = 0,
     enemyCast = null,
+    adds = emptyList(),
     floatingCombatTexts = emptyList(),
     endlessStacks = 0,
 )
