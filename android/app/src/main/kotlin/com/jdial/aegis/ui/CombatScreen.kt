@@ -124,6 +124,7 @@ fun CombatScreen(
     onCastAt: (String, String) -> kotlin.Unit,
     onReorder: (Int, Int) -> kotlin.Unit,
     onLeave: () -> kotlin.Unit,
+    onPullNow: () -> kotlin.Unit = {},
 ) {
     // Drag-to-cast. VuhDo and HealBot collapse target and heal into one click;
     // on touch the honest analogue is dragging a spell onto a frame. The two-tap
@@ -210,7 +211,7 @@ fun CombatScreen(
                         verticalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column {
-                            EncounterHud(state, onLeave)
+                            EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick)
                             // A landscape phone has about 400dp of height: the
                             // HUD and the action bar need all of it, and the
                             // scene pushed the bar off the screen. Tablets have
@@ -227,7 +228,7 @@ fun CombatScreen(
                 }
             } else {
                 Column(Modifier.fillMaxSize()) {
-                    EncounterHud(state, onLeave)
+                    EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick)
                     Spacer(Modifier.height(8.dp))
                     BattleView(state)
                     Spacer(Modifier.height(8.dp))
@@ -248,7 +249,12 @@ private val WideBattleViewMinHeight = 560.dp
 // --- encounter HUD ----------------------------------------------------------
 
 @Composable
-private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
+private fun EncounterHud(
+    state: GameState,
+    onLeave: () -> kotlin.Unit,
+    onPullNow: () -> kotlin.Unit,
+    earlyPullXpPerTick: Double,
+) {
     val dungeon = state.currentDungeon ?: return
     val isBoss = state.combatPhase == CombatPhase.BOSS
     val name = enemyName(state)
@@ -284,6 +290,11 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
                         .semantics { role = Role.Button }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                 )
+            }
+
+            if (state.restTicks > 0) {
+                Spacer(Modifier.height(8.dp))
+                RestRow(state, earlyPullXpPerTick, onPullNow)
             }
 
             Spacer(Modifier.height(8.dp))
@@ -657,6 +668,32 @@ private fun nextMechanic(state: GameState): NextMechanic? {
  * debuffTemplates, so the full duration is a content lookup rather than new
  * serialized state (which would land in the parity-covered GameState).
  */
+/**
+ * Between pulls: how long the breather lasts, and what pulling now is worth.
+ * The choice is the point -- drink up, or take the XP and go in thirsty.
+ */
+@Composable
+private fun RestRow(state: GameState, earlyPullXpPerTick: Double, onPullNow: () -> kotlin.Unit) {
+    val bonus = state.restTicks * earlyPullXpPerTick
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        BasicText(
+            "RESTING  ${ceil(state.restTicks / 10.0).toInt()}s",
+            style = AegisType.label.copy(color = Vital.healthy),
+            modifier = Modifier.weight(1f),
+        )
+        BasicText(
+            "PULL NOW  +${(bonus * 100).roundToInt()}% XP",
+            style = AegisType.label.copy(color = Obsidian.abyss),
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(Gilt.core)
+                .clickable(onClickLabel = "Pull the next enemies now", onClick = onPullNow)
+                .semantics { role = Role.Button }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        )
+    }
+}
+
 /** A debuff a healer can take off -- the colour dispellable magic always had. */
 private val Dispel = Color(0xFFA855F7)
 

@@ -349,6 +349,12 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Ends a rest early. The host's call: a guest's run is the host's run. */
+    fun pullNow() {
+        if (!multiplayer.isHost) return
+        dispatch(Action.PullNow)
+    }
+
     fun abandonDungeon() {
         stopTicking()
         viewModelScope.launch { runCatching { multiplayer.endRun(finished = false) } }

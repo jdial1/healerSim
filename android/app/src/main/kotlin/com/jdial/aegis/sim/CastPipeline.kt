@@ -136,6 +136,8 @@ class CastPipeline(
         val hooks = hooksFor(ctx.cls)
         if (spell.isDamage || spell.school == SpellSchool.UTILITY) {
             if (!hooks.damageCastAllowed(ctx, spell, spellId)) return null
+            // Resting between pulls there is nothing to hit.
+            if (spell.isDamage && s.restTicks > 0) return null
             // A dispel needs a living target with something to take.
             if (spell.dispels && (target == null || !target.isAlive || target.debuffs.toDispel() == null)) return null
             val extra = hooks.damageCritBonus(ctx, spell, spellId)
@@ -320,7 +322,7 @@ class CastPipeline(
 
     private fun interrupted(s: GameState, spell: Spell): GameState {
         if (!spell.interrupts || s.enemyCast?.interruptible != true) return s
-        return s.copy(enemyCast = null, lastInterruptBy = s.localUnitId)
+        return s.copy(enemyCast = null, lastInterruptBy = s.localUnitId, exposedTicks = data.encounters.pressure.exposedTicks)
     }
 
     /** Player damage by class and level; see ClassesBalance.damageScale. */

@@ -1,5 +1,5 @@
 {
-  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals.",
+  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure).",
   "attacks": {
     "vc_ambush": {
       "castTicks": 20
@@ -158,5 +158,16 @@
       "maxStacks": 5,
       "burstDamage": 60
     }
+  },
+  "pressure": {
+    "enrageAfterTicks": 1200,
+    "enrageRampPerTick": 0.003,
+    "exposedTicks": 50,
+    "exposedDamageMultiplier": 1.5,
+    "exposedBelowHealth": 0.5,
+    "restTicks": 60,
+    "restHealthPerTick": 0.02,
+    "restManaPerTick": 0.02,
+    "earlyPullXpPerTick": 0.0015
   }
 }

@@ -412,6 +412,16 @@ data class GameState(
     val aiTauntCooldown: Int = 0,
     /** Ticks until the AI healer may dispel again. */
     val aiDispelCooldown: Int = 0,
+    /** Ticks spent on this boss: the enrage clock. */
+    val bossTicks: Int = 0,
+    /** While positive the boss takes extra damage (Pressure.exposedDamageMultiplier). */
+    val exposedTicks: Int = 0,
+    /** The once-per-boss exposure at low health has happened. */
+    val exposedAtHalf: Boolean = false,
+    /** While positive the party is resting between pulls. */
+    val restTicks: Int = 0,
+    /** Extra run XP, as a share, banked by pulling before a rest was over. */
+    val earlyPullBonus: Double = 0.0,
     val combatElapsedTicks: Int = 0,
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
@@ -529,6 +539,11 @@ data class GameState(
         tauntedById = null,
         aiTauntCooldown = 0,
         aiDispelCooldown = 0,
+        bossTicks = 0,
+        exposedTicks = 0,
+        exposedAtHalf = false,
+        restTicks = 0,
+        earlyPullBonus = 0.0,
         enemyDebuffs = emptyList(),
         aiHealerMana = 0.0,
         combatElapsedTicks = 0,

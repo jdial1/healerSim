@@ -286,6 +286,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                         },
                         onReorder = vm::reorderActionBar,
                         onLeave = { confirmAbandon = true },
+                        onPullNow = vm::pullNow,
                     )
                 }
             }

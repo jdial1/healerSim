@@ -47,6 +47,9 @@ sealed interface Action {
      */
     data class SetActionBarSlot(val index: Int, val spellId: String) : Action
     data object AbandonDungeon : Action
+
+    /** Ends a rest early, for the XP it is worth (Pressure.earlyPullXpPerTick). */
+    data object PullNow : Action
     data object DismissDungeonOutcome : Action
     data class SetTutorialPaused(val paused: Boolean) : Action
 
@@ -159,6 +162,10 @@ class Engine(val data: GameData) {
         is Action.ReorderActionBar -> reorderActionBar(state, action.from, action.to)
         is Action.SetActionBarSlot -> setActionBarSlot(state, action.index, action.spellId)
         Action.AbandonDungeon -> state.clearedCombat().copy(isCombatActive = false)
+        Action.PullNow -> if (state.restTicks <= 0) state else state.copy(
+            restTicks = 0,
+            earlyPullBonus = state.earlyPullBonus + state.restTicks * data.encounters.pressure.earlyPullXpPerTick,
+        )
         Action.DismissDungeonOutcome -> state.copy(dungeonOutcome = null)
         is Action.SetTutorialPaused -> state.copy(isTutorialPaused = action.paused)
     }

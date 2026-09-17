@@ -158,7 +158,7 @@
       "WARLOCK": 1.0
     },
     "damageRampFloor": {
-      "MAGE": 0.55,
+      "MAGE": 0.42,
       "ROGUE": 0.45,
       "WARRIOR": 0.45,
       "DEATHKNIGHT": 0.45,

@@ -82,7 +82,8 @@ class PlayerDamageBalanceTest {
             if (!cast && s.globalCooldownRemaining == 0) idle++
             // Rates while alive: the band is about how hard a player hits, and a
             // wipe the AI healer could not prevent says nothing about that.
-            if (s.unit(s.localUnitId)?.isAlive == true) {
+            // ...and while fighting: a rest between pulls is nobody's damage.
+            if (s.unit(s.localUnitId)?.isAlive == true && s.restTicks == 0) {
                 player += s.pendingEnemyDamage + s.enemyDebuffs.sumOf { it.damagePerTick }
                 ai += perTickAi
             }

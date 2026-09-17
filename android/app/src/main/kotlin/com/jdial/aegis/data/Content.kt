@@ -249,6 +249,31 @@ data class Encounters(
     val mechanics: Map<String, DebuffMechanic> = emptyMap(),
     /** How often an AI healer may dispel; 0 means it never does. */
     val aiDispelEveryTicks: Int = 0,
+    val pressure: Pressure = Pressure(),
+)
+
+/**
+ * How a run leans on the party over time. Every value defaults to off, which
+ * is what the shared data the parity corpus replays gets.
+ */
+@Serializable
+data class Pressure(
+    /** Boss ticks before the enrage starts; 0 never enrages. A boss may override it. */
+    val enrageAfterTicks: Int = 0,
+    /** Enraged, boss damage grows by this share per tick. */
+    val enrageRampPerTick: Double = 0.0,
+    /** How long the boss stays exposed after a kick, or on reaching [exposedBelowHealth]. */
+    val exposedTicks: Int = 0,
+    val exposedDamageMultiplier: Double = 1.0,
+    /** Exposed once per boss at this share of health; 0 never. */
+    val exposedBelowHealth: Double = 0.0,
+    /** The breather after each trash pull; 0 goes straight on. */
+    val restTicks: Int = 0,
+    /** Resting, the party regains these shares of max health and mana per tick. */
+    val restHealthPerTick: Double = 0.0,
+    val restManaPerTick: Double = 0.0,
+    /** Pulling early banks this much extra run XP (as a share) per rest tick skipped. */
+    val earlyPullXpPerTick: Double = 0.0,
 )
 
 /**
@@ -292,6 +317,8 @@ data class BossTuning(
     /** Attacks this boss has in addition to the shared one: a signature moment. */
     val extraAttacks: List<AttackTemplate> = emptyList(),
     val extraDebuffs: List<DebuffTemplate> = emptyList(),
+    /** This boss's own enrage timer, if not the shared one. */
+    val enrageAfterTicks: Int? = null,
 )
 
 /** The dungeons with [encounters] applied. Unknown ids are ignored. */

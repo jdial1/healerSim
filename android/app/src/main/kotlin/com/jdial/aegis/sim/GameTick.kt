@@ -242,7 +242,7 @@ class GameTick(
         if (s.participants.values.any { it.isHuman && it.role == UnitRole.DPS }) return s
         if (cast.totalTicks - cast.remainingTicks < data.encounters.aiKickDelayTicks) return s
         val kicker = s.party.firstOrNull { it.role == UnitRole.DPS && it.isAlive && !s.isHuman(it.id) } ?: return s
-        return s.copy(enemyCast = null, lastInterruptBy = kicker.id)
+        return s.copy(enemyCast = null, lastInterruptBy = kicker.id, exposedTicks = data.encounters.pressure.exposedTicks)
     }
 
     // --- the AI healer -------------------------------------------------------
@@ -547,7 +547,7 @@ class GameTick(
         val hooks = hooksFor(ctx.cls)
         val baseMult = progression.bossDamageMultiplier(dungeon.difficulty) *
             (if (dungeon.endless) progression.endlessMultiplier(s.endlessStacks) else 1.0) *
-            partyDamageMult
+            partyDamageMult * enrageMultiplier(s)
         val natRank = ctx.ranks("natural_perfection")
 
         var npAdd = 0
@@ -679,6 +679,7 @@ class GameTick(
                 if (d.remainingTicks <= 0) continue
                 var dot = d.damagePerTick * dotLevelMult * max(1, d.stacks)
                 if (s.currentDungeon?.endless == true) dot *= progression.endlessMultiplier(s.endlessStacks)
+                dot *= enrageMultiplier(s)
                 val mech = data.encounters.mechanics[d.sourceAbilityId]
                 // A wound is gone the moment its carrier raises a defensive; an
                 // AI carrier raises one just before it would burst.
@@ -1141,7 +1142,12 @@ class GameTick(
         val threatByActor = s.participants.mapValues { (id, p) ->
             p.pendingPlayerThreat + if (id == s.localUnitId) enemyDots else 0.0
         }
-        var enemyHealth = s.enemyHealth - (scriptedDamage + playerDamage)
+        val pressure = data.encounters.pressure
+        // Exposed, everything hits harder. Off, this is `x * 1.0`: exact.
+        val exposed = if (s.exposedTicks > 0) pressure.exposedDamageMultiplier else 1.0
+        var enemyHealth = s.enemyHealth - (scriptedDamage + playerDamage) * exposed
+        val exposeNow = s.combatPhase == CombatPhase.BOSS && pressure.exposedBelowHealth > 0 && !s.exposedAtHalf &&
+            enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * pressure.exposedBelowHealth
 
         val base = s.withEachParticipant {
             // Drained every tick: what each participant dealt has now landed.
@@ -1171,6 +1177,8 @@ class GameTick(
             bossSelfBuffs = if (s.combatPhase == CombatPhase.BOSS) bossBuffsNext else emptyList(),
             // This client's own damage: its casts and its DoTs (see threatByActor).
             runDamageDealt = s.runDamageDealt + s.me.pendingEnemyDamage + enemyDots,
+            exposedTicks = if (exposeNow) pressure.exposedTicks else max(0, s.exposedTicks - 1),
+            exposedAtHalf = s.exposedAtHalf || exposeNow,
         )
 
         if (enemyHealth > 0) return finalizeProgress(base.copy(enemyHealth = enemyHealth))
@@ -1181,7 +1189,7 @@ class GameTick(
             if (remaining > 0) {
                 val hp = dungeon?.let { max(1.0, progression.trashMaxHealth(it)) } ?: 1.0
                 return finalizeProgress(
-                    base.copy(trashPullsRemaining = remaining, enemyHealth = hp, enemyMaxHealth = hp),
+                    base.copy(trashPullsRemaining = remaining, enemyHealth = hp, enemyMaxHealth = hp, restTicks = pressure.restTicks),
                 )
             }
             // Trash cleared: the boss engages and the mechanic rotation resets.
@@ -1191,6 +1199,8 @@ class GameTick(
                 base.copy(
                     trashPullsRemaining = 0,
                     combatPhase = CombatPhase.BOSS,
+                    restTicks = pressure.restTicks,
+                    bossTicks = 0,
                     enemyHealth = bossHp,
                     enemyMaxHealth = bossHp,
                     enemyCast = null,
@@ -1212,7 +1222,8 @@ class GameTick(
         if (dungeon.endless) return advanceEndlessWave(ctx, base, sys, dungeon, rng)
 
         val paceXp = s.dungeonPace?.let { progression.pace(it).xpMultiplier } ?: 1.0
-        val xpGained = (progression.dungeonXpGain(dungeon, s.level) * paceXp).roundToInt()
+        // Pulling early pays; with nothing banked this is `* 1.0`, exact.
+        val xpGained = (progression.dungeonXpGain(dungeon, s.level) * paceXp * (1 + s.earlyPullBonus)).roundToInt()
         val stats0 = runStats(s)
         // On a clear the web app keeps the mana it had entering this tick, so the
         // final tick's regen is deliberately discarded.
@@ -1359,6 +1370,32 @@ class GameTick(
         return out
     }
 
+    /** Boss damage grows once the boss has lasted past its enrage timer. */
+    internal fun enrageMultiplier(s: GameState): Double {
+        val p = data.encounters.pressure
+        val after = s.currentDungeon?.let { data.encounters.bosses[it.id]?.enrageAfterTicks } ?: p.enrageAfterTicks
+        if (after <= 0 || s.bossTicks <= after) return 1.0
+        return 1 + (s.bossTicks - after) * p.enrageRampPerTick
+    }
+
+    /**
+     * A breather between pulls: nothing attacks, nobody deals damage, and the
+     * party drinks. Cooldowns still run (Engine.tickCooldowns).
+     */
+    private fun rest(s: GameState): GameState {
+        val p = data.encounters.pressure
+        return s.copy(
+            restTicks = s.restTicks - 1,
+            combatElapsedTicks = s.combatElapsedTicks + 1,
+            floatingCombatTexts = s.floatingCombatTexts.filter { it.expiresAtCombatTick > s.combatElapsedTicks + 1 },
+            party = s.party.map {
+                if (!it.isAlive) it else it.copy(health = min(it.maxHealth, it.health + it.maxHealth * p.restHealthPerTick))
+            },
+        ).withEachParticipant {
+            it.copy(mana = min(it.maxMana.toDouble(), it.mana + it.maxMana * p.restManaPerTick))
+        }
+    }
+
     /**
      * The AI healer's dispel, when no human is healing: the first ally with
      * something safe to take, on a cooldown. It waits out a bomb. No rng.
@@ -1379,6 +1416,7 @@ class GameTick(
 
     fun advance(state: GameState, rng: Rng, dpsMultiplierOverride: Double? = null): GameState {
         if (!state.isCombatActive) return state
+        if (state.restTicks > 0) return rest(state)
 
         // Threat is resolved first, off the table as it stood when last tick
         // committed. Reading committed state rather than this tick's accrual is
@@ -1388,6 +1426,7 @@ class GameTick(
         val s = aiTankTaunt(
             state.copy(
                 combatElapsedTicks = state.combatElapsedTicks + 1,
+                bossTicks = if (state.combatPhase == CombatPhase.BOSS) state.bossTicks + 1 else state.bossTicks,
                 floatingCombatTexts = state.floatingCombatTexts
                     .filter { it.expiresAtCombatTick > state.combatElapsedTicks + 1 },
                 enemyTargetId = resolveEnemyTarget(state),
