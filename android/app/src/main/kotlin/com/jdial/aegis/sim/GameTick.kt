@@ -195,6 +195,37 @@ class GameTick(
         return (1.0 - reduction).coerceIn(0.0, 1.0)
     }
 
+    /**
+     * The AI tank taking the enemy back.
+     *
+     * A DPS player doing the damage they are meant to do out-threats an AI
+     * tank, whose share of the scripted damage is small -- so the boss turned
+     * to them and stayed there, and a player playing well died for it. The
+     * setting for this existed (aiTauntCooldownTicks) and nothing read it.
+     *
+     * Only when the player is not the healer: healer runs never target by
+     * threat, and the recorded ones must not change. Draws nothing from the rng.
+     */
+    internal fun aiTankTaunt(s: GameState): GameState {
+        if (s.playerRole == UnitRole.HEALER) return s
+        val cooldown = max(0, s.aiTauntCooldown - 1)
+        val tank = s.party.firstOrNull { it.role == UnitRole.TANK && it.isAlive && !s.isHuman(it.id) }
+        if (tank == null || cooldown > 0 || s.enemyTargetId == null || s.enemyTargetId == tank.id) {
+            return if (cooldown == s.aiTauntCooldown) s else s.copy(aiTauntCooldown = cooldown)
+        }
+        val cfg = data.balance.threat
+        val top = s.party.filter { it.isAlive }.maxOfOrNull { it.threat } ?: 0.0
+        return s.copy(
+            party = s.party.map {
+                if (it.id == tank.id) it.copy(threat = max(it.threat, top * cfg.tauntOvertakeMultiplier)) else it
+            },
+            enemyTargetId = tank.id,
+            tauntedById = tank.id,
+            tauntLockTicks = cfg.aiTauntLockTicks,
+            aiTauntCooldown = cfg.aiTauntCooldownTicks,
+        )
+    }
+
     // --- the AI healer -------------------------------------------------------
 
     internal data class AiHealResult(
@@ -226,8 +257,8 @@ class GameTick(
         } ?: return AiHealResult(party, s.aiHealerMana, 0.0)
 
         val mana = min(
-            cfg.aiHealerManaBase + cfg.aiHealerManaPerLevel * healer.level,
-            s.aiHealerMana + cfg.aiHealerManaRegenPerTick,
+            cfg.aiHealerMaxMana(healer.level),
+            s.aiHealerMana + cfg.aiHealerRegen(healer.level),
         )
 
         // Lowest health fraction, ties broken by id so the choice cannot depend
@@ -237,7 +268,7 @@ class GameTick(
             .minWithOrNull(compareBy<Unit> { it.health / it.maxHealth }.thenBy { it.id })
             ?: return AiHealResult(party, mana, 0.0)
 
-        val amount = cfg.aiHealerHealBase + cfg.aiHealerHealPerLevel * healer.level
+        val amount = cfg.aiHealerHeal(healer.level)
         val effective = min(amount, hurt.maxHealth - hurt.health)
         val cost = effective * cfg.aiHealerManaPerHealPoint
         if (effective <= 0 || cost > mana) return AiHealResult(party, mana, 0.0)
@@ -451,6 +482,9 @@ class GameTick(
             var dmg = tpl.damage * baseMult * progression.levelGapDamageMultiplier(u.level, dungeon.levelMax)
             dmg *= hooks.damageTakenMultiplier(ctx, "boss_attack", u)
             dmg *= activeMitigation(s, u)
+            if (s.playerRole != UnitRole.HEALER && u.role == UnitRole.TANK) {
+                dmg *= data.balance.roles.tankBossDamageTaken
+            }
             // With the tank down, everyone else takes double.
             if (tankDead && (u.role == UnitRole.DPS || u.role == UnitRole.HEALER)) dmg *= 2
             val out = applyDamageToUnit(u, dmg, natRank)
@@ -1190,12 +1224,14 @@ class GameTick(
         // what makes the answer independent of evaluation order -- and what
         // would let two machines that agree on tick N agree on tick N+1 without
         // negotiating, if co-op ever happens.
-        val s = state.copy(
-            combatElapsedTicks = state.combatElapsedTicks + 1,
-            floatingCombatTexts = state.floatingCombatTexts
-                .filter { it.expiresAtCombatTick > state.combatElapsedTicks + 1 },
-            enemyTargetId = resolveEnemyTarget(state),
-            tauntLockTicks = max(0, state.tauntLockTicks - 1),
+        val s = aiTankTaunt(
+            state.copy(
+                combatElapsedTicks = state.combatElapsedTicks + 1,
+                floatingCombatTexts = state.floatingCombatTexts
+                    .filter { it.expiresAtCombatTick > state.combatElapsedTicks + 1 },
+                enemyTargetId = resolveEnemyTarget(state),
+                tauntLockTicks = max(0, state.tauntLockTicks - 1),
+            ),
         )
         val ctx = CastContext(s, data, stats, rng)
 

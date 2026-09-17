@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -109,16 +110,31 @@ fun ContentColumn(
 
 @Composable
 private fun SectionHeading(text: String, subtitle: String? = null) {
+    val compact = LocalCompactHeight.current
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        BasicText(text.uppercase(), style = AegisType.display.copy(textAlign = TextAlign.Center))
+        BasicText(
+            text.uppercase(),
+            style = AegisType.display.copy(
+                textAlign = TextAlign.Center,
+                fontSize = if (compact) 22.sp else AegisType.display.fontSize,
+            ),
+        )
         if (subtitle != null) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(if (compact) 2.dp else 6.dp))
             BasicText(subtitle.uppercase(), style = AegisType.label.copy(textAlign = TextAlign.Center))
         }
-        Spacer(Modifier.height(14.dp))
-        GiltRule(Modifier.fillMaxWidth(0.6f).height(1.dp), alpha = 0.5f)
+        if (!compact) {
+            Spacer(Modifier.height(14.dp))
+            GiltRule(Modifier.fillMaxWidth(0.6f).height(1.dp), alpha = 0.5f)
+        }
     }
 }
+
+/** Below this height a landscape window is "short": see MainActivity. */
+const val COMPACT_HEIGHT_DP = 480
+
+/** True in a short landscape window, where every row of height counts. */
+val LocalCompactHeight = staticCompositionLocalOf { false }
 
 // --- splash -----------------------------------------------------------------
 
@@ -192,7 +208,9 @@ fun SplashScreen(version: String, onBegin: () -> Unit) {
         ) {
             BasicText("OVERHEAL", style = AegisType.display.copy(fontSize = 34.sp, letterSpacing = 8.sp))
             Spacer(Modifier.height(10.dp))
-            BasicText("THE HEALER'S OATH", style = AegisType.label)
+            // Every role, not just the healer: the web app keeps its healer
+            // tagline because it only has healers.
+            BasicText("TANK  ·  HEAL  ·  DPS", style = AegisType.label)
             Spacer(Modifier.height(36.dp))
             GiltButton("Tap to Begin", onClick = onBegin)
             Spacer(Modifier.height(18.dp))
@@ -414,7 +432,7 @@ fun DungeonListScreen(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(horizontal = 16.dp, vertical = 18.dp),
+                .padding(horizontal = 16.dp, vertical = if (LocalCompactHeight.current) 8.dp else 18.dp),
         ) {
             ContentColumn(horizontalAlignment = Alignment.CenterHorizontally) {
                 SectionHeading(
@@ -423,7 +441,7 @@ fun DungeonListScreen(
                         if (talentPoints > 0) "  ·  " + talentPoints + " PT" else "",
                 )
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(if (LocalCompactHeight.current) 8.dp else 16.dp))
 
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 LazyColumn(

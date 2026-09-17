@@ -26,6 +26,14 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.ui.platform.LocalConfiguration
+import com.jdial.aegis.ui.COMPACT_HEIGHT_DP
+import com.jdial.aegis.ui.LocalCompactHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -211,78 +219,111 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
             val tabbed = screen == Screen.Dungeons || screen == Screen.Talents || screen == Screen.Character
 
-            Column(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    when (screen) {
-                        Screen.Splash -> SplashScreen(
-                            version = "v${BuildConfig.VERSION_NAME}",
-                            onBegin = { screen = Screen.ClassSelect },
-                        )
-
-                        Screen.ClassSelect -> ClassSelectScreen(
-                            data = vm.data,
-                            maxLevel = vm.maxLevelAcrossRoster,
-                            onPick = { cls: PlayerClass ->
-                                vm.selectClass(cls)
-                                screen = Screen.Dungeons
-                            },
-                        )
-
-                        Screen.Dungeons -> DungeonListScreen(
-                            data = vm.data,
-                            playerLevel = state.level,
-                            cls = state.playerClass ?: PlayerClass.PRIEST,
-                            talentPoints = state.talentPoints,
-                            onSelect = { queued = it },
-                        )
-
-                        Screen.Talents -> TalentScreen(
-                            state = state,
-                            engine = vm.engine,
-                            onInvest = vm::unlockTalent,
-                            onRefund = vm::decrementTalent,
-                            onRespec = vm::respecTalents,
-                        )
-
-                        Screen.Character -> CharacterScreen(
-                            state = state,
-                            engine = vm.engine,
-                            onSettingsChange = { next -> vm.updateSettings { next } },
-                            multiplayerAvailable = vm.multiplayerAvailable,
-                            forgetResult = forgetResult,
-                            onForgetMultiplayer = vm::forgetMultiplayerData,
-                            onChangeClass = {
-                                vm.leaveCharacter()
-                                screen = Screen.ClassSelect
-                            },
-                            onSetActionBarSlot = vm::setActionBarSlot,
-                        )
-
-                        Screen.Combat -> CombatScreen(
-                            state = state,
-                            data = vm.data,
-                            targetId = targetId,
-                            onTarget = { targetId = it },
-                            onCast = { spellId -> vm.castSpell(spellId, targetId) },
-                            // Dropping a spell on a frame casts there and keeps
-                            // that unit selected, so the next tap-cast continues
-                            // on it — the sticky retarget click-casting gives you.
-                            onCastAt = { spellId, unitId ->
-                                targetId = unitId
-                                vm.castSpell(spellId, unitId)
-                            },
-                            onReorder = vm::reorderActionBar,
-                            onLeave = { confirmAbandon = true },
-                        )
-                    }
-                }
-
-                if (tabbed) {
-                    MenuTabs(
-                        current = screen,
-                        talentPoints = state.talentPoints,
-                        onSelect = { screen = it },
+            // A landscape phone is about 400dp tall. A tab bar along the
+            // bottom, plus the navigation-bar inset counted by both the bar and
+            // the screen above it, left the dungeon list a strip. There the
+            // tabs become a rail down the side instead.
+            val config = LocalConfiguration.current
+            val compact = config.screenWidthDp > config.screenHeightDp && config.screenHeightDp < COMPACT_HEIGHT_DP
+            val screenContent: @Composable () -> Unit = {
+                when (screen) {
+                    Screen.Splash -> SplashScreen(
+                        version = "v${BuildConfig.VERSION_NAME}",
+                        onBegin = { screen = Screen.ClassSelect },
                     )
+
+                    Screen.ClassSelect -> ClassSelectScreen(
+                        data = vm.data,
+                        maxLevel = vm.maxLevelAcrossRoster,
+                        onPick = { cls: PlayerClass ->
+                            vm.selectClass(cls)
+                            screen = Screen.Dungeons
+                        },
+                    )
+
+                    Screen.Dungeons -> DungeonListScreen(
+                        data = vm.data,
+                        playerLevel = state.level,
+                        cls = state.playerClass ?: PlayerClass.PRIEST,
+                        talentPoints = state.talentPoints,
+                        onSelect = { queued = it },
+                    )
+
+                    Screen.Talents -> TalentScreen(
+                        state = state,
+                        engine = vm.engine,
+                        onInvest = vm::unlockTalent,
+                        onRefund = vm::decrementTalent,
+                        onRespec = vm::respecTalents,
+                    )
+
+                    Screen.Character -> CharacterScreen(
+                        state = state,
+                        engine = vm.engine,
+                        onSettingsChange = { next -> vm.updateSettings { next } },
+                        multiplayerAvailable = vm.multiplayerAvailable,
+                        forgetResult = forgetResult,
+                        onForgetMultiplayer = vm::forgetMultiplayerData,
+                        onChangeClass = {
+                            vm.leaveCharacter()
+                            screen = Screen.ClassSelect
+                        },
+                        onSetActionBarSlot = vm::setActionBarSlot,
+                    )
+
+                    Screen.Combat -> CombatScreen(
+                        state = state,
+                        data = vm.data,
+                        targetId = targetId,
+                        onTarget = { targetId = it },
+                        onCast = { spellId -> vm.castSpell(spellId, targetId) },
+                        // Dropping a spell on a frame casts there and keeps
+                        // that unit selected, so the next tap-cast continues
+                        // on it — the sticky retarget click-casting gives you.
+                        onCastAt = { spellId, unitId ->
+                            targetId = unitId
+                            vm.castSpell(spellId, unitId)
+                        },
+                        onReorder = vm::reorderActionBar,
+                        onLeave = { confirmAbandon = true },
+                    )
+                }
+            }
+
+            CompositionLocalProvider(LocalCompactHeight provides compact) {
+                if (tabbed && compact) {
+                    Row(Modifier.fillMaxSize()) {
+                        MenuTabs(
+                            current = screen,
+                            talentPoints = state.talentPoints,
+                            vertical = true,
+                            onSelect = { screen = it },
+                        )
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .consumeWindowInsets(WindowInsets.systemBars.only(WindowInsetsSides.Start)),
+                        ) { screenContent() }
+                    }
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                // The tab bar pads for the navigation bar itself.
+                                .then(if (tabbed) Modifier.consumeWindowInsets(WindowInsets.navigationBars) else Modifier),
+                        ) { screenContent() }
+                        if (tabbed) {
+                            MenuTabs(
+                                current = screen,
+                                talentPoints = state.talentPoints,
+                                vertical = false,
+                                onSelect = { screen = it },
+                            )
+                        }
+                    }
                 }
             }
 
@@ -359,23 +400,16 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 private fun MenuTabs(
     current: Screen,
     talentPoints: Int,
+    /** A rail down the left edge, for a window too short for a bottom bar. */
+    vertical: Boolean,
     onSelect: (Screen) -> Unit,
 ) {
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Row(
-            Modifier
-                .widthIn(max = 480.dp)
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+    val tabs: @Composable (Modifier) -> Unit = { cell ->
             MENU_TABS.forEach { (label, target, icon) ->
                 val selected = current == target
                 val accent = LocalAccent.current
                 Box(
-                    Modifier
-                        .weight(1f)
+                    cell
                         .clip(RoundedCornerShape(5.dp))
                         .background(if (selected) Obsidian.raised else Obsidian.panel.copy(alpha = 0.92f))
                         .border(
@@ -422,6 +456,26 @@ private fun MenuTabs(
                     }
                 }
             }
+    }
+    if (vertical) {
+        Column(
+            Modifier
+                .width(172.dp)
+                .fillMaxHeight()
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical))
+                .padding(start = 12.dp, end = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        ) { tabs(Modifier.fillMaxWidth()) }
+    } else {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Row(
+                Modifier
+                    .widthIn(max = 480.dp)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) { tabs(Modifier.weight(1f)) }
         }
     }
 }

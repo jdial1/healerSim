@@ -135,7 +135,44 @@ data class RolesBalance(
     val aiHealerManaPerHealPoint: Double = 0.34,
     /** It triages: nobody gets topped off, so chip damage accumulates. */
     val aiHealerHealBelowFraction: Double = 0.92,
-)
+    /**
+     * How steeply the AI healer's healing and mana grow with level, pivoting
+     * on [aiHealerLevelPivot]: 1.0 is the old straight line.
+     *
+     * The straight line was too flat. Incoming damage grows faster than
+     * linearly, so from about level 28 a tank or DPS player's group died with
+     * the AI healer still holding mana -- it could not heal fast enough -- and
+     * its flat regen left it dry besides.
+     */
+    val aiHealerLevelExponent: Double = 1.0,
+    val aiHealerLevelPivot: Double = 20.0,
+    /** Added to [aiHealerManaRegenPerTick] per level, on the same curve. */
+    val aiHealerManaRegenPerLevel: Double = 0.0,
+    /**
+     * What a tank takes of a boss hit, in a run where the player is not the
+     * healer.
+     *
+     * Those runs send single-target hits to whoever holds threat -- the tank,
+     * nearly always. The hits were tuned to land on a random party member,
+     * and several late bosses land one bigger than a tank's whole health bar
+     * (Dire Maul's buffed Mortal Strike: about 1,220 against 1,170). A tank
+     * that wears every one of those needs the armour the healer game never
+     * had to model. Healer runs are untouched.
+     */
+    val tankBossDamageTaken: Double = 1.0,
+) {
+    /** The level term the per-level constants are multiplied by. */
+    fun aiHealerLevelTerm(level: Int): Double {
+        val l = level.coerceAtLeast(1).toDouble()
+        return l * Math.pow(l / aiHealerLevelPivot, aiHealerLevelExponent - 1.0)
+    }
+
+    fun aiHealerMaxMana(level: Int): Double = aiHealerManaBase + aiHealerManaPerLevel * aiHealerLevelTerm(level)
+
+    fun aiHealerHeal(level: Int): Double = aiHealerHealBase + aiHealerHealPerLevel * aiHealerLevelTerm(level)
+
+    fun aiHealerRegen(level: Int): Double = aiHealerManaRegenPerTick + aiHealerManaRegenPerLevel * aiHealerLevelTerm(level)
+}
 
 /**
  * Threat tuning. Nothing consumes this yet: no dungeon opts into
@@ -157,6 +194,8 @@ data class ThreatBalance(
     val tankDamageShare: Double = 0.15,
     /** How long an AI tank waits between taunts. */
     val aiTauntCooldownTicks: Int = 80,
+    /** How long an AI tank's taunt pins the enemy, like the player's Taunt. */
+    val aiTauntLockTicks: Int = 60,
 )
 
 @Serializable

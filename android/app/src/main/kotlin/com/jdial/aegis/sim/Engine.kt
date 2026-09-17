@@ -230,7 +230,7 @@ class Engine(val data: GameData) {
             // the player is the healer, where there is no AI one.
             aiHealerMana = if (roleOf(cls) == UnitRole.HEALER) 0.0 else {
                 val r = data.balance.roles
-                r.aiHealerManaBase + r.aiHealerManaPerLevel * state.level
+                r.aiHealerMaxMana(state.level)
             },
         )
     }

@@ -35,10 +35,8 @@ Alternates:
 The launcher label stays `Overheal` (`app_name`). `applicationId` stays
 `com.jdial.aegis` — permanent after publish, and it never has to match.
 
-**One mismatch to settle:** the splash screen's subtitle still reads *The
-Healer's Oath*. It works as flavour, but a role-based listing opening onto a
-healer tagline is a small contradiction. Changing it is a one-line edit in
-`Screens.kt` and the web `SplashScreen.jsx`.
+The splash screen's subtitle reads *Tank · Heal · DPS*, matching the listing.
+The web version keeps *The Healer's Oath*: it only has the healers.
 
 ## Short description (max 80 characters)
 

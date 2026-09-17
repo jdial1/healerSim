@@ -94,11 +94,15 @@ fun TalentScreen(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(horizontal = 14.dp, vertical = 16.dp),
+                .padding(horizontal = 14.dp, vertical = if (LocalCompactHeight.current) 6.dp else 16.dp),
         ) {
             ContentColumn(horizontalAlignment = Alignment.CenterHorizontally) {
-                BasicText("TALENTS", style = AegisType.display.copy(fontSize = 26.sp, letterSpacing = 5.sp))
-                Spacer(Modifier.height(6.dp))
+                val compact = LocalCompactHeight.current
+                BasicText(
+                    "TALENTS",
+                    style = AegisType.display.copy(fontSize = if (compact) 20.sp else 26.sp, letterSpacing = 5.sp),
+                )
+                Spacer(Modifier.height(if (compact) 2.dp else 6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     BasicText(
                         "${state.talentPoints} POINT${if (state.talentPoints == 1) "" else "S"}",

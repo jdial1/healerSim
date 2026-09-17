@@ -367,6 +367,8 @@ data class GameState(
     /** While positive, [enemyTargetId] is held by a taunt regardless of the table. */
     val tauntLockTicks: Int = 0,
     val tauntedById: String? = null,
+    /** Ticks until the AI tank may taunt again. */
+    val aiTauntCooldown: Int = 0,
     val combatElapsedTicks: Int = 0,
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
@@ -479,6 +481,7 @@ data class GameState(
         enemyTargetId = null,
         tauntLockTicks = 0,
         tauntedById = null,
+        aiTauntCooldown = 0,
         enemyDebuffs = emptyList(),
         aiHealerMana = 0.0,
         combatElapsedTicks = 0,

@@ -142,7 +142,11 @@
     "aiHealerHealBase": 9.0,
     "aiHealerHealPerLevel": 3.4,
     "aiHealerManaPerHealPoint": 0.34,
-    "aiHealerHealBelowFraction": 0.92
+    "aiHealerHealBelowFraction": 0.92,
+    "aiHealerLevelExponent": 1.3,
+    "aiHealerLevelPivot": 20.0,
+    "aiHealerManaRegenPerLevel": 0.35,
+    "tankBossDamageTaken": 0.4
   },
   "classes": {
     "damageScale": {

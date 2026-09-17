@@ -203,7 +203,7 @@ portrait(f'{RAW}/p-character.png', 'A mechanic per class', 'Your signature stat 
 print('landscape 1920x1080 (16:9):')
 landscape(f'{RAW}/l-combat.png', 'Drag a spell onto a frame', 'Healers target and cast in one gesture.', '07-drag-to-cast.png')
 landscape(f'{RAW}/l-combat2.png', 'Hold its attention', 'Tanks keep the enemy on themselves, or the healer pays for it.', '08-threat.png')
-landscape(f'{RAW}/l-talents.png', 'Spend the point', 'A full talent tree for every class, and a free respec whenever you like.', '09-talents-wide.png')
+landscape(f'{RAW}/p-talents.png', 'Spend the point', 'A full talent tree for every class, every talent its own icon, and a free respec whenever you like.', '09-talents-wide.png')
 landscape(f'{RAW}/l-dungeons.png', 'Sixteen dungeons deep', 'Then an endless one. Offline, no ads, nothing to buy.', '10-dungeons-wide.png')
 
 print('feature graphic 1024x500:')

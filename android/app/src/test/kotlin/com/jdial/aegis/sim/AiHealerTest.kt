@@ -81,8 +81,8 @@ class AiHealerTest {
     @Test
     fun `never heals past full`() {
         // Eligible (below the triage threshold) but missing less than one heal:
-        // 80/100 with a heal of base + perLevel*10, which is far more than 20.
-        val heal = cfg.aiHealerHealBase + cfg.aiHealerHealPerLevel * 10
+        // 80/100 with a level-10 heal, which is far more than 20.
+        val heal = cfg.aiHealerHeal(10)
         assertTrue("test needs an overheal case", heal > 20.0)
 
         // Start below the cap, or regen clamps first and the arithmetic below
@@ -94,7 +94,7 @@ class AiHealerTest {
         assertEquals("only the missing 20 was paid for", 20.0, r.healed, 1e-9)
         assertEquals(
             "and only the missing 20 was charged",
-            start + cfg.aiHealerManaRegenPerTick - 20.0 * cfg.aiHealerManaPerHealPoint,
+            start + cfg.aiHealerRegen(10) - 20.0 * cfg.aiHealerManaPerHealPoint,
             r.manaLeft,
             1e-9,
         )
@@ -120,13 +120,25 @@ class AiHealerTest {
 
     @Test
     fun `mana regenerates but is capped`() {
-        val cap = cfg.aiHealerManaBase + cfg.aiHealerManaPerLevel * 10
+        val cap = cfg.aiHealerMaxMana(10)
         // Full party, so nothing is spent and only regen moves the number.
         val r = tick.aiHealerTick(state(cap), dpsParty(100.0, 100.0, 100.0, 100.0))
         assertEquals("cannot regen past the cap", cap, r.manaLeft, 1e-9)
 
         val low = tick.aiHealerTick(state(10.0), dpsParty(100.0, 100.0, 100.0, 100.0))
-        assertEquals(10.0 + cfg.aiHealerManaRegenPerTick, low.manaLeft, 1e-9)
+        assertEquals(10.0 + cfg.aiHealerRegen(10), low.manaLeft, 1e-9)
+    }
+
+    @Test
+    fun `healing, mana and regen grow faster than a straight line past the pivot`() {
+        // Pinned at the pivot, below it and above it: from level 28 a straight
+        // line left the AI healer too weak to keep a group alive.
+        val pivot = cfg.aiHealerLevelPivot.toInt()
+        assertEquals(cfg.aiHealerHealBase + cfg.aiHealerHealPerLevel * pivot, cfg.aiHealerHeal(pivot), 1e-9)
+        val linear47 = cfg.aiHealerHealBase + cfg.aiHealerHealPerLevel * 47
+        assertTrue(cfg.aiHealerHeal(47) > linear47)
+        assertTrue(cfg.aiHealerMaxMana(47) > cfg.aiHealerManaBase + cfg.aiHealerManaPerLevel * 47)
+        assertTrue(cfg.aiHealerRegen(47) > cfg.aiHealerRegen(5))
     }
 
     @Test

@@ -65,7 +65,12 @@ class ThreatInDungeonTest {
         // The other half of the same bug: healing threat was credited to the
         // player's slot whoever did the healing, so the AI healer worked all
         // fight for nothing and a tank could never be out-threatened by it.
-        var s = start(PlayerClass.WARRIOR)
+        // An AI healer that heals hard enough to lead: a higher-level one, so
+        // the outcome is not a photo finish that moves with every retune of
+        // how much a level-1 AI healer heals for.
+        var s = start(PlayerClass.WARRIOR).let { st ->
+            st.copy(party = st.party.map { if (it.role == UnitRole.HEALER) it.copy(level = 30) else it })
+        }
         val rng = Rng(4)
         var healerLed = false
         repeat(150) {
@@ -126,23 +131,27 @@ class ThreatInDungeonTest {
     }
 
     @Test
-    fun `a dps who burns hard enough does pull aggro`() {
+    fun `a dps who burns hard enough pulls aggro, and the ai tank takes it back`() {
         // Casting Frostbolt repeatedly should eventually beat the tank's lead --
-        // if it cannot, threat is decorative for a DPS.
+        // if it cannot, threat is decorative for a DPS. An AI tank then taunts
+        // the enemy back; before it could, a DPS doing their job simply died.
         var s = start(PlayerClass.MAGE)
         val rng = Rng(4)
+        val tank = s.party.first { it.role == UnitRole.TANK }
+        var outThreatened = false
+        var tauntedBack = false
         repeat(120) {
             if (!s.isCombatActive) return@repeat
             s = engine.reduce(s, Action.Tick(1), rng)
             s = engine.reduce(s, Action.CastSpell("frostbolt", null, 100.0), rng)
+            val self = s.party.first { it.id == PLAYER_UNIT_ID }
+            val t = s.party.first { it.id == tank.id }
+            if (self.threat > t.threat) outThreatened = true
+            if (s.tauntedById == tank.id && s.aiTauntCooldown > 0) tauntedBack = true
         }
-        val self = s.party.first { it.id == PLAYER_UNIT_ID }
-        val tank = s.party.first { it.role == UnitRole.TANK }
-        assertTrue(
-            "a spamming mage should out-threat the tank: ${self.threat} vs ${tank.threat}",
-            self.threat > tank.threat,
-        )
-        assertEquals("and should therefore have the enemy", PLAYER_UNIT_ID, s.enemyTargetId)
+        assertTrue("a spamming mage should out-threat the tank at some point", outThreatened)
+        assertTrue("and the ai tank should have taunted it back", tauntedBack)
+        assertEquals("so the enemy is on the tank", tank.id, s.enemyTargetId)
     }
 
     @Test
