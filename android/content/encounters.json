@@ -1,5 +1,5 @@
 {
-  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it; tell is what the boss says as it starts. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure). trash: per dungeon, per pull, the adds a pull brings (mender, runner, add; see AddTemplate). bosses.<id>.adds: adds a boss calls at a share of its health. addRules: their timings, and how much of the AI's damage goes to adds when a human deals damage. unkickedDamageMultiplier: how much harder a kickable cast lands when a human damage dealer let it through. trash.<id>[n].combat: a pull's own rotation (debuffs, casts); a cast may grant a state (grantsState: reflect, shield, frenzy). rules.<id>.noRests: pull after pull. bosses.<id>.adds is a list of waves. groupXpMultiplier: run XP for everyone with two or more people in the party. hard: what hard mode scales, including per level above the dungeon's range.",
+  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it; tell is what the boss says as it starts. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure). trash: per dungeon, per pull, the adds a pull brings (mender, runner, add; see AddTemplate). bosses.<id>.adds: adds a boss calls at a share of its health. addRules: their timings, and how much of the AI's damage goes to adds when a human deals damage. unkickedDamageMultiplier: how much harder a kickable cast lands when a human damage dealer let it through. trash.<id>[n].combat: a pull's own rotation (debuffs, casts); a cast may grant a state (grantsState: reflect, shield, frenzy). rules.<id>.noRests: pull after pull. bosses.<id>.adds is a list of waves. groupXpMultiplier: run XP for everyone with two or more people in the party. hard: what hard mode scales, including per level above the dungeon's range. bosses.<id>.phases: what a boss starts doing past a share of its health (BossPhase); replace swaps its rotation outright.",
   "attacks": {
     "vc_ambush": {
       "castTicks": 20,
@@ -214,6 +214,54 @@
             }
           ]
         }
+      ],
+      "phases": [
+        {
+          "atHealth": 0.7,
+          "tell": "Theradras sinks into the stone: “The earth answers me.”",
+          "attacks": [
+            {
+              "abilityId": "theradras_quake",
+              "name": "Shattering Quake",
+              "icon": "wow/spell_nature_earthquake",
+              "damage": 34,
+              "targeting": "all_living",
+              "castTicks": 25,
+              "interruptible": false,
+              "tell": "The cavern shakes."
+            }
+          ],
+          "debuffs": [
+            {
+              "abilityId": "theradras_gravel",
+              "name": "Gravel Wounds",
+              "icon": "wow/ability_golemthunderclap",
+              "durationTicks": 60,
+              "damagePerTick": 2.0,
+              "targeting": "all_living",
+              "dispellable": false
+            }
+          ]
+        },
+        {
+          "atHealth": 0.35,
+          "tell": "Theradras rises, furious.",
+          "attacks": [
+            {
+              "abilityId": "theradras_fury",
+              "name": "Earthen Fury",
+              "icon": "wow/spell_nature_stoneclawtotem",
+              "damage": 0,
+              "targeting": "all_living",
+              "castTicks": 25,
+              "interruptible": true,
+              "tell": "Stone closes over Theradras. Kick it!",
+              "grantsState": "shield",
+              "stateTicks": 60
+            }
+          ],
+          "replace": true
+        }
       ]
     },
     "stratholme": {
@@ -316,6 +364,58 @@
           "grantsState": "shield",
           "stateTicks": 60
         }
+      ],
+      "phases": [
+        {
+          "atHealth": 0.5,
+          "tell": "Ragnaros submerges: “Come, my sons!”",
+          "adds": [
+            {
+              "kind": "add",
+              "name": "Son of Flame",
+              "looksLike": "Fire Lord",
+              "health": 0.03,
+              "damagePerTick": 1.0
+            },
+            {
+              "kind": "add",
+              "name": "Son of Flame",
+              "looksLike": "Fire Lord",
+              "health": 0.03,
+              "damagePerTick": 1.0
+            }
+          ],
+          "attacks": [
+            {
+              "abilityId": "rag_sea_of_fire",
+              "name": "Sea of Fire",
+              "icon": "wow/spell_fire_selfdestruct",
+              "damage": 42,
+              "targeting": "all_living",
+              "castTicks": 30,
+              "interruptible": false,
+              "tell": "The floor turns to fire."
+            }
+          ]
+        },
+        {
+          "atHealth": 0.2,
+          "tell": "Ragnaros erupts: “DIE, INSECT!”",
+          "attacks": [
+            {
+              "abilityId": "rag_meltdown",
+              "name": "Meltdown",
+              "icon": "wow/spell_fire_immolation",
+              "damage": 0,
+              "targeting": "all_living",
+              "castTicks": 25,
+              "interruptible": true,
+              "tell": "Ragnaros burns white. Kick it!",
+              "grantsState": "frenzy",
+              "stateTicks": 150
+            }
+          ]
+        }
       ]
     },
     "sunken_temple": {
@@ -374,6 +474,144 @@
           "damagePerTick": 0,
           "targeting": "highest_threat",
           "dispellable": true
+        }
+      ]
+    },
+    "dire_maul": {
+      "extraAttacks": [
+        {
+          "abilityId": "gordok_shout",
+          "name": "Mocking Shout",
+          "icon": "wow/ability_warrior_rallyingcry",
+          "damage": 0,
+          "targeting": "all_living",
+          "castTicks": 25,
+          "interruptible": true,
+          "tell": "The King bellows at the whole room. Kick it!",
+          "grantsState": "frenzy",
+          "stateTicks": 100
+        }
+      ],
+      "extraDebuffs": [
+        {
+          "abilityId": "gordok_grip",
+          "name": "Crushing Grip",
+          "icon": "wow/ability_warrior_titansgrip",
+          "durationTicks": 40,
+          "damagePerTick": 1.0,
+          "targeting": "highest_threat",
+          "dispellable": false
+        }
+      ],
+      "adds": [
+        {
+          "atHealth": 0.6,
+          "spawn": [
+            {
+              "kind": "add",
+              "name": "Gordok Bodyguard",
+              "looksLike": "Gordok Ogre",
+              "health": 0.1,
+              "damagePerTick": 1.6
+            },
+            {
+              "kind": "add",
+              "name": "Gordok Bodyguard",
+              "looksLike": "Gordok Ogre",
+              "health": 0.1,
+              "damagePerTick": 1.6
+            }
+          ]
+        }
+      ]
+    },
+    "ubrs": {
+      "phases": [
+        {
+          "atHealth": 0.35,
+          "tell": "Drakkisath draws breath, and the fire spreads.",
+          "debuffs": [
+            {
+              "abilityId": "drakkisath_spread",
+              "name": "Spreading Conflagration",
+              "icon": "wow/spell_fire_selfdestruct",
+              "durationTicks": 160,
+              "damagePerTick": 2.5,
+              "targeting": "single_random",
+              "dispellable": true
+            }
+          ],
+          "attacks": [
+            {
+              "abilityId": "drakkisath_breath",
+              "name": "Blast Breath",
+              "icon": "wow/spell_fire_flamebolt",
+              "damage": 40,
+              "targeting": "all_living",
+              "castTicks": 25,
+              "interruptible": true,
+              "tell": "Drakkisath rears back."
+            }
+          ]
+        }
+      ]
+    },
+    "endless": {
+      "extraAttacks": [
+        {
+          "abilityId": "endless_ward_boss",
+          "name": "Timeless Ward",
+          "icon": "wow/spell_holy_divineshield",
+          "damage": 0,
+          "targeting": "all_living",
+          "castTicks": 25,
+          "interruptible": true,
+          "tell": "The Timeless One shields itself. Kick it!",
+          "grantsState": "shield",
+          "stateTicks": 60
+        }
+      ],
+      "extraDebuffs": [
+        {
+          "abilityId": "endless_grasp",
+          "name": "Timeless Grasp",
+          "icon": "wow/ability_kaztik_dominatemind",
+          "durationTicks": 120,
+          "damagePerTick": 0,
+          "targeting": "single_random",
+          "dispellable": true
+        }
+      ],
+      "adds": [
+        {
+          "atHealth": 0.5,
+          "spawn": [
+            {
+              "kind": "add",
+              "name": "Timeless Echo",
+              "looksLike": "Twisted Echo",
+              "health": 0.06,
+              "damagePerTick": 1.4
+            }
+          ]
+        }
+      ],
+      "phases": [
+        {
+          "atHealth": 0.4,
+          "tell": "The Timeless One unwinds, and everything it learned comes at once.",
+          "attacks": [
+            {
+              "abilityId": "endless_unwind",
+              "name": "Unwinding",
+              "icon": "wow/spell_arcane_arcane04",
+              "damage": 38,
+              "targeting": "all_living",
+              "castTicks": 25,
+              "interruptible": false,
+              "tell": "Time folds over the party."
+            }
+          ]
         }
       ]
     }
@@ -472,6 +710,30 @@
       "everyTicks": 20,
       "maxStacks": 5,
       "burstDamage": 110
+    },
+    "gordok_grip": {
+      "kind": "wound",
+      "durationTicks": 40,
+      "everyTicks": 20,
+      "maxStacks": 5,
+      "burstDamage": 150
+    },
+    "drakkisath_spread": {
+      "kind": "curse_chain",
+      "durationTicks": 160,
+      "everyTicks": 40
+    },
+    "endless_rot": {
+      "kind": "poison",
+      "durationTicks": 60,
+      "everyTicks": 30,
+      "maxStacks": 6
+    },
+    "endless_grasp": {
+      "kind": "mind_control",
+      "durationTicks": 120,
+      "everyTicks": 20,
+      "hitDamage": 24
     }
   },
   "pressure": {
@@ -495,7 +757,24 @@
   },
   "trash": {
     "deadmines": [
-      {},
+      {
+        "combat": {
+          "attackTemplates": [
+            {
+              "abilityId": "vc_cutlass",
+              "name": "Cutlass Swipe",
+              "icon": "wow/ability_warrior_savageblow",
+              "damage": 14,
+              "targeting": "highest_threat",
+              "castTicks": 30,
+              "interruptible": false,
+              "tell": "A pirate raises a cutlass at whoever is in front."
+            }
+          ],
+          "mechanicIntervalTicksMin": 70,
+          "mechanicIntervalTicksMax": 100
+        }
+      },
       {
         "adds": [
           {
@@ -558,7 +837,16 @@
           "mechanicIntervalTicksMax": 80
         }
       },
-      {}
+      {
+        "adds": [
+          {
+            "kind": "runner",
+            "name": "Fenrus' Whelp",
+            "looksLike": "Shadowfang Worgen",
+            "health": 0.4
+          }
+        ]
+      }
     ],
     "wailing_caverns": [
       {
@@ -591,7 +879,24 @@
           }
         ]
       },
-      {}
+      {
+        "combat": {
+          "attackTemplates": [
+            {
+              "abilityId": "wc_ooze_slam",
+              "name": "Ectoplasmic Slam",
+              "icon": "wow/spell_nature_corrosivebreath",
+              "damage": 60,
+              "targeting": "highest_threat",
+              "castTicks": 30,
+              "interruptible": false,
+              "tell": "The ooze swells and leans over the tank."
+            }
+          ],
+          "mechanicIntervalTicksMin": 60,
+          "mechanicIntervalTicksMax": 90
+        }
+      }
     ],
     "gnomeregan": [
       {
@@ -755,8 +1060,36 @@
       }
     ],
     "zul_farrak": [
-      {},
-      {},
+      {
+        "combat": {
+          "debuffTemplates": [],
+          "attackTemplates": [
+            {
+              "abilityId": "zf_stair_volley",
+              "name": "Stair Volley",
+              "icon": "wow/ability_upgrademoonglaive",
+              "damage": 26,
+              "targeting": "all_living",
+              "castTicks": 25,
+              "interruptible": false,
+              "tell": "The stairs bristle with spears."
+            }
+          ],
+          "mechanicIntervalTicksMin": 50,
+          "mechanicIntervalTicksMax": 80
+        }
+      },
+      {
+        "adds": [
+          {
+            "kind": "mender",
+            "name": "Sandfury Witch Doctor",
+            "looksLike": "Shadowcaster",
+            "health": 0.35,
+            "healFraction": 0.2
+          }
+        ]
+      },
       {
         "adds": [
           {
@@ -839,7 +1172,23 @@
           }
         ]
       },
-      {},
+      {
+        "combat": {
+          "debuffTemplates": [
+            {
+              "abilityId": "st_wyrm_drain",
+              "name": "Draining Bite",
+              "icon": "wow/spell_shadow_lifedrain",
+              "durationTicks": 120,
+              "damagePerTick": 2.2,
+              "targeting": "single_random",
+              "dispellable": true
+            }
+          ],
+          "mechanicIntervalTicksMin": 50,
+          "mechanicIntervalTicksMax": 80
+        }
+      },
       {
         "adds": [
           {
@@ -951,8 +1300,35 @@
       }
     ],
     "stratholme": [
-      {},
-      {},
+      {
+        "combat": {
+          "debuffTemplates": [
+            {
+              "abilityId": "strat_rot",
+              "name": "Creeping Rot",
+              "icon": "wow/spell_shadow_creepingplague",
+              "durationTicks": 100,
+              "damagePerTick": 2.2,
+              "targeting": "single_random",
+              "dispellable": true
+            }
+          ],
+          "attackTemplates": [],
+          "mechanicIntervalTicksMin": 50,
+          "mechanicIntervalTicksMax": 80
+        }
+      },
+      {
+        "adds": [
+          {
+            "kind": "add",
+            "name": "Patchwork Horror",
+            "looksLike": "Patchwork Horror",
+            "health": 0.3,
+            "damagePerTick": 1.0
+          }
+        ]
+      },
       {
         "adds": [
           {
@@ -1018,7 +1394,25 @@
       }
     ],
     "dire_maul": [
-      {},
+      {
+        "combat": {
+          "debuffTemplates": [],
+          "attackTemplates": [
+            {
+              "abilityId": "dm_ogre_swing",
+              "name": "Wild Swing",
+              "icon": "wow/ability_warrior_cleave",
+              "damage": 70,
+              "targeting": "highest_threat",
+              "castTicks": 25,
+              "interruptible": false,
+              "tell": "An ogre winds up at the tank."
+            }
+          ],
+          "mechanicIntervalTicksMin": 50,
+          "mechanicIntervalTicksMax": 80
+        }
+      },
       {
         "combat": {
           "debuffTemplates": [
@@ -1037,7 +1431,17 @@
           "mechanicIntervalTicksMax": 80
         }
       },
-      {}
+      {
+        "adds": [
+          {
+            "kind": "bomb",
+            "name": "Arcane Aberration",
+            "looksLike": "Eldreth Spirit",
+            "health": 0.3,
+            "blast": 80
+          }
+        ]
+      }
     ],
     "ubrs": [
       {
@@ -1079,10 +1483,44 @@
           "mechanicIntervalTicksMax": 80
         }
       },
-      {}
+      {
+        "adds": [
+          {
+            "kind": "add",
+            "name": "Rend's Drake",
+            "looksLike": "Drakonid Slayer",
+            "health": 0.25,
+            "damagePerTick": 1.2
+          },
+          {
+            "kind": "runner",
+            "name": "Fleeing Rider",
+            "looksLike": "Blackhand Elite",
+            "health": 0.35
+          }
+        ]
+      }
     ],
     "molten_core": [
-      {},
+      {
+        "combat": {
+          "debuffTemplates": [],
+          "attackTemplates": [
+            {
+              "abilityId": "mc_hound_breath",
+              "name": "Molten Breath",
+              "icon": "wow/spell_fire_moltenblood",
+              "damage": 30,
+              "targeting": "two_random",
+              "castTicks": 25,
+              "interruptible": false,
+              "tell": "A core hound draws breath."
+            }
+          ],
+          "mechanicIntervalTicksMin": 50,
+          "mechanicIntervalTicksMax": 80
+        }
+      },
       {
         "combat": {
           "debuffTemplates": [],
@@ -1110,6 +1548,92 @@
             "looksLike": "Fire Lord",
             "health": 0.35,
             "healFraction": 0.12
+          }
+        ]
+      }
+    ],
+    "endless": [
+      {
+        "combat": {
+          "debuffTemplates": [
+            {
+              "abilityId": "endless_rot",
+              "name": "Timeless Rot",
+              "icon": "wow/spell_shadow_creepingplague",
+              "durationTicks": 100,
+              "damagePerTick": 2.0,
+              "targeting": "single_random",
+              "dispellable": true
+            }
+          ],
+          "attackTemplates": [],
+          "mechanicIntervalTicksMin": 50,
+          "mechanicIntervalTicksMax": 80
+        },
+        "adds": [
+          {
+            "kind": "mender",
+            "name": "Echo of a Healer",
+            "looksLike": "Spiteful Shade",
+            "health": 0.35,
+            "healFraction": 0.2
+          }
+        ]
+      },
+      {
+        "combat": {
+          "debuffTemplates": [],
+          "attackTemplates": [
+            {
+              "abilityId": "endless_ward",
+              "name": "Spell Reflection",
+              "icon": "wow/spell_shadow_antimagicshell",
+              "damage": 0,
+              "targeting": "all_living",
+              "castTicks": 20,
+              "interruptible": false,
+              "tell": "The echoes raise a ward.",
+              "grantsState": "reflect",
+              "stateTicks": 30
+            }
+          ],
+          "mechanicIntervalTicksMin": 50,
+          "mechanicIntervalTicksMax": 80
+        },
+        "adds": [
+          {
+            "kind": "runner",
+            "name": "Fleeing Echo",
+            "looksLike": "Twisted Echo",
+            "health": 0.4
+          }
+        ]
+      },
+      {
+        "combat": {
+          "debuffTemplates": [],
+          "attackTemplates": [
+            {
+              "abilityId": "endless_crush",
+              "name": "Timeless Crush",
+              "icon": "wow/ability_warrior_cleave",
+              "damage": 80,
+              "targeting": "highest_threat",
+              "castTicks": 25,
+              "interruptible": false,
+              "tell": "Something heavy turns to the tank."
+            }
+          ],
+          "mechanicIntervalTicksMin": 50,
+          "mechanicIntervalTicksMax": 80
+        },
+        "adds": [
+          {
+            "kind": "bomb",
+            "name": "Unstable Echo",
+            "looksLike": "Spiteful Shade",
+            "health": 0.25,
+            "blast": 70
           }
         ]
       }

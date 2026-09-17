@@ -331,6 +331,12 @@ fun sceneEventsBetween(prev: GameState, cur: GameState): List<SceneEvent> = buil
         add(SceneEvent.Tell("${gone?.name ?: "One"} got away. More are coming!"))
     }
 
+    // A boss changing phase says so, once.
+    if (cur.bossPhase > prev.bossPhase) {
+        val phase = cur.currentDungeon?.bossCombat?.phases?.getOrNull(cur.bossPhase - 1)
+        if (phase != null && phase.tell.isNotEmpty()) add(SceneEvent.Tell(phase.tell))
+    }
+
     val cast = cur.enemyCast
     if (cast != null && cast.tell.isNotEmpty() && prev.enemyCast?.abilityId != cast.abilityId) add(SceneEvent.Tell(cast.tell))
 

@@ -30,6 +30,9 @@ class GameTick(
     private val stats: PlayerStats,
     private val progression: Progression,
 ) {
+    /** The beat a boss takes as it changes phase, before the new rotation starts. */
+    private val phaseOpeningTicks = 20
+
     private val defaultMechanicMin = 2 * TICKS_PER_SECOND
     private val defaultMechanicMax = 5 * TICKS_PER_SECOND
 
@@ -37,7 +40,7 @@ class GameTick(
         val c = if (s != null && s.combatPhase == CombatPhase.TRASH) {
             data.encounters.pullCombat(dungeon.id, TRASH_PACK_COUNT - s.trashPullsRemaining)
         } else {
-            dungeon.bossCombat
+            dungeon.bossCombat?.let { boss -> withPhases(boss, s?.bossPhase ?: 0) }
         }
         return BossCombat(
             debuffTemplates = c?.debuffTemplates ?: emptyList(),
@@ -392,6 +395,26 @@ class GameTick(
         /** A kickable cast landed that somebody could have kicked. */
         val missedKick: Boolean = false,
     )
+
+    /**
+     * The boss's rotation on the phase it has reached: each entered phase adds
+     * its templates, and a phase marked `replace` throws away what came before.
+     */
+    private fun withPhases(boss: BossCombat, entered: Int): BossCombat {
+        if (entered <= 0 || boss.phases.isEmpty()) return boss
+        var attacks = boss.attackTemplates
+        var debuffs = boss.debuffTemplates
+        for (phase in boss.phases.take(entered)) {
+            if (phase.replace) {
+                attacks = phase.attacks
+                debuffs = phase.debuffs
+            } else {
+                attacks = attacks + phase.attacks
+                debuffs = debuffs + phase.debuffs
+            }
+        }
+        return boss.copy(attackTemplates = attacks, debuffTemplates = debuffs)
+    }
 
     /**
      * Mechanics fire in strict round-robin across the kinds present
@@ -1229,10 +1252,17 @@ class GameTick(
             val hit = ((aimed[a.id] ?: 0.0) + if (a.id == aiFocus) toAdds else 0.0) * exposed
             if (hit <= 0) a else a.copy(health = max(0.0, a.health - hit))
         }.filter { it.isAlive }
+        // The next phase, if this tick took the boss past its threshold.
+        val phase = s.currentDungeon?.bossCombat?.phases?.getOrNull(s.bossPhase)
+        val enterPhase = s.combatPhase == CombatPhase.BOSS && phase != null &&
+            enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * phase.atHealth
         val wave = s.currentDungeon?.let { data.encounters.bosses[it.id]?.adds?.getOrNull(s.bossAddWaves) }
         val callAdds = s.combatPhase == CombatPhase.BOSS && wave != null &&
             enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * wave.atHealth
-        val addsNow = if (callAdds) addsAfter + spawnAdds(wave!!.spawn, s.enemyMaxHealth, "b${s.combatElapsedTicks}") else addsAfter
+        var addsNow = if (callAdds) addsAfter + spawnAdds(wave!!.spawn, s.enemyMaxHealth, "b${s.combatElapsedTicks}") else addsAfter
+        if (enterPhase && phase!!.adds.isNotEmpty()) {
+            addsNow = addsNow + spawnAdds(phase.adds, s.enemyMaxHealth, "f${s.combatElapsedTicks}")
+        }
         val exposeNow = s.combatPhase == CombatPhase.BOSS && pressure.exposedBelowHealth > 0 && !s.exposedAtHalf &&
             enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * pressure.exposedBelowHealth
 
@@ -1259,14 +1289,18 @@ class GameTick(
             enemyDebuffs = s.enemyDebuffs
                 .map { it.copy(remainingTicks = it.remainingTicks - 1) }
                 .filter { it.remainingTicks > 0 },
-            mechanicCooldown = boss.mechanicCooldown,
-            mechanicOrdinal = boss.mechanicOrdinal,
             bossSelfBuffs = if (s.combatPhase == CombatPhase.BOSS) bossBuffsNext else emptyList(),
             // This client's own damage: its casts and its DoTs (see threatByActor).
             runDamageDealt = s.runDamageDealt + s.me.pendingEnemyDamage + enemyDots + s.me.pendingAddDamage.values.sum(),
             runDeaths = s.runDeaths + max(0, s.party.count { it.isAlive } - sys.party.count { it.isAlive }),
             adds = addsNow,
             bossAddWaves = s.bossAddWaves + if (callAdds) 1 else 0,
+            bossPhase = s.bossPhase + if (enterPhase) 1 else 0,
+            // A phase change interrupts whatever was winding up and restarts the
+            // rotation, so the new one opens with its own first mechanic.
+            mechanicOrdinal = if (enterPhase) 0 else boss.mechanicOrdinal,
+            mechanicCooldown = if (enterPhase) phaseOpeningTicks else boss.mechanicCooldown,
+            enemyCast = if (enterPhase) null else s.enemyCast,
             enemyState = if (shieldBroken || s.enemyStateTicks <= 1) null else s.enemyState,
             enemyStateTicks = if (shieldBroken) 0 else max(0, s.enemyStateTicks - 1),
             exposedTicks = if (exposeNow) pressure.exposedTicks else max(0, s.exposedTicks - 1),
@@ -1316,6 +1350,7 @@ class GameTick(
                     bossTicks = 0,
                     adds = emptyList(),
                     bossAddWaves = 0,
+                    bossPhase = 0,
                     enemyState = null,
                     enemyStateTicks = 0,
                     enemyHealth = bossHp,
@@ -1434,6 +1469,7 @@ class GameTick(
                 enemyCast = null,
                 adds = emptyList(),
                 bossAddWaves = 0,
+                bossPhase = 0,
                 enemyState = null,
                 enemyStateTicks = 0,
                 mechanicCooldown = rng.nextInt(

@@ -313,6 +313,22 @@ data class DungeonRules(
     val noRests: Boolean = false,
 )
 
+/**
+ * A boss's second wind: at [atHealth] of its health it says [tell], and from
+ * then on its rotation includes these templates -- or is only these, with
+ * [replace]. Whatever it was casting is thrown away, so a phase reads as a
+ * change rather than a pause.
+ */
+@Serializable
+data class BossPhase(
+    val atHealth: Double,
+    val tell: String = "",
+    val attacks: List<AttackTemplate> = emptyList(),
+    val debuffs: List<DebuffTemplate> = emptyList(),
+    val adds: List<AddTemplate> = emptyList(),
+    val replace: Boolean = false,
+)
+
 /** Adds a boss calls in once, on falling to [atHealth] of its health. */
 @Serializable
 data class BossAdds(val atHealth: Double, val spawn: List<AddTemplate>)
@@ -441,6 +457,7 @@ data class BossTuning(
     val enrageAfterTicks: Int? = null,
     /** Waves of adds, each called once as the boss falls past its share of health. */
     val adds: List<BossAdds> = emptyList(),
+    val phases: List<BossPhase> = emptyList(),
 )
 
 /** Boss ticks before [dungeonId]'s boss enrages; 0 means never. */
@@ -459,6 +476,8 @@ fun List<Dungeon>.withEncounters(encounters: Encounters): List<Dungeon> = map { 
             debuffTemplates = combat.debuffTemplates.map { t ->
                 encounters.mechanics[t.abilityId]?.durationTicks?.let { t.copy(durationTicks = it) } ?: t
             } + boss?.extraDebuffs.orEmpty(),
+            // Carried on the dungeon so the scene can read a phase's tell.
+            phases = boss?.phases.orEmpty(),
         ),
     )
 }
@@ -481,6 +500,8 @@ data class BossCombat(
     val debuffTemplates: List<DebuffTemplate> = emptyList(),
     val selfBuffTemplates: List<SelfBuffTemplate> = emptyList(),
     val attackTemplates: List<AttackTemplate> = emptyList(),
+    /** What the boss starts doing instead, once it falls past each threshold. */
+    val phases: List<BossPhase> = emptyList(),
     val mechanicIntervalTicksMin: Int? = null,
     val mechanicIntervalTicksMax: Int? = null,
 )

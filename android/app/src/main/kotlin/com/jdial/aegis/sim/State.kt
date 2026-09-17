@@ -472,6 +472,8 @@ data class GameState(
     val extraPulls: Int = 0,
     /** How many of the boss's add waves have come. */
     val bossAddWaves: Int = 0,
+    /** How many phases the boss has entered: which rotation it is on. */
+    val bossPhase: Int = 0,
     /** A state the enemy is in (AttackTemplate.grantsState), and for how long. */
     val enemyState: String? = null,
     val enemyStateTicks: Int = 0,
@@ -604,6 +606,7 @@ data class GameState(
         adds = emptyList(),
         extraPulls = 0,
         bossAddWaves = 0,
+        bossPhase = 0,
         enemyState = null,
         enemyStateTicks = 0,
         enemyDebuffs = emptyList(),
