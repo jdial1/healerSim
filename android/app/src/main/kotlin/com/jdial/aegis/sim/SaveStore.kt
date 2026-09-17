@@ -24,6 +24,8 @@ data class CharacterBlob(
     val playerClass: String,
     val actionBarSpellIds: List<String> = emptyList(),
     val introTutorialComplete: Boolean = false,
+    /** Per dungeon id: clears, best time, marks. Defaulted, so old saves decode. */
+    val records: Map<String, DungeonRecord> = emptyMap(),
 )
 
 @Serializable
@@ -113,7 +115,7 @@ class SaveStore(
         }
     }
 
-    fun serialize(state: GameState): CharacterBlob? {
+    fun serialize(state: GameState, records: Map<String, DungeonRecord> = emptyMap()): CharacterBlob? {
         val cls = state.playerClass ?: return null
         return CharacterBlob(
             xp = state.xp,
@@ -122,11 +124,15 @@ class SaveStore(
             playerClass = cls.name,
             actionBarSpellIds = state.activeActionBars,
             introTutorialComplete = state.introTutorialComplete,
+            // Carried, not derived: merge() runs on every persist and a run's
+            // record is written once, when it ends.
+            records = records,
         )
     }
 
     fun merge(roster: Roster, state: GameState): Roster {
-        val blob = serialize(state) ?: return roster
+        val cls = state.playerClass?.name
+        val blob = serialize(state, roster.byClass[cls]?.records.orEmpty()) ?: return roster
         return roster.copy(
             lastPlayedClass = blob.playerClass,
             byClass = roster.byClass + (blob.playerClass to blob),

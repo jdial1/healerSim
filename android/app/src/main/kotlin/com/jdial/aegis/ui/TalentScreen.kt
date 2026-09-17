@@ -392,6 +392,8 @@ fun CharacterScreen(
     onForgetMultiplayer: () -> Unit = {},
     onChangeClass: () -> Unit,
     onSetActionBarSlot: (Int, String) -> Unit = { _, _ -> },
+    records: Map<String, com.jdial.aegis.sim.DungeonRecord> = emptyMap(),
+    data: com.jdial.aegis.data.GameData? = null
 ) {
     val cls = state.playerClass ?: return
     var showCredits by remember { mutableStateOf(false) }
@@ -497,6 +499,11 @@ fun CharacterScreen(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
+                if (data != null) {
+                    Spacer(Modifier.height(18.dp))
+                    TrophyCase(records, data)
+                }
+
                 Spellbook(state, engine, onSetActionBarSlot)
 
                 Spacer(Modifier.height(18.dp))

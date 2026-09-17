@@ -286,6 +286,10 @@ data class DungeonOutcome(
      * healing.
      */
     val groupStats: Boolean = false,
+    /** How long the run took, and what it cost: the record keeps these. */
+    val clearTicks: Int = 0,
+    val deaths: Int = 0,
+    val missedKicks: Int = 0,
 )
 
 /**
@@ -369,6 +373,10 @@ data class Participant(
      * empty slots with AI, and that is the flag it will set.
      */
     val isHuman: Boolean = true,
+    /** Earned, from the record: shown on this player's frame. */
+    val title: String = "",
+    /** Earned: the colour this player's own sprite wears, as ARGB. */
+    val sigil: Long = 0,
 ) {
     /** Combat-scoped fields reset between runs; character fields are preserved. */
     fun clearedCombat(): Participant = copy(
@@ -453,6 +461,10 @@ data class GameState(
     val restTicks: Int = 0,
     /** Extra run XP, as a share, banked by pulling before a rest was over. */
     val earlyPullBonus: Double = 0.0,
+    /** Party members who went down this run: the Clean mark. */
+    val runDeaths: Int = 0,
+    /** Kickable casts that landed with a human kick ready: the Sharp mark. */
+    val runMissedKicks: Int = 0,
     /** Enemies beside the main one: menders, runners, a boss's adds. */
     val adds: List<EnemyAdd> = emptyList(),
     /** Pulls a runner brought, fought before the next planned one. */
@@ -584,6 +596,8 @@ data class GameState(
         exposedAtHalf = false,
         restTicks = 0,
         earlyPullBonus = 0.0,
+        runDeaths = 0,
+        runMissedKicks = 0,
         adds = emptyList(),
         extraPulls = 0,
         bossAddWaves = 0,

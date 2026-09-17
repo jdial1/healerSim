@@ -1477,7 +1477,8 @@ private fun ActionBar(
 internal fun frameName(unit: Unit, state: GameState, data: GameData): String {
     val p = state.participants[unit.id]?.takeIf { it.isHuman } ?: return unit.name
     val cls = p.playerClass?.let { data.bundle(it).meta.name } ?: return unit.name
-    return if (unit.id == state.localUnitId) "You · $cls" else "Player ${unit.id} · $cls"
+    val who = if (unit.id == state.localUnitId) "You" else "Player ${unit.id}"
+    return if (p.title.isEmpty()) "$who · $cls" else "$who, ${p.title} · $cls"
 }
 
 /** Marks a frame another person is playing. */

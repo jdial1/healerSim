@@ -389,6 +389,8 @@ class GameTick(
         val enemyCast: EnemyCast? = null,
         /** A state the landed cast put the enemy in. */
         val state: Pair<String, Int>? = null,
+        /** A kickable cast landed that somebody could have kicked. */
+        val missedKick: Boolean = false,
     )
 
     /**
@@ -429,7 +431,10 @@ class GameTick(
                 ?: return BossAi(party, bossBuffs, cooldown, ordinal, 0, null)
             val multNow = bossBuffs.maxOfOrNull { it.partyDamageMultiplier } ?: 1.0
             val (landed, np) = hitTargets(ctx, party, tpl, dungeon, multNow, cast.targets.toSet())
-            return BossAi(landed, bossBuffs, cooldown, ordinal, np, null, tpl.grantsState?.let { it to tpl.stateTicks })
+            return BossAi(
+                landed, bossBuffs, cooldown, ordinal, np, null, tpl.grantsState?.let { it to tpl.stateTicks },
+                missedKick = tpl.interruptible && tpl.castTicks > 0 && kickReady(s),
+            )
         }
 
         cooldown -= 1
@@ -541,6 +546,16 @@ class GameTick(
     }
 
     /**
+     * Whether a human damage dealer could have kicked right now: alive, with
+     * an interrupt off cooldown. A lesson only lands when someone could have
+     * learned it.
+     */
+    internal fun kickReady(s: GameState): Boolean = s.participants.values.any { p ->
+        p.isHuman && p.role == UnitRole.DPS && s.unit(p.unitId)?.isAlive == true &&
+            p.unlockedSpells.any { id -> data.spell(id)?.interrupts == true && (p.spellCooldowns[id] ?: 0) <= 0 }
+    }
+
+    /**
      * An attack landing on [targets]. Shared by instant attacks and casts, so a
      * telegraphed hit is the same hit, a moment later -- with the mitigation
      * that is up when it lands, which is what makes a well-timed defensive count.
@@ -564,12 +579,7 @@ class GameTick(
             partyDamageMult * enrageMultiplier(s)
         val natRank = ctx.ranks("natural_perfection")
 
-        // A lesson only when someone could have learned it: a human damage
-        // dealer with their kick off cooldown as the cast landed.
-        val kickWasReady = s.participants.values.any { p ->
-            p.isHuman && p.role == UnitRole.DPS && s.unit(p.unitId)?.isAlive == true &&
-                p.unlockedSpells.any { id -> data.spell(id)?.interrupts == true && (p.spellCooldowns[id] ?: 0) <= 0 }
-        }
+        val kickWasReady = kickReady(s)
         var npAdd = 0
         val next = party.map { u ->
             if (u.health <= 0 || u.id !in targets) return@map u
@@ -1108,6 +1118,9 @@ class GameTick(
                 leveledUp = advanced.level > s.level,
                 upgradedSpellIds = rewards.upgradedSpellIds,
                 upgradedPotion = rewards.upgradedPotion,
+                clearTicks = s.combatElapsedTicks,
+                deaths = s.runDeaths,
+                missedKicks = s.runMissedKicks,
             ),
         )
     }
@@ -1236,6 +1249,7 @@ class GameTick(
             bossSelfBuffs = if (s.combatPhase == CombatPhase.BOSS) bossBuffsNext else emptyList(),
             // This client's own damage: its casts and its DoTs (see threatByActor).
             runDamageDealt = s.runDamageDealt + s.me.pendingEnemyDamage + enemyDots + s.me.pendingAddDamage.values.sum(),
+            runDeaths = s.runDeaths + max(0, s.party.count { it.isAlive } - sys.party.count { it.isAlive }),
             adds = addsNow,
             bossAddWaves = s.bossAddWaves + if (callAdds) 1 else 0,
             enemyState = if (shieldBroken || s.enemyStateTicks <= 1) null else s.enemyState,
@@ -1335,6 +1349,9 @@ class GameTick(
                 leveledUp = advanced.level > s.level,
                 upgradedSpellIds = rewards.upgradedSpellIds,
                 upgradedPotion = rewards.upgradedPotion,
+                clearTicks = s.combatElapsedTicks,
+                deaths = s.runDeaths,
+                missedKicks = s.runMissedKicks,
             ),
         )
     }
@@ -1644,6 +1661,7 @@ class GameTick(
                 mechanicCooldown = boss.mechanicCooldown,
                 mechanicOrdinal = boss.mechanicOrdinal,
                 enemyCast = boss.enemyCast,
+                runMissedKicks = s.runMissedKicks + if (boss.missedKick) 1 else 0,
                 enemyState = boss.state?.first ?: s.enemyState,
                 enemyStateTicks = boss.state?.second ?: s.enemyStateTicks,
                 interruptibleCasts = s.interruptibleCasts + if (castStarted && boss.enemyCast?.interruptible == true) 1 else 0,

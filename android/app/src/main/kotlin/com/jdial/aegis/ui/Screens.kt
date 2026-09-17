@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -56,6 +57,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jdial.aegis.sim.DungeonRecord
+import com.jdial.aegis.sim.clearTimeLabel
+import com.jdial.aegis.sim.sigilTint
+import com.jdial.aegis.sim.titleFor
 import com.jdial.aegis.R
 import com.jdial.aegis.data.ClassBundle
 import com.jdial.aegis.data.Dungeon
@@ -425,6 +430,7 @@ fun DungeonListScreen(
     playerLevel: Int,
     cls: PlayerClass,
     talentPoints: Int,
+    records: Map<String, DungeonRecord>,
     onSelect: (Dungeon) -> Unit,
 ) {
     ObsidianBackdrop {
@@ -451,7 +457,7 @@ fun DungeonListScreen(
                 ) {
                     items(data.dungeons, key = { it.id }) { dungeon ->
                         val locked = playerLevel < dungeon.levelMin
-                        DungeonCard(dungeon, locked) { if (!locked) onSelect(dungeon) }
+                        DungeonCard(dungeon, locked, records[dungeon.id]) { if (!locked) onSelect(dungeon) }
                     }
                 }
                 // Fade the list into the ground so a card never ends in a hard
@@ -471,8 +477,60 @@ fun DungeonListScreen(
     }
 }
 
+/**
+ * What a character has brought back: one keepsake per dungeon it has cleared,
+ * and the name those clears have earned it.
+ */
 @Composable
-private fun DungeonCard(dungeon: Dungeon, locked: Boolean, onClick: () -> Unit) {
+fun TrophyCase(records: Map<String, DungeonRecord>, data: GameData) {
+    val won = data.dungeons.filter { (records[it.id]?.clears ?: 0) > 0 }
+    if (won.isEmpty()) return
+    val title = titleFor(records, data.dungeons.count { !it.endless })
+    ForgedPanel(Modifier.fillMaxWidth()) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicText("TROPHIES", style = AegisType.label.copy(color = Gilt.mid))
+                Spacer(Modifier.weight(1f))
+                if (title != null) {
+                    BasicText(title.uppercase(), style = AegisType.label.copy(color = Gilt.core))
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                won.forEach { d ->
+                    val r = records.getValue(d.id)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(56.dp)) {
+                        GameIcon(d.bossIcon, size = 34.dp, accent = if (r.sharp) Gilt.core else Gilt.deep)
+                        BasicText(
+                            clearTimeLabel(r.bestTicks),
+                            style = AegisType.label.copy(fontSize = 9.sp, color = Ink.secondary),
+                        )
+                    }
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+}
+
+/** One earned mark on a dungeon card: lit when it has been done. */
+@Composable
+private fun Mark(label: String, earned: Boolean) {
+    BasicText(
+        label,
+        style = AegisType.label.copy(
+            fontSize = 8.sp,
+            color = if (earned) Obsidian.abyss else Ink.muted,
+        ),
+        modifier = Modifier
+            .clip(RoundedCornerShape(3.dp))
+            .background(if (earned) Gilt.core else Obsidian.deep)
+            .padding(horizontal = 5.dp, vertical = 2.dp),
+    )
+}
+
+@Composable
+private fun DungeonCard(dungeon: Dungeon, locked: Boolean, record: DungeonRecord?, onClick: () -> Unit) {
     val accent = LocalAccent.current
     ForgedPanel(
         modifier = Modifier
@@ -502,6 +560,24 @@ private fun DungeonCard(dungeon: Dungeon, locked: Boolean, onClick: () -> Unit) 
                 }
                 if (locked) {
                     GameIcon("lorc/padlock", size = 26.dp, accent = Ink.muted)
+                }
+            }
+
+            if (record != null && record.clears > 0) {
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicText(
+                        "BEST ${clearTimeLabel(record.bestTicks)}   ·   ${record.clears} CLEAR" +
+                            if (record.clears == 1) "" else "S",
+                        style = AegisType.label.copy(color = Gilt.core),
+                    )
+                    Spacer(Modifier.weight(1f))
+                    // Cleared, Clean, Sharp: what this dungeon has seen you do.
+                    Mark("CLEARED", true)
+                    Spacer(Modifier.width(6.dp))
+                    Mark("CLEAN", record.clean)
+                    Spacer(Modifier.width(6.dp))
+                    Mark("SHARP", record.sharp)
                 }
             }
 

@@ -175,6 +175,44 @@ class FirebaseBackend private constructor(
      * refuse anything else. The longest wait hosts, so a device clock would let
      * a player make themselves host of every group they joined.
      */
+    /**
+     * This player's best clear of [dungeonId], for the boards. Rejected by the
+     * rules if it is not an improvement, which is exactly the check we want and
+     * one a client cannot be trusted to make.
+     */
+    suspend fun submitBestTime(dungeonId: String, ticks: Int, cls: String, level: Int) {
+        val uid = signIn()
+        db.collection("times").document("${dungeonId}_$uid").set(
+            mapOf(
+                "uid" to uid,
+                "dungeonId" to dungeonId,
+                "ticks" to ticks,
+                "cls" to cls,
+                "level" to level,
+                "at" to FieldValue.serverTimestamp(),
+            ),
+        ).await()
+    }
+
+    /** The fastest clears of [dungeonId] anyone has posted. */
+    suspend fun bestTimes(dungeonId: String, limit: Long = 5): List<BestTime> =
+        db.collection("times")
+            .whereEqualTo("dungeonId", dungeonId)
+            .orderBy("ticks")
+            .limit(limit)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { d ->
+                val ticks = (d.getLong("ticks") ?: return@mapNotNull null).toInt()
+                BestTime(
+                    uid = d.getString("uid").orEmpty(),
+                    ticks = ticks,
+                    cls = d.getString("cls").orEmpty(),
+                    level = (d.getLong("level") ?: 0L).toInt(),
+                )
+            }
+
     suspend fun enqueue(entry: QueueEntry) {
         val stamped = entry.toMap() + mapOf(
             "enqueuedAt" to FieldValue.serverTimestamp(),

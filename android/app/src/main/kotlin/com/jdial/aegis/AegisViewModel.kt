@@ -3,10 +3,17 @@ package com.jdial.aegis
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jdial.aegis.mp.BestTime
+import com.jdial.aegis.sim.titleFor
+import com.jdial.aegis.sim.sigilTint
 import com.jdial.aegis.mp.ForgetResult
 import com.jdial.aegis.mp.Multiplayer
 import com.jdial.aegis.mp.MultiplayerSession
 import com.jdial.aegis.mp.mergeSeats
+import com.jdial.aegis.sim.RunHighlights
+import com.jdial.aegis.sim.DungeonOutcome
+import com.jdial.aegis.sim.DungeonRecord
+import com.jdial.aegis.sim.withRun
 import com.jdial.aegis.sim.Participant
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.GameData
@@ -57,6 +64,11 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<GameState> = _state.asStateFlow()
 
     private val _roster = MutableStateFlow(store.load())
+
+    /** What the last finished run added to the record: the outcome screen's news. */
+    private val _highlights = MutableStateFlow(RunHighlights())
+    val highlights: StateFlow<RunHighlights> = _highlights.asStateFlow()
+    private var recordedOutcome: DungeonOutcome? = null
     val roster: StateFlow<Roster> = _roster.asStateFlow()
 
     /**
@@ -138,10 +150,47 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = GameState()
     }
 
+    /** The record for the class being played, for the screens that show it. */
+    val records: Map<String, DungeonRecord>
+        get() = _state.value.playerClass?.let { _roster.value.byClass[it.name]?.records }.orEmpty()
+
+    /**
+     * A finished run, written to the record once. Called wherever state
+     * changes, and a no-op until an outcome it has not seen turns up.
+     */
+    private fun recordOutcome() {
+        val outcome = _state.value.dungeonOutcome ?: return
+        if (outcome === recordedOutcome) return
+        recordedOutcome = outcome
+        val cls = _state.value.playerClass?.name ?: return
+        val blob = _roster.value.byClass[cls] ?: return
+        val (next, news) = blob.records.withRun(outcome)
+        _highlights.value = news
+        _roster.value = _roster.value.copy(byClass = _roster.value.byClass + (cls to blob.copy(records = next)))
+        store.save(_roster.value)
+        // The boards are part of the public queue, not of playing alone.
+        if (news.newBest || news.firstClear) {
+            val ticks = outcome.clearTicks
+            val level = _state.value.level
+            if (_settings.value.multiplayer && multiplayer.isAvailable && ticks > 0) {
+                viewModelScope.launch { multiplayer.submitBestTime(outcome.dungeonId, ticks, cls, level) }
+            }
+        }
+    }
+
+    /** The name and colour this character has earned, put on for the run. */
+    private fun dressed(s: GameState): GameState {
+        val records = s.playerClass?.let { _roster.value.byClass[it.name]?.records }.orEmpty()
+        val title = titleFor(records, data.dungeons.count { !it.endless }).orEmpty()
+        val sigil = sigilTint(records) ?: 0L
+        return s.withMe { it.copy(title = title, sigil = sigil) }
+    }
+
     private fun persist() {
         val next = store.merge(_roster.value, _state.value)
         _roster.value = next
         store.save(next)
+        recordOutcome()
     }
 
     // --- actions -------------------------------------------------------------
@@ -178,6 +227,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
     fun startDungeon(dungeon: Dungeon, pace: String) {
         persist()
         store.clearSuspendedRun()
+        _state.value = dressed(_state.value)
         lastSnapshotTick = 0
         lastBossBracket = -1
 
@@ -350,6 +400,10 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Ends a rest early. The host's call: a guest's run is the host's run. */
+    /** The fastest clears anyone has posted for [dungeonId]; empty when offline. */
+    suspend fun bestTimes(dungeonId: String): List<BestTime> =
+        if (_settings.value.multiplayer) multiplayer.bestTimes(dungeonId) else emptyList()
+
     fun pullNow() {
         if (!multiplayer.isHost) return
         dispatch(Action.PullNow)

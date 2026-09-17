@@ -16,6 +16,54 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // A player's best clear of one dungeon. The document id is
+    // "<dungeonId>_<uid>", so a player holds exactly one per dungeon and can
+    // only hold their own. Times are public: that is the whole point of them.
+    match /times/{entryId} {
+      function mine() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['uid', 'dungeonId', 'ticks', 'cls', 'level', 'at'])
+          && d.uid == request.auth.uid
+          && d.dungeonId is string
+          && entryId == d.dungeonId + '_' + d.uid
+          && d.ticks is int && d.ticks > 0
+          && d.cls is string
+          && d.level is int
+          && d.at == request.time;
+      }
+
+      allow read: if signedIn();
+      allow create: if signedIn() && mine();
+      // A record only moves one way; a slower run is not news.
+      allow update: if signedIn() && mine() && request.auth.uid == resource.data.uid
+        && request.resource.data.ticks < resource.data.ticks;
+      allow delete: if signedIn() && request.auth.uid == resource.data.uid;
+    }
+
+    // A player's best clear of one dungeon. The document id is
+    // "<dungeonId>_<uid>", so a player holds exactly one per dungeon and can
+    // only hold their own. Times are public: that is the whole point of them.
+    match /times/{entryId} {
+      function mine() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['uid', 'dungeonId', 'ticks', 'cls', 'level', 'at'])
+          && d.uid == request.auth.uid
+          && d.dungeonId is string
+          && entryId == d.dungeonId + '_' + d.uid
+          && d.ticks is int && d.ticks > 0
+          && d.cls is string
+          && d.level is int
+          && d.at == request.time;
+      }
+
+      allow read: if signedIn();
+      allow create: if signedIn() && mine();
+      // A record only moves one way; a slower run is not news.
+      allow update: if signedIn() && mine() && request.auth.uid == resource.data.uid
+        && request.resource.data.ticks < resource.data.ticks;
+      allow delete: if signedIn() && request.auth.uid == resource.data.uid;
+    }
+
     // A player waiting for a group. The document id *is* the uid, so a player
     // can only ever hold one queue entry and can only hold their own.
     match /queue/{uid} {

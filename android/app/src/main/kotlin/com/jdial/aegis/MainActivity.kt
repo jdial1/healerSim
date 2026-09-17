@@ -37,6 +37,7 @@ import com.jdial.aegis.ui.LocalCompactHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -131,6 +132,10 @@ private val MENU_TABS = listOf(
 private fun AegisApp(onReady: () -> Unit = {}) {
     val vm: AegisViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    val roster by vm.roster.collectAsStateWithLifecycle()
+    val highlights by vm.highlights.collectAsStateWithLifecycle()
+    // What this character has to show: the dungeon cards and the trophy case read it.
+    val records = state.playerClass?.let { roster.byClass[it.name]?.records }.orEmpty()
     val forgetResult by vm.forgetResult.collectAsStateWithLifecycle()
     // GameData parsed in the ViewModel's initialiser, so by here we are ready.
     LaunchedEffect(Unit) { onReady() }
@@ -243,6 +248,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
                     Screen.Dungeons -> DungeonListScreen(
                         data = vm.data,
+                        records = records,
                         playerLevel = state.level,
                         cls = state.playerClass ?: PlayerClass.PRIEST,
                         talentPoints = state.talentPoints,
@@ -259,6 +265,8 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
                     Screen.Character -> CharacterScreen(
                         state = state,
+                        records = records,
+                        data = vm.data,
                         engine = vm.engine,
                         onSettingsChange = { next -> vm.updateSettings { next } },
                         multiplayerAvailable = vm.multiplayerAvailable,
@@ -335,11 +343,19 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                 // the seat up again -- a stale queue entry keeps everyone else
                 // holding a place for somebody who has gone.
                 LaunchedEffect(dungeon.id) { vm.enterQueue(dungeon, "normal") }
+                // The board, once, when the lobby opens. Offline it stays empty
+                // and the row is not drawn.
+                var worldBest by remember(dungeon.id) { mutableIntStateOf(0) }
+                LaunchedEffect(dungeon.id) {
+                    worldBest = vm.bestTimes(dungeon.id).minOfOrNull { it.ticks } ?: 0
+                }
                 DungeonQueueSheet(
                     dungeon = dungeon,
                     data = vm.data,
                     playerRole = state.playerRole,
                     queueStatus = queueStatus,
+                    yourBest = records[dungeon.id]?.bestTicks ?: 0,
+                    worldBest = worldBest,
                     onClose = {
                         queued = null
                         vm.cancelQueue()
@@ -373,6 +389,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
             state.dungeonOutcome?.let { outcome ->
                 OutcomeDialog(
+                    highlights = highlights,
                     outcome = outcome,
                     data = vm.data,
                     playerRole = state.playerRole,

@@ -41,6 +41,16 @@ const abandoned = (uid) => ({
   lastSeen: Timestamp.fromMillis(Date.now() - 3_600_000),
 });
 
+// A posted clear time, as the client writes it.
+const time = (uid, ticks = 1000, dungeonId = "d1") => ({
+  uid,
+  dungeonId,
+  ticks,
+  cls: "MAGE",
+  level: 10,
+  at: serverTimestamp(),
+});
+
 const room = (host, members) => ({
   id: "r1",
   hostUid: host,
@@ -213,4 +223,26 @@ test("a member may delete an hour-old room, but not a fresh one", async () => {
   await assertFails(deleteDoc(doc(as("bob"), "rooms/d1_alice_bob_new")));
   await assertSucceeds(deleteDoc(doc(as("bob"), "rooms/d1_alice_bob_old")));
   await assertSucceeds(deleteDoc(doc(as("alice"), "rooms/d1_alice_bob_new")));
+});
+
+test("a player posts their own best time, and only improves it", async () => {
+  await assertSucceeds(setDoc(doc(as("alice"), "times/d1_alice"), time("alice", 1000)));
+  // Everyone reads the board: that is what a board is for.
+  await assertSucceeds(getDoc(doc(as("bob"), "times/d1_alice")));
+  await assertSucceeds(setDoc(doc(as("alice"), "times/d1_alice"), time("alice", 900)));
+  // A slower run is not news, and nor is somebody else's record.
+  await assertFails(setDoc(doc(as("alice"), "times/d1_alice"), time("alice", 1200)));
+  await assertFails(setDoc(doc(as("mallory"), "times/d1_alice"), time("alice", 10)));
+  await assertFails(deleteDoc(doc(as("mallory"), "times/d1_alice")));
+});
+
+test("a time must be one, and must sit under its own name", async () => {
+  // The id says which dungeon and whose: a mismatch would let one player hold
+  // a board full of entries.
+  await assertFails(setDoc(doc(as("alice"), "times/d2_alice"), time("alice")));
+  await assertFails(setDoc(doc(as("alice"), "times/d1_alice"), { ...time("alice"), ticks: 0 }));
+  await assertFails(setDoc(doc(as("alice"), "times/d1_alice"), { ...time("alice"), ticks: "fast" }));
+  await assertFails(setDoc(doc(as("alice"), "times/d1_alice"), { ...time("alice"), at: Timestamp.fromMillis(0) }));
+  await assertFails(setDoc(doc(as("alice"), "times/d1_alice"), { ...time("alice"), extra: 1 }));
+  await assertFails(setDoc(doc(anon(), "times/d1_anon"), time("anon")));
 });

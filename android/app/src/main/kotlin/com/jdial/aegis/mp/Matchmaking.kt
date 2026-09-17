@@ -28,6 +28,9 @@ import kotlinx.serialization.Serializable
  * while the player waits; see [QUEUE_ENTRY_TTL_MS] for why that matters.
  */
 @Serializable
+/** One posted clear time, as the boards show it. */
+data class BestTime(val uid: String, val ticks: Int, val cls: String, val level: Int)
+
 data class QueueEntry(
     val uid: String,
     val role: UnitRole,

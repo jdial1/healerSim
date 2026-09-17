@@ -251,6 +251,20 @@ class Multiplayer(
     }
 
     /** A cast this client cannot resolve itself, handed to whoever is hosting. */
+    /**
+     * Posts a best time, and reads the board. Both are no-ops unless the player
+     * has opted into the public queue: single player still opens no connection.
+     */
+    suspend fun submitBestTime(dungeonId: String, ticks: Int, cls: String, level: Int) {
+        if (!isAvailable) return
+        runCatching { backend?.submitBestTime(dungeonId, ticks, cls, level) }
+    }
+
+    suspend fun bestTimes(dungeonId: String): List<BestTime> {
+        if (!isAvailable) return emptyList()
+        return runCatching { backend?.bestTimes(dungeonId).orEmpty() }.getOrDefault(emptyList())
+    }
+
     suspend fun requestCast(spellId: String, targetId: String?) {
         session?.requestCast(++castSeq, spellId, targetId)
     }

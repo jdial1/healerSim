@@ -35,6 +35,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import com.jdial.aegis.sim.RunHighlights
+import com.jdial.aegis.sim.clearTimeLabel
 import com.jdial.aegis.mp.ForgetResult
 import com.jdial.aegis.mp.QueueStatus
 import com.jdial.aegis.sim.UnitRole
@@ -111,6 +113,9 @@ fun DungeonQueueSheet(
     data: GameData,
     playerRole: UnitRole,
     queueStatus: QueueStatus,
+    /** Your own best clear of this place, and the fastest posted anywhere. */
+    yourBest: Int = 0,
+    worldBest: Int = 0,
     onClose: () -> kotlin.Unit,
     onEnter: (pace: String) -> kotlin.Unit,
 ) {
@@ -142,6 +147,24 @@ fun DungeonQueueSheet(
     Scrim(onDismiss = onClose) {
         ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(18.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (yourBest > 0 || worldBest > 0) {
+                    Row {
+                        if (yourBest > 0) {
+                            BasicText(
+                                "YOUR BEST  ${clearTimeLabel(yourBest)}",
+                                style = AegisType.label.copy(color = Gilt.core),
+                            )
+                        }
+                        if (yourBest > 0 && worldBest > 0) Spacer(Modifier.width(12.dp))
+                        if (worldBest > 0) {
+                            BasicText(
+                                "WORLD  ${clearTimeLabel(worldBest)}",
+                                style = AegisType.label.copy(color = Ink.secondary),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
                 GameIcon(dungeon.cardIcon, size = 46.dp, accent = Gilt.mid)
                 Spacer(Modifier.height(10.dp))
                 BasicText(
@@ -310,6 +333,7 @@ fun OutcomeDialog(
     outcome: DungeonOutcome,
     data: GameData,
     playerRole: UnitRole,
+    highlights: RunHighlights = RunHighlights(),
     onDismiss: () -> kotlin.Unit,
 ) {
     val success = outcome.kind == DungeonOutcomeKind.SUCCESS
@@ -341,6 +365,28 @@ fun OutcomeDialog(
                 GiltRule(Modifier.fillMaxWidth().height(1.dp))
                 Spacer(Modifier.height(14.dp))
 
+                if (success) {
+                    StatRow("Time", clearTimeLabel(outcome.clearTicks))
+                }
+
+                // What this run put on the record.
+                if (highlights.any) {
+                    Spacer(Modifier.height(12.dp))
+                    val news = listOfNotNull(
+                        "NEW BEST TIME".takeIf { highlights.newBest },
+                        "FIRST CLEAR".takeIf { highlights.firstClear },
+                        "CLEAN".takeIf { highlights.clean },
+                        "SHARP".takeIf { highlights.sharp },
+                    )
+                    BasicText(
+                        news.joinToString("   ·   "),
+                        style = AegisType.label.copy(color = Obsidian.abyss),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Gilt.core)
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
                 StatRow("Experience", "+${outcome.xpGained}")
                 if (playerRole == UnitRole.HEALER || group) {
                     StatRow(if (group) "Group healing" else "Healing done", outcome.stats.totalHealing.toInt().toString())
