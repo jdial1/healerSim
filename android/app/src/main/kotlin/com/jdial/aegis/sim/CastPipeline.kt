@@ -413,7 +413,11 @@ class CastPipeline(
         }
 
         val piStacks = s.playerCombatBuffs.buffStacks(BUFF_POWER_INFUSION)
-        val cd = cooldownTicks(ready.spell.cooldown, ready.eff.hastePercent, piStacks)
+        val cd = cooldownTicks(
+            max(0, ready.spell.cooldown - ctx.talentEffect("cooldown:${ready.spell.id}").roundToInt()),
+            ready.eff.hastePercent,
+            piStacks,
+        )
         var buffs = s.playerCombatBuffs.addSpiritLockoutIfSpent(ready.needMana > 0)
         buffs = buffs.applyPowerInfusionAfterCast(max(0, piStacks - 1))
 
@@ -477,7 +481,9 @@ class CastPipeline(
 
         fun healOne(u: Unit): Unit {
             if (u.health <= 0) return u
+            // A talent that names this spell (heal:<id>); 1.0 when none does.
             val amount = spell.healing * ready.rankHealMult * healMultB * ready.critH * ready.tMod *
+                (1 + ctx.talentEffect("heal:${ready.spellId}") / 100) *
                 synergyMultiplier(u) *
                 PriestHooks.graceHealMultiplier(ctx, u, graceRanks) *
                 hooks.castDirectHealMultiplier(ctx, spell, ready.spellId) *
@@ -633,7 +639,11 @@ class CastPipeline(
             ) 0 else spell.cooldown
 
         val piStacks = buffs.buffStacks(BUFF_POWER_INFUSION)
-        val cd = cooldownTicks(rawCooldown, ready.eff.hastePercent + ready.emergencyHaste, piStacks)
+        val cd = cooldownTicks(
+            max(0, rawCooldown - ctx.talentEffect("cooldown:${ready.spellId}").roundToInt()),
+            ready.eff.hastePercent + ready.emergencyHaste,
+            piStacks,
+        )
         val piLeft = max(0, piStacks - 1)
 
         // Holy Power: Tower of Radiance grants on healing a badly hurt target.

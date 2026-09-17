@@ -82,11 +82,19 @@ class GameData(
             val encounters = parse("data/encounters.json") { json.decodeFromString<Encounters>(it) }
             val utility = parse("data/utility_spells.json") { json.decodeFromString<UtilitySpells>(it) }
             val classes = PlayerClass.entries.associateWith { cls ->
-                val dir = "classes/${cls.name.lowercase()}"
+                val name = cls.name.lowercase()
+                val dir = "classes/$name"
+                // The healers' trees are shared with the frozen web app, which is
+                // why they were stuck with its filler. Android may lay its own
+                // tree over one here; the parity fixture reads the shared file,
+                // so the recorded runs still play the tree they were recorded on.
+                val override = runCatching { source.read("classes-overrides/$name/talents.json") }
+                    .getOrNull()?.takeIf { it.isNotBlank() && it.trimStart().startsWith("[") }
                 ClassBundle(
                     meta = parse("$dir/class.json") { json.decodeFromString<ClassMeta>(it) },
                     spells = parse("$dir/spells.json") { json.decodeFromString<Map<String, Spell>>(it) },
-                    talents = parse("$dir/talents.json") { json.decodeFromString<List<Talent>>(it) },
+                    talents = override?.let { json.decodeFromString<List<Talent>>(it) }
+                        ?: parse("$dir/talents.json") { json.decodeFromString<List<Talent>>(it) },
                 )
             }
             return GameData(

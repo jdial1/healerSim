@@ -22,8 +22,16 @@ object Fixtures {
      * content/utility_spells.json): what the recorded fights were made from.
      */
     val sharedData: GameData by lazy {
+        // Android-only layers, blanked: what is left is exactly the content the
+        // web engine recorded the golden runs on -- including the healers' trees.
         val androidOnly = setOf("data/encounters.json", "data/utility_spells.json")
-        GameData.load { path -> if (path in androidOnly) "{}" else File(assetsDir, path).readText() }
+        GameData.load { path ->
+            when {
+                path in androidOnly -> "{}"
+                path.startsWith("classes-overrides/") -> ""
+                else -> File(assetsDir, path).readText()
+            }
+        }
     }
 
     val stats: PlayerStats by lazy { PlayerStats(data) }

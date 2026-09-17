@@ -34,7 +34,10 @@ class GameDataTest {
     fun `talent and spell inventory matches the web app`() {
         assertEquals(32, data.bundle(PlayerClass.PRIEST).talents.size)
         assertEquals(32, data.bundle(PlayerClass.DRUID).talents.size)
-        assertEquals(29, data.bundle(PlayerClass.PALADIN).talents.size)
+        // Android lays its own trees over the healers' (classes-overrides);
+        // the Paladin's dropped the filler it had no distinct job for.
+        assertEquals(24, data.bundle(PlayerClass.PALADIN).talents.size)
+        assertEquals(29, Fixtures.sharedData.bundle(PlayerClass.PALADIN).talents.size)
 
         assertEquals(4, data.bundle(PlayerClass.PRIEST).spells.size)
         assertEquals(6, data.bundle(PlayerClass.DRUID).spells.size)

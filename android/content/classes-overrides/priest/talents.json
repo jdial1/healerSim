@@ -1,0 +1,572 @@
+[
+  {
+    "id": "p_r0c0",
+    "name": "Healing Focus",
+    "description": "Increases all healing by 3% per rank.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_sealofwisdom",
+    "gridX": 0,
+    "gridY": 0,
+    "statBonus": {
+      "healingBoost": 3
+    },
+    "maxRankBonusDescription": "Regenerate 1% of total mana every 5 seconds in combat."
+  },
+  {
+    "id": "p_r0c1",
+    "name": "Critical Focus",
+    "description": "Increases critical strike chance by 1.2% per rank.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_holyguidance",
+    "gridX": 1,
+    "gridY": 0,
+    "statBonus": {
+      "critChance": 1.2
+    }
+  },
+  {
+    "id": "p_r0c2",
+    "name": "Renewal Rhythm",
+    "description": "Increases haste by 1.5% per rank.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_priest_angelicbulwark",
+    "gridX": 2,
+    "gridY": 0,
+    "statBonus": {
+      "haste": 1.5
+    }
+  },
+  {
+    "id": "p_r0c3",
+    "name": "Mana Focus",
+    "description": "Increases maximum mana by 25 per rank.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_testoffaith",
+    "gridX": 3,
+    "gridY": 0,
+    "statBonus": {
+      "manaPool": 25
+    }
+  },
+  {
+    "id": "p_r0c4",
+    "name": "Meditative Wellspring",
+    "description": "While not casting, restore 0.3% of max mana per point each tick.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_holy_divineillumination",
+    "gridX": 4,
+    "gridY": 0,
+    "mechanicId": "priest_meditative_wellspring"
+  },
+  {
+    "id": "p_r1c0",
+    "name": "Inner Light",
+    "description": "Increases your signature stat by 1 per rank.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_holy_borrowedtime",
+    "gridX": 0,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c0"
+    ],
+    "statBonus": {
+      "uniqueStat": 1.0
+    }
+  },
+  {
+    "id": "p_r1c1",
+    "name": "Meditation",
+    "description": "Returns 1.2 mana per rank on each direct heal.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_priest_focusedwill",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c1"
+    ],
+    "statBonus": {
+      "manaReturnOnDirectHeal": 1.2
+    }
+  },
+  {
+    "id": "p_r1c2",
+    "name": "Tome of Clarity",
+    "description": "Unlocks Greater Heal for your spellbook.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_holy_greaterheal",
+    "gridX": 2,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c2"
+    ],
+    "spellId": "greater_heal"
+  },
+  {
+    "id": "p_r1c3",
+    "name": "Improved Flash Heal",
+    "description": "Flash Heal heals for 4% more per rank.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_priest_angelicfeather",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c3"
+    ],
+    "statBonus": null,
+    "effects": {
+      "heal:flash_heal": 4
+    }
+  },
+  {
+    "id": "p_r1c4",
+    "name": "Healing Path",
+    "description": "Path of the Sun: your heals are 3% more effective. Exclusive with Path of the Moon.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_holy_holynova",
+    "gridX": 4,
+    "gridY": 1,
+    "prerequisites": [
+      "p_r0c4"
+    ],
+    "statBonus": {
+      "healingBoost": 3
+    },
+    "exclusiveWith": [
+      "p_r2c4"
+    ],
+    "mechanicId": "path_sun"
+  },
+  {
+    "id": "p_r2c0",
+    "name": "Empowered Healing",
+    "description": "Greater Heal heals for 5% more per rank.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_priest_ascendance",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r1c0"
+    ],
+    "statBonus": null,
+    "effects": {
+      "heal:greater_heal": 5
+    }
+  },
+  {
+    "id": "p_r2c1",
+    "name": "Aegis of Faith",
+    "description": "Critical heals create a shield for 20% per point of the amount healed, lasting 10s.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_holy_powerwordshield",
+    "gridX": 1,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r1c1"
+    ],
+    "mechanicId": "divine_aegis",
+    "statBonus": {
+      "uniqueStat": 1.2
+    }
+  },
+  {
+    "id": "p_r2c2",
+    "name": "Wider Circle",
+    "description": "Circle of Healing heals for 5% more per rank.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_priest_ascension",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r1c2"
+    ],
+    "statBonus": null,
+    "effects": {
+      "heal:circle_of_healing": 5
+    }
+  },
+  {
+    "id": "p_r2c3",
+    "name": "Harsh Confession",
+    "description": "Flash Heal has 16% chance to make your next Greater Heal free.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_holy_searinglightpriest",
+    "gridX": 3,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r1c3"
+    ],
+    "mechanicId": "surge_of_light"
+  },
+  {
+    "id": "p_r2c4",
+    "name": "Path of the Moon",
+    "description": "Path of the Moon: direct heals return 1.75% max mana. Exclusive with Path of the Sun.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_holy_symbolofhope",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [
+      "p_r0c4"
+    ],
+    "exclusiveWith": [
+      "p_r1c4"
+    ],
+    "mechanicId": "path_moon"
+  },
+  {
+    "id": "p_r3c0",
+    "name": "Mental Agility",
+    "description": "Flash Heal costs 2 less mana per rank.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_priest_atonement",
+    "gridX": 0,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c0"
+    ],
+    "statBonus": null,
+    "effects": {
+      "cost:flash_heal": 2
+    }
+  },
+  {
+    "id": "p_r3c1",
+    "name": "Binding Tether",
+    "description": "Your direct heals on allies also restore you for 6% of the value per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_holy_hopeandgrace",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c1"
+    ],
+    "mechanicId": "binding_heal"
+  },
+  {
+    "id": "p_r3c2",
+    "name": "Hymn of the Choir",
+    "description": "Unlocks Circle of Healing.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_holy_circleofrenewal",
+    "gridX": 2,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c2"
+    ],
+    "spellId": "circle_of_healing"
+  },
+  {
+    "id": "p_r3c3",
+    "name": "Shielded Healing Focus",
+    "description": "Increases all healing by 3% per point. Your critical-heal shields are 10% stronger per point, and while you are shielded you take 3% less damage per point.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_holy_healingfocus",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c3"
+    ],
+    "mechanicId": "luminous_aegis",
+    "statBonus": {
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "p_r3c4",
+    "name": "Critical Focus III",
+    "description": "Increases crit chance by 2.5% per point. With Harsh Confession, Flash Heal gains a further 2% crit chance.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_priest_cascade",
+    "gridX": 4,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c3"
+    ],
+    "statBonus": {
+      "critChance": 2.5
+    },
+    "mechanicId": "gleaming_proclamation",
+    "synergyWith": [
+      "p_r2c3"
+    ]
+  },
+  {
+    "id": "p_r3c5",
+    "name": "Purification",
+    "description": "Cleanse costs 4 less mana per rank.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_holy_dispelmagic",
+    "gridX": 5,
+    "gridY": 3,
+    "prerequisites": [
+      "p_r2c4"
+    ],
+    "statBonus": null,
+    "effects": {
+      "cost:cleanse": 4
+    }
+  },
+  {
+    "id": "p_r4c0",
+    "name": "Improved Greater Heal",
+    "description": "Greater Heal costs 3 less mana per rank.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_holy_surgeoflight",
+    "gridX": 0,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c0"
+    ],
+    "statBonus": null,
+    "effects": {
+      "cost:greater_heal": 3
+    }
+  },
+  {
+    "id": "p_r4c1",
+    "name": "Power Infusion",
+    "description": "Your next 3 heals after a critical heal are cast with 50% faster effective recovery.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_holy_powerinfusion",
+    "gridX": 1,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c1"
+    ],
+    "mechanicId": "power_infusion"
+  },
+  {
+    "id": "p_r4c2",
+    "name": "Spirit of Redemption",
+    "description": "When you drop below 30% health, your healing is increased 50% for 10s. 2 min internal cooldown.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_holy_resurrection",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c2"
+    ],
+    "mechanicId": "spirit_of_redemption"
+  },
+  {
+    "id": "p_r4c3",
+    "name": "Divine Economy",
+    "description": "Circle of Healing costs 4 less mana per rank.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_priest_cascade_shadow",
+    "gridX": 3,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c3"
+    ],
+    "statBonus": null,
+    "effects": {
+      "cost:circle_of_healing": 4
+    }
+  },
+  {
+    "id": "p_r4c4",
+    "name": "Grace",
+    "description": "Direct heals stack Grace on the target: each stack increases healing received from you by 4% per point (max 3 stacks, 8s).",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_holy_crusade",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "p_r3c4"
+    ],
+    "mechanicId": "priest_grace"
+  },
+  {
+    "id": "p_r5c0",
+    "name": "Swift Words",
+    "description": "Greater Heal's cooldown is 0.5 seconds shorter per rank.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_priest_darkness",
+    "gridX": 0,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c0"
+    ],
+    "statBonus": null,
+    "effects": {
+      "cooldown:greater_heal": 5
+    }
+  },
+  {
+    "id": "p_r5c1",
+    "name": "Rapid Circle",
+    "description": "Circle of Healing's cooldown is 1 second shorter per rank.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_priest_evangelism",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c1"
+    ],
+    "statBonus": null,
+    "effects": {
+      "cooldown:circle_of_healing": 10
+    }
+  },
+  {
+    "id": "p_r5c2",
+    "name": "Improved Renew",
+    "description": "Renew costs 1 less mana per rank.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_priest_halo",
+    "gridX": 2,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c2"
+    ],
+    "statBonus": null,
+    "effects": {
+      "cost:renew": 1
+    }
+  },
+  {
+    "id": "p_r5c3",
+    "name": "Blessed Recovery",
+    "description": "Renew's opening heal is 6% stronger per rank.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_priest_reflectiveshield",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c3"
+    ],
+    "statBonus": null,
+    "effects": {
+      "heal:renew": 6
+    }
+  },
+  {
+    "id": "p_r5c4",
+    "name": "Resonant Barrier",
+    "description": "When a critical absorb shield is fully consumed, its value splashes as healing to the lowest-health ally (15% per point). Synergy: Luminous Aegis.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/spell_holy_painsupression",
+    "gridX": 4,
+    "gridY": 5,
+    "prerequisites": [
+      "p_r4c4"
+    ],
+    "mechanicId": "aegis_burst",
+    "synergyWith": [
+      "p_r3c3"
+    ]
+  },
+  {
+    "id": "p_cap",
+    "name": "Archangel",
+    "description": "Archangel: for 15s, your direct heals echo to the whole party and consume active party shields to empower those echoes. Wings manifest on your bar.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/spell_holy_guardianspirit",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "p_r5c1",
+      "p_r5c2",
+      "p_r5c3"
+    ],
+    "mechanicId": "capstone_archangel",
+    "maxRankBonusDescription": "For 15s, each single-target direct heal also heals every other living ally and gains bonus healing from consumed shields."
+  }
+]

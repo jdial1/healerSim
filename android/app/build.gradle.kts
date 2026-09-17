@@ -106,6 +106,13 @@ val syncGameData = tasks.register<Sync>("syncGameData") {
         include("*/class.json", "*/spells.json", "*/talents.json")
         into("classes")
     }
+    // Android's own trees for the classes it shares with the web app. A separate
+    // destination, not an overwrite: the shared file stays exactly as recorded,
+    // which is what the parity corpus replays.
+    from(layout.projectDirectory.dir("../content/classes-overrides")) {
+        include("*/talents.json")
+        into("classes-overrides")
+    }
     from(webRoot.dir("public/icons")) {
         into("icons")
         include { it.isDirectory || it.relativePath.pathString in wanted }
