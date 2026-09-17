@@ -42,7 +42,8 @@ class GameDataTest {
 
         assertEquals(4, data.bundle(PlayerClass.MAGE).spells.size)
         assertEquals(16, data.bundle(PlayerClass.MAGE).talents.size)
-        assertEquals(4, data.bundle(PlayerClass.WARRIOR).spells.size)
+        // The Warrior carries a rage dump the other kits do not need.
+        assertEquals(5, data.bundle(PlayerClass.WARRIOR).spells.size)
         assertEquals(16, data.bundle(PlayerClass.WARRIOR).talents.size)
 
         // The Android-owned classes: two per role beyond the healers, the third
@@ -51,7 +52,7 @@ class GameDataTest {
             PlayerClass.MAGE, PlayerClass.WARRIOR, PlayerClass.DEATHKNIGHT,
             PlayerClass.ROGUE, PlayerClass.MONK, PlayerClass.WARLOCK,
         )) {
-            assertEquals("$cls spells", 4, data.bundle(cls).spells.size)
+            assertEquals("$cls spells", if (cls == PlayerClass.WARRIOR) 5 else 4, data.bundle(cls).spells.size)
             assertTrue("$cls needs a full tree", data.bundle(cls).talents.size >= 15)
         }
 
@@ -63,7 +64,7 @@ class GameDataTest {
         // which must not shadow a class spell either.
         val utility = com.jdial.aegis.sim.Fixtures.sharedData.spells.size.let { data.spells.size - it }
         assertTrue("utility spells are loaded", utility > 0)
-        assertEquals(37, data.spells.size - utility)
+        assertEquals(38, data.spells.size - utility)
         assertTrue(PlayerClass.entries.none { cls -> data.bundle(cls).spells.keys.any { it in listOf("kick", "counterspell", "cleanse") } })
         val ids = PlayerClass.entries.flatMap { data.bundle(it).spells.keys }
         assertEquals(

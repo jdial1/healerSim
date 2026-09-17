@@ -104,9 +104,13 @@ object WarriorHooks : ClassHooks {
 
     override fun classTick(tick: ClassTick): Participant {
         val u = tick.unit ?: return tick.participant
-        if (tick.damageTaken <= 0 || u.maxHealth <= 0) return tick.participant
-        val gained = tick.damageTaken / u.maxHealth * tick.balance.warrior.ragePerFullHealthTaken *
-            (1 + tick.participant.talents.effect("rageFromDamage") / 100)
+        if (u.maxHealth <= 0 || !u.isAlive) return tick.participant
+        val fromHits = if (tick.damageTaken <= 0) 0.0 else {
+            tick.damageTaken / u.maxHealth * tick.balance.warrior.ragePerFullHealthTaken *
+                (1 + tick.participant.talents.effect("rageFromDamage") / 100)
+        }
+        val gained = fromHits + tick.balance.warrior.ragePerTick
+        if (gained <= 0) return tick.participant
         val cap = rageCap(tick.rating, tick.balance)
         return tick.participant.copy(classResource = min(cap, tick.participant.classResource + gained))
     }

@@ -44,7 +44,8 @@
     "threatMultiplier": 2.4,
     "color": "bg-orange-500",
     "actionBarBorderClass": "border-orange-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "resource": "MANA"
   },
   "shield_wall": {
     "id": "shield_wall",
@@ -60,6 +61,22 @@
     "tags": [],
     "color": "bg-sky-600",
     "actionBarBorderClass": "border-sky-600",
+    "glowType": "spell"
+  },
+  "heroic_strike": {
+    "id": "heroic_strike",
+    "name": "Heroic Strike",
+    "type": "DIRECT",
+    "school": "damage",
+    "resource": "RAGE",
+    "manaCost": 45,
+    "healing": 150,
+    "cooldown": 0,
+    "icon": "wow/ability_warrior_savageblow",
+    "tags": [],
+    "threatMultiplier": 2.2,
+    "color": "bg-amber-600",
+    "actionBarBorderClass": "border-amber-600",
     "glowType": "spell"
   }
 }

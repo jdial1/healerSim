@@ -70,8 +70,9 @@ class TalentEffectsTest {
     @Test
     fun `a cost talent makes the spell cheaper`() {
         val spent = { s: GameState -> s.classResource - cast(s, "sinister_strike").classResource }
-        assertEquals(40.0, spent(fight(PlayerClass.ROGUE)), 1e-9)
-        assertEquals(34.0, spent(fight(PlayerClass.ROGUE, "rg_r2c4" to 2)), 1e-9)
+        val cost = data.spell("sinister_strike")!!.manaCost.toDouble()
+        assertEquals(cost, spent(fight(PlayerClass.ROGUE)), 1e-9)
+        assertEquals(cost - 6, spent(fight(PlayerClass.ROGUE, "rg_r2c4" to 2)), 1e-9)
     }
 
     @Test
@@ -130,9 +131,11 @@ class TalentEffectsTest {
     @Test
     fun `more class talents tune the class mechanic`() {
         // Warrior: more rage from the same hit.
+        // The trickle is flat, so compare only what the hit itself paid.
+        val trickle = data.balance.classes.warrior.ragePerTick
         val hit = { s: GameState ->
             val empty = s.withMe { it.copy(classResource = 0.0) }
-            tick.classTick(empty, mapOf(s.localUnitId to s.unit(s.localUnitId)!!.maxHealth * 0.1)).classResource
+            tick.classTick(empty, mapOf(s.localUnitId to s.unit(s.localUnitId)!!.maxHealth * 0.1)).classResource - trickle
         }
         assertEquals(hit(fight(PlayerClass.WARRIOR)) * 1.2, hit(fight(PlayerClass.WARRIOR, "w_r0c0" to 2)), 1e-9)
 

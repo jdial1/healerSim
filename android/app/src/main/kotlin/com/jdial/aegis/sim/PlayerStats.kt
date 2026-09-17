@@ -88,7 +88,9 @@ class PlayerStats(private val data: GameData) {
     fun maxMana(cls: PlayerClass?, level: Int, talents: List<TalentRank>): Int {
         if (cls == null) return 100
         val intellect = primaryStats(cls, level).intellect
-        return (intellect * ps.manaPerIntellect + talentStats(talents).flatMana).roundToInt()
+        // Exactly 1.0 for a healer, so the recorded runs cannot move.
+        val scale = data.balance.classes.manaPoolScale[cls.name] ?: 1.0
+        return ((intellect * ps.manaPerIntellect + talentStats(talents).flatMana) * scale).roundToInt()
     }
 
     fun healingMultiplier(cls: PlayerClass?, level: Int, talents: List<TalentRank>): Double {

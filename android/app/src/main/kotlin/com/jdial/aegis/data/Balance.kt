@@ -54,6 +54,12 @@ data class ClassesBalance(
      * the other at its top.
      */
     val damageRampFloor: Map<String, Double> = emptyMap(),
+    /**
+     * A class's mana pool, as a share of what its stats would give it. For the
+     * classes that pay mana but are not healers: theirs used to be a healer's
+     * pool, which no rotation could ever spend.
+     */
+    val manaPoolScale: Map<String, Double> = emptyMap(),
     val damageRampLevels: Int = 19,
     val warrior: WarriorBalance = WarriorBalance(),
     val deathKnight: DeathKnightBalance = DeathKnightBalance(),
@@ -70,6 +76,11 @@ data class WarriorBalance(
     val ragePerFullHealthTaken: Double = 160.0,
     /** Rage for landing a damage spell that does not itself cost rage. */
     val rageOnDamageCast: Double = 6.0,
+    /**
+     * Rage that comes simply from being in the fight: the floor that stops a
+     * low-level tank standing with an empty bar and nothing to press.
+     */
+    val ragePerTick: Double = 0.0,
     /** Vengeance: threat bonus per point of the signature stat. */
     val threatPerRating: Double = 0.02,
 )

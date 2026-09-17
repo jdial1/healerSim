@@ -4,7 +4,7 @@
     "name": "Sinister Strike",
     "type": "DIRECT",
     "school": "damage",
-    "manaCost": 40,
+    "manaCost": 30,
     "healing": 68,
     "cooldown": 0,
     "icon": "wow/spell_shadow_ritualofsacrifice",

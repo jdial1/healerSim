@@ -37,7 +37,8 @@ class RoleMechanicsTest {
         val s = fight(PlayerClass.WARRIOR)
         val hp = s.unit(me)!!.maxHealth
         val hit = tick.classTick(s, mapOf(me to hp * 0.25))
-        assertEquals(0.25 * balance.warrior.ragePerFullHealthTaken, hit.classResource, 1e-9)
+        // The hit, plus the trickle that simply being in the fight pays.
+        assertEquals(0.25 * balance.warrior.ragePerFullHealthTaken + balance.warrior.ragePerTick, hit.classResource, 1e-9)
 
         val low = tick.classTick(s, mapOf(me to hp * 10)).classResource
         val high = tick.classTick(fight(PlayerClass.WARRIOR, level = 30), mapOf(me to hp * 100)).classResource
@@ -62,6 +63,7 @@ class RoleMechanicsTest {
         val s = fight(PlayerClass.WARRIOR)
         val out = cast(s, "revenge")
         assertEquals(balance.warrior.rageOnDamageCast, out.classResource, 1e-9)
+        assertEquals("revenge is paid in mana, so the rage is a gain", 18, Fixtures.data.spell("revenge")!!.manaCost)
         assertTrue(out.mana < s.mana)
     }
 
@@ -153,11 +155,12 @@ class RoleMechanicsTest {
         val s = fight(PlayerClass.ROGUE)
         val hit = cast(s, "sinister_strike")
         assertEquals(1, hit.comboPoints)
-        assertEquals(balance.rogue.energyMax - 40, hit.classResource, 1e-9)
+        val cost = Fixtures.data.spell("sinister_strike")!!.manaCost.toDouble()
+        assertEquals(balance.rogue.energyMax - cost, hit.classResource, 1e-9)
         assertEquals(s.mana, hit.mana, 0.0)
 
         assertEquals(2, cast(s, "sinister_strike", critRoll = 0.0).comboPoints)
-        val poor = s.withResource(39.0)
+        val poor = s.withResource(cost - 1)
         assertSame(poor, cast(poor, "sinister_strike"))
     }
 

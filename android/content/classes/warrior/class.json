@@ -28,10 +28,12 @@
   "progression": {
     "starterSpells": [
       "shield_slam",
-      "taunt"
+      "taunt",
+      "heroic_strike"
     ],
     "spellOrder": [
       "shield_slam",
+      "heroic_strike",
       "taunt",
       "revenge",
       "shield_wall"

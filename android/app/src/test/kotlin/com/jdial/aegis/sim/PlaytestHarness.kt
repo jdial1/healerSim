@@ -49,12 +49,16 @@ class PlaytestHarness {
         val outcome: String, val ticks: Int, val deaths: Int, val missedKicks: Int,
         val kicks: Int, val dispels: Int, val defensives: Int, val addsKilled: Int,
         val xp: Int, val dps: Double, val hps: Double, val lowestHealthPct: Double,
+        /** Resources, sampled every tick: how full, how often capped, how often stuck. */
+        val resAvgPct: Double, val resCapPct: Double, val manaAvgPct: Double, val starvedPct: Double,
     ) {
         fun json(): String = """{"cls":"$cls","level":$level,"dungeon":"$dungeon","hard":$hard,"seed":$seed,""" +
             """"outcome":"$outcome","ticks":$ticks,"deaths":$deaths,"missedKicks":$missedKicks,""" +
             """"kicks":$kicks,"dispels":$dispels,"defensives":$defensives,"addsKilled":$addsKilled,""" +
             """"xp":$xp,"dps":${"%.1f".format(dps)},"hps":${"%.1f".format(hps)},""" +
-            """"lowestHealthPct":${"%.1f".format(lowestHealthPct)}}"""
+            """"lowestHealthPct":${"%.1f".format(lowestHealthPct)},""" +
+            """"resAvgPct":${"%.1f".format(resAvgPct)},"resCapPct":${"%.1f".format(resCapPct)},""" +
+            """"manaAvgPct":${"%.1f".format(manaAvgPct)},"starvedPct":${"%.1f".format(starvedPct)}}"""
     }
 
     private fun play(cls: PlayerClass, level: Int, dungeonId: String, hard: Boolean, pace: String, seed: Int): Run {
@@ -102,11 +106,45 @@ class PlaytestHarness {
         var addsKilled = 0
         var lowest = 100.0
         var ticks = 0
+        // Resource sampling. The Death Knight's "resource" is its memory of
+        // recent damage rather than a pool, so its cap is meaningless here.
+        val classBalance = data.balance.classes
+        var resSum = 0.0
+        var resCapped = 0
+        var manaSum = 0.0
+        var starved = 0
+        var ready = 0
+        var sampled = 0
         while (s.isCombatActive && ticks < 6_000) {
             val before = s
             val me = s.unit(s.localUnitId)
             val hurt = s.party.filter { it.isAlive }.minByOrNull { it.health / it.maxHealth }
             hurt?.let { lowest = minOf(lowest, it.health / it.maxHealth * 100) }
+
+            // What the bar looks like before this tick's decisions.
+            val cap = when (cls) {
+                PlayerClass.WARRIOR -> WarriorHooks.rageCap(engine.stats.uniqueStatRating(cls, level, s.talents), classBalance)
+                PlayerClass.ROGUE -> classBalance.rogue.energyMax
+                else -> 0.0
+            }
+            if (cap > 0) {
+                val pct = s.classResource / cap * 100
+                resSum += pct
+                if (pct >= 95) resCapped++
+            }
+            if (s.maxMana > 0) manaSum += s.mana / s.maxMana * 100
+            sampled++
+            // Idle means idle: the global cooldown is up and there is still
+            // nothing this class can pay for. Counting every tick would call
+            // the gap between casts starvation.
+            if (s.globalCooldownRemaining <= 0) {
+                ready++
+                val couldAct = (damage + heals).any { id ->
+                    val spell = data.spell(id) ?: return@any false
+                    s.canPay(spell) && (s.spellCooldowns[id] ?: 0) <= 0
+                }
+                if (!couldAct) starved++
+            }
 
             // Drink before it is too late.
             if (s.mana < s.maxMana * 0.35) s = cast(s, MANA_POTION_ID, null, rng)
@@ -177,6 +215,10 @@ class PlaytestHarness {
             dps = outcome?.stats?.dps ?: 0.0,
             hps = outcome?.stats?.hps ?: 0.0,
             lowestHealthPct = lowest,
+            resAvgPct = if (sampled > 0) resSum / sampled else 0.0,
+            resCapPct = if (sampled > 0) resCapped * 100.0 / sampled else 0.0,
+            manaAvgPct = if (sampled > 0) manaSum / sampled else 0.0,
+            starvedPct = if (ready > 0) starved * 100.0 / ready else 0.0,
         )
     }
 

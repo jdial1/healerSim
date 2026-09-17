@@ -158,7 +158,7 @@
       "WARLOCK": 1.0
     },
     "damageRampFloor": {
-      "MAGE": 0.42,
+      "MAGE": 0.47,
       "ROGUE": 0.45,
       "WARRIOR": 0.45,
       "DEATHKNIGHT": 0.45,
@@ -169,9 +169,10 @@
     "warrior": {
       "rageCapBase": 100.0,
       "rageCapPerRating": 2.0,
-      "ragePerFullHealthTaken": 160.0,
-      "rageOnDamageCast": 6.0,
-      "threatPerRating": 0.02
+      "ragePerFullHealthTaken": 60.0,
+      "rageOnDamageCast": 3.0,
+      "threatPerRating": 0.02,
+      "ragePerTick": 1.0
     },
     "deathKnight": {
       "recentDamageDecayPerTick": 0.97,
@@ -187,10 +188,15 @@
     },
     "rogue": {
       "energyMax": 100.0,
-      "energyPerTick": 1.25,
+      "energyPerTick": 1.7,
       "comboPointsMax": 5,
       "finisherPerPoint": 0.5,
       "builderCritPerRating": 2.0
+    },
+    "manaPoolScale": {
+      "MAGE": 0.55,
+      "WARRIOR": 0.6,
+      "DEATHKNIGHT": 0.6
     }
   }
 }
