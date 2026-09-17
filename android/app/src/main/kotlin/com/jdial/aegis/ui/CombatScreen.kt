@@ -79,6 +79,7 @@ import com.jdial.aegis.data.Targeting
 import com.jdial.aegis.sim.CombatPhase
 import com.jdial.aegis.sim.FLOATING_TEXT_LIFETIME_TICKS
 import com.jdial.aegis.sim.offGlobalCooldown
+import com.jdial.aegis.sim.toDispel
 import com.jdial.aegis.sim.FloatingKind
 import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.TRASH_PACK_COUNT
@@ -652,6 +653,9 @@ private fun nextMechanic(state: GameState): NextMechanic? {
  * debuffTemplates, so the full duration is a content lookup rather than new
  * serialized state (which would land in the parity-covered GameState).
  */
+/** A debuff a healer can take off -- the colour dispellable magic always had. */
+private val Dispel = Color(0xFFA855F7)
+
 private fun debuffDurations(state: GameState): Map<String, Int> =
     state.currentDungeon?.bossCombat?.debuffTemplates
         ?.associate { it.abilityId to it.durationTicks }
@@ -996,6 +1000,12 @@ private fun PartyRow(
                             maxTicks = debuffMax[d.sourceAbilityId] ?: d.remainingTicks,
                             hostile = true,
                             size = auraSize,
+                            stacks = d.stacks,
+                            kerbColor = when {
+                                d.isArmed -> Color(0xFFF97316)
+                                d.dispellable -> Dispel
+                                else -> null
+                            },
                         )
                     }
                     shownBuffs.forEach { b ->
@@ -1050,11 +1060,12 @@ private fun AuraSocket(
     hostile: Boolean,
     size: Dp,
     stacks: Int = 0,
+    kerbColor: Color? = null,
 ) {
     val left = if (maxTicks > 0) (remainingTicks.toFloat() / maxTicks).coerceIn(0f, 1f) else 1f
     val seconds = ceil(remainingTicks / 10.0).toInt()
     val urgent = remainingTicks <= 30
-    val kerb = if (hostile) Vital.critical else Gilt.mid
+    val kerb = kerbColor ?: if (hostile) Vital.critical else Gilt.mid
 
     Box(
         Modifier
@@ -1202,9 +1213,17 @@ private fun ActionBar(
                         val spell = data.spell(spellId)
                         // The kick lights up while there is something to kick.
                         val kickNow = spell?.interrupts == true && state.enemyCast?.interruptible == true
+                        // ...and the dispel while someone carries something to take.
+                        val cleanseNow = spell?.dispels == true &&
+                            state.party.any { it.isAlive && it.debuffs.toDispel() != null }
+                        val ready = when {
+                            kickNow -> Color(0xFFFACC15)
+                            cleanseNow -> Dispel
+                            else -> null
+                        }
                         Box(
-                            if (kickNow) {
-                                Modifier.border(2.dp, Color(0xFFFACC15), RoundedCornerShape(8.dp)).padding(1.dp)
+                            if (ready != null) {
+                                Modifier.border(2.dp, ready, RoundedCornerShape(8.dp)).padding(1.dp)
                             } else {
                                 Modifier
                             },

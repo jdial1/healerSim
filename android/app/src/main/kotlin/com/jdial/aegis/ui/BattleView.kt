@@ -605,6 +605,8 @@ private fun PartySprite(
         dead -> ColorFilter.tint(Color(0xFF6B7280).copy(alpha = 0.7f), BlendMode.SrcAtop)
         hurt.value > 0f -> ColorFilter.tint(Color(0xFFEF4444).copy(alpha = hurt.value * 0.7f), BlendMode.SrcAtop)
         glow.value > 0f -> ColorFilter.tint(Color(0xFF86EFAC).copy(alpha = glow.value * 0.6f), BlendMode.SrcAtop)
+        // Mind-controlled: fighting for the other side until someone dispels it.
+        unit.debuffs.any { it.charm } -> ColorFilter.tint(Color(0xFFA855F7).copy(alpha = 0.55f), BlendMode.SrcAtop)
         else -> null
     }
 

@@ -122,7 +122,15 @@ data class UnitDebuff(
     val sourceAbilityId: String = "",
     val dispellable: Boolean = false,
     val category: String = "harmful",
-)
+    /** A stacking debuff's stacks; 0 for the rest, which tick once. */
+    val stacks: Int = 0,
+    /** A bomb: dispelling it with more than this left sets it off. */
+    val armedTicks: Int = 0,
+    /** Mind control: the carrier is fighting for the boss. */
+    val charm: Boolean = false,
+) {
+    val isArmed: Boolean get() = armedTicks > 0 && remainingTicks > armedTicks
+}
 
 @Serializable
 data class Unit(
@@ -400,6 +408,8 @@ data class GameState(
     val tauntedById: String? = null,
     /** Ticks until the AI tank may taunt again. */
     val aiTauntCooldown: Int = 0,
+    /** Ticks until the AI healer may dispel again. */
+    val aiDispelCooldown: Int = 0,
     val combatElapsedTicks: Int = 0,
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
@@ -516,6 +526,7 @@ data class GameState(
         tauntLockTicks = 0,
         tauntedById = null,
         aiTauntCooldown = 0,
+        aiDispelCooldown = 0,
         enemyDebuffs = emptyList(),
         aiHealerMana = 0.0,
         combatElapsedTicks = 0,

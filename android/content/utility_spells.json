@@ -25,10 +25,35 @@
       "interrupts": true,
       "icon": "wow/ability_kick",
       "tags": []
+    },
+    "cleanse": {
+      "id": "cleanse",
+      "name": "Cleanse",
+      "type": "DIRECT",
+      "school": "utility",
+      "manaCost": 12,
+      "healing": 0,
+      "cooldown": 60,
+      "dispels": true,
+      "icon": "wow/spell_holy_removecurse",
+      "tags": []
     }
   },
   "grants": [
-    { "cls": "MAGE", "spell": "counterspell", "level": 1 },
-    { "cls": "ROGUE", "spell": "kick", "level": 1 }
+    {
+      "cls": "MAGE",
+      "spell": "counterspell",
+      "level": 1
+    },
+    {
+      "cls": "ROGUE",
+      "spell": "kick",
+      "level": 1
+    },
+    {
+      "role": "HEALER",
+      "spell": "cleanse",
+      "level": 5
+    }
   ]
 }

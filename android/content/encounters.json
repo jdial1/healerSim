@@ -1,5 +1,5 @@
 {
-  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it. bosses: what this layer adds to a boss. The web app never reads this file.",
+  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals.",
   "attacks": {
     "vc_ambush": {
       "castTicks": 20
@@ -73,6 +73,70 @@
           "interruptible": true
         }
       ]
+    },
+    "scarlet_monastery": {
+      "extraDebuffs": [
+        {
+          "abilityId": "sm_dominate",
+          "name": "Dominate Mind",
+          "icon": "wow/ability_kaztik_dominatemind",
+          "durationTicks": 200,
+          "damagePerTick": 0,
+          "targeting": "single_random",
+          "dispellable": true
+        }
+      ]
+    },
+    "gnomeregan": {
+      "extraDebuffs": [
+        {
+          "abilityId": "therm_arcane_bomb",
+          "name": "Arcane Bomb",
+          "icon": "wow/inv_misc_bomb_05",
+          "durationTicks": 70,
+          "damagePerTick": 0,
+          "targeting": "single_random",
+          "dispellable": true
+        }
+      ]
+    },
+    "razorfen_downs": {
+      "extraDebuffs": [
+        {
+          "abilityId": "amnennar_venom",
+          "name": "Creeping Venom",
+          "icon": "wow/ability_creature_poison_03",
+          "durationTicks": 60,
+          "damagePerTick": 0.8,
+          "targeting": "single_random",
+          "dispellable": true
+        }
+      ]
+    }
+  },
+  "aiDispelEveryTicks": 50,
+  "mechanics": {
+    "arugal_curse": {
+      "kind": "curse_chain",
+      "durationTicks": 200,
+      "everyTicks": 40
+    },
+    "sm_dominate": {
+      "kind": "mind_control",
+      "durationTicks": 200,
+      "everyTicks": 20,
+      "hitDamage": 14
+    },
+    "therm_arcane_bomb": {
+      "kind": "bomb",
+      "burstDamage": 45,
+      "safeBelowTicks": 25
+    },
+    "amnennar_venom": {
+      "kind": "poison",
+      "durationTicks": 60,
+      "everyTicks": 30,
+      "maxStacks": 6
     }
   }
 }

@@ -3,6 +3,7 @@ package com.jdial.aegis.sim
 import com.jdial.aegis.data.AttackTemplate
 import com.jdial.aegis.data.BossCombat
 import com.jdial.aegis.data.Dungeon
+import com.jdial.aegis.data.DebuffMechanic
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.Targeting
@@ -438,10 +439,12 @@ class GameTick(
                     ctx.state.enemyTargetId,
                 )
                 if (targets.isNotEmpty()) {
-                    // Note: a new debuff *replaces* the unit's whole debuff list.
+                    val mech = data.encounters.mechanics[tpl.abilityId]
+                    // Note: a new debuff *replaces* the unit's whole debuff list --
+                    // except the puzzle debuffs, which stay until dealt with.
                     party = party.map { u ->
                         if (u.id !in targets) u else u.copy(
-                            debuffs = listOf(
+                            debuffs = u.debuffs.filter { it.sourceAbilityId != tpl.abilityId && data.encounters.mechanics[it.sourceAbilityId] != null } + listOf(
                                 UnitDebuff(
                                     // The web app mints an id here via generateCombatUid,
                                     // which draws from the same PRNG. The draw must happen
@@ -453,6 +456,9 @@ class GameTick(
                                     icon = tpl.icon,
                                     sourceAbilityId = tpl.abilityId,
                                     dispellable = tpl.dispellable,
+                                    stacks = if (mech?.kind == DebuffMechanic.POISON) 1 else 0,
+                                    armedTicks = if (mech?.kind == DebuffMechanic.BOMB) mech.safeBelowTicks else 0,
+                                    charm = mech?.kind == DebuffMechanic.MIND_CONTROL,
                                 ),
                             ),
                         )
@@ -670,11 +676,24 @@ class GameTick(
             var dotTaken = 0.0
             for (d in unit.debuffs) {
                 if (d.remainingTicks <= 0) continue
-                var dot = d.damagePerTick * dotLevelMult
+                var dot = d.damagePerTick * dotLevelMult * max(1, d.stacks)
                 if (s.currentDungeon?.endless == true) dot *= progression.endlessMultiplier(s.endlessStacks)
+                val mech = data.encounters.mechanics[d.sourceAbilityId]
+                var next = d.copy(remainingTicks = d.remainingTicks - 1)
+                when (mech?.kind) {
+                    // Never runs out: every few ticks another stack, and the clock restarts.
+                    DebuffMechanic.POISON -> {
+                        val full = mech.durationTicks ?: d.remainingTicks
+                        if (next.remainingTicks <= full - mech.everyTicks) {
+                            next = next.copy(remainingTicks = full, stacks = min(mech.maxStacks, d.stacks + 1))
+                        }
+                    }
+                    // Left alone, it goes off on whoever carries it.
+                    DebuffMechanic.BOMB -> if (next.remainingTicks <= 0) dot += mech.burstDamage * dotLevelMult
+                }
                 health = max(0.0, health - dot)
                 dotTaken += dot
-                activeDebuffs += d.copy(remainingTicks = d.remainingTicks - 1)
+                if (mech == null || next.remainingTicks > 0) activeDebuffs += next
             }
             // Only read by the tank and DPS mechanics, and summed on the side,
             // so the healer arithmetic above is untouched.
@@ -753,7 +772,7 @@ class GameTick(
         }
 
         // A shield emptied during this tick can trigger Aegis Burst.
-        val transition = hooks.onShieldTransition(ctx, partyAfterBossAi, out)
+        val transition = hooks.onShieldTransition(ctx, partyAfterBossAi, spreadDebuffs(out))
         return EnvResult(
             transition.party,
             nextNat,
@@ -1295,6 +1314,58 @@ class GameTick(
         return out
     }
 
+    /**
+     * The debuffs that reach past their carrier: a curse that jumps to the
+     * next ally, and a mind-controlled ally hitting the most hurt one. Runs on
+     * the timers the tick loop has just advanced; no rng.
+     */
+    private fun spreadDebuffs(party: List<Unit>): List<Unit> {
+        if (data.encounters.mechanics.isEmpty()) return party
+        var out = party
+        for (u in party) {
+            if (u.health <= 0) continue
+            for (d in u.debuffs) {
+                val m = data.encounters.mechanics[d.sourceAbilityId] ?: continue
+                val full = m.durationTicks ?: continue
+                val elapsed = full - d.remainingTicks
+                if (m.everyTicks <= 0 || elapsed <= 0 || elapsed % m.everyTicks != 0) continue
+                when (m.kind) {
+                    DebuffMechanic.CURSE_CHAIN -> {
+                        val next = out.firstOrNull { it.isAlive && it.debuffs.none { x -> x.sourceAbilityId == d.sourceAbilityId } }
+                            ?: continue
+                        val copy = d.copy(id = "${d.id}>${next.id}", remainingTicks = full)
+                        out = out.map { if (it.id == next.id) it.copy(debuffs = it.debuffs + copy) else it }
+                    }
+                    DebuffMechanic.MIND_CONTROL -> {
+                        val victim = out.filter { it.isAlive && it.id != u.id }
+                            .minByOrNull { it.health / it.maxHealth } ?: continue
+                        out = out.map {
+                            if (it.id != victim.id) it
+                            else it.copy(health = max(0.0, it.health - m.hitDamage))
+                        }
+                    }
+                }
+            }
+        }
+        return out
+    }
+
+    /**
+     * The AI healer's dispel, when no human is healing: the first ally with
+     * something safe to take, on a cooldown. It waits out a bomb. No rng.
+     */
+    internal fun aiDispel(s: GameState, party: List<Unit>): Pair<List<Unit>, Int> {
+        val every = data.encounters.aiDispelEveryTicks
+        val cooldown = max(0, s.aiDispelCooldown - 1)
+        if (every <= 0 || cooldown > 0) return party to cooldown
+        if (s.participants.values.any { it.isHuman && it.role == UnitRole.HEALER }) return party to cooldown
+        if (party.none { it.role == UnitRole.HEALER && it.isAlive }) return party to cooldown
+        val target = party.firstOrNull { it.isAlive && it.debuffs.toDispel(safeOnly = true) != null }
+            ?: return party to cooldown
+        val gone = target.debuffs.toDispel(safeOnly = true)!!
+        return party.map { if (it.id == target.id) it.copy(debuffs = it.debuffs - gone) else it } to every
+    }
+
     // --- the tick ------------------------------------------------------------
 
     fun advance(state: GameState, rng: Rng, dpsMultiplierOverride: Double? = null): GameState {
@@ -1363,8 +1434,8 @@ class GameTick(
         // Before the failure check, so a heal that lands this tick actually
         // saves the unit rather than being applied to a corpse.
         val ai = aiHealerTick(acc, sys.party)
-        acc = acc.copy(aiHealerMana = ai.manaLeft)
-        val partyAfterAi = ai.party
+        val (partyAfterAi, dispelCooldown) = aiDispel(acc, ai.party)
+        acc = acc.copy(aiHealerMana = ai.manaLeft, aiDispelCooldown = dispelCooldown)
 
         resolveFailure(ctx, acc, partyAfterAi, rng)?.let { return it }
 

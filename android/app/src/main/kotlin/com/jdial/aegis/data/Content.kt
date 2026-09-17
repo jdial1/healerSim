@@ -75,6 +75,8 @@ data class Spell(
     /** MANA today. RAGE and ENERGY exist for the tank and DPS classes. */
     val resource: String = "MANA",
     /** Cancels a boss cast that can be interrupted. */
+    /** Removes a dispellable debuff from its target (see CastPipeline.cleansed). */
+    val dispels: Boolean = false,
     val interrupts: Boolean = false,
 ) {
     fun hasTag(tag: String) = tag in tags
@@ -243,7 +245,40 @@ data class Encounters(
     val bosses: Map<String, BossTuning> = emptyMap(),
     /** How long an AI DPS lets a cast run before kicking it. */
     val aiKickDelayTicks: Int = 8,
+    /** Per debuff ability id: what the debuff does beyond ticking. */
+    val mechanics: Map<String, DebuffMechanic> = emptyMap(),
+    /** How often an AI healer may dispel; 0 means it never does. */
+    val aiDispelEveryTicks: Int = 0,
 )
+
+/**
+ * A boss debuff that is a puzzle rather than a number: when to dispel it.
+ *
+ * - `bomb`: dispelled with more than [safeBelowTicks] left, it bursts on the
+ *   whole party; left to run out, it bursts on its carrier.
+ * - `poison`: gains a stack every [everyTicks], up to [maxStacks], and never
+ *   runs out; each stack is another tick of damage.
+ * - `mind_control`: the carrier hits its most-hurt ally every [everyTicks].
+ * - `curse_chain`: jumps to an uncursed ally every [everyTicks].
+ */
+@Serializable
+data class DebuffMechanic(
+    val kind: String,
+    /** Overrides the template's duration; the timers below count from it. */
+    val durationTicks: Int? = null,
+    val everyTicks: Int = 0,
+    val maxStacks: Int = 1,
+    val burstDamage: Double = 0.0,
+    val safeBelowTicks: Int = 0,
+    val hitDamage: Double = 0.0,
+) {
+    companion object {
+        const val BOMB = "bomb"
+        const val POISON = "poison"
+        const val MIND_CONTROL = "mind_control"
+        const val CURSE_CHAIN = "curse_chain"
+    }
+}
 
 @Serializable
 data class AttackTuning(val castTicks: Int = 0, val interruptible: Boolean = false)
@@ -252,6 +287,7 @@ data class AttackTuning(val castTicks: Int = 0, val interruptible: Boolean = fal
 data class BossTuning(
     /** Attacks this boss has in addition to the shared one: a signature moment. */
     val extraAttacks: List<AttackTemplate> = emptyList(),
+    val extraDebuffs: List<DebuffTemplate> = emptyList(),
 )
 
 /** The dungeons with [encounters] applied. Unknown ids are ignored. */
@@ -263,6 +299,9 @@ fun List<Dungeon>.withEncounters(encounters: Encounters): List<Dungeon> = map { 
             attackTemplates = combat.attackTemplates.map { a ->
                 encounters.attacks[a.abilityId]?.let { a.copy(castTicks = it.castTicks, interruptible = it.interruptible) } ?: a
             } + boss?.extraAttacks.orEmpty(),
+            debuffTemplates = combat.debuffTemplates.map { t ->
+                encounters.mechanics[t.abilityId]?.durationTicks?.let { t.copy(durationTicks = it) } ?: t
+            } + boss?.extraDebuffs.orEmpty(),
         ),
     )
 }

@@ -74,6 +74,7 @@ class CastPipeline(
             val isCrit: Boolean,
             /** Paid from the class resource rather than mana; see Spell.resource. */
             val needResource: Double = 0.0,
+            val targetId: String? = null,
         ) : Ready
         data class Swiftmend(
             val spell: Spell,
@@ -135,9 +136,11 @@ class CastPipeline(
         val hooks = hooksFor(ctx.cls)
         if (spell.isDamage || spell.school == SpellSchool.UTILITY) {
             if (!hooks.damageCastAllowed(ctx, spell, spellId)) return null
+            // A dispel needs a living target with something to take.
+            if (spell.dispels && (target == null || !target.isAlive || target.debuffs.toDispel() == null)) return null
             val extra = hooks.damageCritBonus(ctx, spell, spellId)
             val crit = critRoll < eff.critChancePercent(s.playerCombatBuffs.naturalPerfectionStacks(), extra)
-            return Ready.Damage(spell, spellId, eff, needMana, crit, needResource)
+            return Ready.Damage(spell, spellId, eff, needMana, crit, needResource, targetId)
         }
 
 
@@ -279,6 +282,7 @@ class CastPipeline(
             )
         }.copy(enemyDebuffs = dots).let { hooks.onDamageLand(ctx, it, DamageLand(spell, ready.spellId, ready.isCrit, dealt)) }
             .let { interrupted(it, spell) }
+            .let { cleansed(it, spell, ready.targetId) }
         // The caster's slot, not slot 5: a taunt is inherently "this unit".
         val caster = s.localUnitId
         return if (spell.tauntTicks == null) out else out.copy(
@@ -303,6 +307,17 @@ class CastPipeline(
      * else it does nothing -- and its cooldown is spent all the same, which is
      * the whole cost of kicking at the wrong moment.
      */
+    /** Takes one debuff off the target -- and an armed bomb goes off on everyone. */
+    private fun cleansed(s: GameState, spell: Spell, targetId: String?): GameState {
+        if (!spell.dispels) return s
+        val unit = s.party.firstOrNull { it.id == targetId } ?: return s
+        val gone = unit.debuffs.toDispel() ?: return s
+        val party = s.party.map { if (it.id == unit.id) it.copy(debuffs = it.debuffs - gone) else it }
+        if (!gone.isArmed) return s.copy(party = party)
+        val burst = data.encounters.mechanics[gone.sourceAbilityId]?.burstDamage ?: 0.0
+        return s.copy(party = party.map { if (it.isAlive) it.copy(health = max(0.0, it.health - burst)) else it })
+    }
+
     private fun interrupted(s: GameState, spell: Spell): GameState {
         if (!spell.interrupts || s.enemyCast?.interruptible != true) return s
         return s.copy(enemyCast = null, lastInterruptBy = s.localUnitId)
