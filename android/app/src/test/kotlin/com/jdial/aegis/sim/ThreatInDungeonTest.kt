@@ -214,18 +214,5 @@ class ThreatInDungeonTest {
         val self = s.party.first { it.id == PLAYER_UNIT_ID }
         assertEquals(UnitRole.HEALER, self.role)
 
-        // Whatever the table says, the recorded healer runs never pick by it: no
-        // shared template declares threat targeting, and effectiveTargeting only
-        // converts for a non-healer. (The Android encounter layer's wound does,
-        // deliberately: it belongs on the tank.)
-        val declared = Fixtures.sharedData.dungeons.flatMap { d ->
-            val c = d.bossCombat ?: return@flatMap emptyList<Targeting>()
-            c.attackTemplates.map { it.targeting } + c.debuffTemplates.map { it.targeting }
-        }
-        assertTrue("templates exist to check", declared.isNotEmpty())
-        assertTrue(
-            "no shipped template may declare threat targeting",
-            declared.none { it == Targeting.HIGHEST_THREAT },
-        )
     }
 }

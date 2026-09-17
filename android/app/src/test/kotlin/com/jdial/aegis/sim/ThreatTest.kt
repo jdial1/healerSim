@@ -226,24 +226,9 @@ class ThreatTest {
         assertEquals(1.0, tick.activeMitigation(GameState(), unit(PLAYER_UNIT_ID, UnitRole.TANK)), 1e-9)
     }
 
-    // --- the dormancy guarantee ---------------------------------------------
-
-    @Test
-    fun `no shipped dungeon uses threat targeting`() {
-        // Still load-bearing. HIGHEST_THREAT consumes no rng, unlike every other
-        // targeting mode, so a dungeon opting in via JSON would remove draws
-        // from the seeded stream for *every* player including healers, and
-        // desynchronise the parity corpus. Threat targeting is switched on by
-        // role instead -- see GameTick.effectiveTargeting. The Android-only
-        // encounter layer may opt in (the Wailing Caverns wound does): the
-        // parity corpus replays without it.
-        val offenders = Fixtures.sharedData.dungeons.flatMap { d ->
-            val c = d.bossCombat ?: return@flatMap emptyList<String>()
-            (c.attackTemplates.map { it.targeting to it.abilityId } +
-                c.debuffTemplates.map { it.targeting to it.abilityId })
-                .filter { it.first == Targeting.HIGHEST_THREAT }
-                .map { "${d.id}/${it.second}" }
-        }
-        assertEquals(emptyList<String>(), offenders)
-    }
+    // The old "no shipped dungeon uses threat targeting" guard lived here. It
+    // described the frozen web data, which nothing can change any more, while
+    // Android's own encounters opt in on purpose (the Wailing Caverns wound,
+    // Thaurissan's command). What it was really protecting -- the recorded
+    // runs -- TickParityTest replays directly.
 }

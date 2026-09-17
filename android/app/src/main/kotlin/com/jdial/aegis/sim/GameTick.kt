@@ -597,26 +597,17 @@ class GameTick(
         val tank = party.firstOrNull { it.role == UnitRole.TANK }
         val tankDead = tank == null || tank.health <= 0
         val hooks = hooksFor(ctx.cls)
-        val baseMult = progression.bossDamageMultiplier(dungeon.difficulty) *
-            (if (dungeon.endless) progression.endlessMultiplier(s.endlessStacks) else 1.0) *
-            partyDamageMult * enrageMultiplier(s)
         val natRank = ctx.ranks("natural_perfection")
 
         val kickWasReady = kickReady(s)
         var npAdd = 0
         val next = party.map { u ->
             if (u.health <= 0 || u.id !in targets) return@map u
-            var dmg = tpl.damage * baseMult * progression.levelGapDamageMultiplier(u.level, dungeon.levelMax)
+            var dmg = tpl.damage * incomingDamage(s, u, DamageSource.BOSS_ATTACK, partyDamageMult)
             dmg *= hooks.damageTakenMultiplier(ctx, "boss_attack", u)
             dmg *= activeMitigation(s, u)
             if (tpl.interruptible && tpl.castTicks > 0 && kickWasReady) dmg *= data.encounters.unkickedDamageMultiplier
-            if (u.role == UnitRole.TANK) {
-                dmg *= if (s.playerRole == UnitRole.HEALER) {
-                    data.encounters.healerRunTankDamage
-                } else {
-                    data.balance.roles.tankBossDamageTaken
-                }
-            }
+            if (u.role == UnitRole.TANK) dmg *= tankShare(s)
             // With the tank down, everyone else takes double.
             if (tankDead && (u.role == UnitRole.DPS || u.role == UnitRole.HEALER)) dmg *= 2
             val out = applyDamageToUnit(u, dmg, natRank)
@@ -691,20 +682,7 @@ class GameTick(
                         else -> 0.0
                     }
                 }
-                if (s.combatPhase == CombatPhase.BOSS && s.currentDungeon != null) {
-                    damage *= progression.bossDamageMultiplier(s.currentDungeon.difficulty)
-                    damage *= bossPartyDamageMult
-                }
-                if (s.currentDungeon?.endless == true) damage *= progression.endlessMultiplier(s.endlessStacks)
-                if (s.currentDungeon != null) {
-                    damage *= progression.levelGapDamageMultiplier(unit.level, s.currentDungeon.levelMax)
-                }
-                if (s.combatPhase == CombatPhase.TRASH) {
-                    val packs = s.adds.count { it.kind == AddTemplate.PACK && it.isAlive }
-                    if (packs > 0) damage *= (1 + packs).toDouble()
-                }
-                if (s.playerRole == UnitRole.HEALER) damage *= data.encounters.healerRunChipDamage
-                damage *= hardDamage(s)
+                damage *= incomingDamage(s, unit, DamageSource.AMBIENT, bossPartyDamageMult)
                 damage *= hooks.damageTakenMultiplier(ctx, "trash_tick", unit)
                 damage *= activeMitigation(ctx.state, unit)
             }
@@ -735,15 +713,12 @@ class GameTick(
             }
 
             // DoTs bypass shields and hit health directly.
-            val dotLevelMult = s.currentDungeon
-                ?.let { progression.levelGapDamageMultiplier(unit.level, it.levelMax) } ?: 1.0
+            val dotMult = incomingDamage(s, unit, DamageSource.DOT)
             val activeDebuffs = mutableListOf<UnitDebuff>()
             var dotTaken = 0.0
             for (d in unit.debuffs) {
                 if (d.remainingTicks <= 0) continue
-                var dot = d.damagePerTick * dotLevelMult * max(1, d.stacks)
-                if (s.currentDungeon?.endless == true) dot *= progression.endlessMultiplier(s.endlessStacks)
-                dot *= enrageMultiplier(s)
+                var dot = d.damagePerTick * dotMult * max(1, d.stacks)
                 val mech = data.encounters.mechanics[d.sourceAbilityId]
                 // A wound is gone the moment its carrier raises a defensive; an
                 // AI carrier raises one just before it would burst.
@@ -757,13 +732,13 @@ class GameTick(
                         val full = mech.durationTicks ?: d.remainingTicks
                         if (next.remainingTicks <= full - mech.everyTicks) {
                             val burst = mech.kind == DebuffMechanic.WOUND && d.stacks >= mech.maxStacks
-                            if (burst) dot += mech.burstDamage * dotLevelMult
+                            if (burst) dot += mech.burstDamage * dotMult
                             val stacks = if (burst) 1 else min(mech.maxStacks, d.stacks + 1)
                             next = next.copy(remainingTicks = full, stacks = stacks)
                         }
                     }
                     // Left alone, it goes off on whoever carries it.
-                    DebuffMechanic.BOMB -> if (next.remainingTicks <= 0) dot += mech.burstDamage * dotLevelMult
+                    DebuffMechanic.BOMB -> if (next.remainingTicks <= 0) dot += mech.burstDamage * dotMult
                 }
                 health = max(0.0, health - dot)
                 dotTaken += dot
@@ -1537,6 +1512,82 @@ class GameTick(
         }
         return out
     }
+
+    /**
+     * What kind of hit is landing: each takes a different set of the layers.
+     *
+     * Nested deliberately: this is the tick's own vocabulary, not persisted
+     * state, and the save-contract check covers the enums that are.
+     */
+    internal enum class DamageSource { BOSS_ATTACK, AMBIENT, DOT }
+
+    /**
+     * Everything that multiplies one hit on one party member, gathered here.
+     *
+     * The layers, and which kind of hit takes them. The order is the order the
+     * numbers were multiplied in before this function existed, because the
+     * parity corpus compares doubles and a reordered product is a different
+     * double.
+     *
+     *                           attack   ambient   dot
+     *  dungeon tier               yes    boss only  -
+     *  the boss's own buffs       yes    boss only  -
+     *  endless waves              yes      yes     yes
+     *  enrage, frenzy, hard mode  yes       -      yes     (via enrageMultiplier)
+     *  hard mode                   -       yes      -
+     *  how out-levelled it is     yes      yes     yes
+     *  a rushed extra pack         -       yes      -
+     *  a healer run's relief    tank only  yes      -
+     *  the target's defensive     yes      yes      -
+     *
+     * A new layer belongs in this table, not at a call site.
+     */
+    internal fun incomingDamage(
+        s: GameState,
+        unit: Unit,
+        source: DamageSource,
+        partyDamageMult: Double = 1.0,
+    ): Double {
+        val dungeon = s.currentDungeon
+        val atBoss = s.combatPhase == CombatPhase.BOSS && dungeon != null
+        return when (source) {
+            DamageSource.BOSS_ATTACK -> {
+                var mult = progression.bossDamageMultiplier(dungeon?.difficulty ?: 1) *
+                    (if (dungeon?.endless == true) progression.endlessMultiplier(s.endlessStacks) else 1.0) *
+                    partyDamageMult * enrageMultiplier(s)
+                mult *= progression.levelGapDamageMultiplier(unit.level, dungeon?.levelMax ?: unit.level)
+                mult
+            }
+            DamageSource.AMBIENT -> {
+                var mult = 1.0
+                if (atBoss) {
+                    mult *= progression.bossDamageMultiplier(dungeon!!.difficulty)
+                    mult *= partyDamageMult
+                }
+                if (dungeon?.endless == true) mult *= progression.endlessMultiplier(s.endlessStacks)
+                if (dungeon != null) mult *= progression.levelGapDamageMultiplier(unit.level, dungeon.levelMax)
+                if (s.combatPhase == CombatPhase.TRASH) {
+                    // A pack pulled early is still standing here.
+                    val packs = s.adds.count { it.kind == AddTemplate.PACK && it.isAlive }
+                    if (packs > 0) mult *= (1 + packs).toDouble()
+                }
+                if (s.playerRole == UnitRole.HEALER) mult *= data.encounters.healerRunChipDamage
+                mult *= hardDamage(s)
+                mult
+            }
+            DamageSource.DOT -> {
+                var mult = dungeon?.let { progression.levelGapDamageMultiplier(unit.level, it.levelMax) } ?: 1.0
+                if (dungeon?.endless == true) mult *= progression.endlessMultiplier(s.endlessStacks)
+                mult *= enrageMultiplier(s)
+                mult
+            }
+        }
+    }
+
+    /** What the tank takes, which depends on who is healing it. */
+    internal fun tankShare(s: GameState): Double =
+        if (s.playerRole == UnitRole.HEALER) data.encounters.healerRunTankDamage
+        else data.balance.roles.tankBossDamageTaken
 
     /**
      * Hard mode's scale: what it multiplies enemy health and damage by,

@@ -31,24 +31,10 @@ class GameDataTest {
     }
 
     @Test
-    fun `talent and spell inventory matches the web app`() {
-        assertEquals(32, data.bundle(PlayerClass.PRIEST).talents.size)
-        assertEquals(32, data.bundle(PlayerClass.DRUID).talents.size)
-        // Android lays its own trees over the healers' (classes-overrides);
-        // the Paladin's dropped the filler it had no distinct job for.
-        assertEquals(24, data.bundle(PlayerClass.PALADIN).talents.size)
-        assertEquals(29, Fixtures.sharedData.bundle(PlayerClass.PALADIN).talents.size)
-
-        assertEquals(4, data.bundle(PlayerClass.PRIEST).spells.size)
-        assertEquals(6, data.bundle(PlayerClass.DRUID).spells.size)
-        assertEquals(3, data.bundle(PlayerClass.PALADIN).spells.size)
-
-        assertEquals(4, data.bundle(PlayerClass.MAGE).spells.size)
-        assertEquals(16, data.bundle(PlayerClass.MAGE).talents.size)
-        // The Warrior carries a rage dump the other kits do not need.
-        assertEquals(5, data.bundle(PlayerClass.WARRIOR).spells.size)
-        assertEquals(16, data.bundle(PlayerClass.WARRIOR).talents.size)
-
+    fun `every class has a kit and a tree`() {
+        // Counts, not a census: this used to name a number per class, and every
+        // piece of content added since had to come here and change it. What it
+        // is actually for is catching a class that failed to load at all.
         // The Android-owned classes: two per role beyond the healers, the third
         // of each new role deliberately unbuilt.
         for (cls in listOf(
