@@ -1,62 +1,79 @@
 {
-  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure).",
+  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it; tell is what the boss says as it starts. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure).",
   "attacks": {
     "vc_ambush": {
-      "castTicks": 20
+      "castTicks": 20,
+      "tell": "VanCleef melts into the shadows..."
     },
     "arugal_void_bolt": {
       "castTicks": 20,
-      "interruptible": true
+      "interruptible": true,
+      "tell": "Arugal gathers the void in his hands."
     },
     "verdan_spore_burst": {
       "castTicks": 25,
-      "interruptible": true
+      "interruptible": true,
+      "tell": "Verdan's bulbs swell, ready to burst."
     },
     "therm_bomb": {
-      "castTicks": 20
+      "castTicks": 20,
+      "tell": "Thermaplugg arms a bomb with a grin."
     },
     "smite_penance": {
-      "castTicks": 20
+      "castTicks": 20,
+      "tell": "Smite raises his hammer high."
     },
     "amnennar_bolt": {
       "castTicks": 25,
-      "interruptible": true
+      "interruptible": true,
+      "tell": "The air turns cold around Amnennar."
     },
     "ukorz_impale": {
-      "castTicks": 20
+      "castTicks": 20,
+      "tell": "Ukorz lowers his spear and charges."
     },
     "theradras_boulder": {
-      "castTicks": 20
+      "castTicks": 20,
+      "tell": "Theradras tears a boulder from the wall!"
     },
     "eranikus_acid": {
       "castTicks": 25,
-      "interruptible": true
+      "interruptible": true,
+      "tell": "Eranikus draws a long, rattling breath."
     },
     "thaurissan_dominate": {
-      "castTicks": 20
+      "castTicks": 20,
+      "tell": "Thaurissan's eyes blaze with fire."
     },
     "overlord_strike": {
-      "castTicks": 25
+      "castTicks": 25,
+      "tell": "The Overlord winds up a crushing blow."
     },
     "rivendare_death_coil": {
-      "castTicks": 25
+      "castTicks": 25,
+      "tell": "Rivendare calls on death itself."
     },
     "gandling_shadow_bolt": {
       "castTicks": 25,
-      "interruptible": true
+      "interruptible": true,
+      "tell": "Gandling begins a very dark lesson."
     },
     "gordok_slam": {
-      "castTicks": 25
+      "castTicks": 25,
+      "tell": "The Gordok king raises both fists!"
     },
     "drakkisath_fireball": {
       "castTicks": 25,
-      "interruptible": true
+      "interruptible": true,
+      "tell": "Drakkisath breathes in the flame."
     },
     "rag_magma": {
-      "castTicks": 30
+      "castTicks": 30,
+      "tell": "The ground glows beneath Ragnaros!"
     },
     "endless_surge": {
-      "castTicks": 20
+      "castTicks": 20,
+      "tell": "The darkness surges forward."
     }
   },
   "aiKickDelayTicks": 8,
@@ -70,7 +87,8 @@
           "damage": 30,
           "targeting": "all_living",
           "castTicks": 30,
-          "interruptible": true
+          "interruptible": true,
+          "tell": "VanCleef waves to the ship: \"Fire!\""
         }
       ]
     },

@@ -134,6 +134,25 @@ class BattleSceneTest {
     }
 
     @Test
+    fun `a boss says its tell once, as the cast starts`() {
+        val cast = EnemyCast("vc_cannon", "Cannon Barrage", targets = listOf("1"), remainingTicks = 30, totalTicks = 30, tell = "Fire!")
+        val casting = fight.copy(enemyCast = cast)
+        assertEquals(listOf(SceneEvent.Tell("Fire!")), sceneEventsBetween(fight, casting).filterIsInstance<SceneEvent.Tell>())
+        val later = casting.copy(enemyCast = cast.copy(remainingTicks = 20))
+        assertTrue(sceneEventsBetween(casting, later).none { it is SceneEvent.Tell })
+        // A cast with nothing to say says nothing.
+        assertTrue(sceneEventsBetween(fight, fight.copy(enemyCast = cast.copy(tell = ""))).none { it is SceneEvent.Tell })
+    }
+
+    @Test
+    fun `every boss cast has a tell`() {
+        val casts = com.jdial.aegis.sim.Fixtures.data.dungeons.flatMap { it.bossCombat?.attackTemplates.orEmpty() }
+            .filter { it.castTicks > 0 }
+        assertTrue(casts.isNotEmpty())
+        assertEquals(emptyList<String>(), casts.filter { it.tell.isBlank() }.map { it.abilityId })
+    }
+
+    @Test
     fun `the tank leads and the healer stands at the back`() {
         val roles = lineUp(fight.party.shuffled(java.util.Random(1))).map { it.role }
         assertEquals(UnitRole.TANK, roles.first())

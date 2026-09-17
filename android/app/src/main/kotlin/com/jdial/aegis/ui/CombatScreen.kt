@@ -84,6 +84,8 @@ import com.jdial.aegis.sim.CombatPhase
 import com.jdial.aegis.sim.FLOATING_TEXT_LIFETIME_TICKS
 import com.jdial.aegis.sim.offGlobalCooldown
 import com.jdial.aegis.sim.toDispel
+import com.jdial.aegis.data.enrageAfterTicks
+import androidx.compose.ui.graphics.Path
 import com.jdial.aegis.sim.FloatingKind
 import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.TRASH_PACK_COUNT
@@ -126,6 +128,7 @@ fun CombatScreen(
     onLeave: () -> kotlin.Unit,
     onPullNow: () -> kotlin.Unit = {},
 ) {
+    val enrageAfter = data.encounters.enrageAfterTicks(state.currentDungeon?.id)
     // Drag-to-cast. VuhDo and HealBot collapse target and heal into one click;
     // on touch the honest analogue is dragging a spell onto a frame. The two-tap
     // path is untouched — this is an additional route, not a replacement.
@@ -211,7 +214,7 @@ fun CombatScreen(
                         verticalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column {
-                            EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick)
+                            EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, enrageAfter, data.encounters.pressure.enrageRampPerTick)
                             // A landscape phone has about 400dp of height: the
                             // HUD and the action bar need all of it, and the
                             // scene pushed the bar off the screen. Tablets have
@@ -228,7 +231,7 @@ fun CombatScreen(
                 }
             } else {
                 Column(Modifier.fillMaxSize()) {
-                    EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick)
+                    EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, enrageAfter, data.encounters.pressure.enrageRampPerTick)
                     Spacer(Modifier.height(8.dp))
                     BattleView(state)
                     Spacer(Modifier.height(8.dp))
@@ -254,6 +257,8 @@ private fun EncounterHud(
     onLeave: () -> kotlin.Unit,
     onPullNow: () -> kotlin.Unit,
     earlyPullXpPerTick: Double,
+    enrageAfterTicks: Int,
+    enrageRampPerTick: Double,
 ) {
     val dungeon = state.currentDungeon ?: return
     val isBoss = state.combatPhase == CombatPhase.BOSS
@@ -281,6 +286,10 @@ private fun EncounterHud(
                 }
 
                 Spacer(Modifier.weight(1f))
+                if (isBoss && enrageAfterTicks > 0) {
+                    EnrageClock(state.bossTicks, enrageAfterTicks, enrageRampPerTick)
+                    Spacer(Modifier.width(8.dp))
+                }
                 BasicText(
                     "LEAVE",
                     style = AegisType.label.copy(color = Ink.muted),
@@ -668,6 +677,44 @@ private fun nextMechanic(state: GameState): NextMechanic? {
  * debuffTemplates, so the full duration is a content lookup rather than new
  * serialized state (which would land in the parity-covered GameState).
  */
+/**
+ * The boss's enrage timer: an hourglass draining toward it, then how much
+ * harder the boss is hitting for every second past it.
+ */
+@Composable
+private fun EnrageClock(bossTicks: Int, afterTicks: Int, rampPerTick: Double) {
+    val left = (afterTicks - bossTicks).coerceAtLeast(0)
+    val sand = (left.toFloat() / afterTicks).coerceIn(0f, 1f)
+    val enraged = left == 0
+    val colour = if (enraged) Vital.critical else Gilt.core
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Canvas(Modifier.size(width = 10.dp, height = 14.dp)) {
+            val w = size.width
+            val h = size.height
+            val glass = Path().apply {
+                moveTo(0f, 0f); lineTo(w, 0f); lineTo(w / 2, h / 2); lineTo(w, h); lineTo(0f, h); lineTo(w / 2, h / 2); close()
+            }
+            drawPath(glass, colour, style = Stroke(1.dp.toPx()))
+            // Sand above, falling into the pile below.
+            val top = h / 2 * (1 - sand)
+            val half = w / 2 * sand
+            drawPath(Path().apply { moveTo(w / 2 - half, top); lineTo(w / 2 + half, top); lineTo(w / 2, h / 2); close() }, colour)
+            val pile = h / 2 * (1 - sand)
+            val base = w / 2 * (1 - sand)
+            drawPath(Path().apply { moveTo(w / 2 - base, h); lineTo(w / 2 + base, h); lineTo(w / 2, h - pile); close() }, colour)
+        }
+        Spacer(Modifier.width(5.dp))
+        BasicText(
+            if (enraged) {
+                "ENRAGED +${((bossTicks - afterTicks) * rampPerTick * 100).roundToInt()}%"
+            } else {
+                "%d:%02d".format(left / 600, (left / 10) % 60)
+            },
+            style = AegisType.numeric.copy(fontSize = 12.sp, color = colour),
+        )
+    }
+}
+
 /**
  * Between pulls: how long the breather lasts, and what pulling now is worth.
  * The choice is the point -- drink up, or take the XP and go in thirsty.

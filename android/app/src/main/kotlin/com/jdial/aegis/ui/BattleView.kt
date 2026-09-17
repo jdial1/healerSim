@@ -7,6 +7,11 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -252,6 +257,9 @@ sealed interface SceneEvent {
 
     /** A boss cast was cancelled before it landed, by [byUnitId]. */
     data class Interrupted(val byUnitId: String?) : SceneEvent
+
+    /** The boss announcing what is coming: its tell, said once as the cast starts. */
+    data class Tell(val text: String) : SceneEvent
 }
 
 /** Below this an AI party member asks for help. */
@@ -298,6 +306,9 @@ fun sceneEventsBetween(prev: GameState, cur: GameState): List<SceneEvent> = buil
     if (healer != null && prev.aiHealerMana >= BARK_OOM_MANA && cur.aiHealerMana < BARK_OOM_MANA) {
         add(SceneEvent.Bark(healer.id, "Out of mana!"))
     }
+
+    val cast = cur.enemyCast
+    if (cast != null && cast.tell.isNotEmpty() && prev.enemyCast?.abilityId != cast.abilityId) add(SceneEvent.Tell(cast.tell))
 
     // A cast that vanished before its last tick was kicked, not landed.
     val lastCast = prev.enemyCast
@@ -369,6 +380,7 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
     val bursts = remember { mutableStateListOf<Burst>() }
     var enemyFlash by remember { mutableStateOf(0) }
     var interruptedAt by remember { mutableStateOf(0L) }
+    var tell by remember { mutableStateOf<Say?>(null) }
     var enemyLunge by remember { mutableStateOf(0) }
     var nextAttacker by remember { mutableStateOf(0) }
     var pending by remember { mutableStateOf(0) }
@@ -388,6 +400,7 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
             is SceneEvent.Died -> flinch[e.unitId] = (flinch[e.unitId] ?: 0) + 1
             is SceneEvent.Bark -> says[e.unitId] = Say(e.text, now + 1_600)
             is SceneEvent.Interrupted -> interruptedAt = now
+            is SceneEvent.Tell -> tell = Say(e.text, now + 2_400)
             is SceneEvent.EnemyHit -> {
                 pending += e.amount
                 // Ten ticks a second of damage becomes one swing and one number
@@ -408,6 +421,7 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
             }
         }
         says.entries.removeAll { it.value.until < now }
+        if ((tell?.until ?: Long.MAX_VALUE) < now) tell = null
         previous = state
     }
 
@@ -432,6 +446,30 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
 
         // The party on the left, facing the enemy, the tank out in front.
         val spots = formation(party)
+        val boss = state.combatPhase == CombatPhase.BOSS
+        val bossX = w - BOSS.dp - 26.dp
+        val bossY = (h - BOSS.dp) / 2 + 6.dp
+        val cast = state.enemyCast
+        val focus = cast?.targets?.firstOrNull() ?: state.enemyTargetId
+        // Who the enemy means: a dashed line to each victim of a wind-up, and a
+        // faint one to whoever the boss is simply fighting.
+        Canvas(Modifier.fillMaxSize()) {
+            val from = if (boss) {
+                Offset((bossX + (BOSS / 2).dp).toPx(), (bossY + (BOSS / 2).dp).toPx())
+            } else {
+                Offset((w - 40.dp).toPx(), (h / 2).toPx())
+            }
+            fun at(id: String) = spots[id]?.let { Offset((it.x + SPRITE / 2).dp.toPx(), (it.y + SPRITE / 2).dp.toPx()) }
+            if (cast != null) {
+                val colour = (if (cast.interruptible) Kick else WindUp).copy(alpha = 0.35f + 0.55f * cast.progress)
+                for (id in cast.targets) at(id)?.let {
+                    drawLine(colour, from, it, 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f)))
+                }
+            } else if (boss) {
+                state.enemyTargetId?.let(::at)?.let { drawLine(Color.White.copy(alpha = 0.2f), from, it, 1.dp.toPx()) }
+            }
+        }
+
         party.forEachIndexed { i, u ->
             key(u.id) {
                 val spot = spots.getValue(u.id)
@@ -456,7 +494,6 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
 
         // The enemy on the right: a pack that thins as it loses health, or one
         // big boss.
-        val boss = state.combatPhase == CombatPhase.BOSS
         val look = lookForEnemy(state)
         val flash = remember { Animatable(0f) }
         LaunchedEffect(enemyFlash) {
@@ -478,9 +515,16 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
         val facing = Modifier.graphicsLayer { scaleX = -1f }
         val stepX = (-14 * step.value).dp
         if (boss) {
+            // The boss turns toward whoever it means: a lean, not a spin.
+            val aimY = focus?.let { spots[it] }?.let { (it.y + SPRITE / 2).toFloat() }
+            val lean by animateFloatAsState(
+                aimY?.let { ((it - (bossY + (BOSS / 2).dp).value) / 40f).coerceIn(-1f, 1f) * 10f } ?: 0f,
+                tween(300),
+                label = "lean",
+            )
             PixelSprite(
                 look.sprite, BOSS.dp, tint,
-                Modifier.offset(x = w - BOSS.dp - 26.dp + stepX, y = (h - BOSS.dp) / 2 + 6.dp).then(facing),
+                Modifier.offset(x = bossX + stepX, y = bossY).graphicsLayer { rotationZ = -lean }.then(facing),
             )
         } else {
             val slots = listOf(0.dp to 6.dp, (-38).dp to 42.dp, 4.dp to 82.dp)
@@ -493,8 +537,31 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
             }
         }
 
-        state.enemyCast?.let { cast ->
-            CastBar(cast, Modifier.offset(x = w - 146.dp, y = 5.dp).width(132.dp))
+        // A hit on everyone reddens the whole scene as it nears.
+        if (cast != null && cast.targets.size > 1 && cast.targets.size >= state.party.count { it.isAlive }) {
+            Box(Modifier.fillMaxSize().background(Danger.copy(alpha = 0.06f + 0.22f * cast.progress)))
+        }
+        cast?.let {
+            CastBar(it, Modifier.offset(x = w - 146.dp, y = 5.dp).width(132.dp))
+        }
+        if (state.exposedTicks > 0) {
+            BasicText(
+                "EXPOSED  ${ceil(state.exposedTicks / 10.0).toInt()}s",
+                style = AegisType.label.copy(fontSize = 11.sp, color = Kick),
+                modifier = Modifier.offset(x = w - 120.dp, y = h - 22.dp),
+            )
+        }
+        tell?.let {
+            BasicText(
+                it.text,
+                maxLines = 2,
+                style = AegisType.label.copy(fontSize = 10.sp, color = Color.White),
+                modifier = Modifier
+                    .offset(x = w - 200.dp, y = if (cast != null) 24.dp else 6.dp)
+                    .width(186.dp)
+                    .background(Color(0xCC000000), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
+            )
         }
         // The payoff for a kick: the cast breaks, and says so.
         val sinceKick = remember(interruptedAt) { Animatable(0f) }
@@ -522,8 +589,9 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
                     style = AegisType.numeric.copy(fontSize = 13.sp, color = Color.White),
                     modifier = Modifier
                         // In the open ground just short of the enemy: drawn over
-                        // the sprites they were hard to read.
-                        .offset(x = w - 150.dp + (b.id % 17).toInt().dp, y = (48 - 26 * rise.value).dp)
+                        // the sprites they were hard to read. Below the boss's
+                        // tell, which sits under the cast bar.
+                        .offset(x = w - 150.dp + (b.id % 17).toInt().dp, y = (96 - 26 * rise.value).dp)
                         .graphicsLayer { alpha = 1f - rise.value * rise.value },
                 )
             }
@@ -532,6 +600,7 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
 }
 
 private val WindUp = Color(0xFFF97316)
+private val Danger = Color(0xFFDC2626)
 
 /** A cast that can be kicked, and the kick that lands. */
 private val Kick = Color(0xFFFACC15)

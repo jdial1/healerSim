@@ -193,6 +193,7 @@ data class EnemyCast(
     val remainingTicks: Int,
     val totalTicks: Int,
     val interruptible: Boolean = false,
+    val tell: String = "",
 ) {
     /** 0 at the start of the wind-up, 1 as it lands. */
     val progress: Float get() = if (totalTicks <= 0) 1f else 1f - remainingTicks.toFloat() / totalTicks

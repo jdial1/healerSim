@@ -62,6 +62,8 @@ class EnemyCastTest {
         val started = tick(atAmbush(), rng)
         val cast = assertNotNull(started.enemyCast).let { started.enemyCast!! }
         assertEquals(ambush.castTicks, cast.remainingTicks)
+        assertEquals(ambush.tell, cast.tell)
+        assertTrue(cast.tell.isNotEmpty())
         assertTrue(cast.targets.isNotEmpty())
         val before = health(started)
 

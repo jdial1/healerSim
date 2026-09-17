@@ -4,6 +4,7 @@ import com.jdial.aegis.data.AttackTemplate
 import com.jdial.aegis.data.BossCombat
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.DebuffMechanic
+import com.jdial.aegis.data.enrageAfterTicks
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.Targeting
@@ -496,6 +497,7 @@ class GameTick(
                             remainingTicks = tpl.castTicks,
                             totalTicks = tpl.castTicks,
                             interruptible = tpl.interruptible,
+                            tell = tpl.tell,
                         )
                     }
                 } else {
@@ -1373,7 +1375,7 @@ class GameTick(
     /** Boss damage grows once the boss has lasted past its enrage timer. */
     internal fun enrageMultiplier(s: GameState): Double {
         val p = data.encounters.pressure
-        val after = s.currentDungeon?.let { data.encounters.bosses[it.id]?.enrageAfterTicks } ?: p.enrageAfterTicks
+        val after = data.encounters.enrageAfterTicks(s.currentDungeon?.id)
         if (after <= 0 || s.bossTicks <= after) return 1.0
         return 1 + (s.bossTicks - after) * p.enrageRampPerTick
     }

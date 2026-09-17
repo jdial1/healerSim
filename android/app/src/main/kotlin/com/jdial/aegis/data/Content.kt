@@ -235,6 +235,8 @@ data class AttackTemplate(
     val castTicks: Int = 0,
     /** A DPS can cancel it while it winds up. */
     val interruptible: Boolean = false,
+    /** What the boss says as the wind-up starts: its fixed tell. */
+    val tell: String = "",
 )
 
 /** content/encounters.json: Android-only tuning layered onto the shared dungeons. */
@@ -310,7 +312,7 @@ data class DebuffMechanic(
 }
 
 @Serializable
-data class AttackTuning(val castTicks: Int = 0, val interruptible: Boolean = false)
+data class AttackTuning(val castTicks: Int = 0, val interruptible: Boolean = false, val tell: String = "")
 
 @Serializable
 data class BossTuning(
@@ -321,6 +323,10 @@ data class BossTuning(
     val enrageAfterTicks: Int? = null,
 )
 
+/** Boss ticks before [dungeonId]'s boss enrages; 0 means never. */
+fun Encounters.enrageAfterTicks(dungeonId: String?): Int =
+    dungeonId?.let { bosses[it]?.enrageAfterTicks } ?: pressure.enrageAfterTicks
+
 /** The dungeons with [encounters] applied. Unknown ids are ignored. */
 fun List<Dungeon>.withEncounters(encounters: Encounters): List<Dungeon> = map { d ->
     val combat = d.bossCombat ?: return@map d
@@ -328,7 +334,7 @@ fun List<Dungeon>.withEncounters(encounters: Encounters): List<Dungeon> = map { 
     d.copy(
         bossCombat = combat.copy(
             attackTemplates = combat.attackTemplates.map { a ->
-                encounters.attacks[a.abilityId]?.let { a.copy(castTicks = it.castTicks, interruptible = it.interruptible) } ?: a
+                encounters.attacks[a.abilityId]?.let { a.copy(castTicks = it.castTicks, interruptible = it.interruptible, tell = it.tell) } ?: a
             } + boss?.extraAttacks.orEmpty(),
             debuffTemplates = combat.debuffTemplates.map { t ->
                 encounters.mechanics[t.abilityId]?.durationTicks?.let { t.copy(durationTicks = it) } ?: t
