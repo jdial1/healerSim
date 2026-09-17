@@ -824,6 +824,8 @@ class GameTick(
             hps = eff / sec,
             overhealPct = if (raw > 0) 100 * s.runHealOverheal / raw else 0.0,
             hpm = if (s.runManaSpentHealing > 0) eff / s.runManaSpentHealing else 0.0,
+            damageDone = s.runDamageDealt,
+            dps = s.runDamageDealt / sec,
         )
     }
 
@@ -1026,6 +1028,8 @@ class GameTick(
             mechanicCooldown = boss.mechanicCooldown,
             mechanicOrdinal = boss.mechanicOrdinal,
             bossSelfBuffs = if (s.combatPhase == CombatPhase.BOSS) bossBuffsNext else emptyList(),
+            // This client's own damage: its casts and its DoTs (see threatByActor).
+            runDamageDealt = s.runDamageDealt + s.me.pendingEnemyDamage + enemyDots,
         )
 
         if (enemyHealth > 0) return finalizeProgress(base.copy(enemyHealth = enemyHealth))

@@ -153,20 +153,58 @@ def _wrap(d, text, font, maxw):
     return out
 
 
+SPLASH = os.path.join(OUT, '..', '..', 'app', 'src', 'main', 'res', 'drawable', 'splash_bg.png')
+FEATURE = os.path.join(os.path.dirname(OUT), 'feature-graphic.png')
+
+
+def feature_graphic():
+    """1024x500: the splash figure on the branded ground, the name beside it.
+
+    The splash art is a round medallion with a white rim, so only the disc
+    inside the rim is used, feathered, rather than the square it sits in.
+    """
+    W, H = 1024, 500
+    canvas = ground(W, H).convert('RGBA')
+    art = Image.open(SPLASH).convert('RGBA')
+    size = art.width
+    inner = int(size * 0.40)
+    c = size // 2
+    mask = Image.new('L', art.size, 0)
+    ImageDraw.Draw(mask).ellipse([c - inner, c - inner, c + inner, c + inner], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(size // 40))
+    art.putalpha(mask)
+    art = art.resize((560, 560), Image.LANCZOS)
+    canvas.alpha_composite(art, (W - 560 + 90, (H - 560) // 2))
+
+    d = ImageDraw.Draw(canvas)
+    f1 = ImageFont.truetype(CINZEL, 70)
+    f2 = ImageFont.truetype(SANS_B, 30)
+    f3 = ImageFont.truetype(SANS, 24)
+    tracked(d, (60, 150), 'OVERHEAL', f1, GILT, 8)
+    tracked(d, (64, 268), 'TANK  \u00b7  HEAL  \u00b7  DPS', f2, INK, 6)
+    d.text((64, 322), 'A dungeon party where every role is yours.', font=f3, fill=INK_MUTED)
+    canvas.convert('RGB').save(FEATURE, 'PNG')
+    print('  ', os.path.basename(FEATURE), f'{W}x{H}')
+
+
 os.makedirs(OUT, exist_ok=True)
 for f in os.listdir(OUT):
     os.remove(os.path.join(OUT, f))
 
+# Role-based positioning: every class is a job, and the shots show all three.
 print('portrait 1080x1920 (9:16):')
-portrait(f'{RAW}/p-splash.png', 'OVERHEAL', 'THE HEALER\u2019S OATH', '01-title.png', title=True)
-portrait(f'{RAW}/p-combat-boss.png', 'Five bars, one job', 'Nobody else is watching them', '02-five-bars.png')
-portrait(f'{RAW}/p-combat-hots.png', 'The tank is not okay', 'He will not tell you this', '03-tank.png')
-portrait(f'{RAW}/p-class.png', 'Pick your poison', 'Three healers, three problems', '04-classes.png')
-portrait(f'{RAW}/p-talents.png', 'Talents that mean it', 'The numbers match the text', '05-talents.png')
-portrait(f'{RAW}/p-dungeons.png', 'Sixteen dungeons', 'Then an endless one', '06-dungeons.png')
+portrait(f'{RAW}/p-splash.png', 'OVERHEAL', 'TANK \u00b7 HEAL \u00b7 DPS', '01-title.png', title=True)
+portrait(f'{RAW}/p-class.png', 'Pick your role', 'Heal, tank or deal the damage', '02-roles.png')
+portrait(f'{RAW}/p-combat-heal.png', 'Keep them alive', 'Five bars and never enough mana', '03-heal.png')
+portrait(f'{RAW}/p-combat-tank.png', 'Hold the line', 'Rage, threat, and a boss that wants you', '04-tank.png')
+portrait(f'{RAW}/p-combat-dps.png', 'Build, then spend', 'Energy, combo points, one big finisher', '05-dps.png')
+portrait(f'{RAW}/p-character.png', 'A mechanic per class', 'Your signature stat changes how it plays', '06-mastery.png')
 
 print('landscape 1920x1080 (16:9):')
-landscape(f'{RAW}/l-combat.png', 'Drag a spell onto a frame', 'One gesture. Target and heal, the way click-casting always worked.', '07-drag-to-cast.png')
-landscape(f'{RAW}/l-dungeons.png', 'Sixteen dungeons deep', 'Then an endless one that does not stop scaling.', '08-dungeons-wide.png')
-landscape(f'{RAW}/l-talents.png', 'Spend the point', 'Thirty-odd talents a tree, and a free respec whenever you like.', '09-talents-wide.png')
-landscape(f'{RAW}/l-combat2.png', 'Nobody thanks the healer', 'Play offline. No ads, no account, no timers, nothing to buy.', '10-no-thanks.png')
+landscape(f'{RAW}/l-combat.png', 'Drag a spell onto a frame', 'Healers target and cast in one gesture.', '07-drag-to-cast.png')
+landscape(f'{RAW}/l-combat2.png', 'Hold its attention', 'Tanks keep the enemy on themselves, or the healer pays for it.', '08-threat.png')
+landscape(f'{RAW}/l-talents.png', 'Spend the point', 'A full talent tree for every class, and a free respec whenever you like.', '09-talents-wide.png')
+landscape(f'{RAW}/l-dungeons.png', 'Sixteen dungeons deep', 'Then an endless one. Offline, no ads, nothing to buy.', '10-dungeons-wide.png')
+
+print('feature graphic 1024x500:')
+feature_graphic()

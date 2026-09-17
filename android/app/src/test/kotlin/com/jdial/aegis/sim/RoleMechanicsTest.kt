@@ -215,6 +215,20 @@ class RoleMechanicsTest {
     }
 
     @Test
+    fun `a damage dealer's run records what they dealt`() {
+        var s = fight(PlayerClass.MAGE)
+        val rng = Rng(9)
+        var dealt = 0.0
+        repeat(40) {
+            s = engine.reduce(s, Action.CastSpell("frostbolt", null, 99.9), rng)
+            dealt += s.pendingEnemyDamage + s.enemyDebuffs.sumOf { it.damagePerTick }
+            s = engine.reduce(s, Action.Tick(1), rng)
+        }
+        assertTrue(dealt > 0)
+        assertEquals(dealt, s.runDamageDealt, 1e-6)
+    }
+
+    @Test
     fun `a healer's class tick changes nothing`() {
         val s = fight(PlayerClass.PRIEST)
         assertEquals(s.participants, tick.classTick(s, mapOf(me to 50.0)).participants)

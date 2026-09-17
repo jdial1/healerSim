@@ -4,7 +4,11 @@
 
 Ten captioned images in `screenshots/`, six portrait 1080x1920 and four
 landscape 1920x1080. `01-title.png` is the title card; the rest carry a short
-line each.
+line each, and the set is ordered for the role-based positioning in
+`listing.md`: the role choice, then one fight from each role.
+
+Play shows at most eight phone screenshots, so upload the six portrait ones
+as phone screenshots and the four landscape ones for tablets.
 
 **Why they are composed rather than raw captures.** The device captures are
 1080x2424, an aspect ratio of 2.24:1. Play accepts each side between 320 and
@@ -21,12 +25,11 @@ Rebuild them with the compositor after any UI change; the captions and sources
 are listed at the bottom of that script. The previous set went stale within a
 day when the frame layout changed, so treat them as build output, not assets.
 
-## Still to make
+## Feature graphic
 
-**Feature graphic — 1024×500 PNG or JPEG, required.** No source exists in this
-repo, and it cannot be cropped from `public/game_icon-512.png`: that is a square
-icon, and the splash art behind it is a portrait composition. It needs to be
-authored.
+`feature-graphic.png`, 1024×500, built by the same script: the splash
+medallion on the branded ground, with the name and the three roles beside it.
+Rebuild it with the screenshots.
 
 **App icon — 512×512, done.** `public/game_icon-512.png` is already the exact
 size Play wants.

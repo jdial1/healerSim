@@ -145,6 +145,7 @@ fun CombatScreen(
             // Tablets and unfolded foldables land here too, since targetSdk 36+
             // ignores a portrait lock above 600dp.
             val wide = maxWidth > maxHeight
+            val roomForScene = maxHeight >= WideBattleViewMinHeight
 
             @Composable
             fun PartyGrid(modifier: Modifier) = BoxWithConstraints(
@@ -204,8 +205,14 @@ fun CombatScreen(
                     ) {
                         Column {
                             EncounterHud(state, onLeave)
-                            Spacer(Modifier.height(8.dp))
-                            BattleView(state)
+                            // A landscape phone has about 400dp of height: the
+                            // HUD and the action bar need all of it, and the
+                            // scene pushed the bar off the screen. Tablets have
+                            // room for it.
+                            if (roomForScene) {
+                                Spacer(Modifier.height(8.dp))
+                                BattleView(state)
+                            }
                         }
                         ActionBar(state, data, onCast, onReorder, dropTargetId, { dragPoint = it }) { spellId ->
                             dropTargetId?.let { onCastAt(spellId, it) }
@@ -228,6 +235,9 @@ fun CombatScreen(
         }
     }
 }
+
+/** The shortest wide layout that fits the HUD, the battle scene and the action bar. */
+private val WideBattleViewMinHeight = 560.dp
 
 // --- encounter HUD ----------------------------------------------------------
 

@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -71,7 +73,15 @@ internal fun Scrim(onDismiss: (() -> kotlin.Unit)?, content: @Composable () -> k
             .then(if (onDismiss != null) Modifier.clickable(onClick = onDismiss) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.widthIn(max = 420.dp).padding(20.dp)) { content() }
+        // Scrollable: landscape leaves about 400dp of height, and the queue
+        // sheet is taller than that -- its Enter button was drawn as a bare
+        // gold bar with the label squeezed out of existence.
+        Box(
+            Modifier
+                .widthIn(max = 420.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+        ) { content() }
     }
 }
 
@@ -332,13 +342,20 @@ fun OutcomeDialog(
                 Spacer(Modifier.height(14.dp))
 
                 StatRow("Experience", "+${outcome.xpGained}")
-                StatRow(if (group) "Group healing" else "Healing done", outcome.stats.totalHealing.toInt().toString())
-                StatRow(if (group) "Group HPS" else "HPS", String.format("%.1f", outcome.stats.hps))
-                StatRow(if (group) "Group overheal" else "Overheal", "${outcome.stats.overhealPct.toInt()}%")
-                StatRow(
-                    if (group) "Group healing per mana" else "Healing per mana",
-                    String.format("%.2f", outcome.stats.hpm),
-                )
+                if (playerRole == UnitRole.HEALER || group) {
+                    StatRow(if (group) "Group healing" else "Healing done", outcome.stats.totalHealing.toInt().toString())
+                    StatRow(if (group) "Group HPS" else "HPS", String.format("%.1f", outcome.stats.hps))
+                    StatRow(if (group) "Group overheal" else "Overheal", "${outcome.stats.overhealPct.toInt()}%")
+                    StatRow(
+                        if (group) "Group healing per mana" else "Healing per mana",
+                        String.format("%.2f", outcome.stats.hpm),
+                    )
+                } else {
+                    // A tank's or DPS's run is measured in what they dealt.
+                    // They were shown four healing numbers, all zero.
+                    StatRow("Damage done", outcome.stats.damageDone.toInt().toString())
+                    StatRow("DPS", String.format("%.1f", outcome.stats.dps))
+                }
 
                 // Levelling up can unlock a spell rank or a stronger potion. The
                 // web app shows this; Android computed it and dropped it.

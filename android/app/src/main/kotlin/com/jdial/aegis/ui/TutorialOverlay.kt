@@ -59,9 +59,9 @@ object Tutorial {
     val CLASS_SELECT = TutorialStep(
         id = "class-select",
         title = "Choose your path",
-        body = "Every class plays a different job. Healers keep the party standing; " +
-            "the Frost Mage burns the enemy down and watches its threat. Your class " +
-            "colours the whole interface.",
+        body = "Every class plays a different job. Healers keep the party standing, " +
+            "tanks keep the enemy's attention, and damage dealers burn it down. Your " +
+            "class colours the whole interface.",
         anchor = TutorialAnchor.CENTER,
     )
 
@@ -99,11 +99,27 @@ object Tutorial {
         anchor = TutorialAnchor.BOTTOM,
     )
 
-    val ALL = listOf(CLASS_SELECT, DUNGEONS, COMBAT, COMBAT_DAMAGE)
+    /**
+     * And for a tank, whom the damage card would tell to stay *behind* the
+     * tank.
+     */
+    val COMBAT_TANK = TutorialStep(
+        id = "combat",
+        title = "Hold its attention",
+        body = "Spells hit the enemy — no target needed. Your attacks build threat: keep " +
+            "the enemy on you, and taunt it back when it turns on someone else. Your " +
+            "class's resource sits beside the mana orb.",
+        anchor = TutorialAnchor.BOTTOM,
+    )
+
+    val ALL = listOf(CLASS_SELECT, DUNGEONS, COMBAT, COMBAT_DAMAGE, COMBAT_TANK)
 
     /** The combat card that matches what this player actually does. */
-    fun combatFor(role: UnitRole): TutorialStep =
-        if (role == UnitRole.HEALER) COMBAT else COMBAT_DAMAGE
+    fun combatFor(role: UnitRole): TutorialStep = when (role) {
+        UnitRole.HEALER -> COMBAT
+        UnitRole.TANK -> COMBAT_TANK
+        UnitRole.DPS -> COMBAT_DAMAGE
+    }
 }
 
 @Composable

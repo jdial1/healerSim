@@ -195,6 +195,12 @@ data class RunStats(
     val hps: Double = 0.0,
     val overhealPct: Double = 0.0,
     val hpm: Double = 0.0,
+    /**
+     * What this player dealt, for a tank or DPS. The healing numbers above
+     * are zero for them, and the result screen used to show exactly those.
+     */
+    val damageDone: Double = 0.0,
+    val dps: Double = 0.0,
 )
 
 @Serializable
@@ -373,6 +379,8 @@ data class GameState(
     val runHealEffective: Double = 0.0,
     val runHealOverheal: Double = 0.0,
     val runManaSpentHealing: Double = 0.0,
+    /** Damage this client's player has dealt this run. Zero for a healer. */
+    val runDamageDealt: Double = 0.0,
     /**
      * XP awarded this run, per party slot, for every human in it.
      *
@@ -480,6 +488,7 @@ data class GameState(
         runHealEffective = 0.0,
         runHealOverheal = 0.0,
         runManaSpentHealing = 0.0,
+        runDamageDealt = 0.0,
         runXpAwards = emptyMap(),
     )
 }
