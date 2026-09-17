@@ -9,6 +9,9 @@ closed six-key set is nominally healing-flavoured, but the engine reuses
 `healing` as the damage magnitude, so `healingBoost` scales a Frostbolt exactly
 as it scales a Flash Heal. A whole DPS tree therefore needs no new engine code
 -- which is the point of having done increments 1 and 2 first.
+
+Talent and spell icons are made unique afterwards by
+scripts/assign-unique-icons.py; run it after regenerating.
 """
 import io, json, os
 

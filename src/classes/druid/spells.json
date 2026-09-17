@@ -71,7 +71,7 @@
     "manaCost": 18,
     "healing": 110,
     "cooldown": 150,
-    "icon": "wow/spell_nature_resistnature",
+    "icon": "wow/inv_relics_idolofrejuvenation",
     "color": "bg-emerald-300",
     "actionBarBorderClass": "border-emerald-400",
     "staticEffectDescription": "Consumes a HoT on the target to burst-heal. Requires Rejuvenation or Regrowth",

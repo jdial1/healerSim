@@ -7,7 +7,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_nature_healingtouch",
+    "icon": "wow/ability_druid_healinginstincts",
     "gridX": 0,
     "gridY": 0,
     "statBonus": {
@@ -83,7 +83,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_nature_healingtouch",
+    "icon": "wow/ability_druid_serenefocus",
     "gridX": 0,
     "gridY": 1,
     "prerequisites": [
@@ -101,7 +101,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_nature_moonglow",
+    "icon": "wow/spell_nature_focusedmind",
     "gridX": 1,
     "gridY": 1,
     "prerequisites": [
@@ -135,7 +135,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_nature_regeneration",
+    "icon": "wow/ability_druid_aquaticform",
     "gridX": 3,
     "gridY": 1,
     "prerequisites": [
@@ -172,7 +172,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_nature_swiftness",
+    "icon": "wow/ability_druid_astralstorm",
     "gridX": 0,
     "gridY": 2,
     "prerequisites": [
@@ -209,7 +209,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_nature_resistnature",
+    "icon": "wow/inv_relics_idolofrejuvenation",
     "gridX": 2,
     "gridY": 2,
     "prerequisites": [
@@ -266,7 +266,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_nature_healingtouch",
+    "icon": "wow/spell_nature_healingwavegreater",
     "gridX": 0,
     "gridY": 3,
     "prerequisites": [
@@ -284,7 +284,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_nature_natureguardian",
+    "icon": "wow/ability_druid_naturalperfection",
     "gridX": 1,
     "gridY": 3,
     "prerequisites": [
@@ -303,7 +303,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_nature_wispsplode",
+    "icon": "wow/ability_druid_flourish",
     "gridX": 2,
     "gridY": 3,
     "prerequisites": [
@@ -319,7 +319,7 @@
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_nature_focusedmind",
+    "icon": "wow/ability_druid_balanceofpower",
     "gridX": 3,
     "gridY": 3,
     "prerequisites": [
@@ -335,7 +335,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_nature_regenerate",
+    "icon": "wow/inv_misc_herb_felblossom",
     "gridX": 4,
     "gridY": 3,
     "prerequisites": [
@@ -351,7 +351,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_nature_abolishmagic",
+    "icon": "wow/spell_nature_removecurse",
     "gridX": 5,
     "gridY": 3,
     "prerequisites": [
@@ -367,7 +367,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_nature_moonglow",
+    "icon": "wow/spell_nature_manaregentotem",
     "gridX": 0,
     "gridY": 4,
     "prerequisites": [
@@ -385,7 +385,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_nature_healingtouch",
+    "icon": "wow/spell_nature_healingwavelesser",
     "gridX": 1,
     "gridY": 4,
     "prerequisites": [
@@ -403,7 +403,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_nature_rejuvenation",
+    "icon": "wow/ability_druid_treeoflife",
     "gridX": 2,
     "gridY": 4,
     "prerequisites": [
@@ -419,7 +419,7 @@
     "maxPoints": 1,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_nature_swiftness",
+    "icon": "wow/ability_druid_bash",
     "gridX": 3,
     "gridY": 4,
     "prerequisites": [
@@ -475,7 +475,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_nature_healingtouch",
+    "icon": "wow/spell_nature_healingway",
     "gridX": 1,
     "gridY": 5,
     "prerequisites": [
@@ -531,7 +531,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_nature_tranquility",
+    "icon": "wow/ability_druid_berserk",
     "gridX": 4,
     "gridY": 5,
     "prerequisites": [
@@ -550,7 +550,7 @@
     "maxPoints": 1,
     "levelReq": 25,
     "cost": 1,
-    "icon": "wow/spell_nature_giftofthewild",
+    "icon": "wow/ability_druid_forceofnature",
     "gridX": 2,
     "gridY": 6,
     "prerequisites": [

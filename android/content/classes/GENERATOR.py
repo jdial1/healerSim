@@ -12,6 +12,9 @@ there is no goal to reach, they are simply not finished.
 Trees are pure statBonus, like the Mage and Warrior: the engine reuses `healing`
 as the damage magnitude, so healingBoost scales a Frostbolt or a Sinister Strike
 exactly as it scales a Flash Heal. No hook code for any of them.
+
+Talent and spell icons are made unique afterwards by
+scripts/assign-unique-icons.py; run it after regenerating.
 """
 import io, json, os
 

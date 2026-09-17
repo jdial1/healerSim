@@ -39,7 +39,7 @@
     "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
-    "icon": "wow/spell_holy_renew",
+    "icon": "wow/ability_priest_angelicbulwark",
     "gridX": 2,
     "gridY": 0,
     "statBonus": {
@@ -100,7 +100,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_holy_holyguidance",
+    "icon": "wow/ability_priest_focusedwill",
     "gridX": 1,
     "gridY": 1,
     "prerequisites": [
@@ -134,7 +134,7 @@
     "maxPoints": 2,
     "levelReq": 5,
     "cost": 1,
-    "icon": "wow/spell_holy_testoffaith",
+    "icon": "wow/ability_priest_angelicfeather",
     "gridX": 3,
     "gridY": 1,
     "prerequisites": [
@@ -174,7 +174,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_holy_borrowedtime",
+    "icon": "wow/ability_priest_ascendance",
     "gridX": 0,
     "gridY": 2,
     "prerequisites": [
@@ -211,7 +211,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_holy_holyguidance",
+    "icon": "wow/ability_priest_ascension",
     "gridX": 2,
     "gridY": 2,
     "prerequisites": [
@@ -265,7 +265,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_holy_sealofwisdom",
+    "icon": "wow/ability_priest_atonement",
     "gridX": 0,
     "gridY": 3,
     "prerequisites": [
@@ -315,7 +315,7 @@
     "maxPoints": 2,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_holy_holynova",
+    "icon": "wow/spell_holy_healingfocus",
     "gridX": 3,
     "gridY": 3,
     "prerequisites": [
@@ -334,7 +334,7 @@
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_holy_testoffaith",
+    "icon": "wow/ability_priest_cascade",
     "gridX": 4,
     "gridY": 3,
     "prerequisites": [
@@ -422,7 +422,7 @@
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/spell_holy_dispelmagic",
+    "icon": "wow/ability_priest_cascade_shadow",
     "gridX": 3,
     "gridY": 4,
     "prerequisites": [
@@ -456,7 +456,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_sealofwisdom",
+    "icon": "wow/ability_priest_darkness",
     "gridX": 0,
     "gridY": 5,
     "prerequisites": [
@@ -474,7 +474,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_holyguidance",
+    "icon": "wow/ability_priest_evangelism",
     "gridX": 1,
     "gridY": 5,
     "prerequisites": [
@@ -492,7 +492,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_testoffaith",
+    "icon": "wow/ability_priest_halo",
     "gridX": 2,
     "gridY": 5,
     "prerequisites": [
@@ -510,7 +510,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_holy_dispelmagic",
+    "icon": "wow/ability_priest_reflectiveshield",
     "gridX": 3,
     "gridY": 5,
     "prerequisites": [
