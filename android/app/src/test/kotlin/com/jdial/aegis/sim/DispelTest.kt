@@ -53,8 +53,10 @@ class DispelTest {
         for (cls in listOf(PlayerClass.MAGE, PlayerClass.WARRIOR, PlayerClass.ROGUE, PlayerClass.DEATHKNIGHT)) {
             assertFalse("cleanse" in data.grantsFor(cls, 60))
         }
+        // On the bar, not merely known: a spell the player cannot reach is one
+        // they do not have. Which slot is theirs to arrange.
         val bar = Fixtures.progression.buildSpellLoadout(PlayerClass.PRIEST, emptyList(), 4).actionBar
-        assertEquals("cleanse", bar[4])
+        assertTrue("cleanse should be on the bar, got $bar", "cleanse" in bar)
     }
 
     @Test

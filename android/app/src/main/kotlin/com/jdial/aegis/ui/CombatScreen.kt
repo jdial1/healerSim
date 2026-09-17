@@ -1476,11 +1476,21 @@ private fun ActionBar(
             Spacer(Modifier.height(8.dp))
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val gap = 8.dp
+                // Five to a row, and a kit bigger than that wraps into an even
+                // second row rather than shrinking every button. Slot size never
+                // depends on how many spells you have: a bar whose buttons move
+                // as a class learns its sixth spell is a bar you re-learn.
+                val slots = state.activeActionBars.size
+                val perRow = if (slots <= 5) 5 else (slots + 1) / 2
                 val slotWidth = (maxWidth - gap * 4) / 5
                 val slotPx = with(LocalDensity.current) { slotWidth.toPx() }
+                val rowPx = with(LocalDensity.current) { (slotWidth + gap).toPx() }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    state.activeActionBars.forEachIndexed { i, spellId ->
+                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                  state.activeActionBars.chunked(perRow).forEachIndexed { row, rowSpells ->
+                   Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    rowSpells.forEachIndexed { col, spellId ->
+                        val i = row * perRow + col
                         val spell = data.spell(spellId)
                         // The kick lights up while there is something to kick.
                         val kickNow = spell?.interrupts == true &&
@@ -1526,7 +1536,7 @@ private fun ActionBar(
                             reorderable = !state.isCombatActive,
                             onClick = { if (spell != null) onCast(spell.id) },
                             onDragStart = { dragFrom = i; dragDx = 0f; dragDy = 0f },
-                            onDrag = { dragDx += it },
+                            onDrag = { dx, dy -> dragDx += dx; dragDy += dy },
                             onDragPoint = onDragPoint,
                             onCastDrop = {
                                 // An invalid drop — dead unit, released off the
@@ -1544,15 +1554,22 @@ private fun ActionBar(
                                 dragDy = 0f
                             },
                             onDragEnd = {
-                                val target = (i + (dragDx / slotPx).roundToInt())
+                                // Two rows, so a drag moves by columns and by
+                                // rows; dropping below the last row lands on the
+                                // last slot rather than nowhere.
+                                val target = (i + (dragDx / slotPx).roundToInt() +
+                                    (dragDy / rowPx).roundToInt() * perRow)
                                     .coerceIn(0, state.activeActionBars.lastIndex)
                                 if (target != i) onReorder(i, target)
                                 dragFrom = -1
                                 dragDx = 0f
+                                dragDy = 0f
                             },
                         )
                         }
                     }
+                   }
+                  }
                 }
             }
         }
@@ -1659,7 +1676,7 @@ private fun SpellSlot(
     reorderable: Boolean,
     onClick: () -> kotlin.Unit,
     onDragStart: () -> kotlin.Unit,
-    onDrag: (Float) -> kotlin.Unit,
+    onDrag: (Float, Float) -> kotlin.Unit,
     onDragPoint: (Offset?) -> kotlin.Unit,
     onDragEnd: () -> kotlin.Unit,
     onCastDrop: () -> kotlin.Unit,
@@ -1706,7 +1723,7 @@ private fun SpellSlot(
                     // Out of combat: long-press to rearrange the bar.
                     detectDragGesturesAfterLongPress(
                         onDragStart = { onDragStart() },
-                        onDrag = { change, amount -> change.consume(); onDrag(amount.x) },
+                        onDrag = { change, amount -> change.consume(); onDrag(amount.x, amount.y) },
                         onDragEnd = { onDragEnd() },
                         onDragCancel = { onDragEnd() },
                     )
@@ -1719,7 +1736,7 @@ private fun SpellSlot(
                         onDragStart = { onDragStart() },
                         onDrag = { change, amount ->
                             change.consume()
-                            onDrag(amount.x)
+                            onDrag(amount.x, 0f)
                             onDragPoint(origin + change.position)
                         },
                         onDragEnd = { currentDrop() },

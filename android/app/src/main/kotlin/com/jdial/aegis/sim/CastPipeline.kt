@@ -497,9 +497,16 @@ class CastPipeline(
             if (ctx.cls == PlayerClass.PRIEST && applied.overheal > 0) {
                 shieldAdd = PriestHooks.divinityOverhealAbsorb(ctx, applied.overheal, ctx.uniqueStatRating())
             }
+            // An absorb the spell itself puts on. Same rank and healing-power
+            // scaling as its healing, since that is what it is.
+            var castShieldTicks = 0
+            if (spell.shield > 0) {
+                shieldAdd += spell.shield * ready.rankHealMult * healMultB * ready.critH
+                castShieldTicks = spell.shieldTicks ?: shared.shieldDefaultTicks
+            }
             val nextShield = u.shield + shieldAdd
             var ticks = u.shieldTicksRemaining
-            if (shieldAdd > 0) ticks = shared.shieldDefaultTicks
+            if (shieldAdd > 0) ticks = maxOf(castShieldTicks, shared.shieldDefaultTicks)
             if (nextShield <= 0) ticks = 0
             return u.copy(health = applied.health, shield = nextShield, shieldTicksRemaining = ticks)
         }

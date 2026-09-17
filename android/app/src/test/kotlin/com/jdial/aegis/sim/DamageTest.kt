@@ -2,6 +2,7 @@ package com.jdial.aegis.sim
 
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.SpellSchool
+import com.jdial.aegis.data.SpellType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -52,30 +53,34 @@ class DamageTest {
     }
 
     @Test
-    fun `the web app's classes all still play as healers`() {
-        // Narrower than it was: the Mage is a DPS, so the aiShare branch is no
-        // longer permanently on the identity path. What still must hold is that
-        // no *healer* class drifted off it, because that is the path the parity
-        // corpus was recorded on.
-        for (cls in PlayerClass.webClasses) {
+    fun `the healer classes play as healers`() {
+        for (cls in PlayerClass.healerClasses) {
             assertEquals("$cls", UnitRole.HEALER, engine.roleOf(cls))
         }
         assertEquals(UnitRole.DPS, engine.roleOf(PlayerClass.MAGE))
     }
 
     @Test
-    fun `no healer spell deals damage, and every mage spell does`() {
-        val healerOffenders = PlayerClass.webClasses.flatMap { cls ->
+    fun `no healer spell deals damage, and a mage's offence is all of it damage`() {
+        // Utility is allowed on either side -- a cooldown that shields or
+        // returns mana is not offence. What must not happen is a healer
+        // quietly carrying a damage spell, which would put a healer run on the
+        // player-damage path.
+        val healerOffenders = PlayerClass.healerClasses.flatMap { cls ->
             Fixtures.data.bundle(cls).spells.values
-                .filter { it.school != SpellSchool.HEAL }
+                .filter { it.school == SpellSchool.DAMAGE }
                 .map { "${cls}/${it.id}" }
         }
         assertEquals(emptyList<String>(), healerOffenders)
 
-        val mageNonDamage = Fixtures.data.bundle(PlayerClass.MAGE).spells.values
-            .filter { it.school != SpellSchool.DAMAGE }
-            .map { it.id }
-        assertEquals(emptyList<String>(), mageNonDamage)
+        // And a Mage's healing is its own: nothing it casts may land on
+        // somebody else, because the DPS seat cannot select party frames.
+        val mage = Fixtures.data.bundle(PlayerClass.MAGE).spells.values
+        assertTrue("a mage should mostly deal damage", mage.count { it.school == SpellSchool.DAMAGE } >= 4)
+        assertEquals(
+            emptyList<String>(),
+            mage.filter { it.school == SpellSchool.HEAL && it.type == SpellType.AOE }.map { it.id },
+        )
     }
 
     @Test

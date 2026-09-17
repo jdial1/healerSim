@@ -78,5 +78,57 @@
     "color": "bg-amber-600",
     "actionBarBorderClass": "border-amber-600",
     "glowType": "spell"
+  },
+  "shield_block": {
+    "id": "shield_block",
+    "name": "Shield Block",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 25,
+    "healing": 0.0,
+    "cooldown": 80,
+    "icon": "wow/ability_defend",
+    "tags": [],
+    "resource": "RAGE",
+    "damageReduction": 0.25,
+    "damageReductionTicks": 40
+  },
+  "thunder_clap": {
+    "id": "thunder_clap",
+    "name": "Thunder Clap",
+    "type": "AOE",
+    "school": "damage",
+    "manaCost": 20,
+    "healing": 44.0,
+    "cooldown": 60,
+    "icon": "wow/spell_nature_thunderclap",
+    "tags": [],
+    "resource": "RAGE",
+    "threatMultiplier": 3.0
+  },
+  "victory_rush": {
+    "id": "victory_rush",
+    "name": "Victory Rush",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 10,
+    "healing": 150.0,
+    "cooldown": 110,
+    "icon": "wow/ability_warrior_devastate",
+    "tags": [],
+    "resource": "RAGE"
+  },
+  "pummel": {
+    "id": "pummel",
+    "name": "Pummel",
+    "type": "DIRECT",
+    "school": "utility",
+    "resource": "RAGE",
+    "manaCost": 15,
+    "healing": 0,
+    "cooldown": 150,
+    "interrupts": true,
+    "icon": "wow/ability_warrior_punishingblow",
+    "tags": []
   }
 }

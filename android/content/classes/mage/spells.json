@@ -60,5 +60,41 @@
     "color": "bg-emerald-400",
     "actionBarBorderClass": "border-emerald-400",
     "glowType": "spell"
+  },
+  "ice_barrier": {
+    "id": "ice_barrier",
+    "name": "Ice Barrier",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 30,
+    "healing": 0.0,
+    "cooldown": 140,
+    "icon": "wow/spell_ice_lament",
+    "tags": [],
+    "shield": 280.0,
+    "shieldTicks": 200
+  },
+  "evocation": {
+    "id": "evocation",
+    "name": "Evocation",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 0,
+    "healing": 0.0,
+    "cooldown": 400,
+    "icon": "wow/spell_nature_purge",
+    "tags": [],
+    "manaRegenBuffDurationTicks": 100
+  },
+  "blizzard": {
+    "id": "blizzard",
+    "name": "Blizzard",
+    "type": "AOE",
+    "school": "damage",
+    "manaCost": 40,
+    "healing": 78.0,
+    "cooldown": 90,
+    "icon": "wow/spell_frost_icestorm",
+    "tags": []
   }
 }

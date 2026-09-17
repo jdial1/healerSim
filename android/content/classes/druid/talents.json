@@ -247,7 +247,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_nature_stoneclawtotem",
+    "icon": "wow/spell_druid_germination_rejuvenation",
     "gridX": 4,
     "gridY": 2,
     "prerequisites": [
@@ -504,7 +504,7 @@
     "maxPoints": 1,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_nature_tranquility",
+    "icon": "wow/ability_druid_forceofnature",
     "gridX": 2,
     "gridY": 5,
     "prerequisites": [
@@ -560,7 +560,7 @@
     "maxPoints": 1,
     "levelReq": 25,
     "cost": 1,
-    "icon": "wow/ability_druid_forceofnature",
+    "icon": "wow/spell_nature_natureblessing",
     "gridX": 2,
     "gridY": 6,
     "prerequisites": [

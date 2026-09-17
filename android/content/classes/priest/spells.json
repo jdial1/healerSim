@@ -71,5 +71,40 @@
       "archangel-skip",
       "synergy-primer-source"
     ]
+  },
+  "power_word_shield": {
+    "id": "power_word_shield",
+    "name": "Power Word: Shield",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 26,
+    "healing": 0.0,
+    "cooldown": 60,
+    "icon": "wow/spell_holy_powerwordshield",
+    "tags": [],
+    "shield": 95.0
+  },
+  "hymn_of_hope": {
+    "id": "hymn_of_hope",
+    "name": "Hymn of Hope",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 0,
+    "healing": 0.0,
+    "cooldown": 400,
+    "icon": "wow/spell_holy_symbolofhope",
+    "tags": [],
+    "manaRegenBuffDurationTicks": 120
+  },
+  "guardian_spirit": {
+    "id": "guardian_spirit",
+    "name": "Guardian Spirit",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 40,
+    "healing": 280.0,
+    "cooldown": 400,
+    "icon": "wow/spell_holy_guardianspirit",
+    "tags": []
   }
 }

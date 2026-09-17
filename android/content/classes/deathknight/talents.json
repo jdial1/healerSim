@@ -147,7 +147,7 @@
     "maxPoints": 3,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_deathknight_bloodboil",
+    "icon": "wow/spell_deathknight_bloodplague",
     "gridX": 4,
     "gridY": 2,
     "prerequisites": [],
@@ -253,7 +253,7 @@
     "maxPoints": 2,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/ability_deathknight_boneshield",
+    "icon": "wow/ability_deathknight_brittlebones",
     "gridX": 1,
     "gridY": 5,
     "prerequisites": [
@@ -275,7 +275,7 @@
     "maxPoints": 2,
     "levelReq": 21,
     "cost": 1,
-    "icon": "wow/spell_shadow_scourgebuild",
+    "icon": "wow/spell_deathknight_scourgestrike",
     "gridX": 3,
     "gridY": 5,
     "prerequisites": [

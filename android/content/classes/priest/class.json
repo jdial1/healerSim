@@ -25,12 +25,18 @@
     "uniqueStatPerLevel": 0.55
   },
   "progression": {
-    "starterSpells": ["flash_heal", "renew"],
+    "starterSpells": [
+      "flash_heal",
+      "renew"
+    ],
     "spellOrder": [
       "flash_heal",
       "renew",
       "greater_heal",
-      "circle_of_healing"
+      "circle_of_healing",
+      "power_word_shield",
+      "hymn_of_hope",
+      "guardian_spirit"
     ],
     "capstoneForm": "priest_archangel",
     "capstoneMechanicId": "capstone_archangel",

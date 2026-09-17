@@ -1,5 +1,6 @@
 package com.jdial.aegis.sim
 
+import com.jdial.aegis.data.SpellSchool
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.PlayerClass
@@ -111,10 +112,18 @@ class Engine(val data: GameData) {
         val acting = state.actingAs(action.actorId)
         val critRoll =
             if (action.actorId == state.localUnitId) action.critRoll else rng.nextDouble() * 100.0
+        // A heal with nobody named lands on the caster. A tank or a damage
+        // dealer cannot select party frames -- that is the healer's job and the
+        // frames say so -- so without this their own self-heals would be
+        // uncastable, and every class outside the healer seat would be stuck
+        // with no answer to its own health bar.
+        val spell = data.spell(action.spellId)
+        val target = action.targetId
+            ?: if (spell != null && spell.school == SpellSchool.HEAL) action.actorId else null
         val out = casts.tryCast(
             CastContext(acting, data, stats, rng),
             action.spellId,
-            action.targetId,
+            target,
             critRoll,
         )
         return out.actingAs(seat)

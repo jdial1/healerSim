@@ -36,7 +36,11 @@
       "heroic_strike",
       "taunt",
       "revenge",
-      "shield_wall"
+      "shield_wall",
+      "shield_block",
+      "thunder_clap",
+      "victory_rush",
+      "pummel"
     ]
   }
 }

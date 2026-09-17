@@ -144,7 +144,7 @@
     "maxPoints": 3,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/ability_monk_cranekick",
+    "icon": "wow/ability_monk_deadlyreach",
     "gridX": 4,
     "gridY": 2,
     "prerequisites": [],

@@ -114,6 +114,14 @@ class PlaytestHarness {
         val groupHeals = healSpells.filter { it.type == SpellType.AOE }.map { it.id }
         val kick = s.unlockedSpells.firstOrNull { data.spell(it)?.interrupts == true }
         val wall = s.unlockedSpells.firstOrNull { data.spell(it)?.damageReduction != null }
+        // The absorb and the self-heal every class outside the healer seat now
+        // carries. A bot that never presses them is measuring a kit nobody has.
+        val absorb = s.unlockedSpells.firstOrNull { (data.spell(it)?.shield ?: 0.0) > 0 }
+        val selfHeal = s.unlockedSpells.filter { id ->
+            val sp = data.spell(id)
+            sp != null && sp.school == SpellSchool.HEAL && sp.healing > 0 && sp.type != SpellType.AOE
+        }.maxByOrNull { data.spell(it)!!.healing }
+        val refill = s.unlockedSpells.firstOrNull { (data.spell(it)?.manaRegenBuffDurationTicks ?: 0) > 0 }
         val cleanse = s.unlockedSpells.firstOrNull { data.spell(it)?.dispels == true }
 
         var kicks = 0
@@ -188,6 +196,20 @@ class PlaytestHarness {
                     if (out !== s) { dispels++; s = out }
                 }
             }
+            // A shield goes on before the hit, which is the only thing in the
+            // kit that can answer a telegraph rather than its aftermath.
+            if (absorb != null && me != null && me.shield <= 0) {
+                val aimed = s.enemyCast?.targets?.contains(me.id) == true
+                if (aimed || me.health < me.maxHealth * 0.8) {
+                    val out = cast(s, absorb, me.id, rng)
+                    if (out !== s) s = out
+                }
+            }
+            // Out of mana in the middle of a boss is a run lost; the refill is
+            // long enough on cooldown to be worth spending early.
+            if (refill != null && s.maxMana > 0 && s.mana < s.maxMana * 0.45) {
+                s = cast(s, refill, null, rng)
+            }
             // The wound, and a beating.
             if (wall != null && me != null) {
                 val stacked = me.debuffs.any { it.clearedByDefensive && it.stacks >= 3 }
@@ -195,6 +217,13 @@ class PlaytestHarness {
                     val out = cast(s, wall, null, rng)
                     if (out !== s) { defensives++; s = out }
                 }
+            }
+            // Anyone who is not the healer still has their own health bar, and
+            // now has something to do about it.
+            if (s.playerRole != UnitRole.HEALER && selfHeal != null && me != null &&
+                me.health < me.maxHealth * 0.55
+            ) {
+                s = cast(s, selfHeal, me.id, rng)
             }
             if (s.playerRole == UnitRole.HEALER) {
                 // The cheapest heal that covers the wound, not the biggest one

@@ -24,7 +24,7 @@ class GameDataTest {
         assertEquals(17, data.dungeons.size)
         // Three from the frozen web app plus Android-only additions.
         assertEquals(PlayerClass.entries.size, data.classes.size)
-        assertEquals(3, PlayerClass.webClasses.size)
+        assertEquals(3, PlayerClass.healerClasses.size)
         // 32 since druid_verdant_reservoir was registered; it was referenced by
         // talent d_r0c4 but missing from the registry.
         assertEquals(32, data.mechanics.size)
@@ -41,7 +41,9 @@ class GameDataTest {
             PlayerClass.MAGE, PlayerClass.WARRIOR, PlayerClass.DEATHKNIGHT,
             PlayerClass.ROGUE, PlayerClass.MONK, PlayerClass.WARLOCK,
         )) {
-            assertEquals("$cls spells", if (cls == PlayerClass.WARRIOR) 5 else 4, data.bundle(cls).spells.size)
+            // A kit, not three buttons and a stack of modifiers: the bar holds
+            // what the class has, so a class has to have something worth holding.
+            assertTrue("$cls kit is too thin", data.bundle(cls).spells.size >= 7)
             assertTrue("$cls needs a full tree", data.bundle(cls).talents.size >= 15)
         }
 

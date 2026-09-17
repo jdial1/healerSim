@@ -59,5 +59,53 @@
     "color": "bg-emerald-800",
     "actionBarBorderClass": "border-emerald-800",
     "glowType": "spell"
+  },
+  "purifying_brew": {
+    "id": "purifying_brew",
+    "name": "Purifying Brew",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 18,
+    "healing": 0.0,
+    "cooldown": 90,
+    "icon": "wow/ability_monk_ironskinbrew",
+    "tags": [],
+    "damageReduction": 0.3,
+    "damageReductionTicks": 45
+  },
+  "expel_harm": {
+    "id": "expel_harm",
+    "name": "Expel Harm",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 20,
+    "healing": 150.0,
+    "cooldown": 90,
+    "icon": "wow/ability_monk_expelharm",
+    "tags": []
+  },
+  "spinning_crane_kick": {
+    "id": "spinning_crane_kick",
+    "name": "Spinning Crane Kick",
+    "type": "AOE",
+    "school": "damage",
+    "manaCost": 24,
+    "healing": 46.0,
+    "cooldown": 50,
+    "icon": "wow/ability_monk_cranekick",
+    "tags": [],
+    "threatMultiplier": 2.6
+  },
+  "spear_hand_strike": {
+    "id": "spear_hand_strike",
+    "name": "Spear Hand Strike",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 10,
+    "healing": 0.0,
+    "cooldown": 150,
+    "icon": "wow/ability_monk_spearhand",
+    "tags": [],
+    "interrupts": true
   }
 }

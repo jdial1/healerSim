@@ -193,7 +193,7 @@
     "maxPoints": 2,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_holy_powerwordshield",
+    "icon": "wow/spell_holy_devineaegis",
     "gridX": 1,
     "gridY": 2,
     "prerequisites": [
@@ -247,7 +247,7 @@
     "maxPoints": 1,
     "levelReq": 9,
     "cost": 1,
-    "icon": "wow/spell_holy_symbolofhope",
+    "icon": "wow/ability_priest_pathofthedevout",
     "gridX": 4,
     "gridY": 2,
     "prerequisites": [
@@ -558,7 +558,7 @@
     "maxPoints": 1,
     "levelReq": 25,
     "cost": 1,
-    "icon": "wow/spell_holy_guardianspirit",
+    "icon": "wow/ability_priest_archangel",
     "gridX": 2,
     "gridY": 6,
     "prerequisites": [

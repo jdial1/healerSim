@@ -34,7 +34,11 @@
       "keg_smash",
       "provoke",
       "breath_of_fire",
-      "fortifying_brew"
+      "fortifying_brew",
+      "purifying_brew",
+      "expel_harm",
+      "spinning_crane_kick",
+      "spear_hand_strike"
     ]
   }
 }

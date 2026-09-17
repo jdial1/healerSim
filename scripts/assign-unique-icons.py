@@ -32,7 +32,7 @@ WOW = os.path.join(ROOT, 'public', 'icons', 'wow')
 
 # Order decides who keeps a contested icon.
 CLASSES = [
-    ('priest', 'src/classes'), ('druid', 'src/classes'), ('paladin', 'src/classes'),
+    ('priest', 'android/content/classes'), ('druid', 'android/content/classes'), ('paladin', 'android/content/classes'),
     ('warrior', 'android/content/classes'), ('deathknight', 'android/content/classes'),
     ('mage', 'android/content/classes'), ('rogue', 'android/content/classes'),
     ('monk', 'android/content/classes'), ('warlock', 'android/content/classes'),
@@ -133,7 +133,7 @@ def main():
         return p, json.loads(files[p])
 
     used = set()
-    shared = json.load(open(os.path.join(ROOT, 'src/data/shared_spells.json'), encoding='utf-8'))
+    shared = json.load(open(os.path.join(ROOT, 'android/content/data/shared_spells.json'), encoding='utf-8'))
     spell_icon = {}
 
     reserved = {}

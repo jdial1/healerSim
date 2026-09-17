@@ -34,7 +34,10 @@
       "frostbolt",
       "fireball",
       "arcane_missiles",
-      "living_bomb"
+      "living_bomb",
+      "ice_barrier",
+      "evocation",
+      "blizzard"
     ]
   }
 }

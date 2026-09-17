@@ -28,11 +28,11 @@ class InterruptTest {
     private fun kick(s: GameState, spell: String) = engine.reduce(s, Action.CastSpell(spell, null, 99.0), Rng(1))
 
     @Test
-    fun `DPS learn their interrupt at level one, on the empty fifth slot`() {
+    fun `DPS learn their interrupt at level one, and it is on the bar`() {
         for ((cls, spell) in listOf(PlayerClass.MAGE to "counterspell", PlayerClass.ROGUE to "kick")) {
             val s = engine.newCharacter(cls, Rng(1))
             assertTrue("$cls knows $spell", spell in s.unlockedSpells)
-            assertEquals(spell, s.activeActionBars[4])
+            assertTrue("$cls can reach $spell", spell in s.activeActionBars)
         }
         assertTrue("counterspell" !in engine.newCharacter(PlayerClass.WARRIOR, Rng(1)).unlockedSpells)
     }

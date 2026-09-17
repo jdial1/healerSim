@@ -59,5 +59,66 @@
     "color": "bg-sky-700",
     "actionBarBorderClass": "border-sky-700",
     "glowType": "spell"
+  },
+  "rune_tap": {
+    "id": "rune_tap",
+    "name": "Rune Tap",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 18,
+    "healing": 160.0,
+    "cooldown": 120,
+    "icon": "wow/spell_deathknight_runetap",
+    "tags": []
+  },
+  "blood_boil": {
+    "id": "blood_boil",
+    "name": "Blood Boil",
+    "type": "AOE",
+    "school": "damage",
+    "manaCost": 24,
+    "healing": 42.0,
+    "cooldown": 50,
+    "icon": "wow/spell_deathknight_bloodboil",
+    "tags": [],
+    "threatMultiplier": 2.8
+  },
+  "vampiric_blood": {
+    "id": "vampiric_blood",
+    "name": "Vampiric Blood",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 24,
+    "healing": 0.0,
+    "cooldown": 200,
+    "icon": "wow/spell_shadow_lifedrain",
+    "tags": [],
+    "damageReduction": 0.3,
+    "damageReductionTicks": 100
+  },
+  "mind_freeze": {
+    "id": "mind_freeze",
+    "name": "Mind Freeze",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 10,
+    "healing": 0.0,
+    "cooldown": 150,
+    "icon": "wow/spell_deathknight_mindfreeze",
+    "tags": [],
+    "interrupts": true
+  },
+  "bone_shield": {
+    "id": "bone_shield",
+    "name": "Bone Shield",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 16,
+    "healing": 0,
+    "cooldown": 100,
+    "damageReduction": 0.2,
+    "damageReductionTicks": 60,
+    "icon": "wow/ability_deathknight_boneshield",
+    "tags": []
   }
 }

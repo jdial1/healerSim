@@ -120,5 +120,31 @@
       "druid-hot",
       "druid-cultivation-hot"
     ]
+  },
+  "barkskin": {
+    "id": "barkskin",
+    "name": "Barkskin",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 18,
+    "healing": 0.0,
+    "cooldown": 200,
+    "icon": "wow/spell_nature_stoneclawtotem",
+    "tags": [],
+    "damageReduction": 0.3,
+    "damageReductionTicks": 150
+  },
+  "tranquility": {
+    "id": "tranquility",
+    "name": "Tranquility",
+    "type": "AOE",
+    "school": "heal",
+    "manaCost": 60,
+    "healing": 95.0,
+    "cooldown": 400,
+    "icon": "wow/spell_nature_tranquility",
+    "tags": [],
+    "hotDuration": 80,
+    "hotHealingPerTick": 6.0
   }
 }

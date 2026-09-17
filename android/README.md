@@ -332,3 +332,19 @@ which is also JSON. Kotlin is touched only when the fight needs something the
 engine cannot yet do — a new `DebuffMechanic` kind, a new `Targeting`, a new
 enemy state — or when new *art* is added, which is a line in
 `BattleView.spriteFiles`.
+
+## The kit is the bar
+
+`buildSpellLoadout` used to hand back exactly three class spells, the mana
+potion and one utility, whatever the class had. The Druid's six spells and the
+Warrior's five were cut to three the moment a run started, so the *played* kit
+was three buttons for every class in the game -- while the talent trees carried
+fifteen to thirty-two nodes modifying spells the bar could not hold.
+
+The bar is the class's kit now: its spells in `spellOrder`, then the potion,
+then whatever utilities it has been granted, up to ten. Never fewer than five,
+so buttons do not move under the thumb as a class learns its sixth spell, and
+it wraps into two even rows past five rather than shrinking every slot.
+
+`content/data/utility_spells.json` is the one file that says who learns what
+and when -- class spells included, granted by level.

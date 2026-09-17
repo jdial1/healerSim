@@ -78,6 +78,18 @@ data class Spell(
     /** Removes a dispellable debuff from its target (see CastPipeline.cleansed). */
     val dispels: Boolean = false,
     val interrupts: Boolean = false,
+    /**
+     * An absorb laid on the target: damage it eats before health is touched.
+     *
+     * Scales with spell rank and healing power like [healing] does, because it
+     * is healing paid in advance -- and it is the only thing in the game that
+     * answers a hit that has not landed yet. Absorb used to exist only as a
+     * Priest's overheal, which meant no class could *choose* to pre-empt
+     * damage, including the ones the boss was about to kill.
+     */
+    val shield: Double = 0.0,
+    /** How long the absorb lasts. Defaults to the shared shield duration. */
+    val shieldTicks: Int? = null,
 ) {
     fun hasTag(tag: String) = tag in tags
 

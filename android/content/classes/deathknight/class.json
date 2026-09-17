@@ -34,7 +34,12 @@
       "death_strike",
       "dark_command",
       "heart_strike",
-      "icebound_fortitude"
+      "icebound_fortitude",
+      "rune_tap",
+      "blood_boil",
+      "vampiric_blood",
+      "mind_freeze",
+      "bone_shield"
     ]
   }
 }

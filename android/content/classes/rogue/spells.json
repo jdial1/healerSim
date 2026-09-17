@@ -64,5 +64,45 @@
     "actionBarBorderClass": "border-lime-500",
     "glowType": "spell",
     "resource": "ENERGY"
+  },
+  "crimson_vial": {
+    "id": "crimson_vial",
+    "name": "Crimson Vial",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 20,
+    "healing": 140.0,
+    "cooldown": 100,
+    "icon": "wow/ability_rogue_crimsonvial",
+    "tags": [],
+    "resource": "ENERGY"
+  },
+  "evasion": {
+    "id": "evasion",
+    "name": "Evasion",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 0,
+    "healing": 0.0,
+    "cooldown": 250,
+    "icon": "wow/spell_shadow_shadowward",
+    "tags": [],
+    "resource": "ENERGY",
+    "damageReduction": 0.4,
+    "damageReductionTicks": 80
+  },
+  "garrote": {
+    "id": "garrote",
+    "name": "Garrote",
+    "type": "HOT",
+    "school": "damage",
+    "manaCost": 30,
+    "healing": 0.0,
+    "cooldown": 60,
+    "icon": "wow/ability_rogue_garrote",
+    "tags": [],
+    "resource": "ENERGY",
+    "hotDuration": 90,
+    "hotHealingPerTick": 9.0
   }
 }

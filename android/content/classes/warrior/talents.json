@@ -212,7 +212,7 @@
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/ability_warrior_devastate",
+    "icon": "wow/ability_warrior_bloodbath",
     "gridX": 0,
     "gridY": 4,
     "prerequisites": [
@@ -233,7 +233,7 @@
     "maxPoints": 2,
     "levelReq": 17,
     "cost": 1,
-    "icon": "wow/ability_warrior_bloodbath",
+    "icon": "wow/ability_warrior_bloodfrenzy",
     "gridX": 2,
     "gridY": 4,
     "prerequisites": [],
@@ -317,7 +317,7 @@
     "maxPoints": 1,
     "levelReq": 25,
     "cost": 1,
-    "icon": "wow/ability_warrior_bloodfrenzy",
+    "icon": "wow/ability_warrior_shieldguard",
     "gridX": 2,
     "gridY": 6,
     "prerequisites": [

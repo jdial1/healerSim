@@ -53,5 +53,40 @@
       "archangel-skip",
       "synergy-primer-source"
     ]
+  },
+  "holy_shock": {
+    "id": "holy_shock",
+    "name": "Holy Shock",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 20,
+    "healing": 95.0,
+    "cooldown": 15,
+    "icon": "wow/spell_holy_searinglight",
+    "tags": []
+  },
+  "divine_protection": {
+    "id": "divine_protection",
+    "name": "Divine Protection",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 20,
+    "healing": 0.0,
+    "cooldown": 250,
+    "icon": "wow/spell_holy_divineprotection",
+    "tags": [],
+    "damageReduction": 0.4,
+    "damageReductionTicks": 80
+  },
+  "lay_on_hands": {
+    "id": "lay_on_hands",
+    "name": "Lay on Hands",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 60,
+    "healing": 620.0,
+    "cooldown": 900,
+    "icon": "wow/spell_holy_layonhands",
+    "tags": []
   }
 }

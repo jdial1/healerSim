@@ -34,7 +34,10 @@
       "corruption",
       "shadow_bolt",
       "unstable_affliction",
-      "seed_of_corruption"
+      "seed_of_corruption",
+      "healthstone",
+      "demon_armor",
+      "shadowburn"
     ]
   }
 }

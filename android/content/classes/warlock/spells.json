@@ -62,5 +62,40 @@
     "color": "bg-indigo-500",
     "actionBarBorderClass": "border-indigo-500",
     "glowType": "spell"
+  },
+  "healthstone": {
+    "id": "healthstone",
+    "name": "Healthstone",
+    "type": "DIRECT",
+    "school": "heal",
+    "manaCost": 0,
+    "healing": 210.0,
+    "cooldown": 300,
+    "icon": "wow/inv_stone_04",
+    "tags": []
+  },
+  "demon_armor": {
+    "id": "demon_armor",
+    "name": "Demon Armor",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 24,
+    "healing": 0.0,
+    "cooldown": 200,
+    "icon": "wow/spell_shadow_ragingscream",
+    "tags": [],
+    "damageReduction": 0.25,
+    "damageReductionTicks": 200
+  },
+  "shadowburn": {
+    "id": "shadowburn",
+    "name": "Shadowburn",
+    "type": "DIRECT",
+    "school": "damage",
+    "manaCost": 32,
+    "healing": 165.0,
+    "cooldown": 70,
+    "icon": "wow/spell_shadow_scourgebuild",
+    "tags": []
   }
 }

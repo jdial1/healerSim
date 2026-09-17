@@ -15,15 +15,8 @@ fun interface ContentSource {
 enum class PlayerClass { PRIEST, DRUID, PALADIN, MAGE, WARRIOR, DEATHKNIGHT, ROGUE, MONK, WARLOCK;
 
     companion object {
-        /**
-         * The classes the frozen web app also has.
-         *
-         * parity/golden.json was generated from that app, so it is the only set
-         * the parity tests can meaningfully compare against -- an Android-only
-         * class has no reference to match. Anything added here from now on is
-         * Android-only by definition.
-         */
-        val webClasses: List<PlayerClass> = listOf(PRIEST, DRUID, PALADIN)
+        /** The three healers. */
+        val healerClasses: List<PlayerClass> = listOf(PRIEST, DRUID, PALADIN)
     }
 }
 
