@@ -1,5 +1,5 @@
 {
-  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals.",
+  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals.",
   "attacks": {
     "vc_ambush": {
       "castTicks": 20
@@ -112,6 +112,19 @@
           "dispellable": true
         }
       ]
+    },
+    "wailing_caverns": {
+      "extraDebuffs": [
+        {
+          "abilityId": "verdan_wound",
+          "name": "Infected Wound",
+          "icon": "wow/ability_druid_infectedwound",
+          "durationTicks": 40,
+          "damagePerTick": 0.6,
+          "targeting": "highest_threat",
+          "dispellable": false
+        }
+      ]
     }
   },
   "aiDispelEveryTicks": 50,
@@ -137,6 +150,13 @@
       "durationTicks": 60,
       "everyTicks": 30,
       "maxStacks": 6
+    },
+    "verdan_wound": {
+      "kind": "wound",
+      "durationTicks": 40,
+      "everyTicks": 20,
+      "maxStacks": 5,
+      "burstDamage": 60
     }
   }
 }

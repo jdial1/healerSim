@@ -1,5 +1,5 @@
 {
-  "note": "Android-owned spells that are not part of any class's own tree -- interrupts and the healers' dispel -- and the level each class or role learns them at. Loaded beside the shared spells (GameData.load). The web app never reads this file.",
+  "note": "Android-owned spells that are not part of any class's own tree -- interrupts, the healers' dispel and the tanks' defensive -- and the level each class or role learns them at. Loaded beside the shared spells (GameData.load). The web app never reads this file.",
   "spells": {
     "counterspell": {
       "id": "counterspell",
@@ -53,7 +53,17 @@
     {
       "role": "HEALER",
       "spell": "cleanse",
-      "level": 5
+      "level": 4
+    },
+    {
+      "cls": "WARRIOR",
+      "spell": "shield_wall",
+      "level": 7
+    },
+    {
+      "cls": "DEATHKNIGHT",
+      "spell": "icebound_fortitude",
+      "level": 7
     }
   ]
 }

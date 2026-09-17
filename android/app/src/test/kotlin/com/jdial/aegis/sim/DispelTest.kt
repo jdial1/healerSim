@@ -45,15 +45,15 @@ class DispelTest {
     }
 
     @Test
-    fun `healers learn Cleanse at level 5, and nobody else does`() {
+    fun `healers learn Cleanse at level 4, in time for Shadowfang, and nobody else does`() {
         for (cls in listOf(PlayerClass.PRIEST, PlayerClass.DRUID, PlayerClass.PALADIN)) {
-            assertFalse("cleanse" in data.grantsFor(cls, 4))
-            assertTrue("cleanse" in data.grantsFor(cls, 5))
+            assertFalse("cleanse" in data.grantsFor(cls, 3))
+            assertTrue("cleanse" in data.grantsFor(cls, 4))
         }
         for (cls in listOf(PlayerClass.MAGE, PlayerClass.WARRIOR, PlayerClass.ROGUE, PlayerClass.DEATHKNIGHT)) {
             assertFalse("cleanse" in data.grantsFor(cls, 60))
         }
-        val bar = Fixtures.progression.buildSpellLoadout(PlayerClass.PRIEST, emptyList(), 5).actionBar
+        val bar = Fixtures.progression.buildSpellLoadout(PlayerClass.PRIEST, emptyList(), 4).actionBar
         assertEquals("cleanse", bar[4])
     }
 

@@ -234,8 +234,10 @@ class ThreatTest {
         // targeting mode, so a dungeon opting in via JSON would remove draws
         // from the seeded stream for *every* player including healers, and
         // desynchronise the parity corpus. Threat targeting is switched on by
-        // role instead -- see GameTick.effectiveTargeting.
-        val offenders = Fixtures.data.dungeons.flatMap { d ->
+        // role instead -- see GameTick.effectiveTargeting. The Android-only
+        // encounter layer may opt in (the Wailing Caverns wound does): the
+        // parity corpus replays without it.
+        val offenders = Fixtures.sharedData.dungeons.flatMap { d ->
             val c = d.bossCombat ?: return@flatMap emptyList<String>()
             (c.attackTemplates.map { it.targeting to it.abilityId } +
                 c.debuffTemplates.map { it.targeting to it.abilityId })

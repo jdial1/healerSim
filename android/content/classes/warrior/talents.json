@@ -163,12 +163,12 @@
   },
   {
     "id": "w_r3c1",
-    "name": "Shield Wall",
-    "description": "Unlocks Shield Wall.",
+    "name": "Improved Revenge",
+    "description": "Revenge's cooldown is 1 second shorter.",
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/ability_warrior_shieldwall",
+    "icon": "wow/ability_warrior_secondwind",
     "gridX": 1,
     "gridY": 3,
     "prerequisites": [
@@ -179,7 +179,9 @@
     "maxRankBonusDescription": "",
     "statBonus": {},
     "points": 0,
-    "spellId": "shield_wall"
+    "effects": {
+      "cooldown:revenge": 10
+    }
   },
   {
     "id": "w_r3c3",

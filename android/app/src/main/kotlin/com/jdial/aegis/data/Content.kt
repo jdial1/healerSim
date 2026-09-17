@@ -260,6 +260,9 @@ data class Encounters(
  *   runs out; each stack is another tick of damage.
  * - `mind_control`: the carrier hits its most-hurt ally every [everyTicks].
  * - `curse_chain`: jumps to an uncursed ally every [everyTicks].
+ * - `wound`: stacks like poison on whoever holds threat; at [maxStacks] the
+ *   next stack bursts for [burstDamage] instead. The carrier's defensive
+ *   clears it -- the tank's signature moment.
  */
 @Serializable
 data class DebuffMechanic(
@@ -277,6 +280,7 @@ data class DebuffMechanic(
         const val POISON = "poison"
         const val MIND_CONTROL = "mind_control"
         const val CURSE_CHAIN = "curse_chain"
+        const val WOUND = "wound"
     }
 }
 

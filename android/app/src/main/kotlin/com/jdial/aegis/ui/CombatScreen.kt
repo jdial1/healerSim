@@ -8,6 +8,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -1161,6 +1165,9 @@ private fun ActionBar(
 
     // Reorder is a long-press drag; the picked-up slot follows the finger.
     var dragFrom by remember { mutableIntStateOf(-1) }
+    val actNow by rememberInfiniteTransition(label = "act-now").animateFloat(
+        0.35f, 1f, infiniteRepeatable(tween(450), RepeatMode.Reverse), label = "act-now",
+    )
     var dragDx by remember { mutableFloatStateOf(0f) }
     var dragDy by remember { mutableFloatStateOf(0f) }
 
@@ -1216,14 +1223,19 @@ private fun ActionBar(
                         // ...and the dispel while someone carries something to take.
                         val cleanseNow = spell?.dispels == true &&
                             state.party.any { it.isAlive && it.debuffs.toDispel() != null }
+                        // ...and the defensive while the wound is building on you.
+                        val wallNow = spell?.damageReduction != null &&
+                            state.unit(state.localUnitId)?.debuffs?.any { it.clearedByDefensive && it.stacks >= 3 } == true
                         val ready = when {
                             kickNow -> Color(0xFFFACC15)
                             cleanseNow -> Dispel
+                            wallNow -> Color(0xFFF97316)
                             else -> null
                         }
                         Box(
                             if (ready != null) {
-                                Modifier.border(2.dp, ready, RoundedCornerShape(8.dp)).padding(1.dp)
+                                // Pulsing, so no class colour on a slot border can pass for it.
+                                Modifier.border(3.dp, ready.copy(alpha = actNow), RoundedCornerShape(8.dp)).padding(1.dp)
                             } else {
                                 Modifier
                             },

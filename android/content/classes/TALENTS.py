@@ -54,6 +54,10 @@ TREES = {
         "w_r1c3": fx("Shield Wall's cooldown is 3 seconds shorter per rank.", cooldown__shield_wall=30),
         "w_r2c2": fx("Generates 6% more threat per rank.", threat=6),
         "w_r2c4": fx("Mana-paid attacks build 2 more rage per rank.", rageOnCast=2),
+        # Shield Wall itself is learned at level 7 (utility_spells.json), in
+        # time for the Wailing Caverns wound; the talent that unlocked it does this.
+        "w_r3c1": dict(fx("Revenge's cooldown is 1 second shorter.", cooldown__revenge=10),
+                       name="Improved Revenge", spellId=None),
         "w_r3c3": fx("Taunt's cooldown is 1.5 seconds shorter per rank.", cooldown__taunt=15),
         "w_r4c0": stat("Increases damage by 5% per rank.", healingBoost=5),
         "w_r4c2": stat("Increases maximum mana by 5% per rank.", manaPool=5),
@@ -86,6 +90,8 @@ TREES = {
         "dk_r1c3": fx("Generates 6% more threat per rank.", threat=6),
         "dk_r2c0": stat("Increases haste by 3% per rank.", haste=3),
         "dk_r2c4": fx("Death Strike costs 2 less mana per rank.", cost__death_strike=2),
+        "dk_r3c1": dict(fx("Dark Command's cooldown is 1.5 seconds shorter.", cooldown__dark_command=15),
+                        name="Unholy Command", spellId=None),
         "dk_r3c3": fx("Heart Strike deals 10% more damage per rank.", damage__heart_strike=10),
         "dk_r4c2": stat("Increases damage by 5% per rank.", healingBoost=5),
         "dk_r4c4": stat("Increases Blood Shield rating by 2 per rank.", uniqueStat=2),
@@ -110,7 +116,7 @@ def main():
         assert set(rewrite) <= ids, (cls, set(rewrite) - ids)
         # The Warrior's Devastate sits at r4c0; the generated trees have their
         # plain-power talent at r4c2. Either way every non-unlock talent is covered.
-        missing = {t["id"] for t in talents if "spellId" not in t} - set(rewrite)
+        missing = {t["id"] for t in talents if "spellId" not in t or t["id"] in rewrite} - set(rewrite)
         assert not missing, (cls, missing)
 
         spells = set(json.load(io.open(os.path.join(ROOT, cls, "spells.json"), encoding="utf-8")))
@@ -127,6 +133,8 @@ def main():
         for t in talents:
             if t["id"] in rewrite:
                 t.update(rewrite[t["id"]])
+                if t.get("spellId", 0) is None:
+                    del t["spellId"]
                 if not t["effects"]:
                     del t["effects"]
         io.open(path, "w", encoding="utf-8", newline="\n").write(json.dumps(talents, indent=2) + "\n")

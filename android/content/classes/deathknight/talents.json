@@ -162,12 +162,12 @@
   },
   {
     "id": "dk_r3c1",
-    "name": "Icebound Fortitude",
-    "description": "Unlocks Icebound Fortitude.",
+    "name": "Unholy Command",
+    "description": "Dark Command's cooldown is 1.5 seconds shorter.",
     "maxPoints": 1,
     "levelReq": 13,
     "cost": 1,
-    "icon": "wow/spell_deathknight_iceboundfortitude",
+    "icon": "wow/spell_deathknight_unholypresence",
     "gridX": 1,
     "gridY": 3,
     "prerequisites": [
@@ -178,7 +178,9 @@
     "maxRankBonusDescription": "",
     "statBonus": {},
     "points": 0,
-    "spellId": "icebound_fortitude"
+    "effects": {
+      "cooldown:dark_command": 15
+    }
   },
   {
     "id": "dk_r3c3",

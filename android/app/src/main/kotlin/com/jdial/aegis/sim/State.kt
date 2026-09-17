@@ -30,8 +30,8 @@ const val PLAYER_UNIT_ID = "5"
 /** The only consumable, referenced from the pipeline, the UI and the loadout. */
 const val MANA_POTION_ID = "mana_potion"
 
-/** The potion and the kicks: a kick behind the global cooldown is always a beat late. */
-fun Spell.offGlobalCooldown(): Boolean = id == MANA_POTION_ID || interrupts
+/** The potion, kicks and defensives: any of them behind the global cooldown is a beat late. */
+fun Spell.offGlobalCooldown(): Boolean = id == MANA_POTION_ID || interrupts || damageReduction != null
 const val SUSPEND_SNAPSHOT_TICK_INTERVAL = 8
 const val MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE_MS
 
@@ -128,6 +128,8 @@ data class UnitDebuff(
     val armedTicks: Int = 0,
     /** Mind control: the carrier is fighting for the boss. */
     val charm: Boolean = false,
+    /** A wound: the carrier's defensive takes it off. */
+    val clearedByDefensive: Boolean = false,
 ) {
     val isArmed: Boolean get() = armedTicks > 0 && remainingTicks > armedTicks
 }

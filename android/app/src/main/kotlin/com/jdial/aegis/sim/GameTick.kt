@@ -456,7 +456,8 @@ class GameTick(
                                     icon = tpl.icon,
                                     sourceAbilityId = tpl.abilityId,
                                     dispellable = tpl.dispellable,
-                                    stacks = if (mech?.kind == DebuffMechanic.POISON) 1 else 0,
+                                    stacks = if (mech?.kind == DebuffMechanic.POISON || mech?.kind == DebuffMechanic.WOUND) 1 else 0,
+                                    clearedByDefensive = mech?.kind == DebuffMechanic.WOUND,
                                     armedTicks = if (mech?.kind == DebuffMechanic.BOMB) mech.safeBelowTicks else 0,
                                     charm = mech?.kind == DebuffMechanic.MIND_CONTROL,
                                 ),
@@ -679,13 +680,21 @@ class GameTick(
                 var dot = d.damagePerTick * dotLevelMult * max(1, d.stacks)
                 if (s.currentDungeon?.endless == true) dot *= progression.endlessMultiplier(s.endlessStacks)
                 val mech = data.encounters.mechanics[d.sourceAbilityId]
+                // A wound is gone the moment its carrier raises a defensive; an
+                // AI carrier raises one just before it would burst.
+                if (mech?.kind == DebuffMechanic.WOUND &&
+                    (activeMitigation(s, unit) < 1.0 || (!s.isHuman(unit.id) && d.stacks >= mech.maxStacks - 1))
+                ) continue
                 var next = d.copy(remainingTicks = d.remainingTicks - 1)
                 when (mech?.kind) {
                     // Never runs out: every few ticks another stack, and the clock restarts.
-                    DebuffMechanic.POISON -> {
+                    DebuffMechanic.POISON, DebuffMechanic.WOUND -> {
                         val full = mech.durationTicks ?: d.remainingTicks
                         if (next.remainingTicks <= full - mech.everyTicks) {
-                            next = next.copy(remainingTicks = full, stacks = min(mech.maxStacks, d.stacks + 1))
+                            val burst = mech.kind == DebuffMechanic.WOUND && d.stacks >= mech.maxStacks
+                            if (burst) dot += mech.burstDamage * dotLevelMult
+                            val stacks = if (burst) 1 else min(mech.maxStacks, d.stacks + 1)
+                            next = next.copy(remainingTicks = full, stacks = stacks)
                         }
                     }
                     // Left alone, it goes off on whoever carries it.
