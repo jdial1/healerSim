@@ -17,6 +17,15 @@ object Fixtures {
         GameData.load { path -> File(assetsDir, path).readText() }
     }
 
+    /**
+     * The content without the Android-only layers (content/encounters.json and
+     * content/utility_spells.json): what the recorded fights were made from.
+     */
+    val sharedData: GameData by lazy {
+        val androidOnly = setOf("data/encounters.json", "data/utility_spells.json")
+        GameData.load { path -> if (path in androidOnly) "{}" else File(assetsDir, path).readText() }
+    }
+
     val stats: PlayerStats by lazy { PlayerStats(data) }
     val progression: Progression by lazy { Progression(data, stats) }
 
@@ -30,7 +39,7 @@ object Fixtures {
 
 /** The same content with some parts replaced -- for tests that isolate one rule. */
 fun GameData.with(balance: Balance = this.balance, dungeons: List<Dungeon> = this.dungeons): GameData =
-    GameData(balance, dungeons, npcPools, pacing, auras, consumables, mechanics, sharedSpells, classes)
+    GameData(balance, dungeons, npcPools, pacing, auras, consumables, mechanics, sharedSpells, classes, grants, encounters)
 
 /** The shared content as the web app has it: every boss attack lands at once. */
 fun GameData.withoutCasts(): GameData = with(

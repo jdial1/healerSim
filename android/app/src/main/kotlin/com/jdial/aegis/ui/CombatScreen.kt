@@ -78,6 +78,7 @@ import com.jdial.aegis.data.Spell
 import com.jdial.aegis.data.Targeting
 import com.jdial.aegis.sim.CombatPhase
 import com.jdial.aegis.sim.FLOATING_TEXT_LIFETIME_TICKS
+import com.jdial.aegis.sim.offGlobalCooldown
 import com.jdial.aegis.sim.FloatingKind
 import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.TRASH_PACK_COUNT
@@ -568,7 +569,13 @@ private fun CastingRow(cast: com.jdial.aegis.sim.EnemyCast, state: GameState) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         GameIcon(cast.icon, size = 22.dp, accent = Vital.critical)
         Spacer(Modifier.width(6.dp))
-        BasicText("CASTING", style = AegisType.label.copy(fontSize = 10.sp, color = Vital.critical))
+        BasicText(
+            if (cast.interruptible) "INTERRUPT" else "CASTING",
+            style = AegisType.label.copy(
+                fontSize = 10.sp,
+                color = if (cast.interruptible) Color(0xFFFACC15) else Vital.critical,
+            ),
+        )
         Spacer(Modifier.width(6.dp))
         BasicText(
             "${cast.name.uppercase()} \u2192 $whom",
@@ -1193,6 +1200,15 @@ private fun ActionBar(
                 Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                     state.activeActionBars.forEachIndexed { i, spellId ->
                         val spell = data.spell(spellId)
+                        // The kick lights up while there is something to kick.
+                        val kickNow = spell?.interrupts == true && state.enemyCast?.interruptible == true
+                        Box(
+                            if (kickNow) {
+                                Modifier.border(2.dp, Color(0xFFFACC15), RoundedCornerShape(8.dp)).padding(1.dp)
+                            } else {
+                                Modifier
+                            },
+                        ) {
                         SpellSlot(
                             index = i + 1,
                             spell = spell,
@@ -1204,7 +1220,7 @@ private fun ActionBar(
                             // potion is off the GCD, so it never shows one.
                             cooldownTicks = max(
                                 state.spellCooldowns[spellId] ?: 0,
-                                if (spellId == MANA_POTION_ID) 0 else state.globalCooldownRemaining,
+                                if (spell?.offGlobalCooldown() == true) 0 else state.globalCooldownRemaining,
                             ),
                             affordable = spell != null && state.canPay(spell),
                             dragging = dragFrom == i,
@@ -1223,7 +1239,7 @@ private fun ActionBar(
                                 // target would fire a cast the player did not aim.
                                 val usable = spell != null &&
                                     (state.spellCooldowns[spellId] ?: 0) <= 0 &&
-                                    (spellId == MANA_POTION_ID || state.globalCooldownRemaining <= 0) &&
+                                    (spell.offGlobalCooldown() || state.globalCooldownRemaining <= 0) &&
                                     state.canPay(spell)
                                 if (usable && dropTargetId != null) onDropCast(spell.id)
                                 onDragPoint(null)
@@ -1239,6 +1255,7 @@ private fun ActionBar(
                                 dragDx = 0f
                             },
                         )
+                        }
                     }
                 }
             }

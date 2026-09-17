@@ -25,7 +25,7 @@ class EnemyCastTest {
     }
     private val engine = Engine(quiet)
     private val deadmines = quiet.dungeons.first { it.id == "deadmines" }
-    private val ambush = deadmines.bossCombat!!.attackTemplates.single()
+    private val ambush = deadmines.bossCombat!!.attackTemplates.first { it.abilityId == "vc_ambush" }
 
     /** A warrior at the Deadmines boss, whose next mechanic is Ambush, due now. */
     private fun atAmbush(data: GameData = quiet): GameState {

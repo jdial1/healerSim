@@ -162,7 +162,8 @@ class ParityTest {
         val section = golden.obj("spellLoadout")
         for (cls in PlayerClass.webClasses) {
             val e = section.obj(cls.name)
-            val actual = prog.buildSpellLoadout(cls, zeroTalents(cls))
+            // Level 1: the Android-only utility spells start later for healers.
+            val actual = prog.buildSpellLoadout(cls, zeroTalents(cls), 1)
             assertEquals(cls.name + " unlockedSpells", e.arr("unlockedSpells").strings(), actual.unlockedSpells)
             assertEquals(cls.name + " actionBar", e.arr("activeActionBars").strings(), actual.actionBar)
         }

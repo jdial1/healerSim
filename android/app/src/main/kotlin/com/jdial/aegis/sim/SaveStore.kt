@@ -142,7 +142,7 @@ class SaveStore(
             t.copy(points = (blob.talentRanks[t.id] ?: 0).coerceIn(0, t.talent.maxPoints))
         }
         val level = engine.progression.levelFromTotalXp(blob.xp)
-        val loadout = engine.progression.buildSpellLoadout(cls, talents)
+        val loadout = engine.progression.buildSpellLoadout(cls, talents, level)
         val maxMana = engine.stats.maxMana(cls, level, talents)
 
         // A saved bar order is honoured only if it holds the same spells.

@@ -48,7 +48,16 @@ class GameData(
     val mechanics: Map<String, Boolean>,
     val sharedSpells: Map<String, Spell>,
     val classes: Map<PlayerClass, ClassBundle>,
+    /** Who learns the Android-owned utility spells, and when. */
+    val grants: List<SpellGrant> = emptyList(),
+    val encounters: Encounters = Encounters(),
 ) {
+    /** The utility spells [cls] has learned by [level], in content order. */
+    fun grantsFor(cls: PlayerClass, level: Int): List<String> {
+        val role = bundle(cls).meta.role
+        return grants.filter { it.level <= level && it.appliesTo(cls, role) }.map { it.spell }.distinct()
+    }
+
     /** All class spells merged with the shared ones, as `SPELLS` is in the web app. */
     val spells: Map<String, Spell> =
         classes.values.fold(sharedSpells) { acc, bundle -> acc + bundle.spells }
@@ -70,6 +79,8 @@ class GameData(
                 runCatching { deserialize(source.read(path)) }
                     .getOrElse { throw IllegalStateException("Failed to parse asset '$path'", it) }
 
+            val encounters = parse("data/encounters.json") { json.decodeFromString<Encounters>(it) }
+            val utility = parse("data/utility_spells.json") { json.decodeFromString<UtilitySpells>(it) }
             val classes = PlayerClass.entries.associateWith { cls ->
                 val dir = "classes/${cls.name.lowercase()}"
                 ClassBundle(
@@ -81,14 +92,17 @@ class GameData(
             return GameData(
                 balance = parse("data/balance.json") { json.decodeFromString<Balance>(it) },
                 dungeons = parse("data/dungeons.json") { json.decodeFromString<List<Dungeon>>(it) }
-                    .withEncounters(parse("data/encounters.json") { json.decodeFromString<Encounters>(it) }),
+                    .withEncounters(encounters),
                 npcPools = parse("data/npc_pools.json") { json.decodeFromString<NpcPools>(it) },
                 pacing = parse("data/pacing.json") { json.decodeFromString<Pacing>(it) },
                 auras = parse("data/auras.json") { json.decodeFromString<Auras>(it) },
                 consumables = parse("data/consumables.json") { json.decodeFromString<Map<String, ConsumableDef>>(it) },
                 mechanics = parse("data/mechanics.json") { json.decodeFromString<Map<String, Boolean>>(it) },
-                sharedSpells = parse("data/shared_spells.json") { json.decodeFromString<Map<String, Spell>>(it) },
+                sharedSpells = parse("data/shared_spells.json") { json.decodeFromString<Map<String, Spell>>(it) } +
+                    utility.spells,
                 classes = classes,
+                grants = utility.grants,
+                encounters = encounters,
             )
         }
     }

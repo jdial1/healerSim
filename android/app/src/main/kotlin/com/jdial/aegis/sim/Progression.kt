@@ -120,8 +120,11 @@ class Progression(private val data: GameData, private val stats: PlayerStats) {
      * Three heal slots in `spellOrder` priority, then the mana potion, then an
      * empty slot — always exactly 5.
      */
-    fun buildSpellLoadout(cls: PlayerClass?, talents: List<TalentRank>): Loadout {
+    fun buildSpellLoadout(cls: PlayerClass?, talents: List<TalentRank>, level: Int): Loadout {
         if (cls == null) return Loadout(emptyList(), emptyList())
+        // Utility spells (interrupts, the healers' dispel) sit in the fifth
+        // slot, the one the class kit leaves empty.
+        val granted = data.grantsFor(cls, level)
         val progression = data.bundle(cls).meta.progression
 
         val merged = progression.starterSpells.toMutableList()
@@ -139,8 +142,8 @@ class Progression(private val data: GameData, private val stats: PlayerStats) {
         while (healRow.size < 3) healRow += ""
 
         return Loadout(
-            unlockedSpells = (listOf(MANA_POTION_ID) + merged).distinct(),
-            actionBar = listOf(healRow[0], healRow[1], healRow[2], MANA_POTION_ID, ""),
+            unlockedSpells = (listOf(MANA_POTION_ID) + merged + granted).distinct(),
+            actionBar = listOf(healRow[0], healRow[1], healRow[2], MANA_POTION_ID, granted.firstOrNull() ?: ""),
         )
     }
 
@@ -157,7 +160,7 @@ class Progression(private val data: GameData, private val stats: PlayerStats) {
         newLevel: Int,
     ): LevelUpRewards {
         if (cls == null || newLevel <= previousLevel) return LevelUpRewards(emptyList(), false)
-        val unlocked = buildSpellLoadout(cls, talents).unlockedSpells.toSet()
+        val unlocked = buildSpellLoadout(cls, talents, newLevel).unlockedSpells.toSet()
         val spells = linkedSetOf<String>()
         var potion = false
         for (l in (previousLevel + 1)..newLevel) {

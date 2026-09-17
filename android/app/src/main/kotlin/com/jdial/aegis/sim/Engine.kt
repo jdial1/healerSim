@@ -120,7 +120,7 @@ class Engine(val data: GameData) {
     /** A fresh character of [cls] at level 1. */
     fun newCharacter(cls: PlayerClass, rng: Rng): GameState {
         val talents = data.bundle(cls).talents.map { TalentRank(it, 0) }
-        val loadout = progression.buildSpellLoadout(cls, talents)
+        val loadout = progression.buildSpellLoadout(cls, talents, 1)
         val maxMana = stats.maxMana(cls, 1, talents)
         return GameState(
             participants = mapOf(
@@ -260,7 +260,7 @@ class Engine(val data: GameData) {
     // --- talents -------------------------------------------------------------
 
     private fun refreshMeta(s: GameState): GameState {
-        val loadout = progression.buildSpellLoadout(s.playerClass, s.talents)
+        val loadout = progression.buildSpellLoadout(s.playerClass, s.talents, s.level)
         val maxMana = stats.maxMana(s.playerClass, s.level, s.talents)
         // Keep the player's chosen bar order when it still holds the same spells.
         val bar = if (s.activeActionBars.size == loadout.actionBar.size &&

@@ -45,6 +45,9 @@ enum class Cue(val sound: Int, val volume: Float) {
 
     /** A boss attack started winding up. Quieter than a real danger. */
     TELEGRAPH(R.raw.sfx_danger, 0.3f),
+
+    /** A boss cast was kicked before it landed. */
+    INTERRUPT(R.raw.sfx_crit, 0.8f),
     DEATH(R.raw.sfx_death, 0.8f),
     CLEAR(R.raw.sfx_clear, 0.9f),
     WIPE(R.raw.sfx_wipe, 0.9f),
@@ -74,6 +77,7 @@ fun cuesBetween(prev: GameState, cur: GameState): List<Cue> = buildList {
 
     val cast = cur.enemyCast
     val before = prev.enemyCast
+    if (before != null && cast == null && before.remainingTicks > 1) add(Cue.INTERRUPT)
     if (cast != null && (before == null || before.abilityId != cast.abilityId || before.remainingTicks < cast.remainingTicks)) {
         add(Cue.TELEGRAPH)
     }
@@ -101,7 +105,7 @@ fun cuesBetween(prev: GameState, cur: GameState): List<Cue> = buildList {
 private fun Cue.haptic(): HapticFeedbackType = when (this) {
     Cue.CAST, Cue.TELEGRAPH -> HapticFeedbackType.SegmentTick
     Cue.REFUSED -> HapticFeedbackType.Reject
-    Cue.CRIT -> HapticFeedbackType.Confirm
+    Cue.CRIT, Cue.INTERRUPT -> HapticFeedbackType.Confirm
     Cue.DANGER, Cue.DEATH, Cue.WIPE -> HapticFeedbackType.LongPress
     Cue.CLEAR -> HapticFeedbackType.Confirm
 }

@@ -112,7 +112,7 @@ class CastPipeline(
         // The potion is off the global cooldown, as consumables conventionally
         // are -- being unable to drink because you just cast is the kind of
         // rule that only ever feels like a bug.
-        if (s.globalCooldownRemaining > 0 && spellId != MANA_POTION_ID) return null
+        if (s.globalCooldownRemaining > 0 && !spell.offGlobalCooldown()) return null
         if (spellId == MANA_POTION_ID && s.manaPotionsUsedThisDungeon >= MANA_POTION_USES_PER_DUNGEON) return null
         s.healer ?: return null
 
@@ -192,7 +192,7 @@ class CastPipeline(
         }
         // Started here rather than in each apply path: there are four of them
         // and a fifth would silently forget.
-        return if (ready is Ready.ManaPotion) {
+        return if (data.spell(spellId)?.offGlobalCooldown() == true) {
             out
         } else {
             out.withMe { it.copy(globalCooldownRemaining = data.balance.combat.shared.globalCooldownTicks) }
@@ -269,6 +269,7 @@ class CastPipeline(
                 ),
             )
         }.copy(enemyDebuffs = dots).let { hooks.onDamageLand(ctx, it, DamageLand(spell, ready.spellId, ready.isCrit, dealt)) }
+            .let { interrupted(it, spell) }
         // The caster's slot, not slot 5: a taunt is inherently "this unit".
         val caster = s.localUnitId
         return if (spell.tauntTicks == null) out else out.copy(
@@ -286,6 +287,16 @@ class CastPipeline(
             tauntedById = caster,
             tauntLockTicks = spell.tauntTicks,
         )
+    }
+
+    /**
+     * An interrupt cancels a cast that can be interrupted. Against anything
+     * else it does nothing -- and its cooldown is spent all the same, which is
+     * the whole cost of kicking at the wrong moment.
+     */
+    private fun interrupted(s: GameState, spell: Spell): GameState {
+        if (!spell.interrupts || s.enemyCast?.interruptible != true) return s
+        return s.copy(enemyCast = null, lastInterruptBy = s.localUnitId)
     }
 
     /** Player damage by class and level; see ClassesBalance.damageScale. */

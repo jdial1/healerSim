@@ -73,6 +73,14 @@ class FeedbackCueTest {
     }
 
     @Test
+    fun `a kick that lands is heard, a cast that lands is not`() {
+        val cast = EnemyCast("vc_cannon", "Cannon Barrage", targets = listOf("1"), remainingTicks = 12, totalTicks = 30, interruptible = true)
+        val casting = fight.copy(enemyCast = cast)
+        assertEquals(listOf(Cue.INTERRUPT), cuesBetween(casting, fight))
+        assertEquals(emptyList<Cue>(), cuesBetween(fight.copy(enemyCast = cast.copy(remainingTicks = 1)), fight))
+    }
+
+    @Test
     fun `outside a fight nothing plays`() {
         val idle = fight.copy(isCombatActive = false)
         assertTrue(cuesBetween(idle, withHealth(idle, "1", 0.0)).isEmpty())

@@ -117,6 +117,23 @@ class BattleSceneTest {
     }
 
     @Test
+    fun `a kicked cast breaks, and the AI that kicked it says so`() {
+        val cast = EnemyCast("vc_cannon", "Cannon Barrage", targets = listOf("1"), remainingTicks = 12, totalTicks = 30, interruptible = true)
+        val casting = fight.copy(enemyCast = cast)
+        val kicked = casting.copy(enemyCast = null, lastInterruptBy = aiDps.id)
+        assertEquals(
+            listOf(SceneEvent.Interrupted(aiDps.id), SceneEvent.Bark(aiDps.id, "Kicked!")),
+            sceneEventsBetween(casting, kicked),
+        )
+        // A cast that ran its course landed; nobody kicked it.
+        val landing = fight.copy(enemyCast = cast.copy(remainingTicks = 1))
+        assertTrue(sceneEventsBetween(landing, fight).none { it is SceneEvent.Interrupted })
+        // The player's own kick is not narrated for them.
+        val mine = casting.copy(enemyCast = null, lastInterruptBy = fight.localUnitId)
+        assertEquals(listOf(SceneEvent.Interrupted(fight.localUnitId)), sceneEventsBetween(casting, mine))
+    }
+
+    @Test
     fun `the tank leads and the healer stands at the back`() {
         val roles = lineUp(fight.party.shuffled(java.util.Random(1))).map { it.role }
         assertEquals(UnitRole.TANK, roles.first())

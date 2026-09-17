@@ -74,6 +74,8 @@ data class Spell(
     val damageReductionTicks: Int? = null,
     /** MANA today. RAGE and ENERGY exist for the tank and DPS classes. */
     val resource: String = "MANA",
+    /** Cancels a boss cast that can be interrupted. */
+    val interrupts: Boolean = false,
 ) {
     fun hasTag(tag: String) = tag in tags
 
@@ -222,25 +224,53 @@ data class AttackTemplate(
      * content/encounters.json, never by the web app's dungeons.json.
      */
     val castTicks: Int = 0,
+    /** A DPS can cancel it while it winds up. */
+    val interruptible: Boolean = false,
 )
 
 /** content/encounters.json: Android-only tuning layered onto the shared dungeons. */
 @Serializable
-data class Encounters(val attacks: Map<String, AttackTuning> = emptyMap())
+data class Encounters(
+    val attacks: Map<String, AttackTuning> = emptyMap(),
+    /** Per dungeon id: what this layer adds to that boss. */
+    val bosses: Map<String, BossTuning> = emptyMap(),
+    /** How long an AI DPS lets a cast run before kicking it. */
+    val aiKickDelayTicks: Int = 8,
+)
 
 @Serializable
-data class AttackTuning(val castTicks: Int = 0)
+data class AttackTuning(val castTicks: Int = 0, val interruptible: Boolean = false)
 
-/** The dungeons with [encounters] applied. Unknown ability ids are ignored. */
+@Serializable
+data class BossTuning(
+    /** Attacks this boss has in addition to the shared one: a signature moment. */
+    val extraAttacks: List<AttackTemplate> = emptyList(),
+)
+
+/** The dungeons with [encounters] applied. Unknown ids are ignored. */
 fun List<Dungeon>.withEncounters(encounters: Encounters): List<Dungeon> = map { d ->
     val combat = d.bossCombat ?: return@map d
+    val boss = encounters.bosses[d.id]
     d.copy(
         bossCombat = combat.copy(
             attackTemplates = combat.attackTemplates.map { a ->
-                encounters.attacks[a.abilityId]?.let { a.copy(castTicks = it.castTicks) } ?: a
-            },
+                encounters.attacks[a.abilityId]?.let { a.copy(castTicks = it.castTicks, interruptible = it.interruptible) } ?: a
+            } + boss?.extraAttacks.orEmpty(),
         ),
     )
+}
+
+/** content/utility_spells.json: spells outside the class trees, and who learns them. */
+@Serializable
+data class UtilitySpells(
+    val spells: Map<String, Spell> = emptyMap(),
+    val grants: List<SpellGrant> = emptyList(),
+)
+
+/** [spell] is learned at [level] by one class, or by every class of one role. */
+@Serializable
+data class SpellGrant(val spell: String, val level: Int, val cls: String? = null, val role: String? = null) {
+    fun appliesTo(c: PlayerClass, classRole: String): Boolean = cls == c.name || role == classRole
 }
 
 @Serializable

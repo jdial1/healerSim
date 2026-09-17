@@ -60,7 +60,7 @@ fun WireProfile.toParticipant(engine: Engine): Participant? {
     val talents = engine.data.bundle(cls).talents.map { t ->
         TalentRank(t, (talentRanks[t.id] ?: 0).coerceIn(0, t.maxPoints))
     }
-    val loadout = engine.progression.buildSpellLoadout(cls, talents)
+    val loadout = engine.progression.buildSpellLoadout(cls, talents, level)
     val bar = actionBar.takeIf {
         it.size == loadout.actionBar.size && it.sorted() == loadout.actionBar.sorted()
     } ?: loadout.actionBar

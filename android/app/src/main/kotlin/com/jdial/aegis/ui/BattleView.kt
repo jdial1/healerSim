@@ -249,6 +249,9 @@ sealed interface SceneEvent {
     data class Died(val unitId: String) : SceneEvent
     data class EnemyHit(val amount: Int) : SceneEvent
     data class Bark(val unitId: String, val text: String) : SceneEvent
+
+    /** A boss cast was cancelled before it landed, by [byUnitId]. */
+    data class Interrupted(val byUnitId: String?) : SceneEvent
 }
 
 /** Below this an AI party member asks for help. */
@@ -294,6 +297,14 @@ fun sceneEventsBetween(prev: GameState, cur: GameState): List<SceneEvent> = buil
     val healer = cur.party.firstOrNull { it.role == UnitRole.HEALER && ai(it.id) && it.isAlive }
     if (healer != null && prev.aiHealerMana >= BARK_OOM_MANA && cur.aiHealerMana < BARK_OOM_MANA) {
         add(SceneEvent.Bark(healer.id, "Out of mana!"))
+    }
+
+    // A cast that vanished before its last tick was kicked, not landed.
+    val lastCast = prev.enemyCast
+    if (lastCast != null && cur.enemyCast == null && lastCast.remainingTicks > 1) {
+        val by = cur.lastInterruptBy
+        add(SceneEvent.Interrupted(by))
+        if (by != null && ai(by)) add(SceneEvent.Bark(by, "Kicked!"))
     }
 
     val sameEnemy = prev.enemyMaxHealth == cur.enemyMaxHealth &&
@@ -357,6 +368,7 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
     val says = remember { mutableStateMapOf<String, Say>() }
     val bursts = remember { mutableStateListOf<Burst>() }
     var enemyFlash by remember { mutableStateOf(0) }
+    var interruptedAt by remember { mutableStateOf(0L) }
     var enemyLunge by remember { mutableStateOf(0) }
     var nextAttacker by remember { mutableStateOf(0) }
     var pending by remember { mutableStateOf(0) }
@@ -375,6 +387,7 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
             is SceneEvent.Healed -> sparkle[e.unitId] = (sparkle[e.unitId] ?: 0) + 1
             is SceneEvent.Died -> flinch[e.unitId] = (flinch[e.unitId] ?: 0) + 1
             is SceneEvent.Bark -> says[e.unitId] = Say(e.text, now + 1_600)
+            is SceneEvent.Interrupted -> interruptedAt = now
             is SceneEvent.EnemyHit -> {
                 pending += e.amount
                 // Ten ticks a second of damage becomes one swing and one number
@@ -483,6 +496,18 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
         state.enemyCast?.let { cast ->
             CastBar(cast, Modifier.offset(x = w - 146.dp, y = 5.dp).width(132.dp))
         }
+        // The payoff for a kick: the cast breaks, and says so.
+        val sinceKick = remember(interruptedAt) { Animatable(0f) }
+        LaunchedEffect(interruptedAt) { if (interruptedAt > 0) sinceKick.animateTo(1f, tween(1_100)) }
+        if (interruptedAt > 0 && sinceKick.value < 1f) {
+            BasicText(
+                "INTERRUPTED",
+                style = AegisType.label.copy(fontSize = 11.sp, color = Kick),
+                modifier = Modifier
+                    .offset(x = w - 140.dp, y = (8 - 10 * sinceKick.value).dp)
+                    .graphicsLayer { alpha = 1f - sinceKick.value },
+            )
+        }
 
         // Damage numbers over the enemy, as the old side-on games did it.
         bursts.forEach { b ->
@@ -508,14 +533,17 @@ fun BattleView(state: GameState, modifier: Modifier = Modifier) {
 
 private val WindUp = Color(0xFFF97316)
 
+/** A cast that can be kicked, and the kick that lands. */
+private val Kick = Color(0xFFFACC15)
+
 /** The boss's wind-up: what is coming, filling toward the moment it lands. */
 @Composable
 private fun CastBar(cast: com.jdial.aegis.sim.EnemyCast, modifier: Modifier) {
     Column(modifier) {
         BasicText(
-            cast.name.uppercase(),
+            (if (cast.interruptible) "KICK  ·  " else "") + cast.name.uppercase(),
             maxLines = 1,
-            style = AegisType.label.copy(fontSize = 9.sp, color = Color.White),
+            style = AegisType.label.copy(fontSize = 9.sp, color = if (cast.interruptible) Kick else Color.White),
         )
         Box(
             Modifier
@@ -524,7 +552,7 @@ private fun CastBar(cast: com.jdial.aegis.sim.EnemyCast, modifier: Modifier) {
                 .clip(RoundedCornerShape(2.dp))
                 .background(Color(0xAA000000)),
         ) {
-            Box(Modifier.fillMaxWidth(cast.progress).fillMaxHeight().background(WindUp))
+            Box(Modifier.fillMaxWidth(cast.progress).fillMaxHeight().background(if (cast.interruptible) Kick else WindUp))
         }
     }
 }

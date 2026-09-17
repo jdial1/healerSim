@@ -39,7 +39,8 @@ val iconFieldNames = setOf("icon", "bossIcon", "cardIcon", "passiveTraitIcon")
 val contentJsonDirs = listOf(
     webRoot.dir("src/data").asFile,
     webRoot.dir("src/classes").asFile,
-    layout.projectDirectory.dir("../content/classes").asFile,
+    // The Android-owned content: classes, encounters, utility spells.
+    layout.projectDirectory.dir("../content").asFile,
 )
 val kotlinSourceDir = layout.projectDirectory.dir("src/main/kotlin").asFile
 
@@ -98,7 +99,7 @@ val syncGameData = tasks.register<Sync>("syncGameData") {
     // Same destination, so GameData.load sees one merged tree.
     // Android-only encounter tuning (boss cast times), beside the shared data.
     from(layout.projectDirectory.dir("../content")) {
-        include("encounters.json")
+        include("encounters.json", "utility_spells.json")
         into("data")
     }
     from(layout.projectDirectory.dir("../content/classes")) {

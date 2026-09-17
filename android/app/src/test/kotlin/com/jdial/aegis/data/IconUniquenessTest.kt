@@ -20,7 +20,7 @@ class IconUniquenessTest {
     private val classes = PlayerClass.entries.map { Fixtures.data.bundle(it) }
 
     // By spell id: Flash Heal is one spell that two classes carry.
-    private val spellIcons = classes.flatMap { b -> b.spells.values }
+    private val spellIcons = (classes.flatMap { b -> b.spells.values } + Fixtures.data.sharedSpells.values)
         .filter { it.id != MANA_POTION_ID && !it.hasTag("consumable") }
         .distinctBy { it.id }
         .map { it.id to it.icon }

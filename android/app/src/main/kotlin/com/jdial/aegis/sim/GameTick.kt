@@ -226,6 +226,24 @@ class GameTick(
         )
     }
 
+    /**
+     * An AI DPS interrupting the boss.
+     *
+     * Only with no human DPS in the run -- then it is the people's job, and
+     * "who kicks?" is theirs to settle. It lets the first interruptible cast
+     * through and kicks every second one, a moment after it starts, so a
+     * healer or tank sees both what a cast does and what a kick saves them.
+     * Deterministic: no rng.
+     */
+    internal fun aiKick(s: GameState): GameState {
+        val cast = s.enemyCast ?: return s
+        if (!cast.interruptible || s.interruptibleCasts % 2 != 0) return s
+        if (s.participants.values.any { it.isHuman && it.role == UnitRole.DPS }) return s
+        if (cast.totalTicks - cast.remainingTicks < data.encounters.aiKickDelayTicks) return s
+        val kicker = s.party.firstOrNull { it.role == UnitRole.DPS && it.isAlive && !s.isHuman(it.id) } ?: return s
+        return s.copy(enemyCast = null, lastInterruptBy = kicker.id)
+    }
+
     // --- the AI healer -------------------------------------------------------
 
     internal data class AiHealResult(
@@ -470,6 +488,7 @@ class GameTick(
                             targets = party.map { it.id }.filter { it in targets },
                             remainingTicks = tpl.castTicks,
                             totalTicks = tpl.castTicks,
+                            interruptible = tpl.interruptible,
                         )
                     }
                 } else {
@@ -934,8 +953,20 @@ class GameTick(
         val newXp = s.xp + xpGained
         val level = progression.levelFromTotalXp(newXp)
         val maxMana = stats.maxMana(s.playerClass, level, s.talents)
+        val learned = s.playerClass?.let { data.grantsFor(it, level) }.orEmpty() - s.unlockedSpells.toSet()
         return s.withMe {
-            it.copy(level = level, maxMana = maxMana, mana = min(maxMana.toDouble(), it.mana))
+            var bar = it.activeActionBars
+            for (spell in learned) {
+                val free = bar.indexOf("")
+                if (free >= 0) bar = bar.toMutableList().also { b -> b[free] = spell }
+            }
+            it.copy(
+                level = level,
+                maxMana = maxMana,
+                mana = min(maxMana.toDouble(), it.mana),
+                unlockedSpells = it.unlockedSpells + learned,
+                activeActionBars = bar,
+            )
         }.copy(
             xp = newXp,
             talentPoints = progression.talentPoints(level, s.talents),
@@ -1290,11 +1321,15 @@ class GameTick(
             ?: 1.0
 
         val boss = processBossAi(ctx, rng)
-        val withBoss = s.copy(
-            bossSelfBuffs = boss.bossSelfBuffs,
-            mechanicCooldown = boss.mechanicCooldown,
-            mechanicOrdinal = boss.mechanicOrdinal,
-            enemyCast = boss.enemyCast,
+        val castStarted = boss.enemyCast != null && s.enemyCast == null
+        val withBoss = aiKick(
+            s.copy(
+                bossSelfBuffs = boss.bossSelfBuffs,
+                mechanicCooldown = boss.mechanicCooldown,
+                mechanicOrdinal = boss.mechanicOrdinal,
+                enemyCast = boss.enemyCast,
+                interruptibleCasts = s.interruptibleCasts + if (castStarted && boss.enemyCast?.interruptible == true) 1 else 0,
+            ),
         )
 
         val env = processEnvironmentalTick(

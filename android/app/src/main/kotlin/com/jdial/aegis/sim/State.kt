@@ -2,6 +2,7 @@ package com.jdial.aegis.sim
 
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.PlayerClass
+import com.jdial.aegis.data.Spell
 import kotlinx.serialization.Serializable
 
 /**
@@ -28,6 +29,9 @@ const val PLAYER_UNIT_ID = "5"
 
 /** The only consumable, referenced from the pipeline, the UI and the loadout. */
 const val MANA_POTION_ID = "mana_potion"
+
+/** The potion and the kicks: a kick behind the global cooldown is always a beat late. */
+fun Spell.offGlobalCooldown(): Boolean = id == MANA_POTION_ID || interrupts
 const val SUSPEND_SNAPSHOT_TICK_INTERVAL = 8
 const val MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE_MS
 
@@ -178,6 +182,7 @@ data class EnemyCast(
     val targets: List<String>,
     val remainingTicks: Int,
     val totalTicks: Int,
+    val interruptible: Boolean = false,
 ) {
     /** 0 at the start of the wind-up, 1 as it lands. */
     val progress: Float get() = if (totalTicks <= 0) 1f else 1f - remainingTicks.toFloat() / totalTicks
@@ -372,6 +377,10 @@ data class GameState(
     val mechanicOrdinal: Int = 0,
     /** The boss attack currently winding up, if any. */
     val enemyCast: EnemyCast? = null,
+    /** Interruptible casts started this run: the AI kicks every second one. */
+    val interruptibleCasts: Int = 0,
+    /** Who cancelled the last boss cast, for the scene. */
+    val lastInterruptBy: String? = null,
     /** Who the enemy is currently on. Null until the first threat is generated. */
     /**
      * The AI healer's mana. Zero and unused while the player is the healer.
@@ -501,6 +510,8 @@ data class GameState(
         mechanicCooldown = 0,
         mechanicOrdinal = 0,
         enemyCast = null,
+        interruptibleCasts = 0,
+        lastInterruptBy = null,
         enemyTargetId = null,
         tauntLockTicks = 0,
         tauntedById = null,

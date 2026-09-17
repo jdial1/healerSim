@@ -1,22 +1,78 @@
 {
-  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). castTicks: how long a boss attack winds up before it lands -- the telegraph. The web app never reads this file.",
+  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it. bosses: what this layer adds to a boss. The web app never reads this file.",
   "attacks": {
-    "vc_ambush": { "castTicks": 20 },
-    "arugal_void_bolt": { "castTicks": 20 },
-    "verdan_spore_burst": { "castTicks": 25 },
-    "therm_bomb": { "castTicks": 20 },
-    "smite_penance": { "castTicks": 20 },
-    "amnennar_bolt": { "castTicks": 25 },
-    "ukorz_impale": { "castTicks": 20 },
-    "theradras_boulder": { "castTicks": 20 },
-    "eranikus_acid": { "castTicks": 25 },
-    "thaurissan_dominate": { "castTicks": 20 },
-    "overlord_strike": { "castTicks": 25 },
-    "rivendare_death_coil": { "castTicks": 25 },
-    "gandling_shadow_bolt": { "castTicks": 25 },
-    "gordok_slam": { "castTicks": 25 },
-    "drakkisath_fireball": { "castTicks": 25 },
-    "rag_magma": { "castTicks": 30 },
-    "endless_surge": { "castTicks": 20 }
+    "vc_ambush": {
+      "castTicks": 20
+    },
+    "arugal_void_bolt": {
+      "castTicks": 20,
+      "interruptible": true
+    },
+    "verdan_spore_burst": {
+      "castTicks": 25,
+      "interruptible": true
+    },
+    "therm_bomb": {
+      "castTicks": 20
+    },
+    "smite_penance": {
+      "castTicks": 20
+    },
+    "amnennar_bolt": {
+      "castTicks": 25,
+      "interruptible": true
+    },
+    "ukorz_impale": {
+      "castTicks": 20
+    },
+    "theradras_boulder": {
+      "castTicks": 20
+    },
+    "eranikus_acid": {
+      "castTicks": 25,
+      "interruptible": true
+    },
+    "thaurissan_dominate": {
+      "castTicks": 20
+    },
+    "overlord_strike": {
+      "castTicks": 25
+    },
+    "rivendare_death_coil": {
+      "castTicks": 25
+    },
+    "gandling_shadow_bolt": {
+      "castTicks": 25,
+      "interruptible": true
+    },
+    "gordok_slam": {
+      "castTicks": 25
+    },
+    "drakkisath_fireball": {
+      "castTicks": 25,
+      "interruptible": true
+    },
+    "rag_magma": {
+      "castTicks": 30
+    },
+    "endless_surge": {
+      "castTicks": 20
+    }
+  },
+  "aiKickDelayTicks": 8,
+  "bosses": {
+    "deadmines": {
+      "extraAttacks": [
+        {
+          "abilityId": "vc_cannon",
+          "name": "Cannon Barrage",
+          "icon": "wow/ability_vehicle_siegeenginecannon",
+          "damage": 30,
+          "targeting": "all_living",
+          "castTicks": 30,
+          "interruptible": true
+        }
+      ]
+    }
   }
 }

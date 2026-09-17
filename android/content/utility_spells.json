@@ -1,0 +1,34 @@
+{
+  "note": "Android-owned spells that are not part of any class's own tree -- interrupts and the healers' dispel -- and the level each class or role learns them at. Loaded beside the shared spells (GameData.load). The web app never reads this file.",
+  "spells": {
+    "counterspell": {
+      "id": "counterspell",
+      "name": "Counterspell",
+      "type": "DIRECT",
+      "school": "utility",
+      "manaCost": 10,
+      "healing": 0,
+      "cooldown": 150,
+      "interrupts": true,
+      "icon": "wow/spell_frost_iceshock",
+      "tags": []
+    },
+    "kick": {
+      "id": "kick",
+      "name": "Kick",
+      "type": "DIRECT",
+      "school": "utility",
+      "resource": "ENERGY",
+      "manaCost": 25,
+      "healing": 0,
+      "cooldown": 150,
+      "interrupts": true,
+      "icon": "wow/ability_kick",
+      "tags": []
+    }
+  },
+  "grants": [
+    { "cls": "MAGE", "spell": "counterspell", "level": 1 },
+    { "cls": "ROGUE", "spell": "kick", "level": 1 }
+  ]
+}
