@@ -24,9 +24,65 @@ val webRoot = rootProject.layout.projectDirectory.dir("..")
 
 val generatedAssetsDir = layout.buildDirectory.dir("generated/gameAssets").get().asFile
 
+/*
+ * Only the icons the app can actually ask for are packaged.
+ *
+ * public/icons/wow holds the game's whole icon folder -- 23,474 files, 163 MB --
+ * and the app uses a few hundred of them. An icon name reaches the screen from
+ * exactly two places: an image field in the content JSON, or a literal in the
+ * Kotlin sources (the fallback, the potion, the tab icons). Both are scanned
+ * here and resolved the way IconLoader.candidatePaths resolves them; anything
+ * else stays out of the APK. IconPruneTest checks the result independently:
+ * nothing unreferenced ships, and nothing referenced is missing.
+ */
+val iconFieldNames = setOf("icon", "bossIcon", "cardIcon", "passiveTraitIcon")
+val contentJsonDirs = listOf(
+    webRoot.dir("src/data").asFile,
+    webRoot.dir("src/classes").asFile,
+    layout.projectDirectory.dir("../content/classes").asFile,
+)
+val kotlinSourceDir = layout.projectDirectory.dir("src/main/kotlin").asFile
+
+fun iconAssetPaths(name: String): List<String> {
+    val n = name.trim().lowercase()
+    if (n.isEmpty()) return emptyList()
+    if (n.startsWith("class-icons/")) return listOf("$n.png")
+    if (n.startsWith("wow/") || !n.contains("/")) {
+        val icon = n.removePrefix("wow/").replace(" ", "")
+        return listOf("wow/$icon.png", "wow/$icon.jpg")
+    }
+    val (author, icon) = n.split("/", limit = 2)
+    return listOf("game-icons/$author/$icon.png")
+}
+
+fun referencedIconAssets(): Set<String> {
+    val names = mutableSetOf("wow/inv_misc_questionmark")
+    fun walk(node: Any?) {
+        when (node) {
+            is Map<*, *> -> node.forEach { (k, v) ->
+                if (k in iconFieldNames && v is String) names += v
+                walk(v)
+            }
+            is List<*> -> node.forEach(::walk)
+        }
+    }
+    contentJsonDirs.flatMap { dir -> dir.walkTopDown().filter { it.extension == "json" }.toList() }
+        .forEach { walk(groovy.json.JsonSlurper().parse(it)) }
+    val authors = webRoot.dir("public/icons/game-icons").asFile.list()?.toList().orEmpty()
+    val literal = Regex("\"((?:wow|class-icons|${authors.joinToString("|")})/[A-Za-z0-9_ .-]+)\"")
+    kotlinSourceDir.walkTopDown().filter { it.extension == "kt" }.forEach { f ->
+        literal.findAll(f.readText()).forEach { names += it.groupValues[1] }
+    }
+    return names.flatMap(::iconAssetPaths).toSet()
+}
+
 val syncGameData = tasks.register<Sync>("syncGameData") {
-    description = "Copies game content JSON and icons from the web app into Android assets."
+    description = "Copies game content JSON, and the icons it uses, from the web app into Android assets."
     into(generatedAssetsDir)
+    // The icon filter reads these, so a new reference re-runs the sync.
+    contentJsonDirs.forEach { inputs.dir(it) }
+    inputs.dir(kotlinSourceDir)
+    val wanted by lazy { referencedIconAssets() }
 
     from(webRoot.dir("src/data")) {
         include("*.json")
@@ -46,6 +102,9 @@ val syncGameData = tasks.register<Sync>("syncGameData") {
     }
     from(webRoot.dir("public/icons")) {
         into("icons")
+        include { it.isDirectory || it.relativePath.pathString in wanted }
+        // Directories the filter emptied are not packaged either.
+        includeEmptyDirs = false
     }
 }
 
