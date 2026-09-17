@@ -116,10 +116,13 @@ fun DungeonQueueSheet(
     /** Your own best clear of this place, and the fastest posted anywhere. */
     yourBest: Int = 0,
     worldBest: Int = 0,
+    /** Offered only where this character has already cleared the place. */
+    hardUnlocked: Boolean = false,
     onClose: () -> kotlin.Unit,
-    onEnter: (pace: String) -> kotlin.Unit,
+    onEnter: (pace: String, hard: Boolean) -> kotlin.Unit,
 ) {
     var pace by remember { mutableStateOf("normal") }
+    var hard by remember(dungeon.id) { mutableStateOf(false) }
     val slots = remember(playerRole) { partyRoles(playerRole) }
     val yourSlot = slots.lastIndex
     var filled by remember(dungeon.id, playerRole) { mutableIntStateOf(0) }
@@ -231,9 +234,39 @@ fun DungeonQueueSheet(
                     }
                 }
 
+                if (hardUnlocked) {
+                    Spacer(Modifier.height(14.dp))
+                    // Cleared once, it can be taken seriously: scaled to the
+                    // party that comes back, and worth more.
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(
+                                if (hard) 2.dp else 1.dp,
+                                if (hard) Vital.critical else Gilt.deep,
+                                RoundedCornerShape(6.dp),
+                            )
+                            .clickable { hard = !hard }
+                            .semantics { role = Role.Switch }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BasicText(
+                            "HARD MODE",
+                            style = AegisType.label.copy(color = if (hard) Vital.critical else Ink.secondary),
+                        )
+                        Spacer(Modifier.weight(1f))
+                        BasicText(
+                            if (hard) "ON  ·  SCALED TO YOU" else "OFF",
+                            style = AegisType.label.copy(color = if (hard) Vital.critical else Ink.muted),
+                        )
+                    }
+                }
+
                 Spacer(Modifier.height(18.dp))
                 if (ready) {
-                    GiltButton("Enter Dungeon", onClick = { onEnter(pace) })
+                    GiltButton(if (hard) "Enter Hard Mode" else "Enter Dungeon", onClick = { onEnter(pace, hard) })
                 } else {
                     BasicText("WAITING FOR GROUP…", style = AegisType.label.copy(color = Ink.muted))
                 }

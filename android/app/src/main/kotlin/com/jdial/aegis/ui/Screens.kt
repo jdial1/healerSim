@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.sim.DungeonRecord
 import com.jdial.aegis.sim.clearTimeLabel
+import com.jdial.aegis.sim.recordKey
 import com.jdial.aegis.sim.sigilTint
 import com.jdial.aegis.sim.titleFor
 import com.jdial.aegis.R
@@ -457,7 +458,9 @@ fun DungeonListScreen(
                 ) {
                     items(data.dungeons, key = { it.id }) { dungeon ->
                         val locked = playerLevel < dungeon.levelMin
-                        DungeonCard(dungeon, locked, records[dungeon.id]) { if (!locked) onSelect(dungeon) }
+                        DungeonCard(dungeon, locked, records[dungeon.id], records[recordKey(dungeon.id, true)]) {
+                            if (!locked) onSelect(dungeon)
+                        }
                     }
                 }
                 // Fade the list into the ground so a card never ends in a hard
@@ -530,7 +533,13 @@ private fun Mark(label: String, earned: Boolean) {
 }
 
 @Composable
-private fun DungeonCard(dungeon: Dungeon, locked: Boolean, record: DungeonRecord?, onClick: () -> Unit) {
+private fun DungeonCard(
+    dungeon: Dungeon,
+    locked: Boolean,
+    record: DungeonRecord?,
+    hardRecord: DungeonRecord?,
+    onClick: () -> Unit,
+) {
     val accent = LocalAccent.current
     ForgedPanel(
         modifier = Modifier
@@ -578,6 +587,13 @@ private fun DungeonCard(dungeon: Dungeon, locked: Boolean, record: DungeonRecord
                     Mark("CLEAN", record.clean)
                     Spacer(Modifier.width(6.dp))
                     Mark("SHARP", record.sharp)
+                }
+                if (hardRecord != null && hardRecord.clears > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    BasicText(
+                        "HARD ${clearTimeLabel(hardRecord.bestTicks)}   ·   ${hardRecord.clears}",
+                        style = AegisType.label.copy(color = Vital.critical),
+                    )
                 }
             }
 

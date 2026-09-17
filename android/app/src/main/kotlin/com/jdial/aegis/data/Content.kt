@@ -271,6 +271,27 @@ data class Encounters(
     /** A frenzied enemy's damage multiplier (AttackTemplate.grantsState). */
     val frenzyDamageMultiplier: Double = 1.0,
     val rules: Map<String, DungeonRules> = emptyMap(),
+    /** Run XP for everyone when two or more people are in the party. */
+    val groupXpMultiplier: Double = 1.0,
+    val hard: HardMode = HardMode(),
+)
+
+/**
+ * Hard mode: a dungeon you have already cleared, taken seriously.
+ *
+ * The over-level step is what keeps it honest: a level-30 tank walking back
+ * into Deadmines meets enemies scaled to him, not to the level range on the
+ * card.
+ */
+@Serializable
+data class HardMode(
+    val healthMultiplier: Double = 1.0,
+    val damageMultiplier: Double = 1.0,
+    val xpMultiplier: Double = 1.0,
+    /** Health and damage grow by this much per level above the dungeon's range. */
+    val overLevelStep: Double = 0.0,
+    /** The enrage timer is this share of its usual length. */
+    val enrageScale: Double = 1.0,
 )
 
 /** What this moment's enemy rotates through: the boss's, or this trash pull's. */
@@ -344,6 +365,8 @@ data class AddRules(
      */
     val aiAddShareWithHumanDps: Double = 0.2,
     val bombFuseTicks: Int = 100,
+    /** One knob over everything adds hit for, for tuning passes. */
+    val damageScale: Double = 1.0,
 )
 
 /**

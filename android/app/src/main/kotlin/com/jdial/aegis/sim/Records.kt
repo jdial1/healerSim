@@ -35,7 +35,8 @@ data class RunHighlights(
 /** A cleared dungeon's mark on the record, and what it was worth saying. */
 fun Map<String, DungeonRecord>.withRun(outcome: DungeonOutcome): Pair<Map<String, DungeonRecord>, RunHighlights> {
     if (outcome.kind != DungeonOutcomeKind.SUCCESS) return this to RunHighlights()
-    val was = this[outcome.dungeonId] ?: DungeonRecord()
+    val key = recordKey(outcome.dungeonId, outcome.hardMode)
+    val was = this[key] ?: DungeonRecord()
     val clean = outcome.deaths == 0
     val sharp = outcome.missedKicks == 0
     val newBest = outcome.clearTicks > 0 && (was.bestTicks == 0 || outcome.clearTicks < was.bestTicks)
@@ -48,13 +49,16 @@ fun Map<String, DungeonRecord>.withRun(outcome: DungeonOutcome): Pair<Map<String
         clean = was.clean || clean,
         sharp = was.sharp || sharp,
     )
-    return (this + (outcome.dungeonId to now)) to RunHighlights(
+    return (this + (key to now)) to RunHighlights(
         newBest = newBest && was.clears > 0,
         firstClear = was.clears == 0,
         clean = clean && !was.clean,
         sharp = sharp && !was.sharp,
     )
 }
+
+/** Hard mode keeps its own record under the same dungeon. */
+fun recordKey(dungeonId: String, hard: Boolean): String = if (hard) "$dungeonId+hard" else dungeonId
 
 /** A clear time as a player reads it: 1:42. */
 fun clearTimeLabel(ticks: Int): String = "%d:%02d".format(ticks / 600, (ticks / 10) % 60)

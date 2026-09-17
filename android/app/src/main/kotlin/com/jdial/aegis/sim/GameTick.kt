@@ -676,6 +676,7 @@ class GameTick(
                     val packs = s.adds.count { it.kind == AddTemplate.PACK && it.isAlive }
                     if (packs > 0) damage *= (1 + packs).toDouble()
                 }
+                damage *= hardDamage(s)
                 damage *= hooks.damageTakenMultiplier(ctx, "trash_tick", unit)
                 damage *= activeMitigation(ctx.state, unit)
             }
@@ -1009,6 +1010,19 @@ class GameTick(
         return s.runXpAwards + credited.mapValues { (id, xp) -> (s.runXpAwards[id] ?: 0) + xp }
     }
 
+    /**
+     * What a run pays beyond its pace: hard mode, and the company kept.
+     *
+     * The group share is the whole reason to queue with people rather than
+     * with the AI that fills the seats anyway.
+     */
+    internal fun runBonus(s: GameState): Double {
+        val humans = s.participants.values.count { it.isHuman }
+        val group = if (humans >= 2) data.encounters.groupXpMultiplier else 1.0
+        val hard = if (s.hardMode) data.encounters.hard.xpMultiplier else 1.0
+        return group * hard
+    }
+
     /** An XP award applied to this client's player, as a guest receives one. */
     internal fun awardXp(s: GameState, xp: Int): GameState = withPostRunProgress(s, xp)
 
@@ -1121,6 +1135,7 @@ class GameTick(
                 clearTicks = s.combatElapsedTicks,
                 deaths = s.runDeaths,
                 missedKicks = s.runMissedKicks,
+                hardMode = s.hardMode,
             ),
         )
     }
@@ -1265,7 +1280,7 @@ class GameTick(
 
         val dungeon = s.currentDungeon
         if (s.combatPhase == CombatPhase.TRASH) {
-            val hp = dungeon?.let { max(1.0, progression.trashMaxHealth(it)) } ?: 1.0
+            val hp = dungeon?.let { max(1.0, progression.trashMaxHealth(it) * hardScale(it, s.level, s.hardMode)) } ?: 1.0
             // Whoever a runner brought comes first, and is not one of the planned pulls.
             if (s.extraPulls > 0) {
                 return finalizeProgress(
@@ -1291,7 +1306,7 @@ class GameTick(
                 )
             }
             // Trash cleared: the boss engages and the mechanic rotation resets.
-            val bossHp = max(1.0, dungeon?.bossHealth ?: 1000.0)
+            val bossHp = max(1.0, (dungeon?.bossHealth ?: 1000.0) * hardScale(dungeon, s.level, s.hardMode))
             val profile = dungeon?.let { combatProfile(it) }
             return finalizeProgress(
                 base.copy(
@@ -1324,8 +1339,10 @@ class GameTick(
         if (dungeon.endless) return advanceEndlessWave(ctx, base, sys, dungeon, rng)
 
         val paceXp = s.dungeonPace?.let { progression.pace(it).xpMultiplier } ?: 1.0
-        // Pulling early pays; with nothing banked this is `* 1.0`, exact.
-        val xpGained = (progression.dungeonXpGain(dungeon, s.level) * paceXp * (1 + s.earlyPullBonus)).roundToInt()
+        // Pulling early pays, hard mode pays, and so does company. With none
+        // of them this is `* 1.0 * 1.0`, exact.
+        val extra = (1 + s.earlyPullBonus) * runBonus(s)
+        val xpGained = (progression.dungeonXpGain(dungeon, s.level) * paceXp * extra).roundToInt()
         val stats0 = runStats(s)
         // On a clear the web app keeps the mana it had entering this tick, so the
         // final tick's regen is deliberately discarded.
@@ -1339,7 +1356,7 @@ class GameTick(
                 else s.completedDungeonIds,
             party = ctx.cls?.let { generateParty(it, advanced.level, rng) } ?: sys.party,
             runXpAwards = creditEveryone(s, xpGained) { level ->
-                (progression.dungeonXpGain(dungeon, level) * paceXp).roundToInt()
+                (progression.dungeonXpGain(dungeon, level) * paceXp * extra).roundToInt()
             },
             dungeonOutcome = DungeonOutcome(
                 kind = DungeonOutcomeKind.SUCCESS,
@@ -1352,6 +1369,7 @@ class GameTick(
                 clearTicks = s.combatElapsedTicks,
                 deaths = s.runDeaths,
                 missedKicks = s.runMissedKicks,
+                hardMode = s.hardMode,
             ),
         )
     }
@@ -1480,15 +1498,37 @@ class GameTick(
     }
 
     /**
+     * Hard mode's scale: what it multiplies enemy health and damage by,
+     * including the step for every level the party is above the dungeon.
+     * Exactly 1.0 in normal mode, so nothing else changes.
+     */
+    internal fun hardScale(dungeon: Dungeon?, level: Int, hard: Boolean): Double {
+        if (!hard || dungeon == null) return 1.0
+        val h = data.encounters.hard
+        val over = max(0, level - dungeon.levelMax)
+        return h.healthMultiplier * (1 + over * h.overLevelStep)
+    }
+
+    /** What hard mode adds to what the enemy hits for. */
+    internal fun hardDamage(s: GameState): Double {
+        if (!s.hardMode) return 1.0
+        val h = data.encounters.hard
+        val over = max(0, s.level - (s.currentDungeon?.levelMax ?: s.level))
+        return h.damageMultiplier * (1 + over * h.overLevelStep)
+    }
+
+    /**
      * Enemy damage growth: the enrage, once the boss has lasted past its
      * timer, and a frenzy while one is up.
      */
     internal fun enrageMultiplier(s: GameState): Double {
         val p = data.encounters.pressure
         val frenzy = if (s.enemyState == STATE_FRENZY && s.enemyStateTicks > 0) data.encounters.frenzyDamageMultiplier else 1.0
-        val after = data.encounters.enrageAfterTicks(s.currentDungeon?.id)
-        if (after <= 0 || s.bossTicks <= after) return frenzy
-        return (1 + (s.bossTicks - after) * p.enrageRampPerTick) * frenzy
+        val hard = hardDamage(s)
+        val after = (data.encounters.enrageAfterTicks(s.currentDungeon?.id) *
+            if (s.hardMode) data.encounters.hard.enrageScale else 1.0).toInt()
+        if (after <= 0 || s.bossTicks <= after) return frenzy * hard
+        return (1 + (s.bossTicks - after) * p.enrageRampPerTick) * frenzy * hard
     }
 
     /** The breather after a pull, unless this dungeon has none. */
@@ -1602,7 +1642,8 @@ class GameTick(
             }
         }
         // Adds go for whoever keeps the party alive.
-        val hurt = adds.sumOf { it.damagePerTick } * (s.currentDungeon?.let { progression.bossDamageMultiplier(it.difficulty) } ?: 1.0)
+        val hurt = adds.sumOf { it.damagePerTick } * rules.damageScale *
+            (s.currentDungeon?.let { progression.bossDamageMultiplier(it.difficulty) } ?: 1.0)
         val victim = party.firstOrNull { it.isAlive && it.role == UnitRole.HEALER } ?: party.firstOrNull { it.isAlive }
         val hit = (if (hurt <= 0 || victim == null) party else party.map {
             if (it.id == victim.id) it.copy(health = max(0.0, it.health - hurt)) else it

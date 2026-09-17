@@ -399,3 +399,14 @@ val verifyMinifiedSaveContract = tasks.register("verifyMinifiedSaveContract") {
 tasks.matching { it.name == "minifyReleaseWithR8" }.configureEach {
     finalizedBy(verifyMinifiedSaveContract)
 }
+
+// The playtest harness (scripts/playtest.py) is driven by -Dplaytest* properties,
+// which Gradle does not pass into the test JVM on its own, and it talks through
+// stdout rather than assertions.
+tasks.withType<Test>().configureEach {
+    System.getProperties().forEach { key, value ->
+        val name = key.toString()
+        if (name.startsWith("playtest")) systemProperty(name, value.toString())
+    }
+    if (System.getProperty("playtest") != null) testLogging.showStandardStreams = true
+}

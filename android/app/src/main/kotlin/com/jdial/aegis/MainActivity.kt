@@ -355,15 +355,16 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                     playerRole = state.playerRole,
                     queueStatus = queueStatus,
                     yourBest = records[dungeon.id]?.bestTicks ?: 0,
+                    hardUnlocked = (records[dungeon.id]?.clears ?: 0) > 0,
                     worldBest = worldBest,
                     onClose = {
                         queued = null
                         vm.cancelQueue()
                     },
-                    onEnter = { pace ->
+                    onEnter = { pace, hard ->
                         queued = null
                         targetId = state.localUnitId
-                        vm.startDungeon(dungeon, pace)
+                        vm.startDungeon(dungeon, pace, hard)
                     },
                 )
             }

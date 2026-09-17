@@ -286,6 +286,7 @@ data class DungeonOutcome(
      * healing.
      */
     val groupStats: Boolean = false,
+    val hardMode: Boolean = false,
     /** How long the run took, and what it cost: the record keeps these. */
     val clearTicks: Int = 0,
     val deaths: Int = 0,
@@ -475,6 +476,8 @@ data class GameState(
     val enemyState: String? = null,
     val enemyStateTicks: Int = 0,
     val combatElapsedTicks: Int = 0,
+    /** Hard mode: a cleared dungeon, scaled to the party that comes back. */
+    val hardMode: Boolean = false,
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
     val endlessStacks: Int = 0,

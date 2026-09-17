@@ -224,7 +224,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
      * as it always did. "The queue is broken" must never mean "you cannot
      * play".
      */
-    fun startDungeon(dungeon: Dungeon, pace: String) {
+    fun startDungeon(dungeon: Dungeon, pace: String, hard: Boolean = false) {
         persist()
         store.clearSuspendedRun()
         _state.value = dressed(_state.value)
@@ -238,7 +238,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
 
         if (!_settings.value.multiplayer || !multiplayer.isAvailable) {
             multiplayer.leave()
-            dispatch(Action.StartDungeon(dungeon, pace))
+            dispatch(Action.StartDungeon(dungeon, pace, hard))
             startTicking()
             return
         }
@@ -249,7 +249,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
             // only blocks when they were quicker than the queue.
             val session = multiplayer.session
                 ?: multiplayer.joinQueue(dungeon, pace, _state.value)
-            dispatch(Action.StartDungeon(dungeon, pace))
+            dispatch(Action.StartDungeon(dungeon, pace, hard))
             if (session != null) {
                 // Build the seating over the network first, then apply it under
                 // the lock -- never await with the state in hand.

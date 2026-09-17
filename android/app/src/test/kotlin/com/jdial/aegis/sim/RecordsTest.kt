@@ -127,4 +127,14 @@ class RecordsTest {
         assertEquals(2, outcome.deaths)
         assertEquals(1, outcome.missedKicks)
     }
+
+    @Test
+    fun `hard mode keeps its own record`() {
+        val normal = outcome()
+        val hard = outcome(ticks = 2_000).copy(hardMode = true)
+        val (after, _) = emptyMap<String, DungeonRecord>().withRun(normal).first.withRun(hard)
+        assertEquals(1_000, after.getValue("deadmines").bestTicks)
+        assertEquals(2_000, after.getValue(recordKey("deadmines", true)).bestTicks)
+        assertEquals("deadmines", recordKey("deadmines", false))
+    }
 }
