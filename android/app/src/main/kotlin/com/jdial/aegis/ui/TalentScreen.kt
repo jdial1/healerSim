@@ -10,6 +10,7 @@ import com.jdial.aegis.sim.SpellStat
 import com.jdial.aegis.sim.isStashItem
 import com.jdial.aegis.sim.spellGroup
 import com.jdial.aegis.sim.spellStats
+import com.jdial.aegis.sim.charmEffects
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -819,6 +820,8 @@ internal fun StatChips(stats: List<SpellStat>, dimmed: Boolean = false) {
     ) {
         stats.forEach { stat ->
             val colour = when (stat.tone) {
+                "good" -> Vital.healthy
+                "bad" -> Vital.critical
                 "heal" -> Vital.healthy
                 "damage" -> Vital.critical
                 "shield" -> Vital.shield
@@ -942,6 +945,8 @@ private fun CharmCase(
                     style = AegisType.label.copy(color = if (worn) Gilt.bright else Ink.primary),
                 )
                 BasicText(charm.text, style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted))
+                Spacer(Modifier.height(4.dp))
+                StatChips(charmEffects(charm, engine.data))
             }
             if (worn) {
                 Spacer(Modifier.width(8.dp))

@@ -54,6 +54,7 @@ import com.jdial.aegis.sim.UiSettings
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jdial.aegis.data.affixesFor
+import com.jdial.aegis.sim.charmEffects
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.sim.DungeonOutcome
@@ -492,6 +493,8 @@ fun OutcomeDialog(
                                 charm.text,
                                 style = AegisType.body.copy(fontSize = 11.sp, color = Ink.secondary),
                             )
+                            Spacer(Modifier.height(4.dp))
+                            StatChips(charmEffects(charm, data))
                         }
                     }
                 }

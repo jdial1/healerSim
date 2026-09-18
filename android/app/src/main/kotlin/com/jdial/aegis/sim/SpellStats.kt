@@ -102,3 +102,40 @@ fun spellGroup(spell: Spell): String = when {
 val SPELL_GROUPS = listOf("HEALING", "DAMAGE", "DEFENCE", "UTILITY")
 
 private fun seconds(ticks: Int): String = "${ceil(ticks / 10.0).toInt()}s"
+
+/**
+ * What a charm actually does, one chip per effect: the spell it touches, what
+ * it changes, and by how much -- green where it helps, red where it costs.
+ *
+ * The flavour line says "Greater Heal comes round sooner, and lands lighter";
+ * this is the part that says by how much, which is what anyone deciding
+ * whether to wear it needs.
+ */
+fun charmEffects(charm: com.jdial.aegis.data.Charm, data: com.jdial.aegis.data.GameData): List<SpellStat> =
+    charm.effects.entries.sortedByDescending { it.value > 0 }.map { (key, v) ->
+        val spellId = key.substringAfter(':', "")
+        val spell = if (spellId.isEmpty()) null else data.spell(spellId)
+        val name = spell?.name?.uppercase()
+        val good = v > 0
+        val tone = if (good) "good" else "bad"
+        val n = kotlin.math.abs(v)
+        val pct = "${if (good) "+" else "-"}${n.roundToInt()}%"
+        when (key.substringBefore(':')) {
+            // A positive cooldown effect is ticks taken off; a positive cost
+            // effect is resource taken off. Both read as a smaller number.
+            "cooldown" -> SpellStat("$name COOLDOWN", "${if (good) "-" else "+"}${"%.1f".format(n / 10)}s", tone)
+            "cost" -> SpellStat("$name COST", "${if (good) "-" else "+"}${n.roundToInt()} ${spell?.resourceName ?: ""}".trim(), tone)
+            "damage" -> SpellStat("$name DAMAGE", pct, tone)
+            // On a spell that only shields, the heal bonus scales the absorb.
+            "heal" -> SpellStat(if ((spell?.shield ?: 0.0) > 0 && (spell?.healing ?: 0.0) <= 0) "$name ABSORB" else "$name HEALING", pct, tone)
+            "threat" -> SpellStat("THREAT", pct, tone)
+            "execute" -> SpellStat("DAMAGE TO THE WOUNDED", pct, tone)
+            "chillTicks" -> SpellStat("CHILL", "${if (good) "+" else "-"}${"%.1f".format(n / 10)}s", tone)
+            "energyRegen" -> SpellStat("ENERGY REGEN", pct, tone)
+            "rageFromDamage" -> SpellStat("RAGE FROM HITS", pct, tone)
+            "finisherPerPoint" -> SpellStat("PER COMBO POINT", pct, tone)
+            "deathStrikeHeal" -> SpellStat("DEATH STRIKE HEAL", pct, tone)
+            "bloodShield" -> SpellStat("BLOOD SHIELD", pct, tone)
+            else -> SpellStat(key.uppercase(), "${if (good) "+" else "-"}${"%.0f".format(n)}", tone)
+        }
+    }

@@ -106,8 +106,10 @@ class FeedbackCueTest {
         // A mage casts, a warrior swings, whatever the spell is called.
         val bolt = data.bundle(PlayerClass.MAGE).spells.values.first { it.school == SpellSchool.DAMAGE }
         val strike = data.bundle(PlayerClass.WARRIOR).spells.values.first { it.school == SpellSchool.DAMAGE }
-        assertEquals(Cue.SPELL, castCue(bolt))
-        assertEquals(Cue.SWING, castCue(strike))
+        // Which variant is the content's call -- Frostbolt is ice, Fireball fire --
+        // but a caster's damage is always a spell sound and a warrior's a blow.
+        assertTrue("$bolt", castCue(bolt) in setOf(Cue.SPELL, Cue.BOLT_B, Cue.BOLT_C, Cue.STORM, Cue.STORM_B, Cue.DOT, Cue.DOT_B))
+        assertTrue("$strike", castCue(strike) in setOf(Cue.SWING, Cue.SWING_B, Cue.STRIKE, Cue.CLEAVE, Cue.CLEAVE_B))
         data.bundle(PlayerClass.WARRIOR).spells.values.firstOrNull { it.damageReduction != null }
             ?.let { assertEquals(Cue.DEFENSIVE, castCue(it)) }
 

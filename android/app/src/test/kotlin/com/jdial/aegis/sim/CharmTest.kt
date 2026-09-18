@@ -187,4 +187,24 @@ class CharmTest {
             }
         }
     }
+
+    @Test
+    fun `a charm says what it does, in numbers, with the cost in red`() {
+        for (charm in data.charms.values) {
+            val chips = charmEffects(charm, data)
+            assertEquals("${charm.id}: one chip per effect", charm.effects.size, chips.size)
+            // No raw keys leaking through: every chip names something a player knows.
+            // Raw keys are lower-case ("cooldown:renew"); a label never is.
+            assertTrue("${charm.id}: ${chips.map { it.label }}", chips.none { it.label != it.label.uppercase() || "NULL" in it.label })
+        }
+        // Greater Heal sooner and lighter: a green cooldown, a red heal.
+        val rosary = charmEffects(data.charms.getValue("whitemanes_rosary"), data)
+        val cd = rosary.first { "COOLDOWN" in it.label }
+        val heal = rosary.first { "HEALING" in it.label }
+        assertEquals("good", cd.tone)
+        assertEquals("-2.5s", cd.value)
+        assertEquals("bad", heal.tone)
+        assertEquals("-12%", heal.value)
+        assertTrue(cd.label.startsWith("GREATER HEAL"))
+    }
 }
