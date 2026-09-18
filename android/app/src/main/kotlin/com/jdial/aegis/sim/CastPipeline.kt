@@ -123,7 +123,7 @@ class CastPipeline(
         // `resource` was declared on every spell and read by nothing. A spell
         // that names another resource pays its cost from that, not from mana.
         val usesMana = spell.resource == "MANA"
-        val discount = s.talents.effect("cost:$spellId")
+        val discount = s.me.effect("cost:$spellId")
         val needMana = if (usesMana) max(0, manaCost(ctx, spell, spellId, surgeFree) - discount.roundToInt()) else 0
         if (s.mana < needMana) return null
         val needResource = if (usesMana) 0.0 else max(0.0, spell.manaCost - discount)

@@ -28,8 +28,10 @@ data class RunHighlights(
     val firstClear: Boolean = false,
     val clean: Boolean = false,
     val sharp: Boolean = false,
+    /** The charm this clear handed over, if it was the first one here. */
+    val charm: com.jdial.aegis.data.Charm? = null,
 ) {
-    val any: Boolean get() = newBest || firstClear || clean || sharp
+    val any: Boolean get() = newBest || firstClear || clean || sharp || charm != null
 }
 
 /** A cleared dungeon's mark on the record, and what it was worth saying. */

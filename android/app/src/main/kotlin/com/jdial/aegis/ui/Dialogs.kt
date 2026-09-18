@@ -451,6 +451,34 @@ fun OutcomeDialog(
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                     )
                 }
+
+                // The charm this place handed over. Given its own row rather
+                // than a word in the list: it is the first thing in this game
+                // you actually take home.
+                highlights.charm?.let { charm ->
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(2.dp, Gilt.core, RoundedCornerShape(6.dp))
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        GameIcon(charm.icon, size = 36.dp, accent = Gilt.core)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            BasicText(
+                                "CHARM  ·  ${charm.name.uppercase()}",
+                                style = AegisType.label.copy(color = Gilt.bright),
+                            )
+                            BasicText(
+                                charm.text,
+                                style = AegisType.body.copy(fontSize = 11.sp, color = Ink.secondary),
+                            )
+                        }
+                    }
+                }
                 StatRow("Experience", "+${outcome.xpGained}")
                 if (playerRole == UnitRole.HEALER || group) {
                     StatRow(if (group) "Group healing" else "Healing done", outcome.stats.totalHealing.toInt().toString())

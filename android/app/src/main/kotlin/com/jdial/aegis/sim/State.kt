@@ -318,6 +318,12 @@ data class Participant(
     val playerClass: PlayerClass? = null,
     val level: Int = 1,
     val talents: List<TalentRank> = emptyList(),
+    /**
+     * The charm this character is wearing, carried whole rather than by id --
+     * the same shape TalentRank already uses, so nothing reading effects needs
+     * the content to resolve it.
+     */
+    val charm: com.jdial.aegis.data.Charm? = null,
     val unlockedSpells: List<String> = emptyList(),
     val activeActionBars: List<String> = emptyList(),
     /** Derived from the class's ClassMeta.role. */
@@ -526,6 +532,7 @@ data class GameState(
     val playerClass: PlayerClass? get() = me.playerClass
     val level: Int get() = me.level
     val talents: List<TalentRank> get() = me.talents
+    val charm: com.jdial.aegis.data.Charm? get() = me.charm
     val unlockedSpells: List<String> get() = me.unlockedSpells
     val activeActionBars: List<String> get() = me.activeActionBars
     val playerRole: UnitRole get() = me.role

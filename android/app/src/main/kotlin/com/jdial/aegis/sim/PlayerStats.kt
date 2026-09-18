@@ -29,6 +29,16 @@ data class TalentRank(val talent: Talent, val points: Int) {
 /** A talent effect ([Talent.effects]) summed over the ranks invested. */
 fun List<TalentRank>.effect(key: String): Double = sumOf { (it.talent.effects[key] ?: 0.0) * it.points }
 
+/**
+ * Everything altering [key] for this character: their talents, and the charm
+ * they are wearing.
+ *
+ * One funnel on purpose. A charm uses exactly the keys talents use, so every
+ * effect that already existed works on a charm the day it is written, and a
+ * new effect key only has to be read in one place to work on both.
+ */
+fun Participant.effect(key: String): Double = talents.effect(key) + (charm?.effects?.get(key) ?: 0.0)
+
 data class PrimaryStats(val intellect: Double, val spirit: Double)
 
 data class TalentStats(

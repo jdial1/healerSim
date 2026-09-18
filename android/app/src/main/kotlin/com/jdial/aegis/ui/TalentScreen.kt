@@ -393,7 +393,10 @@ fun CharacterScreen(
     onChangeClass: () -> Unit,
     onSetActionBarSlot: (Int, String) -> Unit = { _, _ -> },
     records: Map<String, com.jdial.aegis.sim.DungeonRecord> = emptyMap(),
-    data: com.jdial.aegis.data.GameData? = null
+    data: com.jdial.aegis.data.GameData? = null,
+    /** Charms this character has earned, in the order they were earned. */
+    ownedCharms: List<String> = emptyList(),
+    onEquipCharm: (String?) -> Unit = {},
 ) {
     val cls = state.playerClass ?: return
     var showCredits by remember { mutableStateOf(false) }
@@ -503,6 +506,8 @@ fun CharacterScreen(
                     Spacer(Modifier.height(18.dp))
                     TrophyCase(records, data)
                 }
+
+                CharmCase(state, engine, ownedCharms, onEquipCharm)
 
                 Spellbook(state, engine, onSetActionBarSlot)
 
@@ -778,6 +783,80 @@ private fun StatLine(label: String, value: String) {
         )
         Spacer(Modifier.width(6.dp))
         BasicText(value, style = AegisType.numeric.copy(fontSize = 14.sp), maxLines = 1)
+    }
+}
+
+/**
+ * The charms this character has earned, and the one it is wearing.
+ *
+ * One worn at a time on purpose: a charm is a decision about how the class
+ * plays, and a decision you make once and never revisit is not one. Every
+ * charm names a cost as well as a gift for the same reason.
+ */
+@Composable
+private fun CharmCase(
+    state: GameState,
+    engine: Engine,
+    owned: List<String>,
+    onEquip: (String?) -> Unit,
+) {
+    val cls = state.playerClass ?: return
+    val mine = engine.data.charms.values.filter { it.cls == cls.name }
+    if (mine.isEmpty()) return
+    val have = mine.filter { it.id in owned }
+
+    Spacer(Modifier.height(18.dp))
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        BasicText("CHARMS", style = AegisType.label.copy(color = Gilt.mid))
+        Spacer(Modifier.weight(1f))
+        BasicText(
+            "${have.size} / ${mine.size}",
+            style = AegisType.numeric.copy(fontSize = 12.sp, color = Ink.muted),
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+
+    if (have.isEmpty()) {
+        BasicText(
+            "Clear a dungeon for the first time and it hands one over.",
+            style = AegisType.body.copy(color = Ink.muted),
+        )
+        return
+    }
+
+    have.forEach { charm ->
+        val worn = state.charm?.id == charm.id
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 3.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .border(
+                    if (worn) 2.dp else 1.dp,
+                    if (worn) Gilt.core else Gilt.deep.copy(alpha = 0.5f),
+                    RoundedCornerShape(6.dp),
+                )
+                .clickable(onClickLabel = if (worn) "Take off ${charm.name}" else "Wear ${charm.name}") {
+                    onEquip(if (worn) null else charm.id)
+                }
+                .semantics { role = Role.Switch }
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            GameIcon(charm.icon, size = 34.dp, accent = if (worn) Gilt.core else Gilt.deep)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                BasicText(
+                    charm.name.uppercase(),
+                    style = AegisType.label.copy(color = if (worn) Gilt.bright else Ink.primary),
+                )
+                BasicText(charm.text, style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted))
+            }
+            if (worn) {
+                Spacer(Modifier.width(8.dp))
+                BasicText("WORN", style = AegisType.label.copy(fontSize = 9.sp, color = Gilt.core))
+            }
+        }
     }
 }
 

@@ -26,6 +26,9 @@ data class CharacterBlob(
     val introTutorialComplete: Boolean = false,
     /** Per dungeon id: clears, best time, marks. Defaulted, so old saves decode. */
     val records: Map<String, DungeonRecord> = emptyMap(),
+    /** Charms this character has earned, and the one it is wearing. */
+    val charmIds: List<String> = emptyList(),
+    val equippedCharmId: String? = null,
 )
 
 @Serializable
@@ -115,7 +118,11 @@ class SaveStore(
         }
     }
 
-    fun serialize(state: GameState, records: Map<String, DungeonRecord> = emptyMap()): CharacterBlob? {
+    fun serialize(
+        state: GameState,
+        records: Map<String, DungeonRecord> = emptyMap(),
+        charmIds: List<String> = emptyList(),
+    ): CharacterBlob? {
         val cls = state.playerClass ?: return null
         return CharacterBlob(
             xp = state.xp,
@@ -127,12 +134,17 @@ class SaveStore(
             // Carried, not derived: merge() runs on every persist and a run's
             // record is written once, when it ends.
             records = records,
+            // What is owned is carried the same way records are; what is worn
+            // is state, so it comes back off the character.
+            charmIds = charmIds,
+            equippedCharmId = state.charm?.id,
         )
     }
 
     fun merge(roster: Roster, state: GameState): Roster {
         val cls = state.playerClass?.name
-        val blob = serialize(state, roster.byClass[cls]?.records.orEmpty()) ?: return roster
+        val was = roster.byClass[cls]
+        val blob = serialize(state, was?.records.orEmpty(), was?.charmIds.orEmpty()) ?: return roster
         return roster.copy(
             lastPlayedClass = blob.playerClass,
             byClass = roster.byClass + (blob.playerClass to blob),
@@ -164,6 +176,12 @@ class SaveStore(
                 activeActionBars = bar,
                 maxMana = maxMana,
                 mana = maxMana.toDouble(),
+                // Only if it is still owned and still this class's: a save that
+                // names a charm it does not have gets no charm, not a crash.
+                charm = blob.equippedCharmId
+                    ?.takeIf { it in blob.charmIds }
+                    ?.let { engine.data.charms[it] }
+                    ?.takeIf { it.cls == cls.name },
             )
         }.copy(
             xp = blob.xp,

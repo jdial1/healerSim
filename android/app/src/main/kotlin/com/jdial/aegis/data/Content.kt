@@ -405,6 +405,32 @@ data class PullTuning(
     val combat: BossCombat? = null,
 )
 
+/**
+ * A charm: one thing you carry out of a dungeon that rewrites how a spell
+ * behaves next time.
+ *
+ * [effects] uses exactly the keys talents already use -- `cooldown:<spell>`,
+ * `cost:<spell>`, `damage:<spell>`, `heal:<spell>`, `threat`, `execute` and the
+ * class keys -- so a charm needs no effect code of its own, and anything a
+ * talent can do to a spell a charm can do too.
+ *
+ * Most carry a [cost] as well as a gift. A charm that is only upside is a
+ * charm everybody equips and nobody thinks about, which is the failure mode of
+ * every reward this game has had so far: a number that goes up.
+ */
+@Serializable
+data class Charm(
+    val id: String,
+    val name: String,
+    val cls: String,
+    val icon: String,
+    /** One line, in the player's words rather than the key's. */
+    val text: String = "",
+    /** The dungeon whose first clear hands it over. */
+    val from: String = "",
+    val effects: Map<String, Double> = emptyMap(),
+)
+
 /** See [Encounters.healPower]. */
 @Serializable
 data class HealPower(

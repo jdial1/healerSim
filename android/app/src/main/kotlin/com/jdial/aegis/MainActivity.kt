@@ -137,6 +137,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
     val highlights by vm.highlights.collectAsStateWithLifecycle()
     // What this character has to show: the dungeon cards and the trophy case read it.
     val records = state.playerClass?.let { roster.byClass[it.name]?.records }.orEmpty()
+    val ownedCharms = state.playerClass?.let { roster.byClass[it.name]?.charmIds }.orEmpty()
     val forgetResult by vm.forgetResult.collectAsStateWithLifecycle()
     // GameData parsed in the ViewModel's initialiser, so by here we are ready.
     LaunchedEffect(Unit) { onReady() }
@@ -283,6 +284,8 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                             screen = Screen.ClassSelect
                         },
                         onSetActionBarSlot = vm::setActionBarSlot,
+                        ownedCharms = ownedCharms,
+                        onEquipCharm = vm::equipCharm,
                     )
 
                     Screen.Combat -> CombatScreen(

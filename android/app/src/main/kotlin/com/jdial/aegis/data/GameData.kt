@@ -46,6 +46,8 @@ class GameData(
     val encounters: Encounters = Encounters(),
     /** What each enemy looks like, by the name content calls it. */
     val looks: Map<String, EnemyLookDef> = emptyMap(),
+    /** Every charm in the game, by id. */
+    val charms: Map<String, Charm> = emptyMap(),
 ) {
     /** The utility spells [cls] has learned by [level], in content order. */
     fun grantsFor(cls: PlayerClass, level: Int): List<String> {
@@ -100,6 +102,8 @@ class GameData(
                 grants = utility.grants,
                 encounters = encounters,
                 looks = parse("data/looks.json") { json.decodeFromString<Map<String, EnemyLookDef>>(it) },
+                charms = parse("data/charms.json") { json.decodeFromString<List<Charm>>(it) }
+                    .associateBy { it.id },
             )
         }
     }

@@ -115,7 +115,8 @@ class CastContext(
     fun ranks(mechanicId: String): Int = talents.ranksOf(mechanicId)
     fun talentRanks(talentId: String): Int = talents.ranksOfTalent(talentId)
     fun uniqueStatRating(): Double = stats.uniqueStatRating(cls, level, talents)
-    fun talentEffect(key: String): Double = talents.effect(key)
+    /** Talents and the worn charm both, since both speak the same keys. */
+    fun talentEffect(key: String): Double = state.me.effect(key)
 }
 
 /** The cast being resolved, passed to `onCastLand` and the mana hooks. */

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jdial.aegis.mp.BestTime
+import com.jdial.aegis.sim.DungeonOutcomeKind
 import com.jdial.aegis.sim.titleFor
 import com.jdial.aegis.sim.sigilTint
 import com.jdial.aegis.mp.ForgetResult
@@ -166,8 +167,20 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         val cls = _state.value.playerClass?.name ?: return
         val blob = _roster.value.byClass[cls] ?: return
         val (next, news) = blob.records.withRun(outcome)
-        _highlights.value = news
-        _roster.value = _roster.value.copy(byClass = _roster.value.byClass + (cls to blob.copy(records = next)))
+        // The first clear of a place hands over its charm, once, for this class.
+        // Nothing rolls: a drop you can plan for is a reason to go somewhere.
+        val earned = data.charms.values.firstOrNull {
+            it.cls == cls && it.from == outcome.dungeonId && it.id !in blob.charmIds
+        }.takeIf { outcome.kind == DungeonOutcomeKind.SUCCESS }
+        _highlights.value = news.copy(charm = earned)
+        _roster.value = _roster.value.copy(
+            byClass = _roster.value.byClass + (
+                cls to blob.copy(
+                    records = next,
+                    charmIds = blob.charmIds + listOfNotNull(earned?.id),
+                )
+                ),
+        )
         store.save(_roster.value)
         // The boards are part of the public queue, not of playing alone.
         if (news.newBest || news.firstClear) {
@@ -453,6 +466,9 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
     val castFeedback: SharedFlow<CastFeedback> = _castFeedback.asSharedFlow()
 
     fun unlockTalent(id: String) { dispatch(Action.UnlockTalent(id)); persist() }
+
+    /** Wear a charm, or take it off. Saved immediately: it is a decision, not a run. */
+    fun equipCharm(id: String?) { dispatch(Action.EquipCharm(id)); persist() }
     fun decrementTalent(id: String) { dispatch(Action.DecrementTalent(id)); persist() }
     fun respecTalents() { dispatch(Action.RespecTalents); persist() }
 

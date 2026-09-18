@@ -50,6 +50,21 @@ class IconUniquenessTest {
     }
 
     @Test
+    fun `no two charms share an icon, and none borrows a spell's or a talent's`() {
+        val charms = Fixtures.data.charms.values.map { it.id to it.icon }
+        assertEquals(emptyMap<String, List<String>>(), repeats(charms))
+
+        val taken = (spellIcons + classes.flatMap { b -> b.talents.map { it.id to it.icon } })
+            .associate { (id, icon) -> icon to id }
+        // A charm rewrites a spell, so borrowing that spell's icon would read as
+        // the spell itself sitting in the inventory.
+        assertEquals(
+            emptyList<String>(),
+            charms.mapNotNull { (id, icon) -> taken[icon]?.let { "$id wears $it" } },
+        )
+    }
+
+    @Test
     fun `a talent wears a spell's icon only when it unlocks that spell`() {
         val bySpellIcon = spellIcons.associate { (id, icon) -> icon to id }
         val bad = classes.flatMap { b ->

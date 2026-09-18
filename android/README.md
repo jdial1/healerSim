@@ -382,3 +382,27 @@ asking a different question:
 | `shielder` | the main enemy ignores `wardFraction` of everything while it stands |
 | `splitter` | dies into `splitsInto`, so killing it is progress rather than completion |
 | `leech` | feeds what it takes from the party straight back into the enemy |
+
+## Charms
+
+The first thing in this game you take out of a dungeon. A charm is
+`{id, name, cls, icon, text, from, effects}` in `content/data/charms.json`, and
+`effects` uses **exactly the keys talents already use** -- `cooldown:<spell>`,
+`cost:<spell>`, `damage:<spell>`, `heal:<spell>`, `threat`, `execute` and the
+class keys -- so a charm needs no effect code of its own and anything a talent
+can do to a spell, a charm can.
+
+One funnel makes that true: `Participant.effect(key)` sums the talents and the
+worn charm, and every effect lookup in the engine goes through it.
+
+- **Five a class, forty-five in all.** Each names a real spell of that class.
+- **Most carry a cost.** A charm that is pure upside is one everybody wears and
+  nobody thinks about, which is what every reward here has been so far.
+- **The first clear of a dungeon hands one over**, for that class. Nothing
+  rolls -- a drop you can plan for is a reason to go somewhere.
+- **One worn at a time**, changed out of combat only: a charm moves cooldowns,
+  and swapping mid-fight would be a free reset of everything on one.
+
+`scripts/assign-unique-icons.py` and `IconUniquenessTest` treat charms like
+talents and spells: no repeats, and no charm wearing a spell's or a talent's
+icon.

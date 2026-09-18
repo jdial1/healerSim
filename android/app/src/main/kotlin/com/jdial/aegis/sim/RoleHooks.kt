@@ -35,7 +35,7 @@ const val MAGE_CHILL_ID = "shatter_chill"
  */
 fun GameState.canPay(spell: Spell): Boolean {
     val have = if (spell.resource == "MANA") mana else classResource
-    if (have < spell.manaCost - talents.effect("cost:${spell.id}")) return false
+    if (have < spell.manaCost - me.effect("cost:${spell.id}")) return false
     return !(playerClass == PlayerClass.ROGUE && spell.id == RogueHooks.FINISHER && comboPoints <= 0)
 }
 
@@ -55,7 +55,7 @@ fun resourceGauge(state: GameState, rating: Double, b: ClassesBalance): Resource
             // is played around.
             val maxHp = state.unit(state.localUnitId)?.maxHealth ?: 0.0
             val d = b.deathKnight
-            val fraction = d.deathStrikeHealFraction + p.talents.effect("deathStrikeHeal") / 100
+            val fraction = d.deathStrikeHealFraction + p.effect("deathStrikeHeal") / 100
             val heal = maxOf(p.classResource * fraction, maxHp * d.deathStrikeMinHealFraction)
             ResourceGauge("DEATH STRIKE HEALS", heal.roundToInt(), null)
         }
@@ -107,7 +107,7 @@ object WarriorHooks : ClassHooks {
         if (u.maxHealth <= 0 || !u.isAlive) return tick.participant
         val fromHits = if (tick.damageTaken <= 0) 0.0 else {
             tick.damageTaken / u.maxHealth * tick.balance.warrior.ragePerFullHealthTaken *
-                (1 + tick.participant.talents.effect("rageFromDamage") / 100)
+                (1 + tick.participant.effect("rageFromDamage") / 100)
         }
         val gained = fromHits + tick.balance.warrior.ragePerTick
         if (gained <= 0) return tick.participant
@@ -235,7 +235,7 @@ object RogueHooks : ClassHooks {
         val r = tick.balance.rogue
         val p = tick.participant
         if (p.classResource >= r.energyMax) return p
-        val regen = r.energyPerTick * (1 + p.talents.effect("energyRegen") / 100)
+        val regen = r.energyPerTick * (1 + p.effect("energyRegen") / 100)
         return p.copy(classResource = min(r.energyMax, p.classResource + regen))
     }
 }

@@ -36,6 +36,9 @@ sealed interface Action {
         override val actorId: String = PLAYER_UNIT_ID,
     ) : Action
     data class UnlockTalent(val talentId: String) : Action
+
+    /** Wear a charm, or nothing. Out of combat only: it rewrites the rotation. */
+    data class EquipCharm(val charmId: String?) : Action
     data class DecrementTalent(val talentId: String) : Action
     data object RespecTalents : Action
     data class ReorderActionBar(val from: Int, val to: Int) : Action
@@ -166,6 +169,7 @@ class Engine(val data: GameData) {
         is Action.CastSpell -> absorbHealing(state, castAs(state, action, rng))
         is Action.Taunt -> taunt(state, action.actorId, action.ticks)
         is Action.UnlockTalent -> unlockTalent(state, action.talentId)
+        is Action.EquipCharm -> equipCharm(state, action.charmId)
         is Action.DecrementTalent -> decrementTalent(state, action.talentId)
         Action.RespecTalents -> respec(state)
         is Action.ReorderActionBar -> reorderActionBar(state, action.from, action.to)
@@ -318,6 +322,22 @@ class Engine(val data: GameData) {
                 mana = min(it.mana, maxMana.toDouble()),
             )
         }.copy(talentPoints = progression.talentPoints(s.level, s.talents))
+    }
+
+    /**
+     * Wear [charmId], or take the charm off with null.
+     *
+     * Refused in combat: a charm changes cooldowns and costs, and swapping one
+     * mid-fight would be a free reset of everything on cooldown. It has to be
+     * a charm this class can use, so a save carrying another class's charm
+     * cannot hand it over either.
+     */
+    private fun equipCharm(state: GameState, charmId: String?): GameState {
+        if (state.isCombatActive) return state
+        if (charmId == null) return state.withMe { it.copy(charm = null) }
+        val charm = data.charms[charmId] ?: return state
+        if (charm.cls != state.playerClass?.name) return state
+        return state.withMe { it.copy(charm = charm) }
     }
 
     private fun unlockTalent(state: GameState, talentId: String): GameState {

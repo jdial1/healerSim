@@ -1,0 +1,542 @@
+[
+  {
+    "id": "miners_candle",
+    "name": "Miner's Candle",
+    "cls": "PRIEST",
+    "icon": "wow/inv_misc_candle_01",
+    "text": "Flash Heal lands harder, and costs you for it.",
+    "from": "deadmines",
+    "effects": {
+      "heal:flash_heal": 18,
+      "cost:flash_heal": -6
+    }
+  },
+  {
+    "id": "whitemanes_rosary",
+    "name": "Whitemane's Rosary",
+    "cls": "PRIEST",
+    "icon": "wow/inv_jewelry_necklace_20",
+    "text": "Greater Heal comes round sooner, and lands lighter.",
+    "from": "scarlet_monastery",
+    "effects": {
+      "cooldown:greater_heal": 25,
+      "heal:greater_heal": -12
+    }
+  },
+  {
+    "id": "atalai_prayer_bead",
+    "name": "Atal'ai Prayer Bead",
+    "cls": "PRIEST",
+    "icon": "wow/inv_misc_gem_pearl_03",
+    "text": "Renew ticks for far more, at a price.",
+    "from": "sunken_temple",
+    "effects": {
+      "heal:renew": 35,
+      "cost:renew": -5
+    }
+  },
+  {
+    "id": "plaguebloom_locket",
+    "name": "Plaguebloom Locket",
+    "cls": "PRIEST",
+    "icon": "wow/inv_misc_herb_dreamfoil",
+    "text": "Circle of Healing on a short leash, if you can pay for it.",
+    "from": "stratholme",
+    "effects": {
+      "cooldown:circle_of_healing": 30,
+      "cost:circle_of_healing": -12
+    }
+  },
+  {
+    "id": "drakkisaths_ember",
+    "name": "Drakkisath's Ember",
+    "cls": "PRIEST",
+    "icon": "wow/inv_misc_gem_flamespessarite_02",
+    "text": "A far heavier shield, far less often.",
+    "from": "ubrs",
+    "effects": {
+      "heal:power_word_shield": 40,
+      "cooldown:power_word_shield": -25
+    }
+  },
+  {
+    "id": "sprouting_acorn",
+    "name": "Sprouting Acorn",
+    "cls": "DRUID",
+    "icon": "wow/inv_misc_food_wheat_01",
+    "text": "Rejuvenation grows, and so does its cost.",
+    "from": "deadmines",
+    "effects": {
+      "heal:rejuvenation": 30,
+      "cost:rejuvenation": -4
+    }
+  },
+  {
+    "id": "fang_of_the_grove",
+    "name": "Fang of the Grove",
+    "cls": "DRUID",
+    "icon": "wow/inv_misc_monsterfang_01",
+    "text": "Swiftmend twice as often, for less each time.",
+    "from": "scarlet_monastery",
+    "effects": {
+      "cooldown:swiftmend": 60,
+      "heal:swiftmend": -15
+    }
+  },
+  {
+    "id": "everliving_seed",
+    "name": "Everliving Seed",
+    "cls": "DRUID",
+    "icon": "wow/inv_misc_herb_sansamroot",
+    "text": "Lifebloom blooms bigger.",
+    "from": "sunken_temple",
+    "effects": {
+      "heal:lifebloom": 35,
+      "cost:lifebloom": -4
+    }
+  },
+  {
+    "id": "bloom_of_decay",
+    "name": "Bloom of Decay",
+    "cls": "DRUID",
+    "icon": "wow/inv_misc_herb_nightmareseed",
+    "text": "Wild Growth on a shorter clock, at a heavier cost.",
+    "from": "stratholme",
+    "effects": {
+      "cooldown:wild_growth": 30,
+      "cost:wild_growth": -14
+    }
+  },
+  {
+    "id": "heartwood_knot",
+    "name": "Heartwood Knot",
+    "cls": "DRUID",
+    "icon": "wow/inv_misc_branch_01",
+    "text": "Healing Touch hits harder and comes slower.",
+    "from": "ubrs",
+    "effects": {
+      "heal:healing_touch": 25,
+      "cooldown:healing_touch": -15
+    }
+  },
+  {
+    "id": "martyrs_nail",
+    "name": "Martyr's Nail",
+    "cls": "PALADIN",
+    "icon": "wow/inv_misc_bone_humanskull_01",
+    "text": "Flash Heal for more, and more mana.",
+    "from": "deadmines",
+    "effects": {
+      "heal:flash_heal": 20,
+      "cost:flash_heal": -6
+    }
+  },
+  {
+    "id": "mograines_sigil",
+    "name": "Mograine's Sigil",
+    "cls": "PALADIN",
+    "icon": "wow/inv_jewelry_ring_16",
+    "text": "Holy Light at its heaviest, and its dearest.",
+    "from": "scarlet_monastery",
+    "effects": {
+      "heal:holy_light": 22,
+      "cost:holy_light": -10
+    }
+  },
+  {
+    "id": "sanctified_ash",
+    "name": "Sanctified Ash",
+    "cls": "PALADIN",
+    "icon": "wow/inv_misc_ashenpigment",
+    "text": "Light of Dawn far more often, and far weaker.",
+    "from": "sunken_temple",
+    "effects": {
+      "cooldown:light_of_dawn": 35,
+      "heal:light_of_dawn": -14
+    }
+  },
+  {
+    "id": "reliquary_of_the_dawn",
+    "name": "Reliquary of the Dawn",
+    "cls": "PALADIN",
+    "icon": "wow/inv_box_01",
+    "text": "Holy Shock almost on demand, if your mana holds.",
+    "from": "stratholme",
+    "effects": {
+      "cooldown:holy_shock": 6,
+      "cost:holy_shock": -8
+    }
+  },
+  {
+    "id": "dawnbreaker_shard",
+    "name": "Dawnbreaker Shard",
+    "cls": "PALADIN",
+    "icon": "wow/inv_shield_09",
+    "text": "Lay on Hands twice a dungeon, for less.",
+    "from": "ubrs",
+    "effects": {
+      "cooldown:lay_on_hands": 300,
+      "heal:lay_on_hands": -25
+    }
+  },
+  {
+    "id": "cinder_of_the_deep",
+    "name": "Cinder of the Deep",
+    "cls": "MAGE",
+    "icon": "wow/inv_misc_gem_bloodstone_01",
+    "text": "Fireball burns hotter and costs more to throw.",
+    "from": "deadmines",
+    "effects": {
+      "damage:fireball": 15,
+      "cost:fireball": -6
+    }
+  },
+  {
+    "id": "frostbitten_lens",
+    "name": "Frostbitten Lens",
+    "cls": "MAGE",
+    "icon": "wow/inv_misc_gem_sapphire_01",
+    "text": "The chill holds far longer; the bolt behind it is softer.",
+    "from": "scarlet_monastery",
+    "effects": {
+      "chillTicks": 12,
+      "damage:frostbolt": -8
+    }
+  },
+  {
+    "id": "serpents_prism",
+    "name": "Serpent's Prism",
+    "cls": "MAGE",
+    "icon": "wow/inv_misc_gem_opal_01",
+    "text": "Arcane Missiles come round sooner, and cost for it.",
+    "from": "sunken_temple",
+    "effects": {
+      "cooldown:arcane_missiles": 25,
+      "cost:arcane_missiles": -10
+    }
+  },
+  {
+    "id": "plague_etched_rune",
+    "name": "Plague-Etched Rune",
+    "cls": "MAGE",
+    "icon": "wow/inv_misc_rune_01",
+    "text": "Living Bomb far deadlier, and far rarer.",
+    "from": "stratholme",
+    "effects": {
+      "damage:living_bomb": 45,
+      "cooldown:living_bomb": -30
+    }
+  },
+  {
+    "id": "ember_of_the_flamewaker",
+    "name": "Ember of the Flamewaker",
+    "cls": "MAGE",
+    "icon": "wow/spell_fire_moltenblood",
+    "text": "Blizzard on half the clock; each one lands lighter.",
+    "from": "ubrs",
+    "effects": {
+      "cooldown:blizzard": 45,
+      "damage:blizzard": -12
+    }
+  },
+  {
+    "id": "defias_whetstone",
+    "name": "Defias Whetstone",
+    "cls": "ROGUE",
+    "icon": "wow/inv_stone_sharpeningstone_01",
+    "text": "Sinister Strike cuts deeper for more energy.",
+    "from": "deadmines",
+    "effects": {
+      "damage:sinister_strike": 16,
+      "cost:sinister_strike": -5
+    }
+  },
+  {
+    "id": "scarlet_garrote_wire",
+    "name": "Scarlet Garrote Wire",
+    "cls": "ROGUE",
+    "icon": "wow/inv_misc_desecrated_leatherbelt",
+    "text": "Rupture bleeds harder, and waits longer.",
+    "from": "scarlet_monastery",
+    "effects": {
+      "damage:rupture": 30,
+      "cooldown:rupture": -20
+    }
+  },
+  {
+    "id": "venom_slick_vial",
+    "name": "Venom-Slick Vial",
+    "cls": "ROGUE",
+    "icon": "wow/inv_potion_24",
+    "text": "Energy floods back; your finisher lands softer.",
+    "from": "sunken_temple",
+    "effects": {
+      "energyRegen": 22,
+      "damage:eviscerate": -10
+    }
+  },
+  {
+    "id": "barons_signet",
+    "name": "Baron's Signet",
+    "cls": "ROGUE",
+    "icon": "wow/inv_jewelry_ring_35",
+    "text": "Each combo point is worth far more.",
+    "from": "stratholme",
+    "effects": {
+      "finisherPerPoint": 14,
+      "cost:eviscerate": -8
+    }
+  },
+  {
+    "id": "blackhands_cinder",
+    "name": "Blackhand's Cinder",
+    "cls": "ROGUE",
+    "icon": "wow/inv_misc_ammo_bullet_02",
+    "text": "Fan of Knives twice as often, for less.",
+    "from": "ubrs",
+    "effects": {
+      "cooldown:fan_of_knives": 30,
+      "damage:fan_of_knives": -14
+    }
+  },
+  {
+    "id": "soul_splinter",
+    "name": "Soul Splinter",
+    "cls": "WARLOCK",
+    "icon": "wow/inv_misc_gem_amethyst_01",
+    "text": "Shadow Bolt for more, at a price in mana.",
+    "from": "deadmines",
+    "effects": {
+      "damage:shadow_bolt": 16,
+      "cost:shadow_bolt": -6
+    }
+  },
+  {
+    "id": "scarlet_heretics_chain",
+    "name": "Scarlet Heretic's Chain",
+    "cls": "WARLOCK",
+    "icon": "wow/inv_misc_rope_01",
+    "text": "Corruption festers harder and lingers on cooldown.",
+    "from": "scarlet_monastery",
+    "effects": {
+      "damage:corruption": 32,
+      "cooldown:corruption": -18
+    }
+  },
+  {
+    "id": "atalai_hex_idol",
+    "name": "Atal'ai Hex Idol",
+    "cls": "WARLOCK",
+    "icon": "wow/inv_misc_idol_03",
+    "text": "Unstable Affliction far more often, and weaker.",
+    "from": "sunken_temple",
+    "effects": {
+      "cooldown:unstable_affliction": 30,
+      "damage:unstable_affliction": -12
+    }
+  },
+  {
+    "id": "necrotic_seed",
+    "name": "Necrotic Seed",
+    "cls": "WARLOCK",
+    "icon": "wow/inv_misc_organ_04",
+    "text": "Seed of Corruption grows teeth, and a longer wait.",
+    "from": "stratholme",
+    "effects": {
+      "damage:seed_of_corruption": 28,
+      "cooldown:seed_of_corruption": -20
+    }
+  },
+  {
+    "id": "emberheart_of_blackrock",
+    "name": "Emberheart of Blackrock",
+    "cls": "WARLOCK",
+    "icon": "wow/inv_misc_gem_ruby_02",
+    "text": "Shadowburn all but doubles up, for a share of its bite.",
+    "from": "ubrs",
+    "effects": {
+      "cooldown:shadowburn": 35,
+      "damage:shadowburn": -12
+    }
+  },
+  {
+    "id": "vanguards_whetstone",
+    "name": "Vanguard's Whetstone",
+    "cls": "WARRIOR",
+    "icon": "wow/inv_sword_04",
+    "text": "Shield Slam hits harder and asks more rage.",
+    "from": "deadmines",
+    "effects": {
+      "damage:shield_slam": 18,
+      "cost:shield_slam": -5
+    }
+  },
+  {
+    "id": "mograines_gauntlet",
+    "name": "Mograine's Gauntlet",
+    "cls": "WARRIOR",
+    "icon": "wow/inv_gauntlets_04",
+    "text": "Rage floods in off every hit; your threat suffers.",
+    "from": "scarlet_monastery",
+    "effects": {
+      "rageFromDamage": 25,
+      "threat": -10
+    }
+  },
+  {
+    "id": "atalai_warplate_rivet",
+    "name": "Atal'ai Warplate Rivet",
+    "cls": "WARRIOR",
+    "icon": "wow/inv_misc_enggizmos_01",
+    "text": "Shield Block far more often, and briefer for it.",
+    "from": "sunken_temple",
+    "effects": {
+      "cooldown:shield_block": 30,
+      "cost:shield_block": -8
+    }
+  },
+  {
+    "id": "rivendares_spur",
+    "name": "Rivendare's Spur",
+    "cls": "WARRIOR",
+    "icon": "wow/inv_misc_bone_skull_02",
+    "text": "Finish the wounded far faster.",
+    "from": "stratholme",
+    "effects": {
+      "execute": 35,
+      "damage:heroic_strike": -10
+    }
+  },
+  {
+    "id": "wyrmthalaks_boss",
+    "name": "Wyrmthalak's Boss",
+    "cls": "WARRIOR",
+    "icon": "wow/inv_shield_06",
+    "text": "Thunder Clap on a short clock; it lands lighter.",
+    "from": "ubrs",
+    "effects": {
+      "cooldown:thunder_clap": 25,
+      "damage:thunder_clap": -12
+    }
+  },
+  {
+    "id": "marrow_sliver",
+    "name": "Marrow Sliver",
+    "cls": "DEATHKNIGHT",
+    "icon": "wow/inv_misc_bone_01",
+    "text": "Death Strike heals far more, and costs to land.",
+    "from": "deadmines",
+    "effects": {
+      "deathStrikeHeal": 20,
+      "cost:death_strike": -6
+    }
+  },
+  {
+    "id": "scarlet_bindings",
+    "name": "Scarlet Bindings",
+    "cls": "DEATHKNIGHT",
+    "icon": "wow/inv_belt_16",
+    "text": "The shield off a Death Strike doubles down.",
+    "from": "scarlet_monastery",
+    "effects": {
+      "bloodShield": 25,
+      "damage:death_strike": -8
+    }
+  },
+  {
+    "id": "sunken_reliquary",
+    "name": "Sunken Reliquary",
+    "cls": "DEATHKNIGHT",
+    "icon": "wow/inv_misc_urn_01",
+    "text": "Blood Boil far more often, for less each time.",
+    "from": "sunken_temple",
+    "effects": {
+      "cooldown:blood_boil": 25,
+      "damage:blood_boil": -12
+    }
+  },
+  {
+    "id": "barons_frost_rune",
+    "name": "Baron's Frost Rune",
+    "cls": "DEATHKNIGHT",
+    "icon": "wow/inv_misc_rune_06",
+    "text": "Rune Tap nearly twice a fight.",
+    "from": "stratholme",
+    "effects": {
+      "cooldown:rune_tap": 50,
+      "heal:rune_tap": -15
+    }
+  },
+  {
+    "id": "drakkisaths_bulwark",
+    "name": "Drakkisath's Bulwark",
+    "cls": "DEATHKNIGHT",
+    "icon": "wow/inv_shield_11",
+    "text": "Vampiric Blood comes sooner, and asks more.",
+    "from": "ubrs",
+    "effects": {
+      "cooldown:vampiric_blood": 50,
+      "cost:vampiric_blood": -10
+    }
+  },
+  {
+    "id": "brewers_stone",
+    "name": "Brewer's Stone",
+    "cls": "MONK",
+    "icon": "wow/inv_drink_05",
+    "text": "Keg Smash lands heavier for the energy.",
+    "from": "deadmines",
+    "effects": {
+      "damage:keg_smash": 18,
+      "cost:keg_smash": -5
+    }
+  },
+  {
+    "id": "scarlet_ember_brew",
+    "name": "Scarlet Ember Brew",
+    "cls": "MONK",
+    "icon": "wow/inv_drink_17",
+    "text": "Breath of Fire far more often, and thinner.",
+    "from": "scarlet_monastery",
+    "effects": {
+      "cooldown:breath_of_fire": 18,
+      "damage:breath_of_fire": -12
+    }
+  },
+  {
+    "id": "serpents_draught",
+    "name": "Serpent's Draught",
+    "cls": "MONK",
+    "icon": "wow/inv_potion_19",
+    "text": "Purifying Brew on a short clock; you pay in chi.",
+    "from": "sunken_temple",
+    "effects": {
+      "cooldown:purifying_brew": 35,
+      "cost:purifying_brew": -8
+    }
+  },
+  {
+    "id": "plaguebrewers_tap",
+    "name": "Plaguebrewer's Tap",
+    "cls": "MONK",
+    "icon": "wow/inv_misc_bowl_01",
+    "text": "Expel Harm mends far more, and comes slower.",
+    "from": "stratholme",
+    "effects": {
+      "heal:expel_harm": 30,
+      "cooldown:expel_harm": -20
+    }
+  },
+  {
+    "id": "firebrand_cask",
+    "name": "Firebrand Cask",
+    "cls": "MONK",
+    "icon": "wow/inv_misc_beer_02",
+    "text": "Spinning Crane Kick twice as often, for less.",
+    "from": "ubrs",
+    "effects": {
+      "cooldown:spinning_crane_kick": 25,
+      "damage:spinning_crane_kick": -14
+    }
+  }
+]
