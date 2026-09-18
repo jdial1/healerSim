@@ -998,12 +998,12 @@ class GameTick(
         val healer = party.firstOrNull { it.role == UnitRole.HEALER }
         if (ctx.cls != null && healer != null &&
             ctx.ranks("spirit_of_redemption") > 0 &&
-            healer.health < healer.maxHealth * 0.3 &&
+            healer.health < healer.maxHealth * data.balance.rules.spiritOfRedemptionBelow &&
             icd.icdReady("spirit_redemption") &&
             !buffs.hasBuff("spirit_of_redemption_amp")
         ) {
-            buffs = buffs.addBuff("spirit_of_redemption_amp", TICKS_SPIRIT_REDEMPTION, 1)
-            icd = icd + ("spirit_redemption" to ICD_SPIRIT_REDEMPTION)
+            buffs = buffs.addBuff("spirit_of_redemption_amp", data.balance.rules.spiritOfRedemptionTicks, 1)
+            icd = icd + ("spirit_redemption" to data.balance.rules.spiritOfRedemptionCooldownTicks)
         }
 
         // Nature's Grace capstone: a steady party-wide heal every tick.
@@ -1383,7 +1383,7 @@ class GameTick(
                 // for the unheld premium. That was the one lever under the
                 // three sustain findings.
                 tankEarnsScriptedThreat = sys.party.firstOrNull { it.role == UnitRole.TANK }
-                    ?.let { t -> !s.isHuman(t.id) || (s.participants[t.id]?.idleTicks ?: 0) < TANK_ACTIVE_TICKS }
+                    ?.let { t -> !s.isHuman(t.id) || (s.participants[t.id]?.idleTicks ?: 0) < data.balance.rules.tankActiveTicks }
                     ?: true,
             ),
             enemyDebuffs = s.enemyDebuffs

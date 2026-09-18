@@ -398,7 +398,7 @@ object PriestHooks : ClassHooks {
     fun divinityOverhealAbsorb(ctx: CastContext, overheal: Double, rating: Double): Double {
         if (overheal <= 0 || rating <= 0) return 0.0
         val perRating = ctx.data.balance.combat.priest.divinityOverhealToShieldPerRating
-        return overheal * min(0.45, rating * perRating)
+        return overheal * min(ctx.data.balance.rules.divinityShieldCap, rating * perRating)
     }
 }
 

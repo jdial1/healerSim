@@ -10,7 +10,6 @@ import kotlin.math.roundToInt
 
 const val PLAYER_MAX_LEVEL = 55
 const val TRASH_PACK_COUNT = 3
-const val MANA_POTION_USES_PER_DUNGEON = 2
 
 /**
  * Port of the XP curve, dungeon rewards and spell loadout from `src/gameStorage.js`

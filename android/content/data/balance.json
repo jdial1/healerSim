@@ -199,5 +199,17 @@
       "WARRIOR": 0.6,
       "DEATHKNIGHT": 0.6
     }
+  },
+  "rules": {
+    "tankActiveTicks": 30,
+    "manaPotionUsesPerDungeon": 2,
+    "executeBelow": 0.35,
+    "spiritOfRedemptionBelow": 0.3,
+    "spiritOfRedemptionTicks": 100,
+    "spiritOfRedemptionCooldownTicks": 1200,
+    "surgeOfLightTicks": 60,
+    "photosynthesisExtendTicks": 20,
+    "divinityShieldCap": 0.45,
+    "towerOfRadianceBelow": 0.5
   }
 }

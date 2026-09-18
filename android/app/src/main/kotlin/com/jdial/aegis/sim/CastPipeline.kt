@@ -115,7 +115,7 @@ class CastPipeline(
         // are -- being unable to drink because you just cast is the kind of
         // rule that only ever feels like a bug.
         if (s.globalCooldownRemaining > 0 && !spell.offGlobalCooldown()) return null
-        if (spellId == MANA_POTION_ID && s.manaPotionsUsedThisDungeon >= MANA_POTION_USES_PER_DUNGEON) return null
+        if (spellId == MANA_POTION_ID && s.manaPotionsUsedThisDungeon >= data.balance.rules.manaPotionUsesPerDungeon) return null
         // A stash item only if it is the one carried in, and only once. Nothing
         // else gates it: the bar only offers what you have, but a cast arriving
         // from elsewhere -- a guest, a stale tap -- must not spend what you do
@@ -236,7 +236,7 @@ class CastPipeline(
         val rank = stats.rankHealMult(stats.spellRank(ready.spellId, cls, s.level))
         val scale = damageScale(cls, s.level)
         val spellBonus = 1 + ctx.talentEffect("damage:${ready.spellId}") / 100
-        val low = s.enemyMaxHealth > 0 && s.enemyHealth < s.enemyMaxHealth * EXECUTE_BELOW
+        val low = s.enemyMaxHealth > 0 && s.enemyHealth < s.enemyMaxHealth * data.balance.rules.executeBelow
         val execute = if (low) 1 + ctx.talentEffect("execute") / 100 else 1.0
         val amount = spell.healing * ready.eff.baseHealingMultiplier * rank * crit * scale *
             hooks.damageMultiplier(ctx, spell, ready.spellId) * spellBonus * execute
@@ -372,7 +372,6 @@ class CastPipeline(
 
     /** Only positive cooldowns are recorded — a zero entry is not stored at all. */
     /** The enemy health share below which `execute` talents apply. */
-    private val EXECUTE_BELOW = 0.35
 
     private fun Map<String, Int>.withCooldown(spellId: String, ticks: Int): Map<String, Int> =
         if (ticks > 0) this + (spellId to ticks) else this
@@ -645,7 +644,7 @@ class CastPipeline(
                 unit.copy(
                     buffs = unit.buffs.map { b ->
                         if (b.remainingTicks > 0 && data.spell(b.sourceSpellId)?.hasTag(TAG_DRUID_HOT) == true) {
-                            b.copy(remainingTicks = b.remainingTicks + 20)
+                            b.copy(remainingTicks = b.remainingTicks + data.balance.rules.photosynthesisExtendTicks)
                         } else b
                     },
                 )
@@ -676,7 +675,7 @@ class CastPipeline(
         var holyPower = s.holyPower
         if (ready.targetId != null && spell.type != SpellType.AOE) {
             val pre = s.party.firstOrNull { it.id == ready.targetId }
-            if (pre != null && pre.health < pre.maxHealth * 0.5 && ctx.ranks("tower_of_radiance") > 0) {
+            if (pre != null && pre.health < pre.maxHealth * data.balance.rules.towerOfRadianceBelow && ctx.ranks("tower_of_radiance") > 0) {
                 val gain = if (s.capstoneForm == "paladin_avenging_wrath" &&
                     buffs.hasBuff("avenging_wrath_aura")
                 ) 2 else 1
@@ -689,7 +688,7 @@ class CastPipeline(
         if (ready.tower2) holyPower = 0
 
         if (ctx.cls == PlayerClass.PRIEST && PriestHooks.rollSurgeOfLight(ctx, ready.spellId)) {
-            buffs = buffs.addBuff(BUFF_SURGE_OF_LIGHT, SURGE_OF_LIGHT_TICKS, 1)
+            buffs = buffs.addBuff(BUFF_SURGE_OF_LIGHT, data.balance.rules.surgeOfLightTicks, 1)
         }
 
         val spentMana = ready.needMana > 0 && !(ready.surgeFree && PriestHooks.isSurgeFinisher(spell))

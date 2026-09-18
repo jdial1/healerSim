@@ -26,6 +26,27 @@ data class Balance(
     val threat: ThreatBalance = ThreatBalance(),
     val roles: RolesBalance = RolesBalance(),
     val classes: ClassesBalance = ClassesBalance(),
+    val rules: RulesBalance = RulesBalance(),
+)
+
+/** Rule numbers that used to be Kotlin constants. Defaults are the old values. */
+@Serializable
+data class RulesBalance(
+    /** A human tank earns the tank's scripted threat only if they cast within this many ticks. */
+    val tankActiveTicks: Int = 30,
+    val manaPotionUsesPerDungeon: Int = 2,
+    /** Execute abilities work below this share of the enemy's health. */
+    val executeBelow: Double = 0.35,
+    val spiritOfRedemptionBelow: Double = 0.3,
+    val spiritOfRedemptionTicks: Int = 100,
+    val spiritOfRedemptionCooldownTicks: Int = 1200,
+    val surgeOfLightTicks: Int = 60,
+    /** Photosynthesis: ticks a Healing Touch crit adds to every druid HoT. */
+    val photosynthesisExtendTicks: Int = 20,
+    /** Divinity: the most of an overheal that can become a shield. */
+    val divinityShieldCap: Double = 0.45,
+    /** Tower of Radiance: Holy Power for healing a target below this share. */
+    val towerOfRadianceBelow: Double = 0.5,
 )
 
 /**

@@ -41,13 +41,6 @@ fun syncCap(levelMax: Int): Int = levelMax + 1
 /** The level a character of [level] plays a dungeon topping out at [levelMax] at. */
 fun syncedLevel(level: Int, levelMax: Int): Int = minOf(level, syncCap(levelMax))
 
-/**
- * How long a tank may go without casting and still be holding the enemy's
- * attention: three seconds. Past it, the boss's threat drifts to whoever is
- * actually hitting it.
- */
-const val TANK_ACTIVE_TICKS = 30
-
 /** The level XP is paid on: the real one, even while synced. */
 val Participant.trueLevel: Int get() = if (syncedFrom > 0) syncedFrom else level
 
@@ -64,9 +57,6 @@ const val SUSPEND_SNAPSHOT_TICK_INTERVAL = 8
 const val MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE_MS
 
 const val TICKS_1S = 10
-const val TICKS_SPIRIT_REDEMPTION = 10 * TICKS_1S
-const val ICD_SPIRIT_REDEMPTION = 120 * TICKS_1S
-const val SURGE_OF_LIGHT_TICKS = 6 * TICKS_1S
 
 /** How long a floating combat number stays on screen. */
 const val FLOATING_TEXT_LIFETIME_TICKS = 22
