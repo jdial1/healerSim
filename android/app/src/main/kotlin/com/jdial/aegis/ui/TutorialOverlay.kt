@@ -112,7 +112,89 @@ object Tutorial {
         anchor = TutorialAnchor.BOTTOM,
     )
 
-    val ALL = listOf(CLASS_SELECT, DUNGEONS, COMBAT, COMBAT_DAMAGE, COMBAT_TANK)
+    // --- small cards for things that arrive later ---------------------------
+    // Each is shown once, the first time what it explains actually exists.
+
+    val TALENT_POINTS = TutorialStep(
+        id = "talent-points",
+        title = "A talent point",
+        body = "You levelled up and have a point to spend. The Talents tab shows a badge " +
+            "while any are unspent. Points can be refunded any time out of combat.",
+        anchor = TutorialAnchor.BOTTOM,
+    )
+
+    val TALENTS = TutorialStep(
+        id = "talents",
+        title = "Your talents",
+        body = "Each row opens at a level. Some nodes teach a new spell; the capstone at " +
+            "the bottom changes how the class plays. Below the tree: your action bar, " +
+            "charms and consumables.",
+        anchor = TutorialAnchor.TOP,
+    )
+
+    val CHARMS = TutorialStep(
+        id = "charms",
+        title = "A charm",
+        body = "Clearing a dungeon earned a charm. Wear one at a time, from Charms on the " +
+            "Talents tab. Each gives something and takes something. Charms belong to " +
+            "every character you make.",
+        anchor = TutorialAnchor.CENTER,
+    )
+
+    val STASH = TutorialStep(
+        id = "stash",
+        title = "A consumable",
+        body = "The clear dropped a consumable. Put it on your action bar on the " +
+            "Talents tab to take it into the next run. You get one use per run, off the " +
+            "global cooldown, and using it spends it from your stash.",
+        anchor = TutorialAnchor.CENTER,
+    )
+
+    val HARD_MODE = TutorialStep(
+        id = "hard-mode",
+        title = "Hard mode",
+        body = "A cleared dungeon can be run on hard: enemies have more health and hit " +
+            "harder, with an affix on top. It is worth more XP and drops its own consumables.",
+        anchor = TutorialAnchor.TOP,
+    )
+
+    val KEYSTONES = TutorialStep(
+        id = "keystones",
+        title = "Keystones",
+        body = "Each hard clear raises that dungeon's keystone by one. The next run is a " +
+            "little tougher and carries one more affix. A wipe never lowers it. The queue " +
+            "lists each affix before you commit.",
+        anchor = TutorialAnchor.TOP,
+    )
+
+    val BREATHER = TutorialStep(
+        id = "breather",
+        title = "Breather",
+        body = "Between pulls nothing attacks. Mana and health recover, and the timer shows " +
+            "when the next pull comes.",
+        anchor = TutorialAnchor.CENTER,
+    )
+
+    val ADDS = TutorialStep(
+        id = "adds",
+        title = "Adds",
+        body = "The boss called help. Some hit hard, some heal the boss, some explode. " +
+            "Their frames sit beside the boss, and killing the right one first is the fight.",
+        anchor = TutorialAnchor.TOP,
+    )
+
+    val AGGRO = TutorialStep(
+        id = "aggro",
+        title = "It's coming for you",
+        body = "You pulled threat off the tank. The enemy now hits you instead. Ease off " +
+            "until the tank takes it back. Big heals and big crits count too.",
+        anchor = TutorialAnchor.TOP,
+    )
+
+    val ALL = listOf(
+        CLASS_SELECT, DUNGEONS, COMBAT, COMBAT_DAMAGE, COMBAT_TANK,
+        TALENT_POINTS, TALENTS, CHARMS, STASH, HARD_MODE, KEYSTONES, BREATHER, ADDS, AGGRO,
+    )
 
     /** The combat card that matches what this player actually does. */
     fun combatFor(role: UnitRole): TutorialStep = when (role) {

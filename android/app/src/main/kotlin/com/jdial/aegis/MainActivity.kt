@@ -68,6 +68,7 @@ import com.jdial.aegis.ui.CombatFeedback
 import com.jdial.aegis.ui.DungeonQueueSheet
 import com.jdial.aegis.ui.OutcomeDialog
 import com.jdial.aegis.ui.SplashScreen
+import com.jdial.aegis.sim.UnitRole
 import com.jdial.aegis.ui.Tutorial
 import com.jdial.aegis.ui.TutorialOverlay
 import com.jdial.aegis.ui.theme.AegisTheme
@@ -149,13 +150,26 @@ private fun AegisApp(onReady: () -> Unit = {}) {
     var targetId: String? by remember { mutableStateOf(PLAYER_UNIT_ID) }
     val seenTutorial by vm.tutorialSteps.collectAsStateWithLifecycle()
 
-    // One tutorial card per screen, the first time that screen is reached.
-    val tutorialStep = when (screen) {
-        Screen.ClassSelect -> Tutorial.CLASS_SELECT
-        Screen.Dungeons -> Tutorial.DUNGEONS
-        Screen.Combat -> Tutorial.combatFor(state.playerRole)
-        else -> null
-    }?.takeIf { it.id !in seenTutorial }
+    // One tutorial card at a time: first the screen's own, the first time it
+    // is reached, then a small card for each thing the moment it first exists.
+    val menu = screen == Screen.Dungeons || screen == Screen.Talents || screen == Screen.Character
+    val stash = vm.stash
+    val tutorialStep = listOfNotNull(
+        Tutorial.CLASS_SELECT.takeIf { screen == Screen.ClassSelect },
+        Tutorial.DUNGEONS.takeIf { screen == Screen.Dungeons },
+        Tutorial.combatFor(state.playerRole).takeIf { screen == Screen.Combat },
+        Tutorial.TALENTS.takeIf { screen == Screen.Talents },
+        Tutorial.TALENT_POINTS.takeIf { menu && screen != Screen.Talents && state.talentPoints > 0 },
+        Tutorial.CHARMS.takeIf { menu && ownedCharms.isNotEmpty() },
+        Tutorial.STASH.takeIf { menu && stash.isNotEmpty() },
+        Tutorial.HARD_MODE.takeIf { screen == Screen.Dungeons && records.values.any { it.clears > 0 } },
+        Tutorial.KEYSTONES.takeIf { screen == Screen.Dungeons && keystones.values.any { it > 0 } },
+        Tutorial.BREATHER.takeIf { screen == Screen.Combat && state.restTicks > 0 },
+        Tutorial.ADDS.takeIf { screen == Screen.Combat && state.adds.isNotEmpty() },
+        Tutorial.AGGRO.takeIf {
+            screen == Screen.Combat && state.playerRole != UnitRole.TANK && state.enemyTargetId == state.localUnitId
+        },
+    ).firstOrNull { it.id !in seenTutorial }
 
     // A dead target stays selected but is no longer clickable, and CastPipeline
     // does not reject a target that is missing — so every later cast silently
