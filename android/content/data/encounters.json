@@ -1,5 +1,5 @@
 {
-  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it; tell is what the boss says as it starts. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure). trash: per dungeon, per pull, the adds a pull brings (mender, runner, add; see AddTemplate). bosses.<id>.adds: adds a boss calls at a share of its health. addRules: their timings, and how much of the AI's damage goes to adds when a human deals damage. unkickedDamageMultiplier: how much harder a kickable cast lands when a human damage dealer let it through. trash.<id>[n].combat: a pull's own rotation (debuffs, casts); a cast may grant a state (grantsState: reflect, shield, frenzy). rules.<id>.noRests: pull after pull. bosses.<id>.adds is a list of waves. groupXpMultiplier: run XP for everyone with two or more people in the party. hard: what hard mode scales, including per level above the dungeon's range. bosses.<id>.phases: what a boss starts doing past a share of its health (BossPhase); replace swaps its rotation outright. healerRunTankDamage / healerRunChipDamage: what a healer run takes, against what one person can cover. unheldTargetDamage: what a boss hits a non-tank for while a person tanks.",
+  "note": "Android-owned encounter tuning, layered onto src/data/dungeons.json at load (GameData.load). attacks: castTicks is how long a boss attack winds up before it lands (the telegraph); interruptible lets a DPS cancel it; tell is what the boss says as it starts. bosses: what this layer adds to a boss. The web app never reads this file. mechanics: debuffs that are a dispel puzzle (bomb, poison, mind_control, curse_chain, wound; see DebuffMechanic). aiDispelEveryTicks: how often an AI healer dispels when no human heals. pressure: the enrage timer (a boss may set enrageAfterTicks), the exposed window after a kick or at half health, and the rest between pulls with its early-pull XP (see Pressure). trash: per dungeon, per pull, the adds a pull brings (mender, runner, add; see AddTemplate). bosses.<id>.adds: adds a boss calls at a share of its health. addRules: their timings, and how much of the AI's damage goes to adds when a human deals damage. unkickedDamageMultiplier: how much harder a kickable cast lands when a human damage dealer let it through. trash.<id>[n].combat: a pull's own rotation (debuffs, casts); a cast may grant a state (grantsState: reflect, shield, frenzy). rules.<id>.noRests: pull after pull. bosses.<id>.adds is a list of waves. groupXpMultiplier: run XP for everyone with two or more people in the party. hard: what hard mode scales, including per level above the dungeon's range. bosses.<id>.phases: what a boss starts doing past a share of its health (BossPhase); replace swaps its rotation outright. healerRunTankDamage / healerRunChipDamage: what a healer run takes, against what one person can cover. unheldTargetDamage: what a boss hits a non-tank for while a person tanks. affixes: hard mode's rules, fixed per dungeon in rules.<id>.affixes. Add kinds: mender, runner, add, pack, bomb, caster, splitter, shielder, leech.",
   "attacks": {
     "vc_ambush": {
       "castTicks": 20,
@@ -835,7 +835,16 @@
           ],
           "mechanicIntervalTicksMin": 50,
           "mechanicIntervalTicksMax": 80
-        }
+        },
+        "adds": [
+          {
+            "kind": "caster",
+            "name": "Shadowfang Adept",
+            "looksLike": "Shadowcaster",
+            "health": 0.225,
+            "blast": 70
+          }
+        ]
       },
       {
         "adds": [
@@ -876,6 +885,13 @@
             "looksLike": "Druid of the Fang",
             "health": 0.35,
             "healFraction": 0.2
+          },
+          {
+            "kind": "leech",
+            "name": "Fanged Crawler",
+            "looksLike": "Raptor",
+            "health": 0.21,
+            "damagePerTick": 1.1
           }
         ]
       },
@@ -946,6 +962,13 @@
             "looksLike": "Mecha-Tank",
             "health": 0.3,
             "blast": 55
+          },
+          {
+            "kind": "shielder",
+            "name": "Arcane Warder",
+            "looksLike": "Arcane Nullifier",
+            "health": 0.21,
+            "wardFraction": 0.25
           }
         ]
       }
@@ -959,6 +982,13 @@
             "looksLike": "High Inspector Whitemane",
             "health": 0.35,
             "healFraction": 0.2
+          },
+          {
+            "kind": "leech",
+            "name": "Scarlet Zealot",
+            "looksLike": "Scarlet Monk",
+            "health": 0.225,
+            "damagePerTick": 1.4
           }
         ]
       },
@@ -1056,7 +1086,31 @@
           ],
           "mechanicIntervalTicksMin": 50,
           "mechanicIntervalTicksMax": 80
-        }
+        },
+        "adds": [
+          {
+            "kind": "splitter",
+            "name": "Bone Pile",
+            "looksLike": "Quilboar Zombie",
+            "health": 0.217,
+            "splitsInto": [
+              {
+                "kind": "add",
+                "name": "Bone Shard",
+                "looksLike": "Quilboar Zombie",
+                "health": 0.072,
+                "damagePerTick": 0.9
+              },
+              {
+                "kind": "add",
+                "name": "Bone Shard",
+                "looksLike": "Quilboar Zombie",
+                "health": 0.072,
+                "damagePerTick": 0.9
+              }
+            ]
+          }
+        ]
       }
     ],
     "zul_farrak": [
@@ -1077,7 +1131,8 @@
           ],
           "mechanicIntervalTicksMin": 50,
           "mechanicIntervalTicksMax": 80
-        }
+        },
+        "adds": []
       },
       {
         "adds": [
@@ -1136,7 +1191,31 @@
           "attackTemplates": [],
           "mechanicIntervalTicksMin": 50,
           "mechanicIntervalTicksMax": 80
-        }
+        },
+        "adds": [
+          {
+            "kind": "splitter",
+            "name": "Living Stone",
+            "looksLike": "Corrupt Elemental",
+            "health": 0.211,
+            "splitsInto": [
+              {
+                "kind": "add",
+                "name": "Stone Shard",
+                "looksLike": "Corrupt Elemental",
+                "health": 0.072,
+                "damagePerTick": 1.0
+              },
+              {
+                "kind": "add",
+                "name": "Stone Shard",
+                "looksLike": "Corrupt Elemental",
+                "health": 0.072,
+                "damagePerTick": 1.0
+              }
+            ]
+          }
+        ]
       },
       {
         "combat": {
@@ -1187,7 +1266,16 @@
           ],
           "mechanicIntervalTicksMin": 50,
           "mechanicIntervalTicksMax": 80
-        }
+        },
+        "adds": [
+          {
+            "kind": "caster",
+            "name": "Atal'ai Prophet",
+            "looksLike": "Shadowcaster",
+            "health": 0.24,
+            "blast": 85
+          }
+        ]
       },
       {
         "adds": [
@@ -1209,6 +1297,13 @@
             "name": "Dark Iron Watchman",
             "looksLike": "Dark Iron Dwarf",
             "health": 0.4
+          },
+          {
+            "kind": "shielder",
+            "name": "Anvilrage Warder",
+            "looksLike": "Dark Iron Dwarf",
+            "health": 0.225,
+            "wardFraction": 0.25
           }
         ]
       },
@@ -1296,7 +1391,16 @@
           ],
           "mechanicIntervalTicksMin": 50,
           "mechanicIntervalTicksMax": 80
-        }
+        },
+        "adds": [
+          {
+            "kind": "leech",
+            "name": "Bloodaxe Reaver",
+            "looksLike": "Blackrock Orc",
+            "health": 0.24,
+            "damagePerTick": 1.6
+          }
+        ]
       }
     ],
     "stratholme": [
@@ -1337,6 +1441,13 @@
             "looksLike": "Plague Ghoul",
             "health": 0.25,
             "blast": 90
+          },
+          {
+            "kind": "caster",
+            "name": "Necrotic Acolyte",
+            "looksLike": "Necromancer",
+            "health": 0.24,
+            "blast": 90
           }
         ]
       }
@@ -1372,7 +1483,31 @@
           ],
           "mechanicIntervalTicksMin": 50,
           "mechanicIntervalTicksMax": 80
-        }
+        },
+        "adds": [
+          {
+            "kind": "splitter",
+            "name": "Bound Revenant",
+            "looksLike": "Voidwalker",
+            "health": 0.223,
+            "splitsInto": [
+              {
+                "kind": "add",
+                "name": "Torn Shade",
+                "looksLike": "Voidwalker",
+                "health": 0.072,
+                "damagePerTick": 1.1
+              },
+              {
+                "kind": "add",
+                "name": "Torn Shade",
+                "looksLike": "Voidwalker",
+                "health": 0.072,
+                "damagePerTick": 1.1
+              }
+            ]
+          }
+        ]
       },
       {
         "combat": {
@@ -1429,7 +1564,31 @@
           "attackTemplates": [],
           "mechanicIntervalTicksMin": 50,
           "mechanicIntervalTicksMax": 80
-        }
+        },
+        "adds": [
+          {
+            "kind": "splitter",
+            "name": "Petrified Warpwood",
+            "looksLike": "Warpwood Guardian",
+            "health": 0.236,
+            "splitsInto": [
+              {
+                "kind": "add",
+                "name": "Warpwood Splinter",
+                "looksLike": "Warpwood Guardian",
+                "health": 0.078,
+                "damagePerTick": 1.2
+              },
+              {
+                "kind": "add",
+                "name": "Warpwood Splinter",
+                "looksLike": "Warpwood Guardian",
+                "health": 0.078,
+                "damagePerTick": 1.2
+              }
+            ]
+          }
+        ]
       },
       {
         "adds": [
@@ -1481,7 +1640,16 @@
           ],
           "mechanicIntervalTicksMin": 50,
           "mechanicIntervalTicksMax": 80
-        }
+        },
+        "adds": [
+          {
+            "kind": "shielder",
+            "name": "Chromatic Warder",
+            "looksLike": "Chromatic Dragonkin",
+            "health": 0.225,
+            "wardFraction": 0.25
+          }
+        ]
       },
       {
         "adds": [
@@ -1548,6 +1716,13 @@
             "looksLike": "Fire Lord",
             "health": 0.35,
             "healFraction": 0.12
+          },
+          {
+            "kind": "leech",
+            "name": "Flamewaker Acolyte",
+            "looksLike": "Fire Lord",
+            "health": 0.225,
+            "damagePerTick": 2.0
           }
         ]
       }
@@ -1577,6 +1752,13 @@
             "looksLike": "Spiteful Shade",
             "health": 0.35,
             "healFraction": 0.2
+          },
+          {
+            "kind": "caster",
+            "name": "Echo of a Caster",
+            "looksLike": "Twisted Echo",
+            "health": 0.225,
+            "blast": 80
           }
         ]
       },
@@ -1642,20 +1824,116 @@
   "unkickedDamageMultiplier": 2.5,
   "rules": {
     "zul_farrak": {
-      "noRests": true
+      "noRests": true,
+      "affixes": [
+        "tough",
+        "explosive"
+      ]
     },
     "ubrs": {
-      "noRests": true
+      "noRests": true,
+      "affixes": [
+        "chaotic",
+        "reflective"
+      ]
+    },
+    "deadmines": {
+      "affixes": [
+        "tough"
+      ]
+    },
+    "shadowfang_keep": {
+      "affixes": [
+        "poisonous"
+      ]
+    },
+    "wailing_caverns": {
+      "affixes": [
+        "poisonous",
+        "tough"
+      ]
+    },
+    "gnomeregan": {
+      "affixes": [
+        "explosive"
+      ]
+    },
+    "scarlet_monastery": {
+      "affixes": [
+        "bolstering"
+      ]
+    },
+    "razorfen_downs": {
+      "affixes": [
+        "poisonous",
+        "bolstering"
+      ]
+    },
+    "maraudon": {
+      "affixes": [
+        "chaotic"
+      ]
+    },
+    "sunken_temple": {
+      "affixes": [
+        "poisonous",
+        "chaotic"
+      ]
+    },
+    "blackrock_depths": {
+      "affixes": [
+        "bolstering",
+        "explosive"
+      ]
+    },
+    "lbrs": {
+      "affixes": [
+        "tough",
+        "chaotic"
+      ]
+    },
+    "stratholme": {
+      "affixes": [
+        "poisonous",
+        "explosive"
+      ]
+    },
+    "scholomance": {
+      "affixes": [
+        "chaotic",
+        "bolstering"
+      ]
+    },
+    "dire_maul": {
+      "affixes": [
+        "tough",
+        "reflective"
+      ]
+    },
+    "molten_core": {
+      "affixes": [
+        "poisonous",
+        "reflective"
+      ]
+    },
+    "endless": {
+      "affixes": [
+        "bolstering",
+        "reflective"
+      ]
     }
   },
   "frenzyDamageMultiplier": 1.5,
   "groupXpMultiplier": 2.0,
   "hard": {
-    "healthMultiplier": 1.8,
-    "damageMultiplier": 1.6,
+    "healthMultiplier": 1.5,
+    "damageMultiplier": 1.35,
     "xpMultiplier": 1.5,
     "overLevelStep": 0.12,
-    "enrageScale": 0.6
+    "enrageScale": 0.85,
+    "affixes": [
+      "tough"
+    ]
   },
   "healerRunTankDamage": 0.7,
   "healerRunChipDamage": 0.7,
@@ -1664,5 +1942,62 @@
     "perLevel": 0.02,
     "fromLevel": 20
   },
-  "unheldTargetDamage": 1.25
+  "unheldTargetDamage": 1.25,
+  "affixes": {
+    "poisonous": {
+      "name": "Poisonous",
+      "description": "Everything the enemy does leaves a lingering venom on the party.",
+      "icon": "wow/ability_creature_poison_06",
+      "debuff": {
+        "abilityId": "affix_venom",
+        "name": "Venom",
+        "icon": "wow/ability_creature_poison_06",
+        "durationTicks": 80,
+        "damagePerTick": 2.4,
+        "targeting": "all_living",
+        "dispellable": true
+      }
+    },
+    "chaotic": {
+      "name": "Chaotic",
+      "description": "Mechanics come a third sooner, and never stop coming.",
+      "icon": "wow/spell_shadow_demonicfortitude",
+      "mechanicInterval": 0.66
+    },
+    "tough": {
+      "name": "Tough",
+      "description": "Adds have half again the health and hit harder for it.",
+      "icon": "wow/ability_warrior_shieldguard",
+      "addHealth": 1.6,
+      "addDamage": 1.25
+    },
+    "bolstering": {
+      "name": "Bolstering",
+      "description": "Every add that falls enrages the ones still standing.",
+      "icon": "wow/ability_warrior_rallyingcry",
+      "bolsterPerDeath": 0.35
+    },
+    "explosive": {
+      "name": "Explosive",
+      "description": "Unstable remnants follow every pull, and they do not wait.",
+      "icon": "wow/spell_fire_selfdestruct",
+      "extraAdds": [
+        {
+          "kind": "bomb",
+          "name": "Unstable Remnant",
+          "looksLike": "Spiteful Shade",
+          "health": 0.12,
+          "blast": 95
+        }
+      ]
+    },
+    "reflective": {
+      "name": "Reflective",
+      "description": "The enemy turns your own spells back on you, on a count.",
+      "icon": "wow/spell_shadow_antimagicshell",
+      "enemyState": "reflect",
+      "stateEveryTicks": 300,
+      "stateTicks": 18
+    }
+  }
 }

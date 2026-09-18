@@ -68,7 +68,18 @@ class PlayerDamageBalanceTest {
             active++
             if (s.unit(s.localUnitId)?.isAlive != true) dead++
             var cast = false
-            // A reasonable player drinks when they run low.
+            // A reasonable player drinks when they run low -- and, from the
+            // level their class learns one, presses the refill too. Leaving it
+            // out measured a mage with the kit it had two commits ago.
+            if (s.mana < s.maxMana * 0.35) {
+                val refill = s.unlockedSpells.firstOrNull {
+                    (data.spell(it)?.manaRegenBuffDurationTicks ?: 0) > 0
+                }
+                if (refill != null) {
+                    val out = engine.reduce(s, Action.CastSpell(refill, null, 0.0), rng)
+                    if (out !== s) s = out
+                }
+            }
             if (s.mana < s.maxMana * 0.25) {
                 val drunk = engine.reduce(s, Action.CastSpell(MANA_POTION_ID, null, 0.0), rng)
                 if (drunk !== s) s = drunk

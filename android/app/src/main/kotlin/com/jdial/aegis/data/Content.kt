@@ -319,6 +319,8 @@ data class Encounters(
     /** Run XP for everyone when two or more people are in the party. */
     val groupXpMultiplier: Double = 1.0,
     val hard: HardMode = HardMode(),
+    /** Every affix hard mode can lay on a dungeon, by id. */
+    val affixes: Map<String, Affix> = emptyMap(),
 )
 
 /**
@@ -337,7 +339,59 @@ data class HardMode(
     val overLevelStep: Double = 0.0,
     /** The enrage timer is this share of its usual length. */
     val enrageScale: Double = 1.0,
+    /**
+     * The affixes every hard run carries, unless the dungeon names its own in
+     * `rules.<id>.affixes`.
+     *
+     * Hard mode was multipliers and nothing else: the same fight with bigger
+     * numbers, which is a difficulty setting rather than a reason to play it
+     * again. An affix changes what you are being asked to do.
+     */
+    val affixes: List<String> = emptyList(),
 )
+
+/**
+ * One rule laid over every enemy in a hard run.
+ *
+ * Fixed per dungeon rather than rotated at random, so it is something to learn
+ * and prepare for rather than something to be told after you wipe. Everything
+ * here is off by default, so an affix does only the one thing it names.
+ */
+@Serializable
+data class Affix(
+    val name: String,
+    /** One line, shown where the run is started. */
+    val description: String = "",
+    val icon: String = "",
+    /** A debuff laid over every rotation in the dungeon, trash and boss. */
+    val debuff: DebuffTemplate? = null,
+    /** Every add is spawned with this much more health, and hits this much harder. */
+    val addHealth: Double = 1.0,
+    val addDamage: Double = 1.0,
+    /** An extra add on every pull and at the boss -- explosive, haunted, and so on. */
+    val extraAdds: List<AddTemplate> = emptyList(),
+    /** Mechanics come this much sooner. Below 1.0 is faster. */
+    val mechanicInterval: Double = 1.0,
+    /** Every surviving add hits this much harder each time one of them dies. */
+    val bolsterPerDeath: Double = 0.0,
+    /** The enemy takes this state every [stateEveryTicks]; see STATE_REFLECT and friends. */
+    val enemyState: String = "",
+    val stateEveryTicks: Int = 0,
+    val stateTicks: Int = 0,
+)
+
+/**
+ * The affixes a hard run of [dungeonId] carries: the dungeon's own if it names
+ * any, else the default set. Empty on a normal run, which is the whole
+ * difference between the two modes beyond the numbers.
+ */
+fun Encounters.affixesFor(dungeonId: String?, hard: Boolean): List<Affix> {
+    if (!hard) return emptyList()
+    val ids = dungeonId?.let { rules[it]?.affixes }?.takeIf { it.isNotEmpty() } ?: hard(this)
+    return ids.mapNotNull { affixes[it] }
+}
+
+private fun hard(e: Encounters): List<String> = e.hard.affixes
 
 /** What this moment's enemy rotates through: the boss's, or this trash pull's. */
 fun Encounters.pullCombat(dungeonId: String?, pullIndex: Int): BossCombat? =
@@ -380,6 +434,8 @@ data class EnemyLookDef(
 data class DungeonRules(
     /** Pull after pull, no breather between. */
     val noRests: Boolean = false,
+    /** This dungeon's own hard-mode affixes, instead of the default set. */
+    val affixes: List<String> = emptyList(),
 )
 
 /**
@@ -427,13 +483,43 @@ data class AddTemplate(
     val damagePerTick: Double = 0.0,
     val healFraction: Double = 0.0,
     val blast: Double = 0.0,
+    /** A splitter's children: what it dies into. */
+    val splitsInto: List<AddTemplate> = emptyList(),
+    /** A shielder's grip: the share of damage the main enemy ignores while it lives. */
+    val wardFraction: Double = 0.0,
 ) {
     companion object {
+        /** Heals the main enemy on a timer. Interruptible. */
         const val MENDER = "mender"
+
+        /** Runs at low health and brings another pack back. */
         const val RUNNER = "runner"
+
+        /** Hits the party and does nothing else. */
         const val ADD = "add"
+
+        /** A whole trash pack, dragged in early. */
         const val PACK = "pack"
+
+        /** Detonates on a fuse, on everybody. */
         const val BOMB = "bomb"
+
+        /**
+         * Casts at the party rather than at the enemy's health bar. A mender
+         * punishes you for ignoring it by undoing your damage; a caster
+         * punishes you by doing its own, which is a different thing to be
+         * asked to interrupt.
+         */
+        const val CASTER = "caster"
+
+        /** Dies into [splitsInto]. Killing it is progress, not completion. */
+        const val SPLITTER = "splitter"
+
+        /** While it lives, the main enemy ignores [wardFraction] of its damage. */
+        const val SHIELDER = "shielder"
+
+        /** Heals the main enemy by what it deals to the party. */
+        const val LEECH = "leech"
     }
 }
 
@@ -450,8 +536,17 @@ data class AddRules(
      */
     val aiAddShareWithHumanDps: Double = 0.2,
     val bombFuseTicks: Int = 100,
+    /** How often a caster casts, and how long its cast takes to kick. */
+    val casterEveryTicks: Int = 90,
+    val casterCastTicks: Int = 30,
     /** One knob over everything adds hit for, for tuning passes. */
     val damageScale: Double = 1.0,
+    /**
+     * The share of add damage that lands on the healer; the rest is spread over
+     * everyone else. 1.0 is what it used to be, and what made every run that
+     * had adds in it end with the healer dead and nobody else scratched.
+     */
+    val healerShare: Double = 0.6,
 )
 
 /**

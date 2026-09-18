@@ -54,8 +54,15 @@ class AddsTest {
 
     @Test
     fun `a pull brings the adds the content gives it`() {
+        // Against the content rather than a literal: which adds a pull brings
+        // is a tuning decision that moves, and a test that has to be edited
+        // every time one does is a test nobody reads.
         val first = run(PlayerClass.MAGE, "scarlet_monastery")
-        assertEquals(listOf(AddTemplate.MENDER), first.adds.map { it.kind })
+        assertEquals(
+            data.encounters.trash.getValue("scarlet_monastery")[0].adds.map { it.kind },
+            first.adds.map { it.kind },
+        )
+        assertTrue("the first pull should bring something", first.adds.isNotEmpty())
         // Deadmines' runner is on the second pull.
         val deadmines = run(PlayerClass.MAGE)
         assertTrue(deadmines.adds.isEmpty())

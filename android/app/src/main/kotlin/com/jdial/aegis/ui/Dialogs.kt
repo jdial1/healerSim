@@ -50,6 +50,7 @@ import androidx.compose.ui.state.ToggleableState
 import com.jdial.aegis.sim.UiSettings
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jdial.aegis.data.affixesFor
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.sim.DungeonOutcome
@@ -261,6 +262,36 @@ fun DungeonQueueSheet(
                             if (hard) "ON  ·  SCALED TO YOU" else "OFF",
                             style = AegisType.label.copy(color = if (hard) Vital.critical else Ink.muted),
                         )
+                    }
+
+                    // What hard mode actually changes, named before you commit
+                    // to it. This dungeon's affixes are fixed, so they are
+                    // something to prepare for rather than something to be told
+                    // about after a wipe.
+                    val affixes = data.encounters.affixesFor(dungeon.id, true)
+                    if (hard && affixes.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        affixes.forEach { affix ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                GameIcon(affix.icon, size = 22.dp, accent = Vital.critical)
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    BasicText(
+                                        affix.name.uppercase(),
+                                        style = AegisType.label.copy(color = Vital.critical),
+                                    )
+                                    if (affix.description.isNotEmpty()) {
+                                        BasicText(
+                                            affix.description,
+                                            style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted),
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 

@@ -1,6 +1,8 @@
 package com.jdial.aegis.sim
 
+import com.jdial.aegis.data.Affix
 import com.jdial.aegis.data.AddTemplate
+import com.jdial.aegis.data.affixesFor
 import com.jdial.aegis.data.AttackTemplate
 import com.jdial.aegis.data.BossCombat
 import com.jdial.aegis.data.Dungeon
@@ -42,12 +44,18 @@ class GameTick(
         } else {
             dungeon.bossCombat?.let { boss -> withPhases(boss, s?.bossPhase ?: 0) }
         }
+        // The one place a rotation is assembled, so the one place affixes lay
+        // their own mechanic over it and wind the clock in.
+        val affixes = affixesOf(s, dungeon)
+        val gap = affixes.fold(1.0) { m, a -> m * a.mechanicInterval }
         return BossCombat(
-            debuffTemplates = c?.debuffTemplates ?: emptyList(),
+            debuffTemplates = (c?.debuffTemplates ?: emptyList()) + affixes.mapNotNull { it.debuff },
             selfBuffTemplates = c?.selfBuffTemplates ?: emptyList(),
             attackTemplates = c?.attackTemplates ?: emptyList(),
-            mechanicIntervalTicksMin = c?.mechanicIntervalTicksMin ?: defaultMechanicMin,
-            mechanicIntervalTicksMax = c?.mechanicIntervalTicksMax ?: defaultMechanicMax,
+            mechanicIntervalTicksMin =
+                max(5, ((c?.mechanicIntervalTicksMin ?: defaultMechanicMin) * gap).roundToInt()),
+            mechanicIntervalTicksMax =
+                max(6, ((c?.mechanicIntervalTicksMax ?: defaultMechanicMax) * gap).roundToInt()),
         )
     }
 
@@ -1234,6 +1242,7 @@ class GameTick(
         val pressure = data.encounters.pressure
         // Exposed, everything hits harder. Off, this is `x * 1.0`: exact.
         val exposed = if (s.exposedTicks > 0) pressure.exposedDamageMultiplier else 1.0
+        val affixes = affixesOf(s)
         // Adds: the AI clears them first unless a human damage dealer is there
         // to choose; with the main enemy down they take everything. With no
         // adds this is `scriptedDamage - 0.0`, exact.
@@ -1250,7 +1259,12 @@ class GameTick(
         val state = s.enemyState.takeIf { s.enemyStateTicks > 0 }
         val shieldBroken = state == STATE_SHIELD && s.exposedTicks > 0
         val warded = state == STATE_REFLECT || (state == STATE_SHIELD && !shieldBroken)
-        var enemyHealth = s.enemyHealth - if (warded) 0.0 else (scriptedDamage - toAdds + playerDamage) * exposed
+        // A shielder standing means the main enemy shrugs off part of everything
+        // aimed at it: the one add whose whole purpose is "kill me first".
+        val ward = (1.0 - living.filter { it.kind == AddTemplate.SHIELDER }.sumOf { it.healAmount })
+            .coerceIn(0.0, 1.0)
+        var enemyHealth = s.enemyHealth -
+            if (warded) 0.0 else (scriptedDamage - toAdds + playerDamage) * exposed * ward
         val struck = if (state != STATE_REFLECT) sys.party else sys.party.map { u ->
             val back = s.participants[u.id]?.pendingEnemyDamage ?: 0.0
             if (back > 0 && u.isAlive) u.copy(health = max(0.0, u.health - back)) else u
@@ -1258,13 +1272,37 @@ class GameTick(
         val aimed = HashMap<String, Double>()
         s.participants.values.forEach { p -> p.pendingAddDamage.forEach { (id, d) -> aimed[id] = (aimed[id] ?: 0.0) + d } }
         // The AI's share goes to menders first, then runners, then the rest.
+        // What the AI kills first, and what a player is being told to. A bomb
+        // is on a clock; a shielder and a mender are both undoing the kill; a
+        // caster and a leech are bleeding the party; a runner is leaving with
+        // reinforcements. A plain add is last because it is only damage.
         val aiFocus = living.minByOrNull {
-            when (it.kind) { AddTemplate.BOMB -> -1; AddTemplate.MENDER -> 0; AddTemplate.RUNNER -> 1; AddTemplate.PACK -> 3; else -> 2 }
+            when (it.kind) {
+                AddTemplate.BOMB -> -1
+                AddTemplate.SHIELDER -> 0
+                AddTemplate.MENDER -> 1
+                AddTemplate.CASTER -> 2
+                AddTemplate.LEECH -> 3
+                AddTemplate.RUNNER -> 4
+                AddTemplate.SPLITTER -> 5
+                AddTemplate.PACK -> 7
+                else -> 6
+            }
         }?.id
-        val addsAfter = s.adds.map { a ->
+        val struckAdds = s.adds.map { a ->
             val hit = ((aimed[a.id] ?: 0.0) + if (a.id == aiFocus) toAdds else 0.0) * exposed
             if (hit <= 0) a else a.copy(health = max(0.0, a.health - hit))
-        }.filter { it.isAlive }
+        }
+        // A splitter dies into its children, here, where it died. Killing one
+        // is progress rather than completion, which is the whole idea.
+        val split = struckAdds.filter { !it.isAlive && it.kind == AddTemplate.SPLITTER }
+            .flatMapIndexed { i, a -> spawnAdds(a.splitsInto, a.maxHealth, "s${s.combatElapsedTicks}-$i", affixes) }
+        // Bolstering: every one that falls makes the rest angrier, so the order
+        // you kill them in becomes the decision.
+        val fell = struckAdds.count { !it.isAlive } - s.adds.count { !it.isAlive }
+        val bolster = affixes.sumOf { it.bolsterPerDeath } * fell
+        val addsAfter = struckAdds.filter { it.isAlive }
+            .map { if (bolster > 0) it.copy(damagePerTick = it.damagePerTick * (1 + bolster)) else it } + split
         // The next phase, if this tick took the boss past its threshold.
         val phase = s.currentDungeon?.bossCombat?.phases?.getOrNull(s.bossPhase)
         val enterPhase = s.combatPhase == CombatPhase.BOSS && phase != null &&
@@ -1272,9 +1310,13 @@ class GameTick(
         val wave = s.currentDungeon?.let { data.encounters.bosses[it.id]?.adds?.getOrNull(s.bossAddWaves) }
         val callAdds = s.combatPhase == CombatPhase.BOSS && wave != null &&
             enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * wave.atHealth
-        var addsNow = if (callAdds) addsAfter + spawnAdds(wave!!.spawn, s.enemyMaxHealth, "b${s.combatElapsedTicks}") else addsAfter
+        var addsNow = if (callAdds) {
+            addsAfter + spawnAdds(wave!!.spawn, s.enemyMaxHealth, "b${s.combatElapsedTicks}", affixes)
+        } else {
+            addsAfter
+        }
         if (enterPhase && phase!!.adds.isNotEmpty()) {
-            addsNow = addsNow + spawnAdds(phase.adds, s.enemyMaxHealth, "f${s.combatElapsedTicks}")
+            addsNow = addsNow + spawnAdds(phase.adds, s.enemyMaxHealth, "f${s.combatElapsedTicks}", affixes)
         }
         val exposeNow = s.combatPhase == CombatPhase.BOSS && pressure.exposedBelowHealth > 0 && !s.exposedAtHalf &&
             enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * pressure.exposedBelowHealth
@@ -1316,8 +1358,13 @@ class GameTick(
             mechanicOrdinal = if (enterPhase) 0 else boss.mechanicOrdinal,
             mechanicCooldown = if (enterPhase) phaseOpeningTicks else boss.mechanicCooldown,
             enemyCast = if (enterPhase) null else s.enemyCast,
-            enemyState = if (shieldBroken || s.enemyStateTicks <= 1) null else s.enemyState,
-            enemyStateTicks = if (shieldBroken) 0 else max(0, s.enemyStateTicks - 1),
+            // An affix that grants a state does it on the clock, off the fight's
+            // elapsed ticks rather than an rng roll, so it is something to count
+            // rather than something to be surprised by.
+            enemyState = affixState(s, affixes)?.first
+                ?: if (shieldBroken || s.enemyStateTicks <= 1) null else s.enemyState,
+            enemyStateTicks = affixState(s, affixes)?.second
+                ?: if (shieldBroken) 0 else max(0, s.enemyStateTicks - 1),
             exposedTicks = if (exposeNow) pressure.exposedTicks else max(0, s.exposedTicks - 1),
             exposedAtHalf = s.exposedAtHalf || exposeNow,
         )
@@ -1345,7 +1392,7 @@ class GameTick(
                 return finalizeProgress(
                     base.copy(
                         trashPullsRemaining = remaining, enemyHealth = hp, enemyMaxHealth = hp, restTicks = restAfterPull(s),
-                        adds = pullAdds(dungeon?.id, index, hp, "p${s.combatElapsedTicks}"),
+                        adds = pullAdds(dungeon?.id, index, hp, "p${s.combatElapsedTicks}", affixesOf(s)),
                         enemyCast = null, enemyState = null, enemyStateTicks = 0,
                     ).let {
                         // A pull with a rotation of its own starts it fresh; the rest carry on as they always did.
@@ -1685,10 +1732,17 @@ class GameTick(
     }
 
     /** The adds [templates] make, sized against [mainMaxHealth]; ids unique to this moment. */
-    internal fun spawnAdds(templates: List<AddTemplate>, mainMaxHealth: Double, tag: String): List<EnemyAdd> {
+    internal fun spawnAdds(
+        templates: List<AddTemplate>,
+        mainMaxHealth: Double,
+        tag: String,
+        affixes: List<Affix> = emptyList(),
+    ): List<EnemyAdd> {
         val every = data.encounters.addRules.menderEveryTicks
+        val tougher = affixes.fold(1.0) { m, a -> m * a.addHealth }
+        val angrier = affixes.fold(1.0) { m, a -> m * a.addDamage }
         return templates.mapIndexed { i, t ->
-            val hp = max(1.0, t.health * mainMaxHealth)
+            val hp = max(1.0, t.health * mainMaxHealth * tougher)
             EnemyAdd(
                 id = "add-$tag-$i",
                 kind = t.kind,
@@ -1696,17 +1750,41 @@ class GameTick(
                 looksLike = t.looksLike,
                 health = hp,
                 maxHealth = hp,
-                damagePerTick = t.damagePerTick,
-                // A bomb carries its blast where a mender carries its heal.
-                healAmount = if (t.kind == AddTemplate.BOMB) t.blast else t.healFraction * mainMaxHealth,
+                damagePerTick = t.damagePerTick * angrier,
+                // One number, read differently by kind: a bomb's blast, a
+                // caster's hit, a mender's heal, a shielder's grip.
+                healAmount = when (t.kind) {
+                    AddTemplate.BOMB, AddTemplate.CASTER -> t.blast
+                    AddTemplate.SHIELDER -> t.wardFraction
+                    else -> t.healFraction * mainMaxHealth
+                },
+                splitsInto = t.splitsInto,
                 timer = fuse(t.kind),
                 timerTotal = fuse(t.kind),
             )
         }
     }
 
+    /**
+     * The state an affix hands the enemy this tick, if this is the tick for it.
+     * Only while it has none already: an affix does not cut a fight's own
+     * shield short, or extend it.
+     */
+    private fun affixState(s: GameState, affixes: List<Affix>): Pair<String, Int>? {
+        if (s.enemyStateTicks > 0) return null
+        val a = affixes.firstOrNull { it.enemyState.isNotEmpty() && it.stateEveryTicks > 0 } ?: return null
+        val due = s.combatElapsedTicks > 0 && s.combatElapsedTicks % a.stateEveryTicks == 0
+        return if (due) a.enemyState to a.stateTicks else null
+    }
+
+    /** The affixes this run carries. Empty on a normal run. */
+    internal fun affixesOf(s: GameState?, dungeon: Dungeon? = null): List<Affix> =
+        if (s == null || !s.hardMode) emptyList()
+        else data.encounters.affixesFor((dungeon ?: s.currentDungeon)?.id, true)
+
     private fun fuse(kind: String): Int = when (kind) {
         AddTemplate.MENDER -> data.encounters.addRules.menderEveryTicks
+        AddTemplate.CASTER -> data.encounters.addRules.casterEveryTicks
         AddTemplate.BOMB -> data.encounters.addRules.bombFuseTicks
         else -> 0
     }
@@ -1716,9 +1794,20 @@ class GameTick(
         data.encounters.pullCombat(dungeonId, index)?.let { it.mechanicIntervalTicksMin ?: defaultMechanicMin } ?: 0
 
     /** What trash pull [index] of [dungeonId] brings besides its pack. */
-    internal fun pullAdds(dungeonId: String?, index: Int, mainMaxHealth: Double, tag: String): List<EnemyAdd> {
-        val pull = dungeonId?.let { data.encounters.trash[it] }?.getOrNull(index) ?: return emptyList()
-        return spawnAdds(pull.adds, mainMaxHealth, tag)
+    internal fun pullAdds(
+        dungeonId: String?,
+        index: Int,
+        mainMaxHealth: Double,
+        tag: String,
+        affixes: List<Affix> = emptyList(),
+    ): List<EnemyAdd> {
+        val pull = dungeonId?.let { data.encounters.trash[it] }?.getOrNull(index)
+        // An affix that brings its own adds brings them to every pull, which is
+        // what makes a dungeon feel like it is under the affix rather than like
+        // one pull is.
+        val templates = pull?.adds.orEmpty() + affixes.flatMap { it.extraAdds }
+        if (templates.isEmpty()) return emptyList()
+        return spawnAdds(templates, mainMaxHealth, tag, affixes)
     }
 
     /**
@@ -1736,7 +1825,7 @@ class GameTick(
         val pack = EnemyAdd(id = "pack-$tag", kind = AddTemplate.PACK, name = name, looksLike = name, health = hp, maxHealth = hp)
         return s.copy(
             trashPullsRemaining = s.trashPullsRemaining - 1,
-            adds = s.adds + pack + pullAdds(dungeon.id, index, hp, tag),
+            adds = s.adds + pack + pullAdds(dungeon.id, index, hp, tag, affixesOf(s)),
         )
     }
 
@@ -1762,6 +1851,17 @@ class GameTick(
                     else -> a.copy(casting = true, timer = rules.menderCastTicks, timerTotal = rules.menderCastTicks)
                 }
                 AddTemplate.BOMB -> if (a.timer <= 1) { blast += a.healAmount; null } else a.copy(timer = a.timer - 1)
+                // A caster winds up at the party, and the cast can be kicked
+                // the same way a mender's can -- what lands is damage, not a
+                // heal, so ignoring it costs health rather than time.
+                AddTemplate.CASTER -> when {
+                    a.timer > 1 -> a.copy(timer = a.timer - 1)
+                    a.casting -> {
+                        blast += a.healAmount
+                        a.copy(casting = false, timer = rules.casterEveryTicks, timerTotal = rules.casterEveryTicks)
+                    }
+                    else -> a.copy(casting = true, timer = rules.casterCastTicks, timerTotal = rules.casterCastTicks)
+                }
                 AddTemplate.RUNNER -> when {
                     !a.fleeing && a.health < a.maxHealth * rules.runnerFleeBelow ->
                         a.copy(fleeing = true, timer = rules.runnerEscapeTicks, timerTotal = rules.runnerEscapeTicks)
@@ -1775,9 +1875,28 @@ class GameTick(
         // Adds go for whoever keeps the party alive.
         val hurt = adds.sumOf { it.damagePerTick } * rules.damageScale *
             (s.currentDungeon?.let { progression.bossDamageMultiplier(it.difficulty) } ?: 1.0)
+        // A leech feeds what it takes straight back into the enemy, so leaving
+        // one up is the healer healing the boss.
+        val leeched = adds.filter { it.kind == AddTemplate.LEECH }.sumOf { it.damagePerTick } *
+            rules.damageScale
+        if (leeched > 0 && enemyHealth > 0) enemyHealth = min(s.enemyMaxHealth, enemyHealth + leeched)
+        // Adds go for whoever keeps the party alive -- but not *only* them. Every
+        // point of add damage used to land on the one healer, so any content
+        // that added adds was content that killed the healer and nobody else:
+        // hard mode's affixes ended every run with HEALER_DOWN rather than with
+        // a fight anyone lost. The healer still takes the lion's share, which is
+        // the pressure the design wants; the rest is spread, which is what stops
+        // "more adds" from meaning "the healer, faster".
         val victim = party.firstOrNull { it.isAlive && it.role == UnitRole.HEALER } ?: party.firstOrNull { it.isAlive }
+        val focus = rules.healerShare
+        val others = party.filter { it.isAlive && it.id != victim?.id }
+        val spread = if (others.isEmpty()) 0.0 else hurt * (1 - focus) / others.size
         val hit = (if (hurt <= 0 || victim == null) party else party.map {
-            if (it.id == victim.id) it.copy(health = max(0.0, it.health - hurt)) else it
+            when {
+                it.id == victim.id -> it.copy(health = max(0.0, it.health - hurt * focus))
+                it.isAlive -> it.copy(health = max(0.0, it.health - spread))
+                else -> it
+            }
         }).map { if (blast > 0 && it.isAlive) it.copy(health = max(0.0, it.health - blast)) else it }
         return s.copy(adds = adds, enemyHealth = enemyHealth, extraPulls = extra) to hit
     }

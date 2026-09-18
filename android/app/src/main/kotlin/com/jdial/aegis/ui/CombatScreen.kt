@@ -762,10 +762,16 @@ private fun AddRows(
         shown.forEachIndexed { i, a ->
             if (i > 0) Spacer(Modifier.height(2.dp))
             val chosen = choosable && a.id == targetId
-            val (tag, colour) = when {
+val (tag, colour) = when {
                 a.fleeing -> "FLEEING  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical
+                // A cast bar means the same thing whoever is casting: stop it.
+                a.casting && a.kind == AddTemplate.CASTER -> "CASTING  ·  KICK" to Color(0xFFFACC15)
                 a.casting -> "MENDING  ·  KICK" to Color(0xFFFACC15)
                 a.kind == AddTemplate.MENDER -> "HEALER" to Vital.healthy
+                a.kind == AddTemplate.CASTER -> "CASTER" to Color(0xFFFACC15)
+                a.kind == AddTemplate.SHIELDER -> "WARDING  ·  KILL FIRST" to Dispel
+                a.kind == AddTemplate.LEECH -> "LEECH  ·  FEEDS BOSS" to Vital.healthy
+                a.kind == AddTemplate.SPLITTER -> "SPLITS" to Gilt.core
                 a.kind == AddTemplate.RUNNER -> "RUNNER" to Gilt.core
                 a.kind == AddTemplate.PACK -> "2× DAMAGE" to Vital.critical
                 a.kind == AddTemplate.BOMB -> "BOMB  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical

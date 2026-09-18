@@ -1,5 +1,6 @@
 package com.jdial.aegis.sim
 
+import com.jdial.aegis.data.AddTemplate
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.Spell
@@ -325,17 +326,20 @@ class CastPipeline(
     }
 
     /**
-     * What a kick stops: the mender it was aimed at, else the boss's cast,
-     * else any mender mid-cast.
+     * What a kick stops: the add it was aimed at, else the boss's cast, else
+     * any add mid-cast. A caster is kicked exactly like a mender -- the cast
+     * bar is the same bar, and which one it belongs to should not change the
+     * button you reach for.
      */
     private fun interrupted(s: GameState, spell: Spell, targetId: String?): GameState {
         if (!spell.interrupts) return s
         val aimed = s.adds.firstOrNull { it.id == targetId && it.casting }
-        val mender = aimed ?: s.adds.firstOrNull { it.casting }.takeIf { s.enemyCast?.interruptible != true }
-        if (mender != null) {
-            val every = data.encounters.addRules.menderEveryTicks
+        val caster = aimed ?: s.adds.firstOrNull { it.casting }.takeIf { s.enemyCast?.interruptible != true }
+        if (caster != null) {
+            val rules = data.encounters.addRules
+            val every = if (caster.kind == AddTemplate.CASTER) rules.casterEveryTicks else rules.menderEveryTicks
             return s.copy(
-                adds = s.adds.map { if (it.id == mender.id) it.copy(casting = false, timer = every, timerTotal = every) else it },
+                adds = s.adds.map { if (it.id == caster.id) it.copy(casting = false, timer = every, timerTotal = every) else it },
                 lastInterruptBy = s.localUnitId,
             )
         }

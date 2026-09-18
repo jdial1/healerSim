@@ -348,3 +348,37 @@ it wraps into two even rows past five rather than shrinking every slot.
 
 `content/data/utility_spells.json` is the one file that says who learns what
 and when -- class spells included, granted by level.
+
+## Hard mode's affixes
+
+Hard mode used to be four multipliers: the same fight with bigger numbers,
+which is a difficulty setting rather than a reason to play a place again. It
+now lays **affixes** over the run -- rules that change what the fight asks of
+you. They are fixed per dungeon (`rules.<id>.affixes`), so they are something
+to prepare for rather than something to learn from a wipe, and they are named
+on the queue sheet before you commit.
+
+| Affix | What it does | Where it is wired |
+|---|---|---|
+| Poisonous | a venom on every rotation | `Affix.debuff` -> `combatProfile` |
+| Chaotic | mechanics a third sooner | `Affix.mechanicInterval` |
+| Tough | adds with half again the health | `Affix.addHealth/addDamage` -> `spawnAdds` |
+| Bolstering | each add that falls enrages the rest | `Affix.bolsterPerDeath` |
+| Explosive | a live remnant on every pull | `Affix.extraAdds` -> `pullAdds` |
+| Reflective | the enemy turns your spells back, on a count | `Affix.enemyState` |
+
+Adding one is a JSON edit unless it needs an effect none of those six fields
+describe.
+
+## Trash kinds
+
+`mender`, `runner`, `add`, `pack` and `bomb` were the whole vocabulary across
+seventeen dungeons, so most pulls were a reskin of another. Four more, each
+asking a different question:
+
+| Kind | What it does |
+|---|---|
+| `caster` | winds up damage at the party -- a kick that is worth health, not time |
+| `shielder` | the main enemy ignores `wardFraction` of everything while it stands |
+| `splitter` | dies into `splitsInto`, so killing it is progress rather than completion |
+| `leech` | feeds what it takes from the party straight back into the enemy |

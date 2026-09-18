@@ -222,6 +222,8 @@ data class EnemyAdd(
     val timerTotal: Int = 0,
     val casting: Boolean = false,
     val fleeing: Boolean = false,
+    /** A splitter's children. */
+    val splitsInto: List<com.jdial.aegis.data.AddTemplate> = emptyList(),
 ) {
     val isAlive: Boolean get() = health > 0
     val castProgress: Float get() = if (!casting || timerTotal <= 0) 0f else 1f - timer.toFloat() / timerTotal
