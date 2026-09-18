@@ -119,6 +119,8 @@ fun DungeonQueueSheet(
     worldBest: Int = 0,
     /** Offered only where this character has already cleared the place. */
     hardUnlocked: Boolean = false,
+    /** How far this character has pushed this dungeon's keystone. */
+    keystone: Int = 0,
     onClose: () -> kotlin.Unit,
     onEnter: (pace: String, hard: Boolean) -> kotlin.Unit,
 ) {
@@ -259,7 +261,11 @@ fun DungeonQueueSheet(
                         )
                         Spacer(Modifier.weight(1f))
                         BasicText(
-                            if (hard) "ON  ·  SCALED TO YOU" else "OFF",
+                            when {
+                                !hard -> "OFF"
+                                keystone > 0 -> "KEYSTONE $keystone"
+                                else -> "ON  ·  SCALED TO YOU"
+                            },
                             style = AegisType.label.copy(color = if (hard) Vital.critical else Ink.muted),
                         )
                     }
@@ -268,7 +274,7 @@ fun DungeonQueueSheet(
                     // to it. This dungeon's affixes are fixed, so they are
                     // something to prepare for rather than something to be told
                     // about after a wipe.
-                    val affixes = data.encounters.affixesFor(dungeon.id, true)
+                    val affixes = data.encounters.affixesFor(dungeon.id, true, keystone)
                     if (hard && affixes.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         affixes.forEach { affix ->
@@ -441,6 +447,8 @@ fun OutcomeDialog(
                         "FIRST CLEAR".takeIf { highlights.firstClear },
                         "CLEAN".takeIf { highlights.clean },
                         "SHARP".takeIf { highlights.sharp },
+                        // The clear is the item: the place is harder next time.
+                        "KEYSTONE ${highlights.keystone}".takeIf { highlights.keystone > 0 },
                     )
                     BasicText(
                         news.joinToString("   ·   "),

@@ -31,6 +31,7 @@ class PlaytestHarness {
         val levels = prop("playtest.levels", "3,8,12,20,34,47").split(",").map { it.trim().toInt() }
         val runs = prop("playtest.runs", "5").toInt()
         val hard = prop("playtest.hard", "false").toBoolean()
+        val keystone = prop("playtest.keystone", "0").toInt()
         // "What happens if the player does nothing?" -- the question that says
         // whether a seat matters at all.
         val idle = prop("playtest.idle", "false").toBoolean()
@@ -41,7 +42,9 @@ class PlaytestHarness {
             for (level in levels) {
                 val dungeon = data.dungeons.firstOrNull { !it.endless && level in it.levelMin..it.levelMax }
                     ?: data.dungeons.last { !it.endless && it.levelMin <= level }
-                repeat(runs) { seed -> println(play(cls, level, dungeon.id, hard, pace, seed + 1, idle).json()) }
+                repeat(runs) { seed ->
+                    println(play(cls, level, dungeon.id, hard, pace, seed + 1, idle, keystone).json())
+                }
             }
         }
         println("PLAYTEST-END")
@@ -75,6 +78,7 @@ class PlaytestHarness {
         pace: String,
         seed: Int,
         idle: Boolean = false,
+        keystone: Int = 0,
     ): Run {
         val rng = Rng(seed)
         var s = engine.newCharacter(cls, rng)
@@ -98,7 +102,7 @@ class PlaytestHarness {
         }
 
         val dungeon = data.dungeons.first { it.id == dungeonId }
-        s = engine.reduce(s, Action.StartDungeon(dungeon, pace, hard), rng)
+        s = engine.reduce(s, Action.StartDungeon(dungeon, pace, hard, keystone), rng)
 
         val damage = data.bundle(cls).spells.values
             .filter { it.school == SpellSchool.DAMAGE }

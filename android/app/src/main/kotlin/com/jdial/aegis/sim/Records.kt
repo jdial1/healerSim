@@ -30,8 +30,10 @@ data class RunHighlights(
     val sharp: Boolean = false,
     /** The charm this clear handed over, if it was the first one here. */
     val charm: com.jdial.aegis.data.Charm? = null,
+    /** The keystone level this clear unlocked, if it pushed one. */
+    val keystone: Int = 0,
 ) {
-    val any: Boolean get() = newBest || firstClear || clean || sharp || charm != null
+    val any: Boolean get() = newBest || firstClear || clean || sharp || charm != null || keystone > 0
 }
 
 /** A cleared dungeon's mark on the record, and what it was worth saying. */

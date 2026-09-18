@@ -348,6 +348,14 @@ data class HardMode(
      * again. An affix changes what you are being asked to do.
      */
     val affixes: List<String> = emptyList(),
+    /**
+     * What each keystone level adds to health and damage, on top of its affix.
+     *
+     * An affix alone is a different fight rather than a harder one, and a
+     * ladder whose rungs are the same height is not a ladder. Small on purpose:
+     * the affixes are meant to be what you feel.
+     */
+    val keystoneStep: Double = 0.0,
 )
 
 /**
@@ -385,13 +393,17 @@ data class Affix(
  * any, else the default set. Empty on a normal run, which is the whole
  * difference between the two modes beyond the numbers.
  */
-fun Encounters.affixesFor(dungeonId: String?, hard: Boolean): List<Affix> {
+fun Encounters.affixesFor(dungeonId: String?, hard: Boolean, keystone: Int = 0): List<Affix> {
     if (!hard) return emptyList()
-    val ids = dungeonId?.let { rules[it]?.affixes }?.takeIf { it.isNotEmpty() } ?: hard(this)
-    return ids.mapNotNull { affixes[it] }
+    val own = dungeonId?.let { rules[it]?.affixes }?.takeIf { it.isNotEmpty() } ?: this.hard.affixes
+    // The dungeon's own first, so its character survives being pushed, then the
+    // rest of the pool in a fixed order. Fixed, not rolled: a keystone you can
+    // prepare for is the point, and the same level of the same place is always
+    // the same fight.
+    val rest = affixes.keys.filter { it !in own }
+    val want = (own.size + keystone).coerceAtMost(own.size + rest.size)
+    return (own + rest).take(want).mapNotNull { affixes[it] }
 }
-
-private fun hard(e: Encounters): List<String> = e.hard.affixes
 
 /** What this moment's enemy rotates through: the boss's, or this trash pull's. */
 fun Encounters.pullCombat(dungeonId: String?, pullIndex: Int): BossCombat? =

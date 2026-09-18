@@ -138,6 +138,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
     // What this character has to show: the dungeon cards and the trophy case read it.
     val records = state.playerClass?.let { roster.byClass[it.name]?.records }.orEmpty()
     val ownedCharms = state.playerClass?.let { roster.byClass[it.name]?.charmIds }.orEmpty()
+    val keystones = state.playerClass?.let { roster.byClass[it.name]?.keystones }.orEmpty()
     val forgetResult by vm.forgetResult.collectAsStateWithLifecycle()
     // GameData parsed in the ViewModel's initialiser, so by here we are ready.
     LaunchedEffect(Unit) { onReady() }
@@ -256,6 +257,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                     Screen.Dungeons -> DungeonListScreen(
                         data = vm.data,
                         records = records,
+                        keystones = keystones,
                         playerLevel = state.level,
                         cls = state.playerClass ?: PlayerClass.PRIEST,
                         talentPoints = state.talentPoints,
@@ -365,6 +367,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                     queueStatus = queueStatus,
                     yourBest = records[dungeon.id]?.bestTicks ?: 0,
                     hardUnlocked = (records[dungeon.id]?.clears ?: 0) > 0,
+                    keystone = vm.keystoneOf(dungeon.id),
                     worldBest = worldBest,
                     onClose = {
                         queued = null

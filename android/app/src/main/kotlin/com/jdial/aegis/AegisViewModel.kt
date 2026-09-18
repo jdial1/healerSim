@@ -152,6 +152,15 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = GameState()
     }
 
+    /**
+     * How far this character has pushed [dungeonId]'s keystone.
+     *
+     * The clear is the item: nothing drops and nothing is equipped, the place
+     * itself is harder next time and stays that way.
+     */
+    fun keystoneOf(dungeonId: String): Int =
+        _state.value.playerClass?.let { _roster.value.byClass[it.name]?.keystones?.get(dungeonId) } ?: 0
+
     /** The record for the class being played, for the screens that show it. */
     val records: Map<String, DungeonRecord>
         get() = _state.value.playerClass?.let { _roster.value.byClass[it.name]?.records }.orEmpty()
@@ -172,12 +181,20 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         val earned = data.charms.values.firstOrNull {
             it.cls == cls && it.from == outcome.dungeonId && it.id !in blob.charmIds
         }.takeIf { outcome.kind == DungeonOutcomeKind.SUCCESS }
-        _highlights.value = news.copy(charm = earned)
+        // A hard clear pushes that dungeon's keystone one further: one more
+        // affix next time, and it does not go back down on a wipe -- what was
+        // beaten stays beaten. Only a clear at or above the current level
+        // counts, so replaying an easier one cannot ratchet it up.
+        val was = blob.keystones[outcome.dungeonId] ?: 0
+        val pushed = outcome.kind == DungeonOutcomeKind.SUCCESS && outcome.hardMode && outcome.keystone >= was
+        val keystones = if (pushed) blob.keystones + (outcome.dungeonId to was + 1) else blob.keystones
+        _highlights.value = news.copy(charm = earned, keystone = if (pushed) was + 1 else 0)
         _roster.value = _roster.value.copy(
             byClass = _roster.value.byClass + (
                 cls to blob.copy(
                     records = next,
                     charmIds = blob.charmIds + listOfNotNull(earned?.id),
+                    keystones = keystones,
                 )
                 ),
         )
@@ -252,7 +269,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
 
         if (!_settings.value.multiplayer || !multiplayer.isAvailable) {
             multiplayer.leave()
-            dispatch(Action.StartDungeon(dungeon, pace, hard))
+            dispatch(Action.StartDungeon(dungeon, pace, hard, keystoneOf(dungeon.id)))
             startTicking()
             return
         }
@@ -263,7 +280,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
             // only blocks when they were quicker than the queue.
             val session = multiplayer.session
                 ?: multiplayer.joinQueue(dungeon, pace, _state.value)
-            dispatch(Action.StartDungeon(dungeon, pace, hard))
+            dispatch(Action.StartDungeon(dungeon, pace, hard, keystoneOf(dungeon.id)))
             if (session != null) {
                 // Build the seating over the network first, then apply it under
                 // the lock -- never await with the state in hand.

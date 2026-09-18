@@ -432,6 +432,8 @@ fun DungeonListScreen(
     cls: PlayerClass,
     talentPoints: Int,
     records: Map<String, DungeonRecord>,
+    /** How far each dungeon's keystone has been pushed. */
+    keystones: Map<String, Int> = emptyMap(),
     onSelect: (Dungeon) -> Unit,
 ) {
     ObsidianBackdrop {
@@ -458,7 +460,13 @@ fun DungeonListScreen(
                 ) {
                     items(data.dungeons, key = { it.id }) { dungeon ->
                         val locked = playerLevel < dungeon.levelMin
-                        DungeonCard(dungeon, locked, records[dungeon.id], records[recordKey(dungeon.id, true)]) {
+                        DungeonCard(
+                            dungeon,
+                            locked,
+                            records[dungeon.id],
+                            records[recordKey(dungeon.id, true)],
+                            keystones[dungeon.id] ?: 0,
+                        ) {
                             if (!locked) onSelect(dungeon)
                         }
                     }
@@ -538,6 +546,8 @@ private fun DungeonCard(
     locked: Boolean,
     record: DungeonRecord?,
     hardRecord: DungeonRecord?,
+    /** How far this dungeon's keystone has been pushed; 0 until a hard clear. */
+    keystone: Int = 0,
     onClick: () -> Unit,
 ) {
     val accent = LocalAccent.current
@@ -593,7 +603,8 @@ private fun DungeonCard(
                 if (hardRecord != null && hardRecord.clears > 0) {
                     Spacer(Modifier.height(4.dp))
                     BasicText(
-                        "HARD ${clearTimeLabel(hardRecord.bestTicks)}   ·   ${hardRecord.clears}",
+                        "HARD ${clearTimeLabel(hardRecord.bestTicks)}   ·   ${hardRecord.clears}" +
+                            if (keystone > 0) "   ·   KEYSTONE $keystone" else "",
                         style = AegisType.label.copy(color = Vital.critical),
                     )
                 }

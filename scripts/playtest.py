@@ -30,7 +30,7 @@ ANDROID = os.path.join(ROOT, 'android')
 CONTENT = os.path.join(ANDROID, 'content', 'encounters.json')
 
 
-def run_harness(classes, levels, runs, hard, pace, idle=False):
+def run_harness(classes, levels, runs, hard, pace, idle=False, keystone=0):
     """Plays the runs in one JVM and returns them as dicts."""
     cmd = [
         os.path.join(ANDROID, 'gradlew.bat' if os.name == 'nt' else 'gradlew'),
@@ -40,6 +40,7 @@ def run_harness(classes, levels, runs, hard, pace, idle=False):
         f'-Dplaytest.levels={levels}',
         f'-Dplaytest.runs={runs}',
         f'-Dplaytest.hard={"true" if hard else "false"}',
+        f'-Dplaytest.keystone={keystone}',
         f'-Dplaytest.pace={pace}',
         f'-Dplaytest.idle={"true" if idle else "false"}',
         # Gradle caches a task whose inputs have not changed; the properties are
@@ -107,6 +108,7 @@ def main():
     ap.add_argument('--runs', type=int, default=5)
     ap.add_argument('--pace', default='normal')
     ap.add_argument('--hard', action='store_true', help='play the cleared-it-already version')
+    ap.add_argument('--keystone', type=int, default=0, help='hard-mode keystone level: each one is another affix')
     ap.add_argument('--idle', action='store_true', help='the player does nothing: does the seat matter?')
     ap.add_argument('--by', default='cls,level', help='what to group the report by')
     ap.add_argument('--sweep', help='KEY=v1,v2,... in encounters.json, one report per value')
@@ -123,7 +125,7 @@ def main():
             for value in values.split(','):
                 set_value(key, value)
                 print(f'\n=== {key} = {value} ===')
-                batch = run_harness(args.classes, args.levels, args.runs, args.hard, args.pace, args.idle)
+                batch = run_harness(args.classes, args.levels, args.runs, args.hard, args.pace, args.idle, args.keystone)
                 for r in batch:
                     r[key] = value
                 summarise(batch, by)
@@ -131,7 +133,7 @@ def main():
         finally:
             shutil.move(backup, CONTENT)
     else:
-        rows = run_harness(args.classes, args.levels, args.runs, args.hard, args.pace, args.idle)
+        rows = run_harness(args.classes, args.levels, args.runs, args.hard, args.pace, args.idle, args.keystone)
         summarise(rows, by)
 
     if args.json:

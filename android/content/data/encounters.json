@@ -1933,7 +1933,8 @@
     "enrageScale": 0.85,
     "affixes": [
       "tough"
-    ]
+    ],
+    "keystoneStep": 0.1
   },
   "healerRunTankDamage": 0.7,
   "healerRunChipDamage": 0.7,

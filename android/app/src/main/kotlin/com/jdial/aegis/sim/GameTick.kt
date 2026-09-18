@@ -1180,6 +1180,7 @@ class GameTick(
                 deaths = s.runDeaths,
                 missedKicks = s.runMissedKicks,
                 hardMode = s.hardMode,
+                keystone = s.keystone,
             ),
         )
     }
@@ -1376,7 +1377,7 @@ class GameTick(
 
         val dungeon = s.currentDungeon
         if (s.combatPhase == CombatPhase.TRASH) {
-            val hp = dungeon?.let { max(1.0, progression.trashMaxHealth(it) * hardScale(it, s.level, s.hardMode)) } ?: 1.0
+            val hp = dungeon?.let { max(1.0, progression.trashMaxHealth(it) * hardScale(it, s.level, s.hardMode, s.keystone)) } ?: 1.0
             // Whoever a runner brought comes first, and is not one of the planned pulls.
             if (s.extraPulls > 0) {
                 return finalizeProgress(
@@ -1402,7 +1403,7 @@ class GameTick(
                 )
             }
             // Trash cleared: the boss engages and the mechanic rotation resets.
-            val bossHp = max(1.0, (dungeon?.bossHealth ?: 1000.0) * hardScale(dungeon, s.level, s.hardMode))
+            val bossHp = max(1.0, (dungeon?.bossHealth ?: 1000.0) * hardScale(dungeon, s.level, s.hardMode, s.keystone))
             val profile = dungeon?.let { combatProfile(it) }
             return finalizeProgress(
                 base.copy(
@@ -1467,6 +1468,7 @@ class GameTick(
                 deaths = s.runDeaths,
                 missedKicks = s.runMissedKicks,
                 hardMode = s.hardMode,
+                keystone = s.keystone,
             ),
         )
     }
@@ -1680,11 +1682,11 @@ class GameTick(
      * including the step for every level the party is above the dungeon.
      * Exactly 1.0 in normal mode, so nothing else changes.
      */
-    internal fun hardScale(dungeon: Dungeon?, level: Int, hard: Boolean): Double {
+    internal fun hardScale(dungeon: Dungeon?, level: Int, hard: Boolean, keystone: Int = 0): Double {
         if (!hard || dungeon == null) return 1.0
         val h = data.encounters.hard
         val over = max(0, level - dungeon.levelMax)
-        return h.healthMultiplier * (1 + over * h.overLevelStep)
+        return h.healthMultiplier * (1 + over * h.overLevelStep) * (1 + keystone * h.keystoneStep)
     }
 
     /** What hard mode adds to what the enemy hits for. */
@@ -1692,7 +1694,7 @@ class GameTick(
         if (!s.hardMode) return 1.0
         val h = data.encounters.hard
         val over = max(0, s.level - (s.currentDungeon?.levelMax ?: s.level))
-        return h.damageMultiplier * (1 + over * h.overLevelStep)
+        return h.damageMultiplier * (1 + over * h.overLevelStep) * (1 + s.keystone * h.keystoneStep)
     }
 
     /**
@@ -1780,7 +1782,7 @@ class GameTick(
     /** The affixes this run carries. Empty on a normal run. */
     internal fun affixesOf(s: GameState?, dungeon: Dungeon? = null): List<Affix> =
         if (s == null || !s.hardMode) emptyList()
-        else data.encounters.affixesFor((dungeon ?: s.currentDungeon)?.id, true)
+        else data.encounters.affixesFor((dungeon ?: s.currentDungeon)?.id, true, s.keystone)
 
     private fun fuse(kind: String): Int = when (kind) {
         AddTemplate.MENDER -> data.encounters.addRules.menderEveryTicks

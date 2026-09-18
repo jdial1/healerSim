@@ -406,3 +406,20 @@ worn charm, and every effect lookup in the engine goes through it.
 `scripts/assign-unique-icons.py` and `IconUniquenessTest` treat charms like
 talents and spells: no repeats, and no charm wearing a spell's or a talent's
 icon.
+
+## Keystones
+
+The clear is the item. A hard clear pushes that dungeon's keystone one level,
+and each level is one more affix plus a small step in health and damage
+(`hard.keystoneStep`). Nothing drops and nothing is equipped: the place itself
+is harder next time, and stays that way.
+
+- **Per dungeon, per character**, in `CharacterBlob.keystones`.
+- **Fixed, not rolled.** The dungeon's own affixes come first, so pushing it
+  does not wash out its character, then the rest of the pool in a fixed order.
+  The same level of the same place is always the same fight.
+- **Only a clear at or above the current level counts**, so replaying an easier
+  one cannot ratchet it. A wipe never takes a level away.
+- **It runs out** at the size of the affix pool rather than inventing more.
+
+`scripts/playtest.py --hard --keystone N` plays a level.

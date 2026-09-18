@@ -29,6 +29,8 @@ data class CharacterBlob(
     /** Charms this character has earned, and the one it is wearing. */
     val charmIds: List<String> = emptyList(),
     val equippedCharmId: String? = null,
+    /** How far each dungeon's keystone has been pushed. */
+    val keystones: Map<String, Int> = emptyMap(),
 )
 
 @Serializable
@@ -122,6 +124,7 @@ class SaveStore(
         state: GameState,
         records: Map<String, DungeonRecord> = emptyMap(),
         charmIds: List<String> = emptyList(),
+        keystones: Map<String, Int> = emptyMap(),
     ): CharacterBlob? {
         val cls = state.playerClass ?: return null
         return CharacterBlob(
@@ -138,13 +141,16 @@ class SaveStore(
             // is state, so it comes back off the character.
             charmIds = charmIds,
             equippedCharmId = state.charm?.id,
+            keystones = keystones,
         )
     }
 
     fun merge(roster: Roster, state: GameState): Roster {
         val cls = state.playerClass?.name
         val was = roster.byClass[cls]
-        val blob = serialize(state, was?.records.orEmpty(), was?.charmIds.orEmpty()) ?: return roster
+        val blob = serialize(
+            state, was?.records.orEmpty(), was?.charmIds.orEmpty(), was?.keystones.orEmpty(),
+        ) ?: return roster
         return roster.copy(
             lastPlayedClass = blob.playerClass,
             byClass = roster.byClass + (blob.playerClass to blob),

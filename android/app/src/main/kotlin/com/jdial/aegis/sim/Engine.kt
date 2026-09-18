@@ -28,7 +28,13 @@ sealed interface Action {
     val actorId: String get() = PLAYER_UNIT_ID
 
     data class Tick(val ticks: Int = 1) : Action
-    data class StartDungeon(val dungeon: Dungeon, val pace: String, val hard: Boolean = false) : Action
+    data class StartDungeon(
+        val dungeon: Dungeon,
+        val pace: String,
+        val hard: Boolean = false,
+        /** The keystone level to run it at; ignored unless [hard]. */
+        val keystone: Int = 0,
+    ) : Action
     data class CastSpell(
         val spellId: String,
         val targetId: String?,
@@ -165,7 +171,8 @@ class Engine(val data: GameData) {
 
     fun reduce(state: GameState, action: Action, rng: Rng): GameState = when (action) {
         is Action.Tick -> applyTicks(state, action.ticks, rng)
-        is Action.StartDungeon -> startDungeon(state, action.dungeon, action.pace, action.hard, rng)
+        is Action.StartDungeon ->
+            startDungeon(state, action.dungeon, action.pace, action.hard, action.keystone, rng)
         is Action.CastSpell -> absorbHealing(state, castAs(state, action, rng))
         is Action.Taunt -> taunt(state, action.actorId, action.ticks)
         is Action.UnlockTalent -> unlockTalent(state, action.talentId)
@@ -239,7 +246,14 @@ class Engine(val data: GameData) {
         }
     }
 
-    private fun startDungeon(state: GameState, dungeon: Dungeon, pace: String, hard: Boolean, rng: Rng): GameState {
+    private fun startDungeon(
+        state: GameState,
+        dungeon: Dungeon,
+        pace: String,
+        hard: Boolean,
+        keystone: Int,
+        rng: Rng,
+    ): GameState {
         val cls = state.playerClass ?: return state
         if (dungeon.endless && state.level < dungeon.levelMin) return state
 
@@ -248,7 +262,7 @@ class Engine(val data: GameData) {
         val jitter = data.balance.partyDps.runJitter
         val runDpsJitter = 1 - jitter + rng.nextDouble() * (jitter * 2)
 
-        val trashHp = max(1.0, progression.trashMaxHealth(dungeon) * tick.hardScale(dungeon, state.level, hard))
+        val trashHp = max(1.0, progression.trashMaxHealth(dungeon) * tick.hardScale(dungeon, state.level, hard, if (hard) keystone else 0))
         return state.clearedCombat().withEachParticipant {
             it.copy(
                 mana = it.maxMana.toDouble(),
@@ -262,6 +276,7 @@ class Engine(val data: GameData) {
             currentDungeon = dungeon,
             dungeonPace = pace,
             hardMode = hard,
+            keystone = if (hard) keystone else 0,
             combatPhase = CombatPhase.TRASH,
             trashPullsRemaining = TRASH_PACK_COUNT,
             enemyHealth = trashHp,

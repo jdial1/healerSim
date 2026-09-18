@@ -289,6 +289,8 @@ data class DungeonOutcome(
      */
     val groupStats: Boolean = false,
     val hardMode: Boolean = false,
+    /** The keystone level this run was on, so the record knows what was beaten. */
+    val keystone: Int = 0,
     /** How long the run took, and what it cost: the record keeps these. */
     val clearTicks: Int = 0,
     val deaths: Int = 0,
@@ -490,6 +492,12 @@ data class GameState(
     val combatElapsedTicks: Int = 0,
     /** Hard mode: a cleared dungeon, scaled to the party that comes back. */
     val hardMode: Boolean = false,
+    /**
+     * How far this dungeon's keystone has been pushed: each level is one more
+     * affix. The clear is the item -- nothing drops and nothing is equipped,
+     * the place itself gets harder and stays that way.
+     */
+    val keystone: Int = 0,
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
     val endlessStacks: Int = 0,
