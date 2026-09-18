@@ -288,6 +288,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                         onSetActionBarSlot = vm::setActionBarSlot,
                         ownedCharms = ownedCharms,
                         onEquipCharm = vm::equipCharm,
+                        stash = state.playerClass?.let { roster.byClass[it.name]?.stash }.orEmpty(),
                     )
 
                     Screen.Combat -> CombatScreen(

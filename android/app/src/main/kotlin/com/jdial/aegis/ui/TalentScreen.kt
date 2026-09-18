@@ -1,5 +1,12 @@
 package com.jdial.aegis.ui
 
+import com.jdial.aegis.sim.SPELL_GROUPS
+import com.jdial.aegis.sim.SpellStat
+import com.jdial.aegis.sim.isStashItem
+import com.jdial.aegis.sim.spellGroup
+import com.jdial.aegis.sim.spellStats
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.Canvas
@@ -397,6 +404,8 @@ fun CharacterScreen(
     /** Charms this character has earned, in the order they were earned. */
     ownedCharms: List<String> = emptyList(),
     onEquipCharm: (String?) -> Unit = {},
+    /** Consumables held, by id and count. */
+    stash: Map<String, Int> = emptyMap(),
 ) {
     val cls = state.playerClass ?: return
     var showCredits by remember { mutableStateOf(false) }
@@ -508,6 +517,8 @@ fun CharacterScreen(
                 }
 
                 CharmCase(state, engine, ownedCharms, onEquipCharm)
+
+                StashCase(state, engine, stash)
 
                 Spellbook(state, engine, onSetActionBarSlot)
 
@@ -658,15 +669,26 @@ private fun Spellbook(
             BasicText("SPELLBOOK", style = AegisType.label.copy(color = Gilt.mid))
             Spacer(Modifier.height(8.dp))
 
-            state.unlockedSpells.forEach { id ->
-                val spell = engine.data.spell(id)
-                if (spell != null) {
+            // Shelved by what a player reaches for it to do, rather than in the
+            // order they were learned -- nine spells in a list is a list, nine
+            // on four shelves is a kit you can read.
+            val cls = state.playerClass
+            val known = state.unlockedSpells.mapNotNull { engine.data.spell(it) }
+                .filterNot { it.isStashItem() }
+            SPELL_GROUPS.forEach { group ->
+                val shelf = known.filter { spellGroup(it) == group }
+                if (shelf.isEmpty()) return@forEach
+                Spacer(Modifier.height(6.dp))
+                BasicText(group, style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted))
+                Spacer(Modifier.height(4.dp))
+                shelf.forEach { spell ->
                     SpellRow(
                         spell = spell,
-                        onBar = id in bar,
-                        enabled = !inCombat && id !in bar,
+                        stats = cls?.let { spellStats(spell, it, state.level, state.me, engine.stats) }.orEmpty(),
+                        onBar = spell.id in bar,
+                        enabled = !inCombat && spell.id !in bar,
                         accent = accent.core,
-                        onClick = { onSet(selectedSlot, id) },
+                        onClick = { onSet(selectedSlot, spell.id) },
                     )
                     Spacer(Modifier.height(6.dp))
                 }
@@ -679,6 +701,7 @@ private fun Spellbook(
 @Composable
 private fun SpellRow(
     spell: Spell,
+    stats: List<SpellStat>,
     onBar: Boolean,
     enabled: Boolean,
     accent: Color,
@@ -715,41 +738,47 @@ private fun SpellRow(
                     )
                 }
             }
-            BasicText(
-                spellSummary(spell),
-                style = AegisType.body.copy(fontSize = 11.sp, color = Ink.secondary),
-            )
+            Spacer(Modifier.height(3.dp))
+            StatChips(stats)
         }
     }
 }
 
 /**
- * What a spell does, derived from its data rather than hand-written, so the
- * description cannot drift from the numbers the engine actually uses.
+ * A spell's numbers as small labelled chips: cost, cooldown, what it heals or
+ * hits for, what it absorbs. Chips rather than a sentence, because the thing a
+ * player compares across spells is one number at a time.
  */
-private fun spellSummary(spell: Spell): String {
-    val parts = buildList {
-        add("${spell.manaCost} ${spell.resourceName}")
-        if (spell.cooldown > 0) add(ceil(spell.cooldown / 10.0).toInt().toString() + "s cd")
-        if (spell.healing > 0) {
-            val word = if (spell.isDamage) " damage" else " healing"
-            add(spell.healing.roundToInt().toString() + word)
+@Composable
+internal fun StatChips(stats: List<SpellStat>, dimmed: Boolean = false) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        stats.forEach { stat ->
+            val colour = when (stat.tone) {
+                "heal" -> Vital.healthy
+                "damage" -> Vital.critical
+                "shield" -> Vital.shield
+                "mana" -> Vital.mana
+                "cost" -> Ink.secondary
+                "time" -> Gilt.core
+                else -> Ink.muted
+            }.let { if (dimmed) it.copy(alpha = 0.45f) else it }
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Obsidian.abyss)
+                    .border(1.dp, colour.copy(alpha = 0.35f), RoundedCornerShape(3.dp))
+                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(stat.label, style = AegisType.label.copy(fontSize = 8.sp, color = colour.copy(alpha = 0.8f)))
+                Spacer(Modifier.width(4.dp))
+                BasicText(stat.value, style = AegisType.numeric.copy(fontSize = 11.sp, color = colour))
+            }
         }
-        val per = spell.hotHealingPerTick
-        if (per != null && per > 0) {
-            val secs = ceil((spell.hotDuration ?: 0) / 10.0).toInt()
-            add(per.roundToInt().toString() + "/tick for " + secs + "s")
-        }
-        val taunt = spell.tauntTicks
-        if (taunt != null) add("taunts for " + ceil(taunt / 10.0).toInt() + "s")
-        val dr = spell.damageReduction
-        if (dr != null) {
-            val secs = ceil((spell.damageReductionTicks ?: 0) / 10.0).toInt()
-            add("-" + (dr * 100).roundToInt() + "% damage taken for " + secs + "s")
-        }
-        if (spell.type == SpellType.AOE) add("hits everyone")
     }
-    return parts.joinToString(" \u00b7 ")
 }
 
 @Composable
@@ -859,6 +888,123 @@ private fun CharmCase(
         }
     }
 }
+
+/**
+ * The stash: every consumable in the game, on the shelf of the mode that drops
+ * it, with how many you hold.
+ *
+ * All twenty are shown, not only the ones found. An empty slot saying where it
+ * comes from is what turns a list of potions into a collection -- and it is the
+ * only place a player learns that slow runs are where the flasks are.
+ */
+@Composable
+private fun StashCase(state: GameState, engine: Engine, stash: Map<String, Int>) {
+    val cls = state.playerClass ?: return
+    val drops = engine.data.stash.drops
+    if (drops.isEmpty()) return
+    val held = stash.values.sum()
+    val kinds = stash.count { it.value > 0 }
+    var open by remember { mutableStateOf<String?>(null) }
+
+    Spacer(Modifier.height(18.dp))
+    ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(14.dp)) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicText("STASH", style = AegisType.label.copy(color = Gilt.mid))
+                Spacer(Modifier.weight(1f))
+                BasicText(
+                    "$kinds / ${engine.data.stash.items.size} FOUND  ·  $held HELD",
+                    style = AegisType.numeric.copy(fontSize = 11.sp, color = Ink.muted),
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            BasicText(
+                "Carry one into a run from the queue. Using it spends one.",
+                style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted),
+            )
+
+            STASH_SHELVES.forEach { (mode, title) ->
+                val pool = drops[mode].orEmpty()
+                if (pool.isEmpty()) return@forEach
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicText(title, style = AegisType.label.copy(fontSize = 10.sp, color = Ink.secondary))
+                    Spacer(Modifier.width(6.dp))
+                    BasicText(
+                        "·  ${mode.uppercase()} RUNS",
+                        style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted),
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                // A grid of icons first, so the shelf reads at a glance; the
+                // numbers open underneath the one you tap.
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    pool.forEach { id ->
+                        val item = engine.data.spell(id) ?: return@forEach
+                        val count = stash[id] ?: 0
+                        val selected = open == id
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(6.dp))
+                                .border(
+                                    if (selected) 2.dp else 1.dp,
+                                    when {
+                                        selected -> Gilt.core
+                                        count > 0 -> Gilt.deep
+                                        else -> Gilt.deep.copy(alpha = 0.25f)
+                                    },
+                                    RoundedCornerShape(6.dp),
+                                )
+                                .clickable(onClickLabel = "Show ${item.name}") {
+                                    open = if (selected) null else id
+                                }
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = "${item.name}, " +
+                                        if (count > 0) "$count held" else "not found yet"
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            GameIcon(item.icon, size = 34.dp, accent = Gilt.deep, dimmed = count == 0)
+                            if (count > 0) {
+                                BasicText(
+                                    "$count",
+                                    style = AegisType.numeric.copy(fontSize = 11.sp, color = Ink.primary),
+                                    modifier = Modifier.align(Alignment.BottomEnd).padding(3.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                val shown = open?.takeIf { it in pool }?.let { engine.data.spell(it) }
+                if (shown != null) {
+                    val count = stash[shown.id] ?: 0
+                    Spacer(Modifier.height(8.dp))
+                    BasicText(
+                        shown.name.uppercase(),
+                        style = AegisType.label.copy(color = if (count > 0) Gilt.bright else Ink.muted),
+                    )
+                    BasicText(
+                        if (count > 0) "$count held" else "Not found yet · drops on ${mode} runs",
+                        style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    StatChips(spellStats(shown, cls, state.level, state.me, engine.stats), dimmed = count == 0)
+                }
+            }
+        }
+    }
+}
+
+/** The stash's shelves: the mode that drops them, and what that mode is for. */
+private val STASH_SHELVES = listOf(
+    "fast" to "OFFENCE",
+    "normal" to "SUSTAIN",
+    "slow" to "DEFENCE",
+    "hard" to "RARE",
+)
 
 /**
  * Attribution for the bundled artwork. game-icons.net is CC BY 3.0, which
