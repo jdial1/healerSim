@@ -443,6 +443,30 @@ data class Charm(
     val effects: Map<String, Double> = emptyMap(),
 )
 
+/**
+ * The stash's catalogue: every consumable, and which one each mode drops.
+ *
+ * A consumable is a [Spell] tagged `consumable` -- it sits on the bar, has an
+ * icon, and can heal, damage, shield, wall or restore mana with the fields a
+ * spell already has, so none of the twenty needs code of its own. What makes
+ * it a consumable is only that you have a limited number, you choose one to
+ * carry before a run, and using it spends one.
+ */
+@Serializable
+data class Stash(
+    val items: Map<String, Spell> = emptyMap(),
+    /**
+     * By mode -- `fast`, `normal`, `slow`, `hard` -- the pool that mode draws
+     * from. A dungeon's drop is fixed per mode (its index into the pool), so
+     * wanting flasks is a reason to play slow rather than a roll of the dice.
+     */
+    val drops: Map<String, List<String>> = emptyMap(),
+) {
+    /** What a clear of [dungeonIndex] in [mode] hands over. */
+    fun dropFor(dungeonIndex: Int, mode: String): String? =
+        drops[mode]?.takeIf { it.isNotEmpty() }?.let { it[dungeonIndex % it.size] }
+}
+
 /** See [Encounters.healPower]. */
 @Serializable
 data class HealPower(

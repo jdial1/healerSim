@@ -48,6 +48,8 @@ class GameData(
     val looks: Map<String, EnemyLookDef> = emptyMap(),
     /** Every charm in the game, by id. */
     val charms: Map<String, Charm> = emptyMap(),
+    /** Every consumable, and what drops where. */
+    val stash: Stash = Stash(),
 ) {
     /** The utility spells [cls] has learned by [level], in content order. */
     fun grantsFor(cls: PlayerClass, level: Int): List<String> {
@@ -77,6 +79,7 @@ class GameData(
                     .getOrElse { throw IllegalStateException("Failed to parse asset '$path'", it) }
 
             val encounters = parse("data/encounters.json") { json.decodeFromString<Encounters>(it) }
+            val stash = parse("data/stash.json") { json.decodeFromString<Stash>(it) }
             val utility = parse("data/utility_spells.json") { json.decodeFromString<UtilitySpells>(it) }
             val classes = PlayerClass.entries.associateWith { cls ->
                 val name = cls.name.lowercase()
@@ -96,14 +99,17 @@ class GameData(
                 auras = parse("data/auras.json") { json.decodeFromString<Auras>(it) },
                 consumables = parse("data/consumables.json") { json.decodeFromString<Map<String, ConsumableDef>>(it) },
                 mechanics = parse("data/mechanics.json") { json.decodeFromString<Map<String, Boolean>>(it) },
+                // The stash's items are spells, looked up the same way, so the
+                // bar, the cast pipeline and the icon loader need nothing new.
                 sharedSpells = parse("data/shared_spells.json") { json.decodeFromString<Map<String, Spell>>(it) } +
-                    utility.spells,
+                    utility.spells + stash.items,
                 classes = classes,
                 grants = utility.grants,
                 encounters = encounters,
                 looks = parse("data/looks.json") { json.decodeFromString<Map<String, EnemyLookDef>>(it) },
                 charms = parse("data/charms.json") { json.decodeFromString<List<Charm>>(it) }
                     .associateBy { it.id },
+                stash = stash,
             )
         }
     }

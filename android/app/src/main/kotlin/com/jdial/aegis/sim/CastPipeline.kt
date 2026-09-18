@@ -116,6 +116,11 @@ class CastPipeline(
         // rule that only ever feels like a bug.
         if (s.globalCooldownRemaining > 0 && !spell.offGlobalCooldown()) return null
         if (spellId == MANA_POTION_ID && s.manaPotionsUsedThisDungeon >= MANA_POTION_USES_PER_DUNGEON) return null
+        // A stash item only if it is the one carried in, and only once. Nothing
+        // else gates it: the bar only offers what you have, but a cast arriving
+        // from elsewhere -- a guest, a stale tap -- must not spend what you do
+        // not own.
+        if (spell.isStashItem() && (s.me.carried != spellId || s.me.carriedUsed)) return null
         s.healer ?: return null
 
         val eff = effectiveStats(ctx) ?: return null
@@ -197,12 +202,14 @@ class CastPipeline(
             is Ready.Standard -> applyStandardHeal(ctx, ready)
             is Ready.Damage -> applyDamageCast(ctx, ready)
         }
+        // Spent here, once, whichever of the four apply paths it took.
+        val spent = if (data.spell(spellId)?.isStashItem() == true) out.withMe { it.copy(carriedUsed = true) } else out
         // Started here rather than in each apply path: there are four of them
         // and a fifth would silently forget.
         return if (data.spell(spellId)?.offGlobalCooldown() == true) {
-            out
+            spent
         } else {
-            out.withMe { it.copy(globalCooldownRemaining = data.balance.combat.shared.globalCooldownTicks) }
+            spent.withMe { it.copy(globalCooldownRemaining = data.balance.combat.shared.globalCooldownTicks) }
         }
     }
 

@@ -1181,6 +1181,8 @@ class GameTick(
                 missedKicks = s.runMissedKicks,
                 hardMode = s.hardMode,
                 keystone = s.keystone,
+                pace = s.dungeonPace ?: "normal",
+                spent = s.me.carried?.takeIf { s.me.carriedUsed },
             ),
         )
     }
@@ -1469,6 +1471,8 @@ class GameTick(
                 missedKicks = s.runMissedKicks,
                 hardMode = s.hardMode,
                 keystone = s.keystone,
+                pace = s.dungeonPace ?: "normal",
+                spent = s.me.carried?.takeIf { s.me.carriedUsed },
             ),
         )
     }

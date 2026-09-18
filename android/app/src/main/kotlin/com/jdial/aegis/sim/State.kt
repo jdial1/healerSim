@@ -30,8 +30,15 @@ const val PLAYER_UNIT_ID = "5"
 /** The only consumable, referenced from the pipeline, the UI and the loadout. */
 const val MANA_POTION_ID = "mana_potion"
 
+/** The tag a spell carries when it is a consumable: from the stash, spent on use. */
+const val CONSUMABLE_TAG = "consumable"
+
 /** The potion, kicks and defensives: any of them behind the global cooldown is a beat late. */
-fun Spell.offGlobalCooldown(): Boolean = id == MANA_POTION_ID || interrupts || damageReduction != null
+fun Spell.offGlobalCooldown(): Boolean =
+    id == MANA_POTION_ID || hasTag(CONSUMABLE_TAG) || interrupts || damageReduction != null
+
+/** A stash item: consumable, and not the mana potion, which every class carries and never runs out of. */
+fun Spell.isStashItem(): Boolean = hasTag(CONSUMABLE_TAG) && id != MANA_POTION_ID
 const val SUSPEND_SNAPSHOT_TICK_INTERVAL = 8
 const val MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE_MS
 
@@ -291,6 +298,10 @@ data class DungeonOutcome(
     val hardMode: Boolean = false,
     /** The keystone level this run was on, so the record knows what was beaten. */
     val keystone: Int = 0,
+    /** The pace it was run at: each pace drops its own consumable. */
+    val pace: String = "normal",
+    /** The consumable spent this run, if one was: it comes out of the stash. */
+    val spent: String? = null,
     /** How long the run took, and what it cost: the record keeps these. */
     val clearTicks: Int = 0,
     val deaths: Int = 0,
@@ -326,6 +337,13 @@ data class Participant(
      * the content to resolve it.
      */
     val charm: com.jdial.aegis.data.Charm? = null,
+    /**
+     * The consumable carried into this run, chosen before it started, and
+     * whether it has been used. One carried, one use: the decision is which
+     * to bring and when to spend it, and a second press would be neither.
+     */
+    val carried: String? = null,
+    val carriedUsed: Boolean = false,
     val unlockedSpells: List<String> = emptyList(),
     val activeActionBars: List<String> = emptyList(),
     /** Derived from the class's ClassMeta.role. */

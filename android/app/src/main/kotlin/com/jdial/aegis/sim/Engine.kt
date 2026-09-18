@@ -34,6 +34,8 @@ sealed interface Action {
         val hard: Boolean = false,
         /** The keystone level to run it at; ignored unless [hard]. */
         val keystone: Int = 0,
+        /** The consumable carried in, if any. The caller owns checking the stash. */
+        val carry: String? = null,
     ) : Action
     data class CastSpell(
         val spellId: String,
@@ -172,7 +174,7 @@ class Engine(val data: GameData) {
     fun reduce(state: GameState, action: Action, rng: Rng): GameState = when (action) {
         is Action.Tick -> applyTicks(state, action.ticks, rng)
         is Action.StartDungeon ->
-            startDungeon(state, action.dungeon, action.pace, action.hard, action.keystone, rng)
+            startDungeon(state, action.dungeon, action.pace, action.hard, action.keystone, rng, action.carry)
         is Action.CastSpell -> absorbHealing(state, castAs(state, action, rng))
         is Action.Taunt -> taunt(state, action.actorId, action.ticks)
         is Action.UnlockTalent -> unlockTalent(state, action.talentId)
@@ -253,6 +255,7 @@ class Engine(val data: GameData) {
         hard: Boolean,
         keystone: Int,
         rng: Rng,
+        carry: String? = null,
     ): GameState {
         val cls = state.playerClass ?: return state
         if (dungeon.endless && state.level < dungeon.levelMin) return state
@@ -294,7 +297,19 @@ class Engine(val data: GameData) {
             aiHealerManaMax = if (roleOf(cls) == UnitRole.HEALER) 0.0 else {
                 data.balance.roles.aiHealerMaxMana(state.level)
             },
-        )
+        ).withMe { me ->
+            // The consumable joins the bar for this run only, beside the potion,
+            // and nothing carried over from the last run's stash survives.
+            val item = carry?.takeIf { data.spell(it)?.isStashItem() == true }
+            val bar = me.activeActionBars.filterNot { data.spell(it)?.isStashItem() == true }
+            me.copy(
+                carried = item,
+                carriedUsed = false,
+                unlockedSpells = me.unlockedSpells.filterNot { data.spell(it)?.isStashItem() == true } +
+                    listOfNotNull(item),
+                activeActionBars = if (item == null) bar else insertAfterPotion(bar, item),
+            )
+        }
     }
 
     /**
@@ -337,6 +352,16 @@ class Engine(val data: GameData) {
                 mana = min(it.mana, maxMana.toDouble()),
             )
         }.copy(talentPoints = progression.talentPoints(s.level, s.talents))
+    }
+
+    /** [item] in the first empty slot after the potion, else on the end. */
+    private fun insertAfterPotion(bar: List<String>, item: String): List<String> {
+        val potion = bar.indexOf(MANA_POTION_ID)
+        val empty = bar.withIndex().firstOrNull { (i, id) -> id.isEmpty() && i > potion }?.index
+        return when {
+            empty != null -> bar.toMutableList().also { it[empty] = item }
+            else -> bar + item
+        }
     }
 
     /**

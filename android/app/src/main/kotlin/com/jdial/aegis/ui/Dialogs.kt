@@ -3,6 +3,9 @@ package com.jdial.aegis.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -122,10 +125,13 @@ fun DungeonQueueSheet(
     /** How far this character has pushed this dungeon's keystone. */
     keystone: Int = 0,
     onClose: () -> kotlin.Unit,
-    onEnter: (pace: String, hard: Boolean) -> kotlin.Unit,
+    /** Consumables held, by id and count, to choose one to carry from. */
+    stash: Map<String, Int> = emptyMap(),
+    onEnter: (pace: String, hard: Boolean, carry: String?) -> kotlin.Unit,
 ) {
     var pace by remember { mutableStateOf("normal") }
     var hard by remember(dungeon.id) { mutableStateOf(false) }
+    var carry by remember(dungeon.id) { mutableStateOf<String?>(null) }
     val slots = remember(playerRole) { partyRoles(playerRole) }
     val yourSlot = slots.lastIndex
     var filled by remember(dungeon.id, playerRole) { mutableIntStateOf(0) }
@@ -301,9 +307,59 @@ fun DungeonQueueSheet(
                     }
                 }
 
+                // What to carry in. Chosen here, before the run, because that is
+                // the one kind of decision this game did not have: every other
+                // choice is made mid-fight or on the talent screen.
+                if (stash.isNotEmpty()) {
+                    Spacer(Modifier.height(14.dp))
+                    BasicText("CARRY", style = AegisType.label.copy(color = Gilt.mid))
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        stash.entries.sortedBy { it.key }.forEach { (id, count) ->
+                            val item = data.spell(id) ?: return@forEach
+                            val picked = carry == id
+                            Box(
+                                Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .border(
+                                        if (picked) 2.dp else 1.dp,
+                                        if (picked) Gilt.core else Gilt.deep.copy(alpha = 0.5f),
+                                        RoundedCornerShape(6.dp),
+                                    )
+                                    .clickable(onClickLabel = "Carry ${item.name}") {
+                                        carry = if (picked) null else id
+                                    }
+                                    .semantics { role = Role.Switch; contentDescription = "${item.name}, $count held" },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                GameIcon(item.icon, size = 38.dp, accent = if (picked) Gilt.core else Gilt.deep)
+                                BasicText(
+                                    "$count",
+                                    style = AegisType.numeric.copy(fontSize = 10.sp, color = Ink.primary),
+                                    modifier = Modifier.align(Alignment.BottomEnd).padding(2.dp),
+                                )
+                            }
+                        }
+                    }
+                    carry?.let { data.spell(it) }?.let { item ->
+                        Spacer(Modifier.height(4.dp))
+                        BasicText(
+                            item.name.uppercase(),
+                            style = AegisType.label.copy(fontSize = 10.sp, color = Gilt.bright),
+                        )
+                    }
+                }
+
                 Spacer(Modifier.height(18.dp))
                 if (ready) {
-                    GiltButton(if (hard) "Enter Hard Mode" else "Enter Dungeon", onClick = { onEnter(pace, hard) })
+                    GiltButton(
+                        if (hard) "Enter Hard Mode" else "Enter Dungeon",
+                        onClick = { onEnter(pace, hard, carry) },
+                    )
                 } else {
                     BasicText("WAITING FOR GROUP…", style = AegisType.label.copy(color = Ink.muted))
                 }
@@ -485,6 +541,19 @@ fun OutcomeDialog(
                                 style = AegisType.body.copy(fontSize = 11.sp, color = Ink.secondary),
                             )
                         }
+                    }
+                }
+                // What went into the stash. Every clear finds one, so it is a
+                // line rather than a banner: the banner is for the charm.
+                highlights.found?.let { item ->
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        GameIcon(item.icon, size = 24.dp, accent = Gilt.deep)
+                        Spacer(Modifier.width(8.dp))
+                        BasicText(
+                            "FOUND  ·  ${item.name.uppercase()}",
+                            style = AegisType.label.copy(color = Gilt.core),
+                        )
                     }
                 }
                 StatRow("Experience", "+${outcome.xpGained}")

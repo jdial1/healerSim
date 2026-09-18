@@ -158,6 +158,10 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
      * The clear is the item: nothing drops and nothing is equipped, the place
      * itself is harder next time and stays that way.
      */
+    /** Consumables held by the class being played. */
+    val stash: Map<String, Int>
+        get() = _state.value.playerClass?.let { _roster.value.byClass[it.name]?.stash }.orEmpty()
+
     fun keystoneOf(dungeonId: String): Int =
         _state.value.playerClass?.let { _roster.value.byClass[it.name]?.keystones?.get(dungeonId) } ?: 0
 
@@ -188,13 +192,29 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         val was = blob.keystones[outcome.dungeonId] ?: 0
         val pushed = outcome.kind == DungeonOutcomeKind.SUCCESS && outcome.hardMode && outcome.keystone >= was
         val keystones = if (pushed) blob.keystones + (outcome.dungeonId to was + 1) else blob.keystones
-        _highlights.value = news.copy(charm = earned, keystone = if (pushed) was + 1 else 0)
+        // The stash: a clear drops that dungeon's consumable for the mode it was
+        // run in, and whatever was spent comes out. A wipe still spends it --
+        // you drank it -- but drops nothing.
+        val mode = if (outcome.hardMode) "hard" else outcome.pace
+        val index = data.dungeons.indexOfFirst { it.id == outcome.dungeonId }
+        val found = data.stash.dropFor(index, mode)
+            ?.takeIf { outcome.kind == DungeonOutcomeKind.SUCCESS && index >= 0 }
+        val stash = blob.stash
+            .let { st -> outcome.spent?.let { id -> st + (id to ((st[id] ?: 1) - 1)) } ?: st }
+            .let { st -> found?.let { id -> st + (id to ((st[id] ?: 0) + 1)) } ?: st }
+            .filterValues { it > 0 }
+        _highlights.value = news.copy(
+            charm = earned,
+            keystone = if (pushed) was + 1 else 0,
+            found = found?.let { data.spell(it) },
+        )
         _roster.value = _roster.value.copy(
             byClass = _roster.value.byClass + (
                 cls to blob.copy(
                     records = next,
                     charmIds = blob.charmIds + listOfNotNull(earned?.id),
                     keystones = keystones,
+                    stash = stash,
                 )
                 ),
         )
@@ -255,7 +275,10 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
      * as it always did. "The queue is broken" must never mean "you cannot
      * play".
      */
-    fun startDungeon(dungeon: Dungeon, pace: String, hard: Boolean = false) {
+    fun startDungeon(dungeon: Dungeon, pace: String, hard: Boolean = false, carry: String? = null) {
+        // Only what is actually held: the sheet offers the stash, but the stash
+        // is the authority, not the tap.
+        val carried = carry?.takeIf { (stash[it] ?: 0) > 0 }
         persist()
         store.clearSuspendedRun()
         _state.value = dressed(_state.value)
@@ -269,7 +292,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
 
         if (!_settings.value.multiplayer || !multiplayer.isAvailable) {
             multiplayer.leave()
-            dispatch(Action.StartDungeon(dungeon, pace, hard, keystoneOf(dungeon.id)))
+            dispatch(Action.StartDungeon(dungeon, pace, hard, keystoneOf(dungeon.id), carried))
             startTicking()
             return
         }
@@ -280,7 +303,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
             // only blocks when they were quicker than the queue.
             val session = multiplayer.session
                 ?: multiplayer.joinQueue(dungeon, pace, _state.value)
-            dispatch(Action.StartDungeon(dungeon, pace, hard, keystoneOf(dungeon.id)))
+            dispatch(Action.StartDungeon(dungeon, pace, hard, keystoneOf(dungeon.id), carried))
             if (session != null) {
                 // Build the seating over the network first, then apply it under
                 // the lock -- never await with the state in hand.

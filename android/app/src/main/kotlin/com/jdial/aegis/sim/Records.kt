@@ -32,8 +32,11 @@ data class RunHighlights(
     val charm: com.jdial.aegis.data.Charm? = null,
     /** The keystone level this clear unlocked, if it pushed one. */
     val keystone: Int = 0,
+    /** The consumable this clear dropped. */
+    val found: com.jdial.aegis.data.Spell? = null,
 ) {
-    val any: Boolean get() = newBest || firstClear || clean || sharp || charm != null || keystone > 0
+    val any: Boolean get() =
+        newBest || firstClear || clean || sharp || charm != null || keystone > 0 || found != null
 }
 
 /** A cleared dungeon's mark on the record, and what it was worth saying. */

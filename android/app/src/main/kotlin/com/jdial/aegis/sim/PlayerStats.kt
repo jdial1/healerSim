@@ -131,7 +131,11 @@ class PlayerStats(private val data: GameData) {
 
     fun spellRank(spellId: String, cls: PlayerClass, level: Int): Int {
         val order = data.bundle(cls).meta.progression.spellOrder
-        val idx = order.indexOf(spellId)
+        // A consumable belongs to no class, so it has no place in anybody's
+        // order -- and without one it would sit at rank 1 forever, a potion
+        // bought at level 3 and drunk at 50. It ranks on the fastest cadence
+        // any spell has instead, which is what "scales like a potion" means.
+        val idx = if (data.spell(spellId)?.hasTag(CONSUMABLE_TAG) == true) 0 else order.indexOf(spellId)
         if (idx == -1) return 1
         val firstUpgradeLevel = 2 + (idx % 3)
         if (level < firstUpgradeLevel) return 1

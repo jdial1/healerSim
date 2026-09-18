@@ -31,6 +31,8 @@ data class CharacterBlob(
     val equippedCharmId: String? = null,
     /** How far each dungeon's keystone has been pushed. */
     val keystones: Map<String, Int> = emptyMap(),
+    /** Consumables held, by id, and how many of each. */
+    val stash: Map<String, Int> = emptyMap(),
 )
 
 @Serializable
@@ -125,6 +127,7 @@ class SaveStore(
         records: Map<String, DungeonRecord> = emptyMap(),
         charmIds: List<String> = emptyList(),
         keystones: Map<String, Int> = emptyMap(),
+        stash: Map<String, Int> = emptyMap(),
     ): CharacterBlob? {
         val cls = state.playerClass ?: return null
         return CharacterBlob(
@@ -142,6 +145,7 @@ class SaveStore(
             charmIds = charmIds,
             equippedCharmId = state.charm?.id,
             keystones = keystones,
+            stash = stash,
         )
     }
 
@@ -150,6 +154,7 @@ class SaveStore(
         val was = roster.byClass[cls]
         val blob = serialize(
             state, was?.records.orEmpty(), was?.charmIds.orEmpty(), was?.keystones.orEmpty(),
+            was?.stash.orEmpty(),
         ) ?: return roster
         return roster.copy(
             lastPlayedClass = blob.playerClass,
