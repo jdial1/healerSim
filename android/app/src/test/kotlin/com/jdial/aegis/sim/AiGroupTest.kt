@@ -103,7 +103,7 @@ class AiGroupTest {
     }
 
     @Test
-    fun `a human tank is never taunted for, and a healer's run is untouched`() {
+    fun `a human tank is never taunted for, and a healer who pulls is taunted off`() {
         val s = mageFight()
         val tank = s.party.first { it.role == UnitRole.TANK }
         val human = s.withParticipant(tank.id) { Participant(tank.id, PlayerClass.WARRIOR) }
@@ -113,6 +113,7 @@ class AiGroupTest {
         val rng = Rng(2)
         val priest = engine.reduce(engine.newCharacter(PlayerClass.PRIEST, rng), Action.StartDungeon(data.dungeons.first(), "normal"), rng)
             .copy(enemyTargetId = PLAYER_UNIT_ID)
-        assertSame(priest, tick.aiTankTaunt(priest))
+        // A healer's big heals can pull the boss now; the AI tank takes it back.
+        assertEquals(priest.party.first { it.role == UnitRole.TANK }.id, tick.aiTankTaunt(priest).enemyTargetId)
     }
 }

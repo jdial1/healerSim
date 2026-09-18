@@ -160,7 +160,7 @@ class ThreatTest {
         )
         val cfg = Fixtures.data.balance.threat
         assertEquals(0.0, after.first { it.id == PLAYER_UNIT_ID }.threat, 0.0)
-        assertEquals(200.0 * cfg.healingCoefficient, after.first { it.id == "4" }.threat, 1e-9)
+        assertEquals(200.0 * cfg.aiHealerThreatCoefficient, after.first { it.id == "4" }.threat, 1e-9)
     }
 
     @Test

@@ -121,7 +121,7 @@
     "paladinUnlockLevel": 25
   },
   "threat": {
-    "healingCoefficient": 0.5,
+    "healingCoefficient": 1.0,
     "roleMultiplier": {
       "TANK": 2.5,
       "DPS": 1.0,
@@ -130,7 +130,8 @@
     "overtakeMultiplier": 1.1,
     "tauntOvertakeMultiplier": 1.1,
     "tankDamageShare": 0.15,
-    "aiTauntCooldownTicks": 110
+    "aiTauntCooldownTicks": 110,
+    "critHealThreatMultiplier": 3.0
   },
   "roles": {
     "aiShareWhenHealer": 1.0,
@@ -158,7 +159,7 @@
       "WARLOCK": 1.0
     },
     "damageRampFloor": {
-      "MAGE": 0.47,
+      "MAGE": 0.43,
       "ROGUE": 0.45,
       "WARRIOR": 0.45,
       "DEATHKNIGHT": 0.45,

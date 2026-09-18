@@ -461,8 +461,13 @@ class CastPipeline(
      * not. A healer could spam their biggest heal all fight and stay off the
      * table entirely.
      */
-    private fun healThreat(spell: Spell, effective: Double): Double =
-        effective * data.balance.threat.healingCoefficient * spell.threatMultiplier
+    private fun healThreat(spell: Spell, effective: Double, crit: Boolean = false, rolled: Double = effective): Double {
+        val t = data.balance.threat
+        // A crit counts its whole roll, overheal and all, and on top of that
+        // its multiplier: the spike the whole room hears.
+        val basis = if (crit) rolled * t.critHealThreatMultiplier else effective
+        return basis * t.healingCoefficient * spell.threatMultiplier
+    }
 
     private data class PartyPatch(val party: List<Unit>, val healEff: Double, val healOh: Double)
 
@@ -715,7 +720,8 @@ class CastPipeline(
                 playerCombatBuffs = buffs,
                 holyPower = holyPower,
                 spellCooldowns = it.spellCooldowns.withCooldown(ready.spellId, cd),
-                pendingPlayerThreat = it.pendingPlayerThreat + healThreat(spell, healEff),
+                pendingPlayerThreat = it.pendingPlayerThreat +
+                    healThreat(spell, healEff, crit = ready.critH > 1.0, rolled = healEff + healOh),
             )
         }.copy(
             party = party,

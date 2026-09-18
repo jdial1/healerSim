@@ -198,6 +198,15 @@ data class RolesBalance(
 data class ThreatBalance(
     /** Effective healing generates this much threat per point. Overheal generates none. */
     val healingCoefficient: Double = 0.5,
+    /**
+     * A critical heal's threat is multiplied by this, on everything it rolled
+     * -- overheal included. A big crit is exactly the moment a healer should
+     * be noticed; counting only the part that fit meant a crit on a nearly
+     * full target generated almost nothing.
+     */
+    val critHealThreatMultiplier: Double = 1.0,
+    /** The AI healer's heals, which do not spam or crit for show: kept at the old half. */
+    val aiHealerThreatCoefficient: Double = 0.5,
     /** Keyed by [com.jdial.aegis.sim.UnitRole] name. A tank's whole job is this number. */
     val roleMultiplier: Map<String, Double> = mapOf("TANK" to 2.5, "DPS" to 1.0, "HEALER" to 1.0),
     /** How far above the current target you must climb to pull it. Stops flapping on ties. */

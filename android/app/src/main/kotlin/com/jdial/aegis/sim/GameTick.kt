@@ -161,7 +161,7 @@ class GameTick(
                 // is still resolved for this client's participant only.
                 val healing = when {
                     u.id == localUnitId -> healEffective * cfg.healingCoefficient
-                    u.role == UnitRole.HEALER -> aiHealerHealing * cfg.healingCoefficient
+                    u.role == UnitRole.HEALER -> aiHealerHealing * cfg.aiHealerThreatCoefficient
                     else -> 0.0
                 }
                 // The player's own threat is theirs alone, and is what lets a
@@ -236,7 +236,9 @@ class GameTick(
      * threat, and the recorded ones must not change. Draws nothing from the rng.
      */
     internal fun aiTankTaunt(s: GameState): GameState {
-        if (s.playerRole == UnitRole.HEALER) return s
+        // A healer's run too, now that the boss can be pulled off the tank by
+        // healing: the AI tank takes it back on cooldown, so pulling aggro is a
+        // few dangerous seconds rather than the rest of the fight.
         val cooldown = max(0, s.aiTauntCooldown - 1)
         val tank = s.party.firstOrNull { it.role == UnitRole.TANK && it.isAlive && !s.isHuman(it.id) }
         if (tank == null || cooldown > 0 || s.enemyTargetId == null || s.enemyTargetId == tank.id) {
@@ -365,11 +367,12 @@ class GameTick(
      * whoever is holding aggro.
      */
     private fun effectiveTargeting(s: GameState, t: Targeting): Targeting =
-        if (s.playerRole != UnitRole.HEALER && t == Targeting.SINGLE_RANDOM) {
-            Targeting.HIGHEST_THREAT
-        } else {
-            t
-        }
+        // Every run now, the healer's included: a healer spamming heavy heals
+        // or landing a big crit climbs the table like anyone else and draws the
+        // boss's single-target hits until the tank takes it back. Raid-wide
+        // hits, and the chip damage a healer's run spreads around the party,
+        // are untouched -- only who the boss singles out follows threat.
+        if (t == Targeting.SINGLE_RANDOM) Targeting.HIGHEST_THREAT else t
 
     private fun selectTargets(
         party: List<Unit>,
