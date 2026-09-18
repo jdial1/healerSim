@@ -125,6 +125,18 @@ val versionCodeFromCi = System.getenv("AEGIS_VERSION_CODE")?.toIntOrNull()
 // release tag (v1.0.0 -> 1.0.0); the splash screen renders it as-is.
 val versionNameFromCi = System.getenv("AEGIS_VERSION_NAME")?.removePrefix("v")?.takeIf { it.isNotBlank() }
 
+// Local builds: what git says this is. roles-2.0-66-g3a771cc8 -> 2.0.66-3a771cc8,
+// with -dirty for uncommitted changes, so the splash never claims a release.
+val versionNameFromGit: String? = runCatching {
+    providers.exec { commandLine("git", "describe", "--tags", "--dirty") }
+        .standardOutput.asText.get().trim()
+}.getOrNull()?.let { d ->
+    Regex("""^\D*([\d.]+?)(?:-(\d+)-g([0-9a-f]+))?(-dirty)?$""").find(d)?.destructured
+        ?.let { (tag, n, sha, dirty) ->
+            if (n.isEmpty()) tag + dirty else "$tag.$n-$sha$dirty"
+        } ?: d
+}
+
 android {
     namespace = "com.jdial.aegis"
     compileSdk = 37
@@ -134,7 +146,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = versionCodeFromCi ?: 1
-        versionName = versionNameFromCi ?: "1.0.0"
+        versionName = versionNameFromCi ?: versionNameFromGit ?: "0.0.0-dev"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
