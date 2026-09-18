@@ -95,6 +95,7 @@ import com.jdial.aegis.sim.TRASH_PACK_COUNT
 import com.jdial.aegis.sim.Unit
 import com.jdial.aegis.sim.UnitBuff
 import com.jdial.aegis.sim.UnitRole
+import com.jdial.aegis.ui.theme.LocalGameData
 import com.jdial.aegis.ui.theme.AegisType
 import com.jdial.aegis.ui.theme.ForgedPanel
 import com.jdial.aegis.ui.theme.Gilt
@@ -312,7 +313,14 @@ private fun EncounterHud(
                 // For a role that only ever hits the enemy, say so once here
                 // rather than leaving the player to infer it from spells that
                 // work without a selection.
-                if (state.playerRole != UnitRole.HEALER) {
+                // Between pulls the name on the bar is who is coming, not who you
+                // are fighting -- and saying TARGET over it is what made the
+                // breather read as a fight that had stopped.
+                val resting = state.restTicks > 0
+                if (resting) {
+                    BasicText("NEXT", style = AegisType.label.copy(fontSize = 10.sp, color = Vital.healthy))
+                    Spacer(Modifier.width(6.dp))
+                } else if (state.playerRole != UnitRole.HEALER) {
                     BasicText(
                         "TARGET",
                         style = AegisType.label.copy(fontSize = 10.sp, color = Vital.critical),
@@ -396,7 +404,13 @@ private fun EncounterHud(
             val cast = state.enemyCast
             Spacer(Modifier.height(8.dp))
             Box(Modifier.height(22.dp)) {
-                if (cast != null) {
+                if (state.restTicks > 0) {
+                    BasicText(
+                        "No enemy in the fight  ·  health and mana coming back",
+                        style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted),
+                        modifier = Modifier.align(Alignment.CenterStart),
+                    )
+                } else if (cast != null) {
                     // The warning itself: what, at whom, and how long.
                     CastingRow(cast, state)
                 } else if (next != null && state.mechanicCooldown > 0) {
@@ -717,8 +731,10 @@ private fun EnemyTray(
     ) {
         val adds = state.adds.filter { it.isAlive }
         when {
-            adds.isNotEmpty() -> AddRows(adds, targetId, onTarget, state.playerRole != UnitRole.HEALER)
+            // The breather wins the tray: it is the one moment the player has a
+            // choice to make about it, and Pull Now has to be where they look.
             state.restTicks > 0 -> RestRow(state, earlyPullXpPerTick, onPullNow)
+            adds.isNotEmpty() -> AddRows(adds, targetId, onTarget, state.playerRole != UnitRole.HEALER)
             else -> BasicText(
                 "NOTHING ELSE UP",
                 style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted.copy(alpha = 0.5f)),
@@ -882,12 +898,31 @@ private fun EnrageClock(bossTicks: Int, afterTicks: Int, rampPerTick: Double) {
 @Composable
 private fun RestRow(state: GameState, earlyPullXpPerTick: Double, onPullNow: () -> kotlin.Unit) {
     val bonus = state.restTicks * earlyPullXpPerTick
+    val total = LocalGameData.current.encounters.pressure.restTicks.coerceAtLeast(1)
     Row(verticalAlignment = Alignment.CenterVertically) {
-        BasicText(
-            "RESTING  ${ceil(state.restTicks / 10.0).toInt()}s",
-            style = AegisType.label.copy(color = Vital.healthy),
-            modifier = Modifier.weight(1f),
-        )
+        Column(Modifier.weight(1f)) {
+            BasicText(
+                "BREATHER  ·  NEXT PULL ${ceil(state.restTicks / 10.0).toInt()}s",
+                style = AegisType.label.copy(color = Vital.healthy),
+            )
+            Spacer(Modifier.height(4.dp))
+            // Draining, so it reads as a timer on the way to something rather
+            // than a label on a pause that might never end.
+            Box(
+                Modifier
+                    .fillMaxWidth(0.9f)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Obsidian.deep),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth((state.restTicks.toFloat() / total).coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .background(Vital.healthy),
+                )
+            }
+        }
         // Rushing brings the next pack along, unless the boss is next.
         val stacks = state.combatPhase == CombatPhase.TRASH && state.trashPullsRemaining > 1
         BasicText(

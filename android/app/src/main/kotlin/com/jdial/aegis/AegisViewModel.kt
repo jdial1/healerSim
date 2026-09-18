@@ -141,7 +141,7 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val saved = _roster.value.byClass[cls.name]
-        _state.value = saved?.let { store.restore(it, rng) } ?: engine.newCharacter(cls, rng)
+        _state.value = saved?.let { store.restore(it, rng, _roster.value.charmIds) } ?: engine.newCharacter(cls, rng)
         _resumable.value = false
         persist()
     }
@@ -180,11 +180,18 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
         val cls = _state.value.playerClass?.name ?: return
         val blob = _roster.value.byClass[cls] ?: return
         val (next, news) = blob.records.withRun(outcome)
-        // The first clear of a place hands over its charm, once, for this class.
-        // Nothing rolls: a drop you can plan for is a reason to go somewhere.
-        val earned = data.charms.values.firstOrNull {
-            it.cls == cls && it.from == outcome.dungeonId && it.id !in blob.charmIds
-        }.takeIf { outcome.kind == DungeonOutcomeKind.SUCCESS }
+        // A first clear of a place unlocks its charms -- every class's, not just
+        // this one's. Charms are account-wide: clearing Deadmines on the Priest
+        // means the Mage has the Deadmines charm waiting, so trying another
+        // class is not starting the collection over.
+        val owned = _roster.value.charmIds
+        val unlocked = if (outcome.kind == DungeonOutcomeKind.SUCCESS) {
+            data.charms.values.filter { it.from == outcome.dungeonId && it.id !in owned }
+        } else {
+            emptyList()
+        }
+        // What the outcome shows is this class's: the one you can put on now.
+        val earned = unlocked.firstOrNull { it.cls == cls }
         // A hard clear pushes that dungeon's keystone one further: one more
         // affix next time, and it does not go back down on a wipe -- what was
         // beaten stays beaten. Only a clear at or above the current level
@@ -209,10 +216,10 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
             found = found?.let { data.spell(it) },
         )
         _roster.value = _roster.value.copy(
+            charmIds = owned + unlocked.map { it.id },
             byClass = _roster.value.byClass + (
                 cls to blob.copy(
                     records = next,
-                    charmIds = blob.charmIds + listOfNotNull(earned?.id),
                     keystones = keystones,
                     stash = stash,
                 )

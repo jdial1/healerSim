@@ -1,5 +1,10 @@
 package com.jdial.aegis.ui
 
+import com.jdial.aegis.ui.theme.Obsidian
+import com.jdial.aegis.ui.theme.Vital
+import com.jdial.aegis.ui.theme.Ink
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Spacer
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
@@ -670,6 +675,37 @@ fun BattleView(state: GameState, targetId: String? = null, modifier: Modifier = 
                         .offset(x = w - 150.dp + (b.id % 17).toInt().dp, y = (96 - 26 * rise.value).dp)
                         .graphicsLayer { alpha = 1f - rise.value * rise.value },
                 )
+            }
+        }
+
+        // The breather between pulls. Six seconds of nobody swinging read as a
+        // hang -- the scene stood still with the next pack already on it and
+        // nothing said why. Now it says so, over the whole scene, with the
+        // time running down.
+        if (state.restTicks > 0) {
+            val total = data.encounters.pressure.restTicks.coerceAtLeast(1)
+            val left = (state.restTicks.toFloat() / total).coerceIn(0f, 1f)
+            Box(Modifier.fillMaxSize().background(Obsidian.abyss.copy(alpha = 0.55f)))
+            Column(
+                Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                BasicText("BREATHER", style = AegisType.title.copy(fontSize = 18.sp, color = Vital.healthy))
+                Spacer(Modifier.height(2.dp))
+                BasicText(
+                    "Party recovering  ·  next pull in ${ceil(state.restTicks / 10.0).toInt()}s",
+                    style = AegisType.label.copy(fontSize = 10.sp, color = Ink.secondary),
+                )
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    Modifier
+                        .width(140.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Obsidian.deep),
+                ) {
+                    Box(Modifier.fillMaxWidth(left).fillMaxHeight().background(Vital.healthy))
+                }
             }
         }
     }

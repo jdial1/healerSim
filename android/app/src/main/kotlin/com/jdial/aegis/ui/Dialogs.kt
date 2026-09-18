@@ -506,7 +506,9 @@ fun OutcomeDialog(
                         // The clear is the item: the place is harder next time.
                         "KEYSTONE ${highlights.keystone}".takeIf { highlights.keystone > 0 },
                     )
-                    BasicText(
+                    // A charm or a find alone leaves nothing for this line to say,
+                    // and an empty gold pill reads as a bug.
+                    if (news.isNotEmpty()) BasicText(
                         news.joinToString("   ·   "),
                         style = AegisType.label.copy(color = Obsidian.abyss),
                         modifier = Modifier

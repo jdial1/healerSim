@@ -135,12 +135,31 @@ class CharmTest {
         val charm = charmsOf(PlayerClass.PRIEST).first()
         val worn = character(PlayerClass.PRIEST, charm.id)
 
-        val blob = store.serialize(worn, emptyMap(), listOf(charm.id))!!
+        val blob = store.serialize(worn)!!
         assertEquals(charm.id, blob.equippedCharmId)
-        assertEquals(charm.id, store.restore(blob, Rng(1))?.charm?.id)
+        // Owned on the account, not the character.
+        assertEquals(charm.id, store.restore(blob, Rng(1), listOf(charm.id))?.charm?.id)
 
-        // Wearing one this character never earned is not a thing a save can do.
-        assertNull(store.restore(blob.copy(charmIds = emptyList()), Rng(1))?.charm)
+        // Wearing one nobody on the account earned is not a thing a save can do.
+        assertNull(store.restore(blob, Rng(1), emptyList())?.charm)
+    }
+
+    @Test
+    fun `charms are the account's, and a save from before keeps what it earned`() {
+        // Earned per character before the move: pooled onto the roster on load,
+        // so the Mage keeps what the Priest found and nobody loses anything.
+        val priest = charmsOf(PlayerClass.PRIEST).first().id
+        val mage = charmsOf(PlayerClass.MAGE).first().id
+        val old = Roster(
+            byClass = mapOf(
+                "PRIEST" to CharacterBlob(playerClass = "PRIEST", charmIds = listOf(priest)),
+                "MAGE" to CharacterBlob(playerClass = "MAGE", charmIds = listOf(mage)),
+            ),
+        )
+        assertEquals(setOf(priest, mage), old.withCharmsPooled().charmIds.toSet())
+        // Already pooled: nothing changes.
+        val pooled = old.withCharmsPooled()
+        assertTrue(pooled.withCharmsPooled() == pooled)
     }
 
     @Test

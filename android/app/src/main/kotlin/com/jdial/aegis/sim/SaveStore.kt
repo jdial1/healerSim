@@ -27,6 +27,10 @@ data class CharacterBlob(
     /** Per dungeon id: clears, best time, marks. Defaulted, so old saves decode. */
     val records: Map<String, DungeonRecord> = emptyMap(),
     /** Charms this character has earned, and the one it is wearing. */
+    /**
+     * Superseded by [Roster.charmIds]: charms are account-wide now. Still read
+     * once, so a save from before the move keeps what it had earned.
+     */
     val charmIds: List<String> = emptyList(),
     val equippedCharmId: String? = null,
     /** How far each dungeon's keystone has been pushed. */
@@ -35,9 +39,24 @@ data class CharacterBlob(
     val stash: Map<String, Int> = emptyMap(),
 )
 
+/**
+ * Charms earned before they became account-wide lived on each character. Pool
+ * them onto the roster so nothing a player earned goes missing in the move.
+ */
+fun Roster.withCharmsPooled(): Roster {
+    val all = (charmIds + byClass.values.flatMap { it.charmIds }).distinct()
+    return if (all == charmIds) this else copy(charmIds = all)
+}
+
 @Serializable
 data class Roster(
     val v: Int = 2,
+    /**
+     * Every charm unlocked, by any character. Account-wide on purpose: a
+     * dungeon cleared on the Priest unlocks its charm for the Mage too, so
+     * trying another class is not starting the collection again.
+     */
+    val charmIds: List<String> = emptyList(),
     val lastPlayedClass: String? = null,
     val byClass: Map<String, CharacterBlob> = emptyMap(),
 )
@@ -96,7 +115,7 @@ class SaveStore(
      * R8 breakage would present.
      */
     fun load(): Roster =
-        runCatching { json.decodeFromString<Roster>(file.readText()) }
+        runCatching { json.decodeFromString<Roster>(file.readText()).withCharmsPooled() }
             .getOrElse { cause ->
                 if (file.exists()) {
                     runCatching { file.renameTo(File(file.parentFile, "${file.name}.corrupt")) }
@@ -163,7 +182,7 @@ class SaveStore(
     }
 
     /** Rebuilds full state from a stored blob, deriving everything else. */
-    fun restore(blob: CharacterBlob, rng: Rng): GameState? {
+    fun restore(blob: CharacterBlob, rng: Rng, ownedCharms: Collection<String> = blob.charmIds): GameState? {
         val cls = runCatching { PlayerClass.valueOf(blob.playerClass) }.getOrNull() ?: return null
         val base = engine.newCharacter(cls, rng)
 
@@ -190,7 +209,7 @@ class SaveStore(
                 // Only if it is still owned and still this class's: a save that
                 // names a charm it does not have gets no charm, not a crash.
                 charm = blob.equippedCharmId
-                    ?.takeIf { it in blob.charmIds }
+                    ?.takeIf { it in ownedCharms }
                     ?.let { engine.data.charms[it] }
                     ?.takeIf { it.cls == cls.name },
             )
