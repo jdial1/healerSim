@@ -31,10 +31,11 @@ class SnapshotTest {
         val full = json.encodeToString(GameState.serializer(), s).length
         val frame = json.encodeToString(Snapshot.serializer(), s.toSnapshot()).length
 
-        // Measured, not guessed: 17,839 bytes of GameState, of which 14,753 is
-        // the talent tree -- every TalentRank embeds its whole Talent. Talents
-        // do not change during a run, so they travel once at join.
-        assertTrue("a full GameState should be far too big to broadcast, was $full", full > 15_000)
+        // Most of a GameState is the talent tree -- every TalentRank embeds its
+        // whole Talent -- and talents do not change during a run, so they
+        // travel once at join. Relative, not a byte count: the trees are
+        // content, and trimming one should not fail a test about the wire.
+        assertTrue("the full state ($full) should dwarf a frame ($frame)", full > frame * 3)
         // 4 Hz to four readers for an hour, at $1/GB of RTDB egress.
         val gbPerRoomHour = frame.toDouble() * 4 * 4 * 3600 / 1e9
         println("frame=$frame bytes (full=$full), ${"%.3f".format(gbPerRoomHour)} GB/room-hour")

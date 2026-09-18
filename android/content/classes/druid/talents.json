@@ -4,7 +4,7 @@
     "name": "Healing Focus",
     "description": "Increases all healing by 3% per rank.",
     "points": 0,
-    "maxPoints": 3,
+    "maxPoints": 5,
     "levelReq": 1,
     "cost": 1,
     "icon": "wow/ability_druid_healinginstincts",
@@ -19,7 +19,7 @@
     "name": "Critical Focus",
     "description": "Increases critical strike chance by 1.2% per rank.",
     "points": 0,
-    "maxPoints": 3,
+    "maxPoints": 4,
     "levelReq": 1,
     "cost": 1,
     "icon": "wow/spell_nature_moonglow",
@@ -30,30 +30,15 @@
     }
   },
   {
-    "id": "d_r0c2",
-    "name": "Natural Swiftness",
-    "description": "Increases haste by 1.5% per rank.",
-    "points": 0,
-    "maxPoints": 2,
-    "levelReq": 1,
-    "cost": 1,
-    "icon": "wow/spell_nature_swiftness",
-    "gridX": 2,
-    "gridY": 0,
-    "statBonus": {
-      "haste": 1.5
-    }
-  },
-  {
     "id": "d_r0c3",
     "name": "Mana Focus",
     "description": "Increases maximum mana by 20 per rank.",
     "points": 0,
-    "maxPoints": 2,
+    "maxPoints": 4,
     "levelReq": 1,
     "cost": 1,
     "icon": "wow/spell_nature_regeneration",
-    "gridX": 3,
+    "gridX": 2,
     "gridY": 0,
     "statBonus": {
       "manaPool": 20
@@ -64,52 +49,15 @@
     "name": "Verdant Reservoir",
     "description": "Your HoT ticks return 0.6 mana per point each tick.",
     "points": 0,
-    "maxPoints": 2,
+    "maxPoints": 3,
     "levelReq": 1,
     "cost": 1,
     "icon": "wow/spell_nature_natureguardian",
-    "gridX": 4,
+    "gridX": 3,
     "gridY": 0,
     "mechanicId": "druid_verdant_reservoir",
     "statBonus": {
       "uniqueStat": 1
-    }
-  },
-  {
-    "id": "d_r1c0",
-    "name": "Moonglow",
-    "description": "Returns 1.2 mana per rank on each direct heal.",
-    "points": 0,
-    "maxPoints": 2,
-    "levelReq": 5,
-    "cost": 1,
-    "icon": "wow/ability_druid_serenefocus",
-    "gridX": 0,
-    "gridY": 1,
-    "prerequisites": [
-      "d_r0c0"
-    ],
-    "statBonus": {
-      "manaReturnOnDirectHeal": 1.2
-    }
-  },
-  {
-    "id": "d_r1c1",
-    "name": "Improved Regrowth",
-    "description": "Regrowth heals for 5% more per rank.",
-    "points": 0,
-    "maxPoints": 2,
-    "levelReq": 5,
-    "cost": 1,
-    "icon": "wow/spell_nature_focusedmind",
-    "gridX": 1,
-    "gridY": 1,
-    "prerequisites": [
-      "d_r0c1"
-    ],
-    "statBonus": null,
-    "effects": {
-      "heal:regrowth": 5
     }
   },
   {
@@ -121,31 +69,10 @@
     "levelReq": 5,
     "cost": 1,
     "icon": "wow/spell_nature_healingtouch",
-    "gridX": 2,
+    "gridX": 1,
     "gridY": 1,
-    "prerequisites": [
-      "d_r0c2"
-    ],
+    "prerequisites": [],
     "spellId": "healing_touch"
-  },
-  {
-    "id": "d_r1c3",
-    "name": "Empowered Touch",
-    "description": "Healing Touch heals for 5% more per rank.",
-    "points": 0,
-    "maxPoints": 2,
-    "levelReq": 5,
-    "cost": 1,
-    "icon": "wow/ability_druid_aquaticform",
-    "gridX": 3,
-    "gridY": 1,
-    "prerequisites": [
-      "d_r0c3"
-    ],
-    "statBonus": null,
-    "effects": {
-      "heal:healing_touch": 5
-    }
   },
   {
     "id": "d_r1c4",
@@ -156,7 +83,7 @@
     "levelReq": 5,
     "cost": 1,
     "icon": "wow/spell_nature_wispheal",
-    "gridX": 4,
+    "gridX": 2,
     "gridY": 1,
     "prerequisites": [
       "d_r0c4"
@@ -165,25 +92,6 @@
       "d_r2c4"
     ],
     "mechanicId": "druid_path_cultivation"
-  },
-  {
-    "id": "d_r2c0",
-    "name": "Improved Swiftmend",
-    "description": "Swiftmend heals for 6% more per rank.",
-    "points": 0,
-    "maxPoints": 2,
-    "levelReq": 9,
-    "cost": 1,
-    "icon": "wow/ability_druid_astralstorm",
-    "gridX": 0,
-    "gridY": 2,
-    "prerequisites": [
-      "d_r1c0"
-    ],
-    "statBonus": null,
-    "effects": {
-      "heal:swiftmend": 6
-    }
   },
   {
     "id": "d_r2c1",
@@ -197,7 +105,7 @@
     "gridX": 1,
     "gridY": 2,
     "prerequisites": [
-      "d_r1c1"
+      "d_r0c1"
     ],
     "mechanicId": "living_seed",
     "synergyWith": [
@@ -221,25 +129,6 @@
     "spellId": "swiftmend"
   },
   {
-    "id": "d_r2c3",
-    "name": "Photosynthesis",
-    "description": "A critical Healing Touch extends your heal-over-time effects on the party.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 9,
-    "cost": 1,
-    "icon": "wow/spell_nature_forceofnature",
-    "gridX": 3,
-    "gridY": 2,
-    "prerequisites": [
-      "d_r1c3"
-    ],
-    "mechanicId": "photosynthesis",
-    "statBonus": {
-      "uniqueStat": 1.1
-    }
-  },
-  {
     "id": "d_r2c4",
     "name": "Deep Roots",
     "description": "Rejuvenation and Regrowth on the tank heal for 12% more per point. Exclusive with Cultivation.",
@@ -248,7 +137,7 @@
     "levelReq": 9,
     "cost": 1,
     "icon": "wow/spell_druid_germination_rejuvenation",
-    "gridX": 4,
+    "gridX": 3,
     "gridY": 2,
     "prerequisites": [
       "d_r0c4"
@@ -262,25 +151,6 @@
     }
   },
   {
-    "id": "d_r3c0",
-    "name": "Empowered Bloom",
-    "description": "Lifebloom's bloom is 5% stronger per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 13,
-    "cost": 1,
-    "icon": "wow/spell_nature_healingwavegreater",
-    "gridX": 0,
-    "gridY": 3,
-    "prerequisites": [
-      "d_r2c0"
-    ],
-    "statBonus": null,
-    "effects": {
-      "heal:lifebloom": 5
-    }
-  },
-  {
     "id": "d_r3c1",
     "name": "Natural Perfection",
     "description": "Each time you are hit, crit chance 2% for 10s, stacks 5. Synergy: Living Seed.",
@@ -289,7 +159,7 @@
     "levelReq": 13,
     "cost": 1,
     "icon": "wow/ability_druid_naturalperfection",
-    "gridX": 1,
+    "gridX": 0,
     "gridY": 3,
     "prerequisites": [
       "d_r2c1"
@@ -308,7 +178,7 @@
     "levelReq": 13,
     "cost": 1,
     "icon": "wow/ability_druid_flourish",
-    "gridX": 2,
+    "gridX": 1,
     "gridY": 3,
     "prerequisites": [
       "d_r2c2"
@@ -320,14 +190,14 @@
     "name": "Mastery: Harmony",
     "description": "After a direct heal, your HoT ticks are 6% stronger per point for 6s. While any ally has your HoT, your direct heals are 6% stronger per point.",
     "points": 0,
-    "maxPoints": 2,
+    "maxPoints": 3,
     "levelReq": 13,
     "cost": 1,
     "icon": "wow/ability_druid_balanceofpower",
-    "gridX": 3,
+    "gridX": 2,
     "gridY": 3,
     "prerequisites": [
-      "d_r2c3"
+      "d_r0c3"
     ],
     "mechanicId": "druid_harmony"
   },
@@ -340,7 +210,7 @@
     "levelReq": 13,
     "cost": 1,
     "icon": "wow/inv_misc_herb_felblossom",
-    "gridX": 4,
+    "gridX": 3,
     "gridY": 3,
     "prerequisites": [
       "d_r2c4"
@@ -356,7 +226,7 @@
     "levelReq": 13,
     "cost": 1,
     "icon": "wow/spell_nature_removecurse",
-    "gridX": 5,
+    "gridX": 4,
     "gridY": 3,
     "prerequisites": [
       "d_r2c4"
@@ -364,44 +234,6 @@
     "statBonus": null,
     "effects": {
       "cooldown:cleanse": 10
-    }
-  },
-  {
-    "id": "d_r4c0",
-    "name": "Improved Wild Growth",
-    "description": "Wild Growth heals for 5% more per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 17,
-    "cost": 1,
-    "icon": "wow/spell_nature_manaregentotem",
-    "gridX": 0,
-    "gridY": 4,
-    "prerequisites": [
-      "d_r3c0"
-    ],
-    "statBonus": null,
-    "effects": {
-      "heal:wild_growth": 5
-    }
-  },
-  {
-    "id": "d_r4c1",
-    "name": "Tranquil Spirit",
-    "description": "Regrowth costs 2 less mana per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 17,
-    "cost": 1,
-    "icon": "wow/spell_nature_healingwavelesser",
-    "gridX": 1,
-    "gridY": 4,
-    "prerequisites": [
-      "d_r3c1"
-    ],
-    "statBonus": null,
-    "effects": {
-      "cost:regrowth": 2
     }
   },
   {
@@ -421,138 +253,6 @@
     "mechanicId": "tree_of_life"
   },
   {
-    "id": "d_r4c3",
-    "name": "Improved Healing Touch",
-    "description": "Healing Touch costs 3 less mana per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 17,
-    "cost": 1,
-    "icon": "wow/ability_druid_bash",
-    "gridX": 3,
-    "gridY": 4,
-    "prerequisites": [
-      "d_r3c3"
-    ],
-    "statBonus": null,
-    "effects": {
-      "cost:healing_touch": 3
-    }
-  },
-  {
-    "id": "d_r4c4",
-    "name": "Efficient Growth",
-    "description": "Wild Growth costs 5 less mana per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 17,
-    "cost": 1,
-    "icon": "wow/spell_nature_lightning",
-    "gridX": 4,
-    "gridY": 4,
-    "prerequisites": [
-      "d_r3c4"
-    ],
-    "statBonus": null,
-    "effects": {
-      "cost:wild_growth": 5
-    }
-  },
-  {
-    "id": "d_r5c0",
-    "name": "Improved Rejuvenation",
-    "description": "Rejuvenation costs 1 less mana per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 21,
-    "cost": 1,
-    "icon": "wow/spell_nature_naturesblessing",
-    "gridX": 0,
-    "gridY": 5,
-    "prerequisites": [
-      "d_r4c0"
-    ],
-    "statBonus": null,
-    "effects": {
-      "cost:rejuvenation": 1
-    }
-  },
-  {
-    "id": "d_r5c1",
-    "name": "Quick Mend",
-    "description": "Swiftmend's cooldown is 1.5 seconds shorter per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 21,
-    "cost": 1,
-    "icon": "wow/spell_nature_healingway",
-    "gridX": 1,
-    "gridY": 5,
-    "prerequisites": [
-      "d_r4c1"
-    ],
-    "statBonus": null,
-    "effects": {
-      "cooldown:swiftmend": 15
-    }
-  },
-  {
-    "id": "d_r5c2",
-    "name": "Nature’s Haste",
-    "description": "Healing Touch's cooldown is 0.5 seconds shorter per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 21,
-    "cost": 1,
-    "icon": "wow/ability_druid_forceofnature",
-    "gridX": 2,
-    "gridY": 5,
-    "prerequisites": [
-      "d_r4c2"
-    ],
-    "statBonus": null,
-    "effects": {
-      "cooldown:healing_touch": 5
-    }
-  },
-  {
-    "id": "d_r5c3",
-    "name": "Rampant Growth",
-    "description": "Wild Growth's cooldown is 1 second shorter per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 21,
-    "cost": 1,
-    "icon": "wow/spell_nature_giftofthewild",
-    "gridX": 3,
-    "gridY": 5,
-    "prerequisites": [
-      "d_r4c3"
-    ],
-    "statBonus": null,
-    "effects": {
-      "cooldown:wild_growth": 10
-    }
-  },
-  {
-    "id": "d_r5c4",
-    "name": "Heart of the Wild",
-    "description": "Increases your signature stat by 1 per rank.",
-    "points": 0,
-    "maxPoints": 1,
-    "levelReq": 21,
-    "cost": 1,
-    "icon": "wow/ability_druid_berserk",
-    "gridX": 4,
-    "gridY": 5,
-    "prerequisites": [
-      "d_r4c4"
-    ],
-    "statBonus": {
-      "uniqueStat": 1.0
-    }
-  },
-  {
     "id": "d_cap",
     "name": "Nature's Grace",
     "description": "The ground around you flowers: passively heal all living allies a small amount each combat tick for 20s. While active, your HoTs tick faster. Visual bloom on your character.",
@@ -562,11 +262,11 @@
     "cost": 1,
     "icon": "wow/spell_nature_natureblessing",
     "gridX": 2,
-    "gridY": 6,
+    "gridY": 5,
     "prerequisites": [
-      "d_r5c1",
-      "d_r5c2",
-      "d_r5c3"
+      "d_r3c1",
+      "d_r4c2",
+      "d_r3c3"
     ],
     "mechanicId": "capstone_natures_grace",
     "maxRankBonusDescription": "For 20s, every combat tick heals all living allies by 40% of your level each, and your HoTs tick at 150% rate."

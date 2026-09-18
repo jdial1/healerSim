@@ -59,29 +59,36 @@ class HealerTalentsTest {
         data.bundle(cls).talents.first { it.effects.containsKey(key) }.id
 
     @Test
-    fun `a healer's talent can name a spell`() {
-        // Healing.
-        val plain = healed(fight(PlayerClass.PRIEST), "flash_heal")
-        val improved = healed(fight(PlayerClass.PRIEST, holding(PlayerClass.PRIEST, "heal:flash_heal") to 3), "flash_heal")
-        assertEquals(plain * 1.12, improved, 1e-6)
+    fun `the trees are sixteen nodes, like every other class`() {
+        // They carried thirty-two -- double the rest -- and half were one-number
+        // tweaks to one spell. Charms do that now, as a choice with a cost.
+        for (cls in healers) {
+            val tree = data.bundle(cls).talents
+            assertTrue("$cls has ${tree.size} talents", tree.size in 15..24)
+        }
+        for (cls in listOf(PlayerClass.PRIEST, PlayerClass.DRUID)) {
+            val tree = data.bundle(cls).talents
+            assertEquals("$cls", 16, tree.size)
+            // Still enough to spend: about as many ranks as the other trees.
+            assertTrue("$cls has ${tree.sumOf { it.maxPoints }} ranks", tree.sumOf { it.maxPoints } >= 30)
+            // Every spell a talent taught before, it still teaches.
+            assertTrue("$cls lost a spell unlock", tree.count { it.spellId != null } >= 2)
+            // No node points at one that is gone.
+            val ids = tree.map { it.id }.toSet()
+            assertTrue(tree.all { t -> t.prerequisites.all { it in ids } && t.exclusiveWith.all { it in ids } })
+        }
+    }
 
-        // Cost.
-        val cost = { s: GameState ->
-            s.mana - engine.reduce(s, Action.CastSpell("flash_heal", "1", 99.9), Rng(1)).mana
-        }
-        val base = data.spell("flash_heal")!!.manaCost.toDouble()
-        assertEquals(base, cost(fight(PlayerClass.PRIEST)), 1e-9)
-        assertEquals(base - 4, cost(fight(PlayerClass.PRIEST, holding(PlayerClass.PRIEST, "cost:flash_heal") to 2)), 1e-9)
-
-        // Cooldown.
-        val cd = { s: GameState ->
-            engine.reduce(s, Action.CastSpell("greater_heal", "1", 99.9), Rng(1)).spellCooldowns["greater_heal"] ?: 0
-        }
-        val withTalent = fight(PlayerClass.PRIEST, holding(PlayerClass.PRIEST, "cooldown:greater_heal") to 2).withMe {
-            it.copy(unlockedSpells = it.unlockedSpells + "greater_heal")
-        }
-        val without = fight(PlayerClass.PRIEST).withMe { it.copy(unlockedSpells = it.unlockedSpells + "greater_heal") }
-        assertTrue("${cd(withTalent)} < ${cd(without)}", cd(withTalent) < cd(without))
+    @Test
+    fun `the Cleanse node still names its spell`() {
+        // The one per-spell node a healer tree keeps, since dispelling is a
+        // healer's job rather than a trade a charm should offer.
+        val key = data.bundle(PlayerClass.PRIEST).talents.flatMap { it.effects.keys }.first { it.endsWith(":cleanse") }
+        val cleanse = data.spell("cleanse")!!
+        val plain = fight(PlayerClass.PRIEST)
+        val with = fight(PlayerClass.PRIEST, holding(PlayerClass.PRIEST, key) to 1)
+        assertTrue("the node should reach the spell", with.me.effect(key) != plain.me.effect(key))
+        assertTrue(cleanse.manaCost > 0 || cleanse.cooldown > 0)
     }
 
     private fun job(t: Talent): List<String> {
