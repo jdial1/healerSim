@@ -286,6 +286,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                             screen = Screen.ClassSelect
                         },
                         onSetActionBarSlot = vm::setActionBarSlot,
+                        onReorderActionBar = vm::reorderActionBar,
                         ownedCharms = ownedCharms,
                         onEquipCharm = vm::equipCharm,
                         stash = state.playerClass?.let { roster.byClass[it.name]?.stash }.orEmpty(),
@@ -369,16 +370,15 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                     yourBest = records[dungeon.id]?.bestTicks ?: 0,
                     hardUnlocked = (records[dungeon.id]?.clears ?: 0) > 0,
                     keystone = vm.keystoneOf(dungeon.id),
-                    stash = vm.stash,
                     worldBest = worldBest,
                     onClose = {
                         queued = null
                         vm.cancelQueue()
                     },
-                    onEnter = { pace, hard, carry ->
+                    onEnter = { pace, hard ->
                         queued = null
                         targetId = state.localUnitId
-                        vm.startDungeon(dungeon, pace, hard, carry)
+                        vm.startDungeon(dungeon, pace, hard)
                     },
                 )
             }

@@ -194,9 +194,17 @@ class SaveStore(
         val maxMana = engine.stats.maxMana(cls, level, talents)
 
         // A saved bar order is honoured only if it holds the same spells.
-        val bar = blob.actionBarSpellIds.takeIf {
-            it.size == loadout.actionBar.size && it.sorted() == loadout.actionBar.sorted()
-        } ?: loadout.actionBar
+        // The consumable a player put on the bar is not part of the class's
+        // loadout, so it is set aside for the comparison and put back after --
+        // otherwise carrying one would reset the whole arrangement on load.
+        val isItem = { id: String -> engine.data.spell(id)?.isStashItem() == true }
+        val saved = blob.actionBarSpellIds
+        val plain = saved.map { if (isItem(it)) "" else it }
+        val bar = if (plain.size == loadout.actionBar.size && plain.sorted() == loadout.actionBar.sorted()) {
+            saved
+        } else {
+            loadout.actionBar
+        }
 
         return base.withMe {
             it.copy(

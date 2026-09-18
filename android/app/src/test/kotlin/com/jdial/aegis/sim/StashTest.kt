@@ -117,3 +117,60 @@ class StashTest {
         assertEquals("normal", s.dungeonOutcome?.pace)
     }
 }
+
+/** The bar on the profile: where a consumable is chosen, and where slots swap. */
+class ProfileBarTest {
+    private val data = Fixtures.data
+    private val engine = Engine(data)
+    private fun fresh() = engine.newCharacter(PlayerClass.MAGE, Rng(1))
+
+    @Test
+    fun `dragging one slot onto another swaps the two`() {
+        val s = fresh()
+        val before = s.activeActionBars
+        val after = engine.reduce(s, Action.ReorderActionBar(0, 1), Rng(1)).activeActionBars
+        assertEquals(before[1], after[0])
+        assertEquals(before[0], after[1])
+        // Nothing else moved: a swap, not a shift.
+        assertEquals(before.drop(2), after.drop(2))
+    }
+
+    @Test
+    fun `a consumable goes on the bar, and only one at a time`() {
+        val s = fresh()
+        val empty = s.activeActionBars.indexOf("")
+        val one = engine.reduce(s, Action.SetActionBarSlot(empty, "healing_potion"), Rng(1))
+        assertTrue("healing_potion" in one.activeActionBars)
+        val two = engine.reduce(one, Action.SetActionBarSlot(0, "flask_of_stoneskin"), Rng(1))
+        assertTrue("flask_of_stoneskin" in two.activeActionBars)
+        assertFalse("the first comes off", "healing_potion" in two.activeActionBars)
+    }
+
+    @Test
+    fun `whatever consumable is on the bar is what the run carries, where it was put`() {
+        var s = fresh()
+        val slot = s.activeActionBars.indexOf("")
+        s = engine.reduce(s, Action.SetActionBarSlot(slot, "healing_potion"), Rng(1))
+        val run = engine.reduce(
+            s, Action.StartDungeon(data.dungeons.first(), "normal", false, 0, "healing_potion"), Rng(1),
+        )
+        assertEquals("healing_potion", run.me.carried)
+        assertEquals("it stays in the slot it was put in", slot, run.activeActionBars.indexOf("healing_potion"))
+
+        // Put down but no longer held: the run carries nothing, and it comes off.
+        val none = engine.reduce(s, Action.StartDungeon(data.dungeons.first(), "normal", false, 0, null), Rng(1))
+        assertNull(none.me.carried)
+        assertFalse("healing_potion" in none.activeActionBars)
+    }
+
+    @Test
+    fun `a bar with a consumable on it survives a save and a load`() {
+        var s = fresh()
+        val slot = s.activeActionBars.indexOf("")
+        s = engine.reduce(s, Action.SetActionBarSlot(slot, "healing_potion"), Rng(1))
+        s = engine.reduce(s, Action.ReorderActionBar(0, 1), Rng(1))
+        val store = SaveStore(java.io.File.createTempFile("aegis-bar", ".json"), engine)
+        val back = store.restore(store.serialize(s)!!, Rng(1))!!
+        assertEquals("the arrangement comes back as it was left", s.activeActionBars, back.activeActionBars)
+    }
+}

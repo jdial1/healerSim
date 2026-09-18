@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jdial.aegis.mp.BestTime
 import com.jdial.aegis.sim.DungeonOutcomeKind
+import com.jdial.aegis.sim.isStashItem
 import com.jdial.aegis.sim.titleFor
 import com.jdial.aegis.sim.sigilTint
 import com.jdial.aegis.mp.ForgetResult
@@ -282,10 +283,12 @@ class AegisViewModel(app: Application) : AndroidViewModel(app) {
      * as it always did. "The queue is broken" must never mean "you cannot
      * play".
      */
-    fun startDungeon(dungeon: Dungeon, pace: String, hard: Boolean = false, carry: String? = null) {
-        // Only what is actually held: the sheet offers the stash, but the stash
-        // is the authority, not the tap.
-        val carried = carry?.takeIf { (stash[it] ?: 0) > 0 }
+    fun startDungeon(dungeon: Dungeon, pace: String, hard: Boolean = false) {
+        // Whatever consumable is on the bar -- chosen on the profile -- goes in,
+        // if one is actually still held. The stash is the authority, not the bar.
+        val carried = _state.value.activeActionBars
+            .firstOrNull { data.spell(it)?.isStashItem() == true }
+            ?.takeIf { (stash[it] ?: 0) > 0 }
         persist()
         store.clearSuspendedRun()
         _state.value = dressed(_state.value)

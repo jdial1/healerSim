@@ -315,13 +315,17 @@ class Engine(val data: GameData) {
             // The consumable joins the bar for this run only, beside the potion,
             // and nothing carried over from the last run's stash survives.
             val item = carry?.takeIf { data.spell(it)?.isStashItem() == true }
-            val bar = me.activeActionBars.filterNot { data.spell(it)?.isStashItem() == true }
+            // Where the player put it on the profile is where it stays; anything
+            // else consumable on the bar is not being carried, and goes.
+            val bar = me.activeActionBars.map { id ->
+                if (data.spell(id)?.isStashItem() == true && id != item) "" else id
+            }
             me.copy(
                 carried = item,
                 carriedUsed = false,
                 unlockedSpells = me.unlockedSpells.filterNot { data.spell(it)?.isStashItem() == true } +
                     listOfNotNull(item),
-                activeActionBars = if (item == null) bar else insertAfterPotion(bar, item),
+                activeActionBars = if (item == null || item in bar) bar else insertAfterPotion(bar, item),
             )
         }
     }
@@ -443,7 +447,9 @@ class Engine(val data: GameData) {
         if (state.currentDungeon != null) return state
         val bar = state.activeActionBars.toMutableList()
         if (from !in bar.indices || to !in bar.indices) return state
-        bar.add(to, bar.removeAt(from))
+        // A swap, not a shift: dropping onto an occupied slot trades the two,
+        // so moving one button never slides every button after it along.
+        bar[from] = bar[to].also { bar[to] = bar[from] }
         return state.withMe { it.copy(activeActionBars = bar) }
     }
 
@@ -460,11 +466,18 @@ class Engine(val data: GameData) {
         // decision this game asks you to make.
         if (state.currentDungeon != null) return state
         if (index !in state.activeActionBars.indices) return state
+        val item = data.spell(spellId)?.isStashItem() == true
         if (spellId.isNotBlank()) {
-            if (spellId !in state.unlockedSpells) return state
+            // A consumable is not "unlocked" the way a spell is; whether it is
+            // held is the stash's to say, and the view model only offers what
+            // is. Everything else must be learned.
+            if (!item && spellId !in state.unlockedSpells) return state
             if (state.activeActionBars.any { it == spellId }) return state
         }
         val bar = state.activeActionBars.toMutableList()
+        // One consumable on the bar at a time: carrying is one decision, so
+        // putting a second one down takes the first off.
+        if (item) bar.replaceAll { if (data.spell(it)?.isStashItem() == true) "" else it }
         bar[index] = spellId
         return state.withMe { it.copy(activeActionBars = bar) }
     }

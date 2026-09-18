@@ -1,5 +1,10 @@
 package com.jdial.aegis.ui
 
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import com.jdial.aegis.sim.SPELL_GROUPS
 import com.jdial.aegis.sim.SpellStat
 import com.jdial.aegis.sim.isStashItem
@@ -399,6 +404,8 @@ fun CharacterScreen(
     onForgetMultiplayer: () -> Unit = {},
     onChangeClass: () -> Unit,
     onSetActionBarSlot: (Int, String) -> Unit = { _, _ -> },
+    /** Drag one bar slot onto another: the two swap. */
+    onReorderActionBar: (Int, Int) -> Unit = { _, _ -> },
     records: Map<String, com.jdial.aegis.sim.DungeonRecord> = emptyMap(),
     data: com.jdial.aegis.data.GameData? = null,
     /** Charms this character has earned, in the order they were earned. */
@@ -520,7 +527,7 @@ fun CharacterScreen(
 
                 StashCase(state, engine, stash)
 
-                Spellbook(state, engine, onSetActionBarSlot)
+                Spellbook(state, engine, onSetActionBarSlot, onReorderActionBar, stash)
 
                 Spacer(Modifier.height(18.dp))
                 GiltButton("Change Class", onClick = onChangeClass)
@@ -592,6 +599,8 @@ private fun Spellbook(
     state: GameState,
     engine: Engine,
     onSet: (Int, String) -> Unit,
+    onSwap: (Int, Int) -> Unit,
+    stash: Map<String, Int>,
 ) {
     val accent = LocalAccent.current
     var selectedSlot by remember { mutableStateOf(0) }
@@ -612,14 +621,43 @@ private fun Spellbook(
             }
             Spacer(Modifier.height(10.dp))
 
+            // Long-press a slot and drag it onto another: the two swap. Measured
+            // in slot widths, so a drop lands on whichever slot the finger is
+            // over rather than needing to hit it exactly.
+            var dragFrom by remember { mutableStateOf(-1) }
+            var dragDx by remember { mutableStateOf(0f) }
+            var slotPx by remember { mutableStateOf(1f) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 bar.forEachIndexed { i, id ->
                     val spell = engine.data.spell(id)
                     val selected = i == selectedSlot
                     val label = spell?.name ?: "empty"
+                    val dragging = dragFrom == i
                     Box(
                         Modifier
                             .weight(1f)
+                            .onGloballyPositioned { slotPx = it.size.width.toFloat().coerceAtLeast(1f) }
+                            .graphicsLayer { if (dragging) { translationX = dragDx; scaleX = 1.08f; scaleY = 1.08f } }
+                            .zIndex(if (dragging) 1f else 0f)
+                            .pointerInput(i, inCombat) {
+                                if (inCombat) return@pointerInput
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { dragFrom = i; dragDx = 0f; selectedSlot = i },
+                                    onDrag = { change, amount -> change.consume(); dragDx += amount.x },
+                                    onDragEnd = {
+                                        // Slot width plus the gap between slots.
+                                        val step = slotPx + 8.dp.toPx()
+                                        val to = (i + (dragDx / step).roundToInt()).coerceIn(0, bar.lastIndex)
+                                        if (to != i) {
+                                            onSwap(i, to)
+                                            selectedSlot = to
+                                        }
+                                        dragFrom = -1
+                                        dragDx = 0f
+                                    },
+                                    onDragCancel = { dragFrom = -1; dragDx = 0f },
+                                )
+                            }
                             .clip(RoundedCornerShape(6.dp))
                             .border(
                                 if (selected) 2.dp else 1.dp,
@@ -668,6 +706,30 @@ private fun Spellbook(
             Spacer(Modifier.height(14.dp))
             BasicText("SPELLBOOK", style = AegisType.label.copy(color = Gilt.mid))
             Spacer(Modifier.height(8.dp))
+
+            // Consumables held, placeable on the bar like a spell. One at a
+            // time: putting a second down takes the first off. Carried into the
+            // next run from here -- the decision is made with the bar in front
+            // of you, not on the way into a dungeon.
+            val held = stash.filterValues { it > 0 }.keys.sorted().mapNotNull { engine.data.spell(it) }
+            if (held.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                BasicText("CONSUMABLES", style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted))
+                Spacer(Modifier.height(4.dp))
+                held.forEach { item ->
+                    SpellRow(
+                        spell = item,
+                        stats = state.playerClass?.let {
+                            spellStats(item, it, state.level, state.me, engine.stats)
+                        }.orEmpty() + SpellStat("HELD", "${stash[item.id] ?: 0}", "rank"),
+                        onBar = item.id in bar,
+                        enabled = !inCombat && item.id !in bar,
+                        accent = accent.core,
+                        onClick = { onSet(selectedSlot, item.id) },
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+            }
 
             // Shelved by what a player reaches for it to do, rather than in the
             // order they were learned -- nine spells in a list is a list, nine
