@@ -154,7 +154,7 @@ class AddsTest {
     }
 
     @Test
-    fun `a boss calls its adds once, they hit the healer, and they go with it`() {
+    fun `a boss calls its adds once, they hit whoever holds it, and they go with it`() {
         val base = run(PlayerClass.MAGE)
         val boss = base.copy(
             combatPhase = CombatPhase.BOSS, trashPullsRemaining = 0, mechanicCooldown = 10_000,
@@ -167,7 +167,9 @@ class AddsTest {
         assertEquals(1, called.bossAddWaves)
         assertEquals(spawn.size, step(called).adds.size)
 
-        val healer = called.party.first { it.role == UnitRole.HEALER }.id
+        // A Mage's run is a threat run: adds go for whoever the enemy is on,
+        // the tank's to pick up, rather than straight for the healer.
+        val healer = called.enemyTargetId ?: called.party.first { it.role == UnitRole.TANK }.id
         val hit = step(called)
         assertTrue(hit.unit(healer)!!.health < called.unit(healer)!!.health)
 

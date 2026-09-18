@@ -718,7 +718,19 @@ class GameTick(
                 val chance = rng.nextDouble()
                 val diff = s.currentDungeon?.difficulty ?: 1
                 if (allowAmbient) {
+                    // The enemy's own swings. In a run someone is tanking, they
+                    // land on whoever holds its attention and nobody else: the
+                    // tank takes the tank's share while it holds, and a damage
+                    // dealer who pulls it takes that same share instead. Rolling
+                    // the chip on every non-tank regardless read as mobs ignoring
+                    // a tank at full aggro. A healer's run keeps its random
+                    // spread -- there the boss picks by chance, not threat.
+                    val threatRun = s.playerRole != UnitRole.HEALER
+                    val holding = unit.id == s.enemyTargetId
                     damage = when {
+                        threatRun && holding && chance < env.tankProcChance ->
+                            (rng.nextDouble() * env.tankDamageRandomMax + diff) * env.ambientChipDamageMultiplier
+                        threatRun -> 0.0
                         unit.role == UnitRole.TANK && chance < env.tankProcChance ->
                             (rng.nextDouble() * env.tankDamageRandomMax + diff) * env.ambientChipDamageMultiplier
                         unit.role != UnitRole.TANK && chance < env.nonTankProcChance ->
@@ -1930,8 +1942,16 @@ class GameTick(
         // a fight anyone lost. The healer still takes the lion's share, which is
         // the pressure the design wants; the rest is spread, which is what stops
         // "more adds" from meaning "the healer, faster".
-        val victim = party.firstOrNull { it.isAlive && it.role == UnitRole.HEALER } ?: party.firstOrNull { it.isAlive }
-        val focus = rules.healerShare
+        // In a run someone is tanking, adds are the tank's to pick up: they go
+        // for whoever holds the enemy's attention, all of them on it. In a
+        // healer's run they go for the healer, which is the pressure that game
+        // is built around.
+        val threatRun = s.playerRole != UnitRole.HEALER
+        val holder = party.firstOrNull { it.isAlive && it.id == s.enemyTargetId }
+        val victim = (if (threatRun) holder else null)
+            ?: party.firstOrNull { it.isAlive && it.role == UnitRole.HEALER }
+            ?: party.firstOrNull { it.isAlive }
+        val focus = if (threatRun && holder != null) 1.0 else rules.healerShare
         val others = party.filter { it.isAlive && it.id != victim?.id }
         val spread = if (others.isEmpty()) 0.0 else hurt * (1 - focus) / others.size
         val hit = (if (hurt <= 0 || victim == null) party else party.map {
