@@ -64,7 +64,7 @@ def summarise(rows, by):
 
     print('  '.join(f'{k.upper():<10}' for k in by), end='  ')
     print(
-        f'{"RUNS":>4} {"CLEAR":>6} {"TIME":>7} {"DEATHS":>7} {"MISSED":>7} {"LOWEST":>7} {"AIMANA":>7} {"XP":>6}'
+        f'{"RUNS":>4} {"CLEAR":>6} {"TIME":>7} {"DEATHS":>7} {"MISSED":>7} {"LOWEST":>7} {"AIMANA":>7} {"AGGRO":>6} {"XP":>6}'
         f'{"RES":>6} {"CAPPED":>7} {"MANA":>6} {"STUCK":>6}'
     )
     for key in sorted(groups):
@@ -79,6 +79,7 @@ def summarise(rows, by):
             f'{statistics.mean(r["missedKicks"] for r in g):>7.2f} '
             f'{statistics.mean(r["lowestHealthPct"] for r in g):>6.0f}% '
             f'{statistics.mean(r["aiHealerLowPct"] for r in g):>6.0f}% '
+            f'{statistics.mean(r["aggroPct"] for r in g):>5.0f}% '
             f'{statistics.mean(r["xp"] for r in g):>6.0f}'
             f'{statistics.mean(r.get("resAvgPct", 0) for r in g):>5.0f}% '
             f'{statistics.mean(r.get("resCapPct", 0) for r in g):>6.0f}% '

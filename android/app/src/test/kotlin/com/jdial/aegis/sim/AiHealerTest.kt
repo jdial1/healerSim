@@ -201,4 +201,22 @@ class AiHealerTest {
         )
         assertEquals("a healer player has no AI healer", 0.0, priest.aiHealerMana, 0.0)
     }
+
+    @Test
+    fun `the AI healer's bar moves, draining in a fight and refilling on the breather`() {
+        // It regenerated about its whole pool every nine seconds, so the bar a
+        // tank or damage dealer watches never moved. Regen in a fight is a
+        // trickle now, and the breather is where it drinks.
+        val cap = cfg.aiHealerMaxMana(20)
+        val perTick = cfg.aiHealerRegen(20)
+        assertTrue("regen $perTick/tick against a pool of $cap refills too fast", cap / perTick > 150)
+
+        val engine = Engine(Fixtures.data)
+        val rng = Rng(1)
+        var s = engine.newCharacter(PlayerClass.MAGE, rng).withMe { it.copy(level = 20) }
+        s = engine.reduce(s, Action.StartDungeon(Fixtures.data.dungeons.first { 20 <= syncCap(it.levelMax) }, "normal"), rng)
+        val low = s.copy(aiHealerMana = s.aiHealerManaMax * 0.2, restTicks = 30)
+        val rested = engine.reduce(low, Action.Tick(1), rng)
+        assertTrue("the breather should refill it", rested.aiHealerMana > low.aiHealerMana + cap * 0.01)
+    }
 }

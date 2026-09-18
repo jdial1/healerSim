@@ -57,6 +57,8 @@ class PlaytestHarness {
         val kicks: Int, val dispels: Int, val defensives: Int, val addsKilled: Int,
         val xp: Int, val dps: Double, val hps: Double, val lowestHealthPct: Double,
         val aiHealerLowPct: Double,
+        /** Share of fighting ticks the enemy was on this player: how often a damage dealer pulled it. */
+        val aggroPct: Double,
         /** Resources, sampled every tick: how full, how often capped, how often stuck. */
         val resAvgPct: Double, val resCapPct: Double, val manaAvgPct: Double, val starvedPct: Double,
     ) {
@@ -66,6 +68,7 @@ class PlaytestHarness {
             """"xp":$xp,"dps":${"%.1f".format(dps)},"hps":${"%.1f".format(hps)},""" +
             """"lowestHealthPct":${"%.1f".format(lowestHealthPct)},""" +
             """"aiHealerLowPct":${"%.1f".format(aiHealerLowPct)},""" +
+            """"aggroPct":${"%.1f".format(aggroPct)},""" +
             """"resAvgPct":${"%.1f".format(resAvgPct)},"resCapPct":${"%.1f".format(resCapPct)},""" +
             """"manaAvgPct":${"%.1f".format(manaAvgPct)},"starvedPct":${"%.1f".format(starvedPct)}}"""
     }
@@ -135,6 +138,8 @@ class PlaytestHarness {
         var addsKilled = 0
         var lowest = 100.0
         var aiLow = 100.0
+        var fighting = 0
+        var onMe = 0
         var ticks = 0
         // Resource sampling. The Death Knight's "resource" is its memory of
         // recent damage rather than a pool, so its cap is meaningless here.
@@ -151,6 +156,10 @@ class PlaytestHarness {
             val hurt = s.party.filter { it.isAlive }.minByOrNull { it.health / it.maxHealth }
             hurt?.let { lowest = minOf(lowest, it.health / it.maxHealth * 100) }
             if (s.aiHealerManaMax > 0) aiLow = minOf(aiLow, s.aiHealerMana / s.aiHealerManaMax * 100)
+            if (s.restTicks == 0) {
+                fighting++
+                if (s.enemyTargetId == s.localUnitId) onMe++
+            }
 
             // What the bar looks like before this tick's decisions.
             val cap = when (cls) {
@@ -309,6 +318,7 @@ class PlaytestHarness {
             hps = outcome?.stats?.hps ?: 0.0,
             lowestHealthPct = lowest,
             aiHealerLowPct = aiLow,
+            aggroPct = if (fighting == 0) 0.0 else onMe * 100.0 / fighting,
             resAvgPct = if (sampled > 0) resSum / sampled else 0.0,
             resCapPct = if (sampled > 0) resCapped * 100.0 / sampled else 0.0,
             manaAvgPct = if (sampled > 0) manaSum / sampled else 0.0,

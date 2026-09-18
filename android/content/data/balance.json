@@ -130,22 +130,22 @@
     "overtakeMultiplier": 1.1,
     "tauntOvertakeMultiplier": 1.1,
     "tankDamageShare": 0.15,
-    "aiTauntCooldownTicks": 80
+    "aiTauntCooldownTicks": 110
   },
   "roles": {
     "aiShareWhenHealer": 1.0,
     "aiShareWhenDps": 0.72,
     "aiShareWhenTank": 0.86,
     "aiHealerManaBase": 260.0,
-    "aiHealerManaPerLevel": 26.0,
-    "aiHealerManaRegenPerTick": 1.55,
+    "aiHealerManaPerLevel": 55.0,
+    "aiHealerManaRegenPerTick": 1.2,
     "aiHealerHealBase": 9.0,
     "aiHealerHealPerLevel": 3.4,
     "aiHealerManaPerHealPoint": 0.34,
     "aiHealerHealBelowFraction": 0.92,
     "aiHealerLevelExponent": 1.3,
     "aiHealerLevelPivot": 20.0,
-    "aiHealerManaRegenPerLevel": 0.35,
+    "aiHealerManaRegenPerLevel": 0.26,
     "tankBossDamageTaken": 0.4
   },
   "classes": {

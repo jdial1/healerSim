@@ -1763,6 +1763,12 @@ class GameTick(
             party = s.party.map {
                 if (!it.isAlive) it else it.copy(health = min(it.maxHealth, it.health + it.maxHealth * p.restHealthPerTick))
             },
+            // The AI healer drinks too. Its regen in a fight is a trickle now,
+            // so this is where it actually recovers -- which is what makes its
+            // bar move: down across a pull, back up on the breather, and a long
+            // boss fight the one place it can truly run dry.
+            aiHealerMana = if (s.aiHealerManaMax <= 0) s.aiHealerMana
+            else min(s.aiHealerManaMax, s.aiHealerMana + s.aiHealerManaMax * p.restManaPerTick),
         ).withEachParticipant {
             it.copy(mana = min(it.maxMana.toDouble(), it.mana + it.maxMana * p.restManaPerTick))
         }
