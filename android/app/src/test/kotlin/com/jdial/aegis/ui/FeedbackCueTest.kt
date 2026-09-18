@@ -171,3 +171,29 @@ class FeedbackCueTest {
         assertTrue(cuesBetween(idle, withHealth(idle, "1", 0.0)).isEmpty())
     }
 }
+
+/** The global cooldown, as the engine runs it and as a slot shows it. */
+class GlobalCooldownTest {
+    private val engine = com.jdial.aegis.sim.Engine(com.jdial.aegis.sim.Fixtures.data)
+
+    @Test
+    fun `a cast starts a half-second global cooldown`() {
+        val rng = com.jdial.aegis.sim.Rng(1)
+        val s = engine.reduce(
+            engine.newCharacter(com.jdial.aegis.data.PlayerClass.MAGE, rng),
+            com.jdial.aegis.sim.Action.StartDungeon(com.jdial.aegis.sim.Fixtures.data.dungeons.first(), "normal"),
+            rng,
+        )
+        val cast = engine.reduce(s, com.jdial.aegis.sim.Action.CastSpell("frostbolt", null, 99.0), rng)
+        // Ten ticks a second: five is half a second.
+        assertEquals(5, cast.globalCooldownRemaining)
+    }
+
+    @Test
+    fun `a slot shows tenths, so half a second does not read as one`() {
+        assertEquals("0.5", cooldownLabel(5))
+        assertEquals("0.1", cooldownLabel(1))
+        assertEquals("9.9", cooldownLabel(99))
+        assertEquals("15", cooldownLabel(150))
+    }
+}

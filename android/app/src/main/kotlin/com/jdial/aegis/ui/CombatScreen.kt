@@ -1793,7 +1793,7 @@ private fun SpellSlot(
                 contentDescription = when {
                     spell == null -> "Empty action slot $index"
                     onCooldown -> "${spell.name}, slot $index, " +
-                        "ready in ${ceil(cooldownTicks / 10.0).toInt()} seconds"
+                        "ready in ${cooldownLabel(cooldownTicks)} seconds"
                     !affordable -> "${spell.name}, slot $index, not enough ${spell.resourceName}"
                     else -> "${spell.name}, slot $index, ${spell.manaCost} ${spell.resourceName}"
                 }
@@ -1806,8 +1806,12 @@ private fun SpellSlot(
 
             // Cooldown is a radial sweep over the icon, with the seconds on top.
             if (onCooldown) {
-                val maxTicks = if (spell.cooldown > 0) spell.cooldown else cooldownTicks
-                val sweep = (cooldownTicks.toFloat() / maxTicks).coerceIn(0f, 1f)
+                // Swept against whichever clock is running: the spell's own, or
+                // the global cooldown. Sweeping a filler against itself drew a
+                // full, frozen disc for the whole GCD.
+                val gcd = LocalGameData.current.balance.combat.shared.globalCooldownTicks
+                val maxTicks = if (cooldownTicks > gcd && spell.cooldown > 0) spell.cooldown else gcd
+                val sweep = (cooldownTicks.toFloat() / maxTicks.coerceAtLeast(1)).coerceIn(0f, 1f)
                 Canvas(Modifier.fillMaxSize()) {
                     drawArc(
                         color = Obsidian.abyss.copy(alpha = 0.72f),
@@ -1817,7 +1821,7 @@ private fun SpellSlot(
                     )
                 }
                 BasicText(
-                    "${ceil(cooldownTicks / 10.0).toInt()}",
+                    cooldownLabel(cooldownTicks),
                     style = AegisType.numeric.copy(fontSize = 18.sp, color = Gilt.bright),
                 )
             } else if (!affordable) {
@@ -1846,3 +1850,11 @@ private fun SpellSlot(
         }
     }
 }
+
+/**
+ * Time left on a slot. Tenths under ten seconds: rounding up to whole seconds
+ * showed the half-second global cooldown as "1", which read as the GCD never
+ * having changed.
+ */
+internal fun cooldownLabel(ticks: Int): String =
+    if (ticks < 100) String.format(java.util.Locale.ROOT, "%.1f", ticks / 10.0) else "${ceil(ticks / 10.0).toInt()}"
