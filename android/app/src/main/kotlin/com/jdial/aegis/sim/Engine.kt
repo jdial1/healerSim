@@ -239,16 +239,17 @@ class Engine(val data: GameData) {
      */
     private fun tickCooldowns(s: GameState): GameState = s.withEachParticipant { p ->
         val gcd = if (p.globalCooldownRemaining > 0) p.globalCooldownRemaining - 1 else 0
-        if (p.spellCooldowns.isEmpty()) {
-            if (gcd == p.globalCooldownRemaining) p else p.copy(globalCooldownRemaining = gcd)
-        } else {
-            p.copy(
-                globalCooldownRemaining = gcd,
-                spellCooldowns = p.spellCooldowns
-                    .mapValues { (_, v) -> v - 1 }
-                    .filterValues { it > 0 },
-            )
-        }
+        // Capped: nobody needs to know it has been a thousand ticks rather
+        // than a hundred, and an unbounded counter is a field that never stops
+        // changing in every snapshot.
+        val idle = minOf(p.idleTicks + 1, 1_000)
+        p.copy(
+            globalCooldownRemaining = gcd,
+            idleTicks = idle,
+            spellCooldowns = if (p.spellCooldowns.isEmpty()) p.spellCooldowns else p.spellCooldowns
+                .mapValues { (_, v) -> v - 1 }
+                .filterValues { it > 0 },
+        )
     }
 
     private fun startDungeon(

@@ -41,6 +41,13 @@ fun syncCap(levelMax: Int): Int = levelMax + 1
 /** The level a character of [level] plays a dungeon topping out at [levelMax] at. */
 fun syncedLevel(level: Int, levelMax: Int): Int = minOf(level, syncCap(levelMax))
 
+/**
+ * How long a tank may go without casting and still be holding the enemy's
+ * attention: three seconds. Past it, the boss's threat drifts to whoever is
+ * actually hitting it.
+ */
+const val TANK_ACTIVE_TICKS = 30
+
 /** The level XP is paid on: the real one, even while synced. */
 val Participant.trueLevel: Int get() = if (syncedFrom > 0) syncedFrom else level
 
@@ -381,6 +388,13 @@ data class Participant(
      * predictable rather than unbounded.
      */
     val globalCooldownRemaining: Int = 0,
+    /**
+     * Ticks since this participant last cast anything. Reset by a cast,
+     * counted by the tick. The one honest measure of whether a person is
+     * playing their seat -- see GameTick.accrueThreat, where a tank earns the
+     * tank's share of threat only while this is short.
+     */
+    val idleTicks: Int = 0,
     val capstoneForm: String? = null,
     val holyPower: Int = 0,
     val beaconTargetId: String = "1",

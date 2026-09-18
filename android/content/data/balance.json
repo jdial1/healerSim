@@ -138,19 +138,19 @@
     "aiShareWhenTank": 0.86,
     "aiHealerManaBase": 260.0,
     "aiHealerManaPerLevel": 26.0,
-    "aiHealerManaRegenPerTick": 1.4,
+    "aiHealerManaRegenPerTick": 1.55,
     "aiHealerHealBase": 9.0,
     "aiHealerHealPerLevel": 3.4,
     "aiHealerManaPerHealPoint": 0.34,
     "aiHealerHealBelowFraction": 0.92,
     "aiHealerLevelExponent": 1.3,
     "aiHealerLevelPivot": 20.0,
-    "aiHealerManaRegenPerLevel": 0.32,
+    "aiHealerManaRegenPerLevel": 0.35,
     "tankBossDamageTaken": 0.4
   },
   "classes": {
     "damageScale": {
-      "MAGE": 0.72,
+      "MAGE": 0.65,
       "ROGUE": 1.0,
       "WARRIOR": 0.85,
       "DEATHKNIGHT": 1.0,
@@ -194,7 +194,7 @@
       "builderCritPerRating": 2.0
     },
     "manaPoolScale": {
-      "MAGE": 0.55,
+      "MAGE": 0.68,
       "WARRIOR": 0.6,
       "DEATHKNIGHT": 0.6
     }

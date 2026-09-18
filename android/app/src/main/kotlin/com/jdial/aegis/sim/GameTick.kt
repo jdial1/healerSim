@@ -644,7 +644,10 @@ class GameTick(
         var npAdd = 0
         val next = party.map { u ->
             if (u.health <= 0 || u.id !in targets) return@map u
-            var dmg = tpl.damage * incomingDamage(s, u, DamageSource.BOSS_ATTACK, partyDamageMult)
+            var dmg = tpl.damage * incomingDamage(
+                s, u, DamageSource.BOSS_ATTACK, partyDamageMult,
+                singleTarget = tpl.targeting != Targeting.ALL_LIVING,
+            )
             dmg *= hooks.damageTakenMultiplier(ctx, "boss_attack", u)
             dmg *= activeMitigation(s, u)
             if (tpl.interruptible && tpl.castTicks > 0 && kickWasReady) dmg *= data.encounters.unkickedDamageMultiplier
@@ -1218,9 +1221,18 @@ class GameTick(
     ): GameState {
         val pd = data.balance.partyDps
         val partyDps = pd.base + s.level.toDouble().pow(pd.levelExponent) * pd.levelMultiplier
-        val deadDps = sys.party.count { it.role == UnitRole.DPS && it.health <= 0 }
-        // Losing DPS only slows the boss, not trash.
-        val bossDpsMult = if (s.combatPhase == CombatPhase.BOSS) 0.7.pow(deadDps) else 1.0
+        // The dead deal nothing. The scripted damage is the AI damage dealers'
+        // (and the AI tank's small share), so each AI damage dealer who falls
+        // takes their part of it with them -- all three down leaves only what
+        // the tank was doing. This used to be 0.7 per death, and on the boss
+        // only, so a tank and a healer with everyone else dead still killed a
+        // boss at a third of the pace: a tank who did nothing lost the whole
+        // party and cleared anyway. A person's own damage is counted apart
+        // (pendingEnemyDamage) and stops when they do.
+        val aiDps = sys.party.filter { it.role == UnitRole.DPS && !s.isHuman(it.id) }
+        val deadAi = aiDps.count { it.health <= 0 }
+        val tankShare = data.balance.threat.tankDamageShare
+        val bossDpsMult = if (aiDps.isEmpty()) 1.0 else 1.0 - deadAi.toDouble() / aiDps.size * (1.0 - tankShare)
         // The scripted formula is not replaced, it is reinterpreted: it was
         // always "what the party does to the enemy", and now it is "what the
         // *AI* part of the party does", with the player making up the rest.
@@ -1346,8 +1358,18 @@ class GameTick(
                 threatByActor = threatByActor,
                 aiHealerHealing = aiHealerHealingThisTick,
                 localUnitId = s.localUnitId,
+                // A tank earns the tank's share of the party's damage as threat
+                // while they are playing: an AI tank always is, and a person is
+                // if they have cast in the last three seconds. Denying a human
+                // tank the share outright -- the idle-tank fix -- also denied it
+                // to one who was playing, and at level 32 the AI damage dealers
+                // out-threatened a playing tank ten to one: the boss spent
+                // every non-healer run on a damage dealer, hitting squishies
+                // for the unheld premium. That was the one lever under the
+                // three sustain findings.
                 tankEarnsScriptedThreat = sys.party.firstOrNull { it.role == UnitRole.TANK }
-                    ?.let { !s.isHuman(it.id) } ?: true,
+                    ?.let { t -> !s.isHuman(t.id) || (s.participants[t.id]?.idleTicks ?: 0) < TANK_ACTIVE_TICKS }
+                    ?: true,
             ),
             enemyDebuffs = s.enemyDebuffs
                 .map { it.copy(remainingTicks = it.remainingTicks - 1) }
@@ -1638,6 +1660,8 @@ class GameTick(
         unit: Unit,
         source: DamageSource,
         partyDamageMult: Double = 1.0,
+        /** A hit meant for one target: the only kind a loose boss can misplace. */
+        singleTarget: Boolean = false,
     ): Double {
         val dungeon = s.currentDungeon
         val atBoss = s.combatPhase == CombatPhase.BOSS && dungeon != null
@@ -1647,8 +1671,12 @@ class GameTick(
                     (if (dungeon?.endless == true) progression.endlessMultiplier(s.endlessStacks) else 1.0) *
                     partyDamageMult * enrageMultiplier(s)
                 mult *= progression.levelGapDamageMultiplier(unit.level, dungeon?.levelMax ?: unit.level)
-                // Loose: nobody is holding it, and the squishy it found pays for that.
-                if (s.playerRole != UnitRole.HEALER && unit.role != UnitRole.TANK) {
+                // Loose: nobody is holding it, and the squishy it found pays for
+                // that. Single-target hits only -- a raid-wide attack lands on
+                // everyone wherever the boss is facing, and charging the premium
+                // on those made every party-wide hit in a tank or damage run 25%
+                // worse than the same hit in a healer's.
+                if (singleTarget && s.playerRole != UnitRole.HEALER && unit.role != UnitRole.TANK) {
                     mult *= data.encounters.unheldTargetDamage
                 }
                 mult

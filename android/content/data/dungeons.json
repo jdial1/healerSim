@@ -559,7 +559,7 @@
           "name": "Battle Shout",
           "icon": "lorc/shouting",
           "durationTicks": 150,
-          "partyDamageMultiplier": 1.6
+          "partyDamageMultiplier": 1.25
         }
       ],
       "attackTemplates": [

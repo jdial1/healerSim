@@ -202,8 +202,11 @@ class CastPipeline(
             is Ready.Standard -> applyStandardHeal(ctx, ready)
             is Ready.Damage -> applyDamageCast(ctx, ready)
         }
-        // Spent here, once, whichever of the four apply paths it took.
-        val spent = if (data.spell(spellId)?.isStashItem() == true) out.withMe { it.copy(carriedUsed = true) } else out
+        // Spent here, once, whichever of the four apply paths it took -- and
+        // the caster is no longer idle, whatever they cast.
+        val spent = out.withMe {
+            it.copy(idleTicks = 0, carriedUsed = it.carriedUsed || data.spell(spellId)?.isStashItem() == true)
+        }
         // Started here rather than in each apply path: there are four of them
         // and a fifth would silently forget.
         return if (data.spell(spellId)?.offGlobalCooldown() == true) {
