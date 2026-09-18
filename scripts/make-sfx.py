@@ -53,6 +53,33 @@ CUES = {
     # Something on the enemy side changed.
     'sfx_enemy_down':  (f'{K_IMPACT}/impactSoft_medium_003.ogg', 0.80, 0.9),
     'sfx_phase':       (f'{O_FAN}/Dragon_Growl_00.wav', 1.60, 0.9),
+
+    # --- one sound per spell within a class ------------------------------------
+    # Variants of each kind, so no two spells a class carries sound alike. A
+    # class may share a variant with another class; within one it may not.
+    'sfx_heal_b':      (f'{O_FAN}/Spell_00.wav', 1.10, 0.85),
+    'sfx_heal_c':      (f'{O_FAN}/Spell_04.wav', 1.10, 0.85),
+    'sfx_heal_d':      (f'{K_IFACE}/confirmation_002.ogg', 0.60, 0.9),
+    'sfx_heal_group_b': (f'{K_IFACE}/glass_006.ogg', 1.00, 0.9),
+    'sfx_hot_b':       (f'{K_IFACE}/pluck_001.ogg', 1.00, 1.0),
+    'sfx_mana':        (f'{O_RPG}/inventory/bubble3.wav', 0.75, 0.9),
+    'sfx_wall_b':      (f'{O_RPG}/inventory/chainmail1.wav', 0.60, 1.0),
+    'sfx_wall_c':      (f'{O_RPG}/inventory/metal-ringing.wav', 0.55, 0.9),
+    'sfx_taunt':       (f'{O_RPG}/battle/sword-unsheathe.wav', 0.55, 0.9),
+    'sfx_kick':        (f'{K_IMPACT}/impactPunch_heavy_000.ogg', 0.40, 0.9),
+    'sfx_swing_b':     (f'{O_RPG}/battle/swing2.wav', 0.40, 0.9),
+    'sfx_strike':      (f'{K_IMPACT}/impactPlate_heavy_000.ogg', 0.60, 0.9),
+    'sfx_bolt_b':      (f'{O_RPG}/battle/spell.wav', 0.90, 0.8),
+    'sfx_bolt_c':      (f'{K_IMPACT}/impactGlass_heavy_000.ogg', 0.70, 0.8),
+    'sfx_cleave':      (f'{K_RPG}/chop.ogg', 0.60, 0.9),
+    'sfx_cleave_b':    (f'{K_IMPACT}/impactWood_heavy_002.ogg', 0.60, 0.9),
+    'sfx_storm':       (f'{O_FAN}/Trap_00.wav', 1.00, 0.8),
+    'sfx_storm_b':     (f'{K_IFACE}/glass_005.ogg', 0.80, 0.85),
+    'sfx_dot':         (f'{O_RPG}/inventory/bubble.wav', 0.50, 0.9),
+    'sfx_dot_b':       (f'{K_RPG}/knifeSlice.ogg', 0.50, 0.9),
+    # Every consumable -- the mana potion and all twenty in the stash -- shares
+    # this one: a potion should sound like a potion whichever it is.
+    'sfx_potion':      (f'{O_RPG}/inventory/bottle.wav', 0.55, 0.9),
 }
 
 RATE = 44100

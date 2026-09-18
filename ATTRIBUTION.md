@@ -27,7 +27,7 @@ Cinzel by Natanael Gama, under the
 
 ## Sound effects (Android)
 
-Nineteen sounds, from three libraries. Chosen to stay fantasy-flavoured: nothing
+Forty sounds, from three libraries. Chosen to stay fantasy-flavoured: nothing
 from the Sci-fi or Digital packs. Kenney has no magic in any of its ten audio
 packs, which is why the spell sounds come from elsewhere.
 
@@ -56,6 +56,24 @@ is given anyway, in-app and here.
 | `sfx_spell.ogg` | RPG Sound Pack (artisticdude) | `battle/magic1.wav` |
 | `sfx_swing.ogg` | RPG Sound Pack (artisticdude) | `battle/swing.wav` |
 | `sfx_defensive.ogg` | RPG Sound Pack (artisticdude) | `inventory/armor-light.wav` |
+| `sfx_heal_d.ogg` | Kenney Interface Sounds | `confirmation_002.ogg` |
+| `sfx_heal_group_b.ogg` | Kenney Interface Sounds | `glass_006.ogg` |
+| `sfx_hot_b.ogg` | Kenney Interface Sounds | `pluck_001.ogg` |
+| `sfx_storm_b.ogg` | Kenney Interface Sounds | `glass_005.ogg` |
+| `sfx_kick.ogg` | Kenney Impact Sounds | `impactPunch_heavy_000.ogg` |
+| `sfx_strike.ogg` | Kenney Impact Sounds | `impactPlate_heavy_000.ogg` |
+| `sfx_bolt_c.ogg` | Kenney Impact Sounds | `impactGlass_heavy_000.ogg` |
+| `sfx_cleave_b.ogg` | Kenney Impact Sounds | `impactWood_heavy_002.ogg` |
+| `sfx_cleave.ogg` | Kenney RPG Audio | `chop.ogg` |
+| `sfx_dot_b.ogg` | Kenney RPG Audio | `knifeSlice.ogg` |
+| `sfx_mana.ogg` | RPG Sound Pack (artisticdude) | `inventory/bubble3.wav` |
+| `sfx_wall_b.ogg` | RPG Sound Pack (artisticdude) | `inventory/chainmail1.wav` |
+| `sfx_wall_c.ogg` | RPG Sound Pack (artisticdude) | `inventory/metal-ringing.wav` |
+| `sfx_taunt.ogg` | RPG Sound Pack (artisticdude) | `battle/sword-unsheathe.wav` |
+| `sfx_swing_b.ogg` | RPG Sound Pack (artisticdude) | `battle/swing2.wav` |
+| `sfx_bolt_b.ogg` | RPG Sound Pack (artisticdude) | `battle/spell.wav` |
+| `sfx_dot.ogg` | RPG Sound Pack (artisticdude) | `inventory/bubble.wav` |
+| `sfx_potion.ogg` | RPG Sound Pack (artisticdude) | `inventory/bottle.wav` |
 
 ### CC BY 3.0 — Little Robot Sound Factory
 
@@ -73,10 +91,13 @@ re-encoded; changes were made.
 | `sfx_shield.ogg` | `Spell_02.wav` |
 | `sfx_select.ogg` | `Menu_Select_00.wav` |
 | `sfx_phase.ogg` | `Dragon_Growl_00.wav` |
+| `sfx_heal_b.ogg` | `Spell_00.wav` |
+| `sfx_heal_c.ogg` | `Spell_04.wav` |
+| `sfx_storm.ogg` | `Trap_00.wav` |
 
-To swap a sound, replace the file under the same name; `ui/Feedback.kt` maps
-cues to these names, and `castCue` picks one from what a spell does rather than
-from its id.
+To swap a sound, replace the file under the same name. Each spell names its
+sound in content (`Spell.sound`), written by `scripts/assign-sounds.py` so that
+no two spells in one class share one; every consumable shares `sfx_potion`.
 
 ## Battle sprites — CC0 (Android)
 

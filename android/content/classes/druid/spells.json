@@ -17,7 +17,8 @@
       "druid-hot",
       "druid-cultivation-hot",
       "swiftmend-consumable"
-    ]
+    ],
+    "sound": "hot"
   },
   "regrowth": {
     "id": "regrowth",
@@ -42,7 +43,8 @@
     ],
     "balance": {
       "directHealSynergyMultiplier": 1.15
-    }
+    },
+    "sound": "heal"
   },
   "wild_growth": {
     "id": "wild_growth",
@@ -62,7 +64,8 @@
       "synergy-primer-source",
       "druid-hot",
       "druid-cultivation-hot"
-    ]
+    ],
+    "sound": "heal_group"
   },
   "swiftmend": {
     "id": "swiftmend",
@@ -81,7 +84,8 @@
     ],
     "balance": {
       "directHealSynergyMultiplier": 1.15
-    }
+    },
+    "sound": "heal_c"
   },
   "healing_touch": {
     "id": "healing_touch",
@@ -100,7 +104,8 @@
     ],
     "balance": {
       "directHealSynergyMultiplier": 1.15
-    }
+    },
+    "sound": "heal_b"
   },
   "lifebloom": {
     "id": "lifebloom",
@@ -119,7 +124,8 @@
       "synergy-primer-source",
       "druid-hot",
       "druid-cultivation-hot"
-    ]
+    ],
+    "sound": "hot_b"
   },
   "barkskin": {
     "id": "barkskin",
@@ -132,7 +138,8 @@
     "icon": "wow/spell_nature_stoneclawtotem",
     "tags": [],
     "damageReduction": 0.3,
-    "damageReductionTicks": 150
+    "damageReductionTicks": 150,
+    "sound": "defensive"
   },
   "tranquility": {
     "id": "tranquility",
@@ -145,6 +152,7 @@
     "icon": "wow/spell_nature_tranquility",
     "tags": [],
     "hotDuration": 80,
-    "hotHealingPerTick": 6.0
+    "hotHealingPerTick": 6.0,
+    "sound": "heal_group_b"
   }
 }

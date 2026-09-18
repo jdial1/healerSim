@@ -12,7 +12,8 @@
     "threatMultiplier": 0.9,
     "color": "bg-sky-400",
     "actionBarBorderClass": "border-sky-400",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "spell"
   },
   "fireball": {
     "id": "fireball",
@@ -27,7 +28,8 @@
     "threatMultiplier": 1.0,
     "color": "bg-orange-400",
     "actionBarBorderClass": "border-orange-400",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "bolt_b"
   },
   "arcane_missiles": {
     "id": "arcane_missiles",
@@ -42,7 +44,8 @@
     "threatMultiplier": 1.15,
     "color": "bg-violet-400",
     "actionBarBorderClass": "border-violet-400",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "storm"
   },
   "living_bomb": {
     "id": "living_bomb",
@@ -59,7 +62,8 @@
     "threatMultiplier": 0.85,
     "color": "bg-emerald-400",
     "actionBarBorderClass": "border-emerald-400",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "dot"
   },
   "ice_barrier": {
     "id": "ice_barrier",
@@ -72,7 +76,8 @@
     "icon": "wow/spell_ice_lament",
     "tags": [],
     "shield": 280.0,
-    "shieldTicks": 200
+    "shieldTicks": 200,
+    "sound": "shield"
   },
   "evocation": {
     "id": "evocation",
@@ -84,7 +89,8 @@
     "cooldown": 400,
     "icon": "wow/spell_nature_purge",
     "tags": [],
-    "manaRegenBuffDurationTicks": 100
+    "manaRegenBuffDurationTicks": 100,
+    "sound": "mana"
   },
   "blizzard": {
     "id": "blizzard",
@@ -95,6 +101,7 @@
     "healing": 78.0,
     "cooldown": 90,
     "icon": "wow/spell_frost_icestorm",
-    "tags": []
+    "tags": [],
+    "sound": "storm_b"
   }
 }

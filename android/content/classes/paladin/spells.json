@@ -15,7 +15,8 @@
     ],
     "balance": {
       "directHealSynergyMultiplier": 1.15
-    }
+    },
+    "sound": "heal"
   },
   "holy_light": {
     "id": "holy_light",
@@ -34,7 +35,8 @@
     ],
     "balance": {
       "directHealSynergyMultiplier": 1.15
-    }
+    },
+    "sound": "heal_b"
   },
   "light_of_dawn": {
     "id": "light_of_dawn",
@@ -52,7 +54,8 @@
     "tags": [
       "archangel-skip",
       "synergy-primer-source"
-    ]
+    ],
+    "sound": "heal_group"
   },
   "holy_shock": {
     "id": "holy_shock",
@@ -63,7 +66,8 @@
     "healing": 95.0,
     "cooldown": 15,
     "icon": "wow/spell_holy_searinglight",
-    "tags": []
+    "tags": [],
+    "sound": "heal_c"
   },
   "divine_protection": {
     "id": "divine_protection",
@@ -76,7 +80,8 @@
     "icon": "wow/spell_holy_divineprotection",
     "tags": [],
     "damageReduction": 0.4,
-    "damageReductionTicks": 80
+    "damageReductionTicks": 80,
+    "sound": "defensive"
   },
   "lay_on_hands": {
     "id": "lay_on_hands",
@@ -87,6 +92,7 @@
     "healing": 620.0,
     "cooldown": 900,
     "icon": "wow/spell_holy_layonhands",
-    "tags": []
+    "tags": [],
+    "sound": "heal_d"
   }
 }

@@ -12,7 +12,8 @@
     "threatMultiplier": 3.0,
     "color": "bg-emerald-500",
     "actionBarBorderClass": "border-emerald-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "swing"
   },
   "provoke": {
     "id": "provoke",
@@ -27,7 +28,8 @@
     "tags": [],
     "color": "bg-teal-600",
     "actionBarBorderClass": "border-teal-600",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "taunt"
   },
   "breath_of_fire": {
     "id": "breath_of_fire",
@@ -42,7 +44,8 @@
     "threatMultiplier": 2.6,
     "color": "bg-orange-600",
     "actionBarBorderClass": "border-orange-600",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "cleave"
   },
   "fortifying_brew": {
     "id": "fortifying_brew",
@@ -58,7 +61,8 @@
     "tags": [],
     "color": "bg-emerald-800",
     "actionBarBorderClass": "border-emerald-800",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "defensive"
   },
   "purifying_brew": {
     "id": "purifying_brew",
@@ -71,7 +75,8 @@
     "icon": "wow/ability_monk_ironskinbrew",
     "tags": [],
     "damageReduction": 0.3,
-    "damageReductionTicks": 45
+    "damageReductionTicks": 45,
+    "sound": "wall_b"
   },
   "expel_harm": {
     "id": "expel_harm",
@@ -82,7 +87,8 @@
     "healing": 150.0,
     "cooldown": 90,
     "icon": "wow/ability_monk_expelharm",
-    "tags": []
+    "tags": [],
+    "sound": "heal"
   },
   "spinning_crane_kick": {
     "id": "spinning_crane_kick",
@@ -94,7 +100,8 @@
     "cooldown": 50,
     "icon": "wow/ability_monk_cranekick",
     "tags": [],
-    "threatMultiplier": 2.6
+    "threatMultiplier": 2.6,
+    "sound": "cleave_b"
   },
   "spear_hand_strike": {
     "id": "spear_hand_strike",
@@ -106,6 +113,7 @@
     "cooldown": 150,
     "icon": "wow/ability_monk_spearhand",
     "tags": [],
-    "interrupts": true
+    "interrupts": true,
+    "sound": "kick"
   }
 }

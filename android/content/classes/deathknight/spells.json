@@ -12,7 +12,8 @@
     "threatMultiplier": 3.0,
     "color": "bg-red-500",
     "actionBarBorderClass": "border-red-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "swing"
   },
   "dark_command": {
     "id": "dark_command",
@@ -27,7 +28,8 @@
     "tags": [],
     "color": "bg-red-600",
     "actionBarBorderClass": "border-red-600",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "taunt"
   },
   "heart_strike": {
     "id": "heart_strike",
@@ -42,7 +44,8 @@
     "threatMultiplier": 2.6,
     "color": "bg-rose-500",
     "actionBarBorderClass": "border-rose-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "cleave"
   },
   "icebound_fortitude": {
     "id": "icebound_fortitude",
@@ -58,7 +61,8 @@
     "tags": [],
     "color": "bg-sky-700",
     "actionBarBorderClass": "border-sky-700",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "defensive"
   },
   "rune_tap": {
     "id": "rune_tap",
@@ -69,7 +73,8 @@
     "healing": 160.0,
     "cooldown": 120,
     "icon": "wow/spell_deathknight_runetap",
-    "tags": []
+    "tags": [],
+    "sound": "heal"
   },
   "blood_boil": {
     "id": "blood_boil",
@@ -81,7 +86,8 @@
     "cooldown": 50,
     "icon": "wow/spell_deathknight_bloodboil",
     "tags": [],
-    "threatMultiplier": 2.8
+    "threatMultiplier": 2.8,
+    "sound": "cleave_b"
   },
   "vampiric_blood": {
     "id": "vampiric_blood",
@@ -94,7 +100,8 @@
     "icon": "wow/spell_shadow_lifedrain",
     "tags": [],
     "damageReduction": 0.3,
-    "damageReductionTicks": 100
+    "damageReductionTicks": 100,
+    "sound": "wall_b"
   },
   "mind_freeze": {
     "id": "mind_freeze",
@@ -106,7 +113,8 @@
     "cooldown": 150,
     "icon": "wow/spell_deathknight_mindfreeze",
     "tags": [],
-    "interrupts": true
+    "interrupts": true,
+    "sound": "kick"
   },
   "bone_shield": {
     "id": "bone_shield",
@@ -119,6 +127,7 @@
     "damageReduction": 0.2,
     "damageReductionTicks": 60,
     "icon": "wow/ability_deathknight_boneshield",
-    "tags": []
+    "tags": [],
+    "sound": "wall_c"
   }
 }

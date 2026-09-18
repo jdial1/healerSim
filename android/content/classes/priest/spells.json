@@ -15,7 +15,8 @@
     ],
     "balance": {
       "directHealSynergyMultiplier": 1.15
-    }
+    },
+    "sound": "heal"
   },
   "greater_heal": {
     "id": "greater_heal",
@@ -35,7 +36,8 @@
     ],
     "balance": {
       "directHealSynergyMultiplier": 1.15
-    }
+    },
+    "sound": "heal_b"
   },
   "renew": {
     "id": "renew",
@@ -52,7 +54,8 @@
     "glowType": "spell",
     "tags": [
       "synergy-primer-source"
-    ]
+    ],
+    "sound": "hot"
   },
   "circle_of_healing": {
     "id": "circle_of_healing",
@@ -70,7 +73,8 @@
     "tags": [
       "archangel-skip",
       "synergy-primer-source"
-    ]
+    ],
+    "sound": "heal_group"
   },
   "power_word_shield": {
     "id": "power_word_shield",
@@ -82,7 +86,8 @@
     "cooldown": 60,
     "icon": "wow/spell_holy_powerwordshield",
     "tags": [],
-    "shield": 95.0
+    "shield": 95.0,
+    "sound": "shield"
   },
   "hymn_of_hope": {
     "id": "hymn_of_hope",
@@ -94,7 +99,8 @@
     "cooldown": 400,
     "icon": "wow/spell_holy_symbolofhope",
     "tags": [],
-    "manaRegenBuffDurationTicks": 120
+    "manaRegenBuffDurationTicks": 120,
+    "sound": "mana"
   },
   "guardian_spirit": {
     "id": "guardian_spirit",
@@ -105,6 +111,7 @@
     "healing": 280.0,
     "cooldown": 400,
     "icon": "wow/spell_holy_guardianspirit",
-    "tags": []
+    "tags": [],
+    "sound": "heal_c"
   }
 }

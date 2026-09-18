@@ -14,7 +14,8 @@
     "threatMultiplier": 0.85,
     "color": "bg-violet-500",
     "actionBarBorderClass": "border-violet-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "dot"
   },
   "shadow_bolt": {
     "id": "shadow_bolt",
@@ -29,7 +30,8 @@
     "threatMultiplier": 0.9,
     "color": "bg-purple-500",
     "actionBarBorderClass": "border-purple-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "spell"
   },
   "unstable_affliction": {
     "id": "unstable_affliction",
@@ -46,7 +48,8 @@
     "threatMultiplier": 0.9,
     "color": "bg-fuchsia-500",
     "actionBarBorderClass": "border-fuchsia-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "dot_b"
   },
   "seed_of_corruption": {
     "id": "seed_of_corruption",
@@ -61,7 +64,8 @@
     "threatMultiplier": 1.15,
     "color": "bg-indigo-500",
     "actionBarBorderClass": "border-indigo-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "storm"
   },
   "healthstone": {
     "id": "healthstone",
@@ -72,7 +76,8 @@
     "healing": 210.0,
     "cooldown": 300,
     "icon": "wow/inv_stone_04",
-    "tags": []
+    "tags": [],
+    "sound": "heal"
   },
   "demon_armor": {
     "id": "demon_armor",
@@ -85,7 +90,8 @@
     "icon": "wow/spell_shadow_ragingscream",
     "tags": [],
     "damageReduction": 0.25,
-    "damageReductionTicks": 200
+    "damageReductionTicks": 200,
+    "sound": "defensive"
   },
   "shadowburn": {
     "id": "shadowburn",
@@ -96,6 +102,7 @@
     "healing": 165.0,
     "cooldown": 70,
     "icon": "wow/spell_shadow_scourgebuild",
-    "tags": []
+    "tags": [],
+    "sound": "bolt_b"
   }
 }

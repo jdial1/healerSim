@@ -115,6 +115,27 @@ class FeedbackCueTest {
     }
 
     @Test
+    fun `every spell in a class sounds different, and every potion sounds the same`() {
+        val data = Fixtures.data
+        for (cls in PlayerClass.entries) {
+            val cues = data.bundle(cls).spells.values.associate { it.id to castCue(it) }
+            val repeats = cues.entries.groupBy({ it.value }, { it.key }).filterValues { it.size > 1 }
+            assertEquals("$cls shares sounds within the class: $repeats", emptyMap<Cue, List<String>>(), repeats)
+        }
+        // Consumables: one sound for all, whatever each one does.
+        val potions = (data.stash.items.values + listOfNotNull(data.spell(MANA_POTION_ID))).map { castCue(it) }.toSet()
+        assertEquals(setOf(Cue.POTION), potions)
+    }
+
+    @Test
+    fun `every sound content names is one the app has`() {
+        val data = Fixtures.data
+        val named = PlayerClass.entries.flatMap { data.bundle(it).spells.values } + data.stash.items.values
+        val unknown = named.mapNotNull { s -> s.sound?.takeIf { cueNamed(it) == null }?.let { "${s.id}=$it" } }
+        assertEquals(emptyList<String>(), unknown)
+    }
+
+    @Test
     fun `the enemy side is audible`() {
         val add = EnemyAdd(
             id = "a1", kind = AddTemplate.ADD, name = "Defias Henchman",

@@ -18,6 +18,7 @@ import com.jdial.aegis.R
 import com.jdial.aegis.data.Spell
 import com.jdial.aegis.data.SpellSchool
 import com.jdial.aegis.data.SpellType
+import com.jdial.aegis.sim.CONSUMABLE_TAG
 import com.jdial.aegis.sim.DungeonOutcomeKind
 import com.jdial.aegis.sim.GameState
 import kotlinx.coroutines.flow.Flow
@@ -70,6 +71,32 @@ enum class Cue(val sound: Int, val volume: Float) {
     /** The boss changed phase. */
     PHASE(R.raw.sfx_phase, 0.7f),
 
+    // Variants, so each spell in a class has a sound of its own. Named by what
+    // they are, and chosen per spell in content through Spell.sound.
+    HEAL_B(R.raw.sfx_heal_b, 0.5f),
+    HEAL_C(R.raw.sfx_heal_c, 0.5f),
+    HEAL_D(R.raw.sfx_heal_d, 0.5f),
+    HEAL_GROUP_B(R.raw.sfx_heal_group_b, 0.55f),
+    HOT_B(R.raw.sfx_hot_b, 0.45f),
+    MANA(R.raw.sfx_mana, 0.5f),
+    WALL_B(R.raw.sfx_wall_b, 0.6f),
+    WALL_C(R.raw.sfx_wall_c, 0.55f),
+    TAUNT(R.raw.sfx_taunt, 0.55f),
+    KICK(R.raw.sfx_kick, 0.6f),
+    SWING_B(R.raw.sfx_swing_b, 0.45f),
+    STRIKE(R.raw.sfx_strike, 0.5f),
+    BOLT_B(R.raw.sfx_bolt_b, 0.4f),
+    BOLT_C(R.raw.sfx_bolt_c, 0.45f),
+    CLEAVE(R.raw.sfx_cleave, 0.5f),
+    CLEAVE_B(R.raw.sfx_cleave_b, 0.5f),
+    STORM(R.raw.sfx_storm, 0.45f),
+    STORM_B(R.raw.sfx_storm_b, 0.45f),
+    DOT(R.raw.sfx_dot, 0.45f),
+    DOT_B(R.raw.sfx_dot_b, 0.45f),
+
+    /** Every consumable, the mana potion included: a potion sounds like a potion. */
+    POTION(R.raw.sfx_potion, 0.55f),
+
     /** Your cast was refused -- on cooldown, or out of mana. */
     REFUSED(R.raw.sfx_refused, 0.55f),
     CRIT(R.raw.sfx_crit, 0.6f),
@@ -103,6 +130,20 @@ data class CastFeedback(val spellId: String, val result: CastResult)
  */
 fun castCue(spell: Spell?): Cue = when {
     spell == null -> Cue.CAST
+    // Every consumable shares one sound, whatever it does.
+    spell.hasTag(CONSUMABLE_TAG) -> Cue.POTION
+    // Content names its own, so a class's spells can each sound different.
+    spell.sound != null -> cueNamed(spell.sound) ?: effectCue(spell)
+    else -> effectCue(spell)
+}
+
+/** The cue called [name] in content: the lower-case of its constant. */
+fun cueNamed(name: String): Cue? = CUES_BY_NAME[name.lowercase()]
+
+private val CUES_BY_NAME = Cue.entries.associateBy { it.name.lowercase() }
+
+/** The fallback, for a spell content gave no sound: one from what it does. */
+private fun effectCue(spell: Spell): Cue = when {
     spell.dispels -> Cue.DISPEL
     spell.damageReduction != null -> Cue.DEFENSIVE
     spell.school == SpellSchool.DAMAGE -> if (spell.resource == "MANA") Cue.SPELL else Cue.SWING
@@ -173,6 +214,11 @@ fun cuesBetween(prev: GameState, cur: GameState): List<Cue> = buildList {
 }
 
 private fun Cue.haptic(): HapticFeedbackType = when (this) {
+    Cue.POTION, Cue.MANA, Cue.HOT_B, Cue.DOT, Cue.DOT_B -> HapticFeedbackType.SegmentTick
+    Cue.HEAL_B, Cue.HEAL_C, Cue.HEAL_D, Cue.HEAL_GROUP_B, Cue.SWING_B, Cue.STRIKE,
+    Cue.BOLT_B, Cue.BOLT_C, Cue.CLEAVE, Cue.CLEAVE_B, Cue.STORM, Cue.STORM_B, Cue.KICK ->
+        HapticFeedbackType.Confirm
+    Cue.WALL_B, Cue.WALL_C, Cue.TAUNT -> HapticFeedbackType.LongPress
     Cue.CAST, Cue.TELEGRAPH, Cue.HOT, Cue.SELECT, Cue.ENEMY_DOWN, Cue.SHIELD ->
         HapticFeedbackType.SegmentTick
     Cue.REFUSED -> HapticFeedbackType.Reject

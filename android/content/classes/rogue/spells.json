@@ -13,7 +13,8 @@
     "color": "bg-yellow-500",
     "actionBarBorderClass": "border-yellow-500",
     "glowType": "spell",
-    "resource": "ENERGY"
+    "resource": "ENERGY",
+    "sound": "swing"
   },
   "rupture": {
     "id": "rupture",
@@ -31,7 +32,8 @@
     "color": "bg-red-400",
     "actionBarBorderClass": "border-red-400",
     "glowType": "spell",
-    "resource": "ENERGY"
+    "resource": "ENERGY",
+    "sound": "dot"
   },
   "eviscerate": {
     "id": "eviscerate",
@@ -47,7 +49,8 @@
     "color": "bg-orange-500",
     "actionBarBorderClass": "border-orange-500",
     "glowType": "spell",
-    "resource": "ENERGY"
+    "resource": "ENERGY",
+    "sound": "swing_b"
   },
   "fan_of_knives": {
     "id": "fan_of_knives",
@@ -63,7 +66,8 @@
     "color": "bg-lime-500",
     "actionBarBorderClass": "border-lime-500",
     "glowType": "spell",
-    "resource": "ENERGY"
+    "resource": "ENERGY",
+    "sound": "cleave"
   },
   "crimson_vial": {
     "id": "crimson_vial",
@@ -75,7 +79,8 @@
     "cooldown": 100,
     "icon": "wow/ability_rogue_crimsonvial",
     "tags": [],
-    "resource": "ENERGY"
+    "resource": "ENERGY",
+    "sound": "heal"
   },
   "evasion": {
     "id": "evasion",
@@ -89,7 +94,8 @@
     "tags": [],
     "resource": "ENERGY",
     "damageReduction": 0.4,
-    "damageReductionTicks": 80
+    "damageReductionTicks": 80,
+    "sound": "defensive"
   },
   "garrote": {
     "id": "garrote",
@@ -103,6 +109,7 @@
     "tags": [],
     "resource": "ENERGY",
     "hotDuration": 90,
-    "hotHealingPerTick": 9.0
+    "hotHealingPerTick": 9.0,
+    "sound": "dot_b"
   }
 }

@@ -13,7 +13,8 @@
     "color": "bg-amber-500",
     "actionBarBorderClass": "border-amber-500",
     "glowType": "spell",
-    "resource": "RAGE"
+    "resource": "RAGE",
+    "sound": "swing"
   },
   "taunt": {
     "id": "taunt",
@@ -29,7 +30,8 @@
     "threatMultiplier": 1.0,
     "color": "bg-red-500",
     "actionBarBorderClass": "border-red-500",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "taunt"
   },
   "revenge": {
     "id": "revenge",
@@ -45,7 +47,8 @@
     "color": "bg-orange-500",
     "actionBarBorderClass": "border-orange-500",
     "glowType": "spell",
-    "resource": "MANA"
+    "resource": "MANA",
+    "sound": "strike"
   },
   "shield_wall": {
     "id": "shield_wall",
@@ -61,7 +64,8 @@
     "tags": [],
     "color": "bg-sky-600",
     "actionBarBorderClass": "border-sky-600",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "defensive"
   },
   "heroic_strike": {
     "id": "heroic_strike",
@@ -77,7 +81,8 @@
     "threatMultiplier": 2.2,
     "color": "bg-amber-600",
     "actionBarBorderClass": "border-amber-600",
-    "glowType": "spell"
+    "glowType": "spell",
+    "sound": "swing_b"
   },
   "shield_block": {
     "id": "shield_block",
@@ -91,7 +96,8 @@
     "tags": [],
     "resource": "RAGE",
     "damageReduction": 0.25,
-    "damageReductionTicks": 40
+    "damageReductionTicks": 40,
+    "sound": "wall_b"
   },
   "thunder_clap": {
     "id": "thunder_clap",
@@ -104,7 +110,8 @@
     "icon": "wow/spell_nature_thunderclap",
     "tags": [],
     "resource": "RAGE",
-    "threatMultiplier": 3.0
+    "threatMultiplier": 3.0,
+    "sound": "cleave"
   },
   "victory_rush": {
     "id": "victory_rush",
@@ -116,7 +123,8 @@
     "cooldown": 110,
     "icon": "wow/ability_warrior_devastate",
     "tags": [],
-    "resource": "RAGE"
+    "resource": "RAGE",
+    "sound": "heal"
   },
   "pummel": {
     "id": "pummel",
@@ -129,6 +137,7 @@
     "cooldown": 150,
     "interrupts": true,
     "icon": "wow/ability_warrior_punishingblow",
-    "tags": []
+    "tags": [],
+    "sound": "kick"
   }
 }

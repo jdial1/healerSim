@@ -5,12 +5,15 @@
     "type": "DIRECT",
     "manaCost": 0,
     "healing": 0,
-  "cooldown": 300,
-  "manaRegenBuffDurationTicks": 100,
-  "icon": "wow/inv_potion_76",
+    "cooldown": 300,
+    "manaRegenBuffDurationTicks": 100,
+    "icon": "wow/inv_potion_76",
     "color": "bg-blue-500",
     "actionBarBorderClass": "border-blue-400",
     "glowType": "spell",
-    "tags": ["consumable"]
+    "tags": [
+      "consumable"
+    ],
+    "sound": "potion"
   }
 }

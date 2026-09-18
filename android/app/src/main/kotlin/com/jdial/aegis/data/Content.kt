@@ -90,6 +90,12 @@ data class Spell(
     val shield: Double = 0.0,
     /** How long the absorb lasts. Defaults to the shared shield duration. */
     val shieldTicks: Int? = null,
+    /**
+     * The sound it makes, by name (see ui/Feedback.kt's Cue). Set per spell so
+     * no two spells in one class sound alike; unset falls back to one picked
+     * from what the spell does. scripts/assign-sounds.py writes these.
+     */
+    val sound: String? = null,
 ) {
     fun hasTag(tag: String) = tag in tags
 
