@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -52,6 +53,7 @@ data class TutorialStep(
     val title: String,
     val body: String,
     val anchor: TutorialAnchor,
+    val icon: String? = null,
 )
 
 /** Shown once, in order, the first time a player reaches each screen. */
@@ -63,6 +65,7 @@ object Tutorial {
             "tanks keep the enemy's attention, and damage dealers burn it down. Your " +
             "class colours the whole interface.",
         anchor = TutorialAnchor.CENTER,
+        icon = "lorc/winged-shield",
     )
 
     val DUNGEONS = TutorialStep(
@@ -71,6 +74,7 @@ object Tutorial {
         body = "Three trash pulls, then the boss. Locked dungeons need a higher level — " +
             "clear what you can and the rest opens up.",
         anchor = TutorialAnchor.TOP,
+        icon = "lorc/crossed-swords",
     )
 
     // Reordering is now an out-of-combat action, so neither card teaches it as
@@ -83,6 +87,7 @@ object Tutorial {
             "health percent and, when hurt, how much is missing. Watch the mana orb: " +
             "running dry is how runs are lost.",
         anchor = TutorialAnchor.BOTTOM,
+        icon = "wow/spell_holy_flashheal",
     )
 
     /**
@@ -97,6 +102,7 @@ object Tutorial {
             "ahead of the tank and the enemy comes for you. Your healer is one of the " +
             "party frames, and their mana runs out too.",
         anchor = TutorialAnchor.BOTTOM,
+        icon = "wow/spell_fire_fireball02",
     )
 
     /**
@@ -110,6 +116,7 @@ object Tutorial {
             "the enemy on you, and taunt it back when it turns on someone else. Your " +
             "class's resource sits beside the mana orb.",
         anchor = TutorialAnchor.BOTTOM,
+        icon = "wow/ability_warrior_shieldguard",
     )
 
     // --- small cards for things that arrive later ---------------------------
@@ -121,6 +128,7 @@ object Tutorial {
         body = "You levelled up and have a point to spend. The Talents tab shows a badge " +
             "while any are unspent. Points can be refunded any time out of combat.",
         anchor = TutorialAnchor.BOTTOM,
+        icon = "lorc/burning-book",
     )
 
     val TALENTS = TutorialStep(
@@ -130,6 +138,7 @@ object Tutorial {
             "the bottom changes how the class plays. Below the tree: your action bar, " +
             "charms and consumables.",
         anchor = TutorialAnchor.TOP,
+        icon = "lorc/burning-book",
     )
 
     val CHARMS = TutorialStep(
@@ -139,6 +148,7 @@ object Tutorial {
             "Talents tab. Each gives something and takes something. Charms belong to " +
             "every character you make.",
         anchor = TutorialAnchor.CENTER,
+        icon = "wow/inv_misc_candle_01",
     )
 
     val STASH = TutorialStep(
@@ -148,6 +158,7 @@ object Tutorial {
             "Talents tab to take it into the next run. You get one use per run, off the " +
             "global cooldown, and using it spends it from your stash.",
         anchor = TutorialAnchor.CENTER,
+        icon = "wow/inv_potion_70",
     )
 
     val HARD_MODE = TutorialStep(
@@ -156,6 +167,7 @@ object Tutorial {
         body = "A cleared dungeon can be run on hard: enemies have more health and hit " +
             "harder, with an affix on top. It is worth more XP and drops its own consumables.",
         anchor = TutorialAnchor.TOP,
+        icon = "wow/ability_racial_bloodrage",
     )
 
     val KEYSTONES = TutorialStep(
@@ -165,6 +177,7 @@ object Tutorial {
             "little tougher and carries one more affix. A wipe never lowers it. The queue " +
             "lists each affix before you commit.",
         anchor = TutorialAnchor.TOP,
+        icon = "wow/ability_warrior_shieldguard",
     )
 
     val BREATHER = TutorialStep(
@@ -173,6 +186,7 @@ object Tutorial {
         body = "Between pulls nothing attacks. Mana and health recover, and the timer shows " +
             "when the next pull comes.",
         anchor = TutorialAnchor.CENTER,
+        icon = "wow/inv_drink_05",
     )
 
     val ADDS = TutorialStep(
@@ -181,6 +195,7 @@ object Tutorial {
         body = "The boss called help. Some hit hard, some heal the boss, some explode. " +
             "Their frames sit beside the boss, and killing the right one first is the fight.",
         anchor = TutorialAnchor.TOP,
+        icon = "wow/ability_warrior_rallyingcry",
     )
 
     val AGGRO = TutorialStep(
@@ -189,6 +204,7 @@ object Tutorial {
         body = "You pulled threat off the tank. The enemy now hits you instead. Ease off " +
             "until the tank takes it back. Big heals and big crits count too.",
         anchor = TutorialAnchor.TOP,
+        icon = "wow/ability_warrior_cleave",
     )
 
     val ALL = listOf(
@@ -230,10 +246,14 @@ fun TutorialOverlay(step: TutorialStep, onDismiss: () -> Unit) {
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(8.dp).clip(CircleShape).background(accent.core),
-                    )
-                    Spacer(Modifier.height(0.dp))
+                    if (step.icon != null) {
+                        GameIcon(step.icon, size = 36.dp, accent = accent.core)
+                        Spacer(Modifier.width(6.dp))
+                    } else {
+                        Box(
+                            Modifier.size(8.dp).clip(CircleShape).background(accent.core),
+                        )
+                    }
                     BasicText(
                         "  " + step.title.uppercase(),
                         style = AegisType.title.copy(fontSize = 15.sp),

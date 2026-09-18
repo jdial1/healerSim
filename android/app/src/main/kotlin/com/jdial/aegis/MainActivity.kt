@@ -152,16 +152,23 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
     // One tutorial card at a time: first the screen's own, the first time it
     // is reached, then a small card for each thing the moment it first exists.
-    val menu = screen == Screen.Dungeons || screen == Screen.Talents || screen == Screen.Character
     val stash = vm.stash
-    val tutorialStep = listOfNotNull(
+    // A loaded profile may already have everything, so a page shows at most
+    // one card per visit, and only about what is on that page.
+    var shownOn: Screen? by remember { mutableStateOf(null) }
+    val quiet = shownOn == screen && screen != Screen.Combat
+    val tutorialStep = if (quiet) null else listOfNotNull(
         Tutorial.CLASS_SELECT.takeIf { screen == Screen.ClassSelect },
         Tutorial.DUNGEONS.takeIf { screen == Screen.Dungeons },
         Tutorial.combatFor(state.playerRole).takeIf { screen == Screen.Combat },
         Tutorial.TALENTS.takeIf { screen == Screen.Talents },
-        Tutorial.TALENT_POINTS.takeIf { menu && screen != Screen.Talents && state.talentPoints > 0 },
-        Tutorial.CHARMS.takeIf { menu && ownedCharms.isNotEmpty() },
-        Tutorial.STASH.takeIf { menu && stash.isNotEmpty() },
+        Tutorial.TALENT_POINTS.takeIf { screen == Screen.Talents && state.talentPoints > 0 },
+        ownedCharms.firstOrNull()?.let { id ->
+            Tutorial.CHARMS.copy(icon = vm.data.charms[id]?.icon ?: Tutorial.CHARMS.icon)
+        }?.takeIf { screen == Screen.Talents },
+        stash.keys.firstOrNull()?.let { id ->
+            Tutorial.STASH.copy(icon = vm.data.spell(id)?.icon ?: Tutorial.STASH.icon)
+        }?.takeIf { screen == Screen.Talents },
         Tutorial.HARD_MODE.takeIf { screen == Screen.Dungeons && records.values.any { it.clears > 0 } },
         Tutorial.KEYSTONES.takeIf { screen == Screen.Dungeons && keystones.values.any { it > 0 } },
         Tutorial.BREATHER.takeIf { screen == Screen.Combat && state.restTicks > 0 },
@@ -236,7 +243,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                     abandoning -> confirmAbandon = false
                     state.dungeonOutcome != null -> vm.dismissOutcome()
                     queued != null -> queued = null
-                    tutorialStep != null -> vm.completeTutorialStep(tutorialStep.id)
+                    tutorialStep != null -> { vm.completeTutorialStep(tutorialStep.id); shownOn = screen }
                     // Ask, never act: a run is too expensive to lose to a swipe.
                     screen == Screen.Combat -> confirmAbandon = true
                     screen == Screen.ClassSelect -> screen = Screen.Splash
@@ -412,7 +419,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
             if (tutorialBlocking) {
                 TutorialOverlay(
                     step = tutorialStep,
-                    onDismiss = { vm.completeTutorialStep(tutorialStep.id) },
+                    onDismiss = { vm.completeTutorialStep(tutorialStep.id); shownOn = screen },
                 )
             }
 
