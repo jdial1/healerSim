@@ -13,7 +13,7 @@
     "color": "bg-sky-400",
     "actionBarBorderClass": "border-sky-400",
     "glowType": "spell",
-    "sound": "spell"
+    "sound": "bolt_c"
   },
   "fireball": {
     "id": "fireball",
@@ -63,7 +63,7 @@
     "color": "bg-emerald-400",
     "actionBarBorderClass": "border-emerald-400",
     "glowType": "spell",
-    "sound": "dot"
+    "sound": "dot_b"
   },
   "ice_barrier": {
     "id": "ice_barrier",

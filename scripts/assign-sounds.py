@@ -71,7 +71,21 @@ def kind(spell, cls):
     return 'heal'
 
 
-def pick(k, used):
+# A spell whose name says what it is made of prefers the sound of that, when
+# its class still has it free: Frostbolt should sound cold, Fireball hot.
+THEMES = [
+    (('frost', 'ice', 'blizzard', 'chill'), ['bolt_c', 'storm_b']),
+    (('fire', 'flame', 'burn', 'immolat', 'breath_of_fire', 'living_bomb'), ['bolt_b', 'storm', 'dot_b']),
+    (('shadow', 'corruption', 'affliction', 'seed'), ['dot', 'spell']),
+]
+
+
+def pick(k, used, sid=''):
+    for words, prefer in THEMES:
+        if any(w in sid for w in words):
+            for name in prefer:
+                if name not in used and name in POOLS.get(k, []) + sum((POOLS[p] for p in SPILL.get(k, [])), []):
+                    return name
     for pool in [k] + SPILL.get(k, []):
         for name in POOLS[pool]:
             if name not in used:
@@ -91,7 +105,7 @@ for cls_dir in sorted(os.listdir(classes)):
     for sid in order:
         if sid not in spells:
             continue
-        sound = pick(kind(spells[sid], meta['id']), used)
+        sound = pick(kind(spells[sid], meta['id']), used, sid)
         used.add(sound)
         spells[sid]['sound'] = sound
     io.open(path, 'w', encoding='utf-8', newline='\n').write(json.dumps(spells, indent=2, ensure_ascii=False) + '\n')

@@ -7,6 +7,8 @@ cut-down results in res/raw are:
   kenney.nl/assets/{rpg-audio,interface-sounds,ui-audio,impact-sounds}
   opengameart.org/content/rpg-sound-pack                -> oga_rpg/
   opengameart.org/content/fantasy-sound-effects-library -> oga_fantasy/
+  opengameart.org/content/80-cc0-rpg-sfx                -> rpg80/
+  opengameart.org/content/magic-sfx-sample              -> magicsfx/
 
   python scripts/make-sfx.py <that-directory>
 
@@ -34,19 +36,21 @@ K_UI = 'kenney_ui-audio/Audio'
 K_IMPACT = 'kenney_impact-sounds/Audio'
 O_RPG = 'oga_rpg/RPG Sound Pack'
 O_FAN = 'oga_fantasy/Fantasy Sound Library/Wav'
+R80 = 'rpg80'
+MAG = 'magicsfx'
 
 # out name -> (source, seconds to keep, gain)
 CUES = {
     # Healing: the sound the game is named after, and the one heard most.
-    'sfx_heal':        (f'{O_FAN}/Spell_01.wav', 1.10, 0.9),
-    'sfx_heal_group':  (f'{O_FAN}/Spell_03.wav', 1.60, 0.9),
-    'sfx_hot':         (f'{K_IFACE}/pluck_002.ogg', 1.00, 1.0),
-    'sfx_shield':      (f'{O_FAN}/Spell_02.wav', 1.20, 0.85),
-    'sfx_dispel':      (f'{K_IFACE}/glass_002.ogg', 1.00, 0.9),
+    'sfx_heal':          (f'{MAG}/Healing Full.wav', 1.40, 0.85),
+    'sfx_heal_group':    (f'{O_FAN}/Spell_03.wav', 1.60, 0.90),
+    'sfx_hot':           (f'{R80}/item_misc_06.ogg', 0.75, 0.90),
+    'sfx_shield':        (f'{R80}/metal_02.ogg', 0.60, 0.80),
+    'sfx_dispel':        (f'{O_FAN}/Spell_01.wav', 0.90, 0.80),
     # Damage, split by what the class is holding.
-    'sfx_spell':       (f'{O_RPG}/battle/magic1.wav', 0.85, 0.8),
-    'sfx_swing':       (f'{O_RPG}/battle/swing.wav', 0.40, 0.9),
-    'sfx_defensive':   (f'{O_RPG}/inventory/armor-light.wav', 0.60, 1.0),
+    'sfx_spell':         (f'{R80}/spell_01.ogg', 0.65, 0.85),
+    'sfx_swing':         (f'{R80}/blade_01.ogg', 0.35, 0.90),
+    'sfx_defensive':     (f'{R80}/chain_02.ogg', 0.50, 0.90),
     # The window you tap.
     'sfx_select':      (f'{O_FAN}/Menu_Select_00.wav', 0.25, 0.8),
     'sfx_pull':        (f'{K_IMPACT}/impactWood_heavy_001.ogg', 0.90, 0.9),
@@ -57,26 +61,26 @@ CUES = {
     # --- one sound per spell within a class ------------------------------------
     # Variants of each kind, so no two spells a class carries sound alike. A
     # class may share a variant with another class; within one it may not.
-    'sfx_heal_b':      (f'{O_FAN}/Spell_00.wav', 1.10, 0.85),
-    'sfx_heal_c':      (f'{O_FAN}/Spell_04.wav', 1.10, 0.85),
-    'sfx_heal_d':      (f'{K_IFACE}/confirmation_002.ogg', 0.60, 0.9),
-    'sfx_heal_group_b': (f'{K_IFACE}/glass_006.ogg', 1.00, 0.9),
-    'sfx_hot_b':       (f'{K_IFACE}/pluck_001.ogg', 1.00, 1.0),
-    'sfx_mana':        (f'{O_RPG}/inventory/bubble3.wav', 0.75, 0.9),
-    'sfx_wall_b':      (f'{O_RPG}/inventory/chainmail1.wav', 0.60, 1.0),
-    'sfx_wall_c':      (f'{O_RPG}/inventory/metal-ringing.wav', 0.55, 0.9),
-    'sfx_taunt':       (f'{O_RPG}/battle/sword-unsheathe.wav', 0.55, 0.9),
-    'sfx_kick':        (f'{K_IMPACT}/impactPunch_heavy_000.ogg', 0.40, 0.9),
-    'sfx_swing_b':     (f'{O_RPG}/battle/swing2.wav', 0.40, 0.9),
-    'sfx_strike':      (f'{K_IMPACT}/impactPlate_heavy_000.ogg', 0.60, 0.9),
-    'sfx_bolt_b':      (f'{O_RPG}/battle/spell.wav', 0.90, 0.8),
-    'sfx_bolt_c':      (f'{K_IMPACT}/impactGlass_heavy_000.ogg', 0.70, 0.8),
-    'sfx_cleave':      (f'{K_RPG}/chop.ogg', 0.60, 0.9),
-    'sfx_cleave_b':    (f'{K_IMPACT}/impactWood_heavy_002.ogg', 0.60, 0.9),
-    'sfx_storm':       (f'{O_FAN}/Trap_00.wav', 1.00, 0.8),
-    'sfx_storm_b':     (f'{K_IFACE}/glass_005.ogg', 0.80, 0.85),
-    'sfx_dot':         (f'{O_RPG}/inventory/bubble.wav', 0.50, 0.9),
-    'sfx_dot_b':       (f'{K_RPG}/knifeSlice.ogg', 0.50, 0.9),
+    'sfx_heal_b':        (f'{O_FAN}/Spell_00.wav', 1.20, 0.85),
+    'sfx_heal_c':        (f'{O_FAN}/Spell_04.wav', 1.30, 0.85),
+    'sfx_heal_d':        (f'{R80}/item_gem_04.ogg', 0.60, 0.85),
+    'sfx_heal_group_b':  (f'{O_FAN}/Spell_02.wav', 1.40, 0.85),
+    'sfx_hot_b':         (f'{R80}/metal_03.ogg', 0.45, 0.75),
+    'sfx_mana':          (f'{MAG}/Wind effects 5.wav', 1.30, 0.80),
+    'sfx_wall_b':        (f'{K_IMPACT}/impactMetal_heavy_001.ogg', 0.40, 0.90),
+    'sfx_wall_c':        (f'{O_RPG}/inventory/metal-ringing.wav', 0.55, 0.90),
+    'sfx_taunt':         (f'{R80}/creature_roar_02.ogg', 0.90, 0.85),
+    'sfx_kick':          (f'{K_IMPACT}/impactPunch_heavy_001.ogg', 0.45, 0.95),
+    'sfx_swing_b':       (f'{K_IMPACT}/impactMetal_heavy_000.ogg', 0.30, 0.90),
+    'sfx_strike':        (f'{K_IMPACT}/impactPlate_heavy_000.ogg', 0.50, 0.95),
+    'sfx_bolt_b':        (f'{R80}/spell_fire_02.ogg', 1.00, 0.85),
+    'sfx_bolt_c':        (f'{MAG}/Ice attack 2.wav', 1.00, 0.85),
+    'sfx_cleave':        (f'{R80}/stones_01.ogg', 0.60, 0.90),
+    'sfx_cleave_b':      (f'{K_IMPACT}/impactMining_000.ogg', 0.70, 0.90),
+    'sfx_storm':         (f'{R80}/spell_fire_04.ogg', 1.30, 0.85),
+    'sfx_storm_b':       (f'{K_IMPACT}/impactGlass_heavy_001.ogg', 0.45, 0.85),
+    'sfx_dot':           (f'{R80}/misc_01.ogg', 0.40, 0.85),
+    'sfx_dot_b':         (f'{R80}/spell_fire_07.ogg', 0.65, 0.85),
     # Every consumable -- the mana potion and all twenty in the stash -- shares
     # this one: a potion should sound like a potion whichever it is.
     'sfx_potion':      (f'{O_RPG}/inventory/bottle.wav', 0.55, 0.9),
