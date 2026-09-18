@@ -183,7 +183,10 @@ class Engine(val data: GameData) {
         Action.RespecTalents -> respec(state)
         is Action.ReorderActionBar -> reorderActionBar(state, action.from, action.to)
         is Action.SetActionBarSlot -> setActionBarSlot(state, action.index, action.spellId)
-        Action.AbandonDungeon -> state.clearedCombat().copy(isCombatActive = false)
+        // Leaving pays nothing, but it still has to hand back the real level: a
+        // clear and a wipe both do that through the XP award, and walking out
+        // is the one exit that skips it.
+        Action.AbandonDungeon -> tick.awardXp(state.clearedCombat().copy(isCombatActive = false), 0)
         Action.PullNow -> if (state.restTicks <= 0) state else tick.rushNextPull(state).copy(
             restTicks = 0,
             earlyPullBonus = state.earlyPullBonus + state.restTicks * data.encounters.pressure.earlyPullXpPerTick,
@@ -265,10 +268,21 @@ class Engine(val data: GameData) {
         val jitter = data.balance.partyDps.runJitter
         val runDpsJitter = 1 - jitter + rng.nextDouble() * (jitter * 2)
 
-        val trashHp = max(1.0, progression.trashMaxHealth(dungeon) * tick.hardScale(dungeon, state.level, hard, if (hard) keystone else 0))
+        // Level sync. More than one over the range and the run is played at
+        // one over, so a level-25 tank and a level-1 healer can take the
+        // Deadmines together and both be in the same fight. Endless has no
+        // range to sync to. Everything below reads the synced level; XP reads
+        // Participant.trueLevel and pays the real one.
+        val synced = if (dungeon.endless) state.level else syncedLevel(state.level, dungeon.levelMax)
+        val trashHp = max(1.0, progression.trashMaxHealth(dungeon) * tick.hardScale(dungeon, synced, hard, if (hard) keystone else 0))
         return state.clearedCombat().withEachParticipant {
+            val lvl = if (dungeon.endless) it.level else syncedLevel(it.level, dungeon.levelMax)
+            val mana = if (lvl == it.level) it.maxMana else stats.maxMana(it.playerClass, lvl, it.talents)
             it.copy(
-                mana = it.maxMana.toDouble(),
+                level = lvl,
+                syncedFrom = if (lvl < it.level) it.level else 0,
+                maxMana = mana,
+                mana = mana.toDouble(),
                 // Re-derived per run: a save written before roles existed decodes
                 // with the HEALER default, and this corrects it on the next pull.
                 role = it.playerClass?.let(::roleOf) ?: it.role,
@@ -287,15 +301,15 @@ class Engine(val data: GameData) {
             adds = tick.pullAdds(dungeon.id, 0, trashHp, "p0"),
             mechanicCooldown = tick.firstMechanicIn(dungeon.id, 0),
             isCombatActive = true,
-            party = tick.generateParty(cls, state.level, rng),
+            party = tick.generateParty(cls, synced, rng),
             dungeonOutcome = null,
             // The AI healer starts a run full, like the player does. Zero while
             // the player is the healer, where there is no AI one.
             aiHealerMana = if (roleOf(cls) == UnitRole.HEALER) 0.0 else {
-                data.balance.roles.aiHealerMaxMana(state.level)
+                data.balance.roles.aiHealerMaxMana(synced)
             },
             aiHealerManaMax = if (roleOf(cls) == UnitRole.HEALER) 0.0 else {
-                data.balance.roles.aiHealerMaxMana(state.level)
+                data.balance.roles.aiHealerMaxMana(synced)
             },
         ).withMe { me ->
             // The consumable joins the bar for this run only, beside the potion,

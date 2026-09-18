@@ -51,7 +51,7 @@
       "directHealSynergyMultiplierDefault": 1.15,
       "hotPandemicDurationCapMultDefault": 1.3,
       "dispellableCurseCleanseProcPerRank": 0.08,
-      "globalCooldownTicks": 10
+      "globalCooldownTicks": 5
     },
     "priest": {
       "divinityOverhealToShieldPerRating": 0.0045,
@@ -150,9 +150,9 @@
   },
   "classes": {
     "damageScale": {
-      "MAGE": 1.0,
-      "ROGUE": 1.12,
-      "WARRIOR": 1.0,
+      "MAGE": 0.72,
+      "ROGUE": 1.0,
+      "WARRIOR": 0.85,
       "DEATHKNIGHT": 1.0,
       "MONK": 1.0,
       "WARLOCK": 1.0

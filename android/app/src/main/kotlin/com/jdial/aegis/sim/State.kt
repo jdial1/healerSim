@@ -30,6 +30,20 @@ const val PLAYER_UNIT_ID = "5"
 /** The only consumable, referenced from the pipeline, the UI and the loadout. */
 const val MANA_POTION_ID = "mana_potion"
 
+/**
+ * The highest a character may be for [levelMax]'s dungeon before it is synced
+ * down: one over the range. Past that a run is played at this level, so an old
+ * character can come back to an early dungeon with a new one and both of them
+ * are playing the same fight.
+ */
+fun syncCap(levelMax: Int): Int = levelMax + 1
+
+/** The level a character of [level] plays a dungeon topping out at [levelMax] at. */
+fun syncedLevel(level: Int, levelMax: Int): Int = minOf(level, syncCap(levelMax))
+
+/** The level XP is paid on: the real one, even while synced. */
+val Participant.trueLevel: Int get() = if (syncedFrom > 0) syncedFrom else level
+
 /** The tag a spell carries when it is a consumable: from the stash, spent on use. */
 const val CONSUMABLE_TAG = "consumable"
 
@@ -344,6 +358,12 @@ data class Participant(
      */
     val carried: String? = null,
     val carriedUsed: Boolean = false,
+    /**
+     * The level this participant really is, when the run synced them down to
+     * the dungeon's; 0 when it did not. XP is paid on this, never on the synced
+     * level -- a level 25 in the Deadmines fights as a 5 and is paid as a 25.
+     */
+    val syncedFrom: Int = 0,
     val unlockedSpells: List<String> = emptyList(),
     val activeActionBars: List<String> = emptyList(),
     /** Derived from the class's ClassMeta.role. */

@@ -1049,7 +1049,7 @@ class GameTick(
      */
     private fun creditEveryone(s: GameState, localXp: Int, xpForLevel: (Int) -> Int): Map<String, Int> {
         val credited = s.participants.values.filter { it.isHuman }.associate { p ->
-            p.unitId to if (p.unitId == s.localUnitId) localXp else xpForLevel(p.level)
+            p.unitId to if (p.unitId == s.localUnitId) localXp else xpForLevel(p.trueLevel)
         }
         return s.runXpAwards + credited.mapValues { (id, xp) -> (s.runXpAwards[id] ?: 0) + xp }
     }
@@ -1073,6 +1073,8 @@ class GameTick(
     /** Recomputes level, talent points and mana pool after an XP award. */
     private fun withPostRunProgress(s: GameState, xpGained: Int): GameState {
         val newXp = s.xp + xpGained
+        // From the XP, which is always the real one -- this is also what takes
+        // a synced character back to its own level when the run ends.
         val level = progression.levelFromTotalXp(newXp)
         val maxMana = stats.maxMana(s.playerClass, level, s.talents)
         val learned = s.playerClass?.let { data.grantsFor(it, level) }.orEmpty() - s.unlockedSpells.toSet()
@@ -1084,6 +1086,7 @@ class GameTick(
             }
             it.copy(
                 level = level,
+                syncedFrom = 0,
                 maxMana = maxMana,
                 mana = min(maxMana.toDouble(), it.mana),
                 unlockedSpells = it.unlockedSpells + learned,
@@ -1158,7 +1161,7 @@ class GameTick(
 
         val pullsCleared = TRASH_PACK_COUNT - s.trashPullsRemaining
         val paceXp = s.dungeonPace?.let { progression.pace(it).xpMultiplier } ?: 1.0
-        val xpGained = (progression.dungeonFailureXpGain(dungeon, s.level, pullsCleared) * paceXp).roundToInt()
+        val xpGained = (progression.dungeonFailureXpGain(dungeon, s.me.trueLevel, pullsCleared) * paceXp).roundToInt()
 
         val stats0 = runStats(s)
         val advanced = withPostRunProgress(s, xpGained)
@@ -1442,7 +1445,7 @@ class GameTick(
         // Pulling early pays, hard mode pays, and so does company. With none
         // of them this is `* 1.0 * 1.0`, exact.
         val extra = (1 + s.earlyPullBonus) * runBonus(s)
-        val xpGained = (progression.dungeonXpGain(dungeon, s.level) * paceXp * extra).roundToInt()
+        val xpGained = (progression.dungeonXpGain(dungeon, s.me.trueLevel) * paceXp * extra).roundToInt()
         val stats0 = runStats(s)
         // On a clear the web app keeps the mana it had entering this tick, so the
         // final tick's regen is deliberately discarded.

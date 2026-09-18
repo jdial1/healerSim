@@ -35,7 +35,8 @@ class SpellStatsTest {
         var s = engine.newCharacter(PlayerClass.PRIEST, rng).withMe {
             it.copy(level = 30, unlockedSpells = it.unlockedSpells + "greater_heal")
         }
-        s = engine.reduce(s, Action.StartDungeon(data.dungeons.first(), "normal"), rng)
+        // A level-30 dungeon: in the Deadmines a level 30 is synced to 4.
+        s = engine.reduce(s, Action.StartDungeon(data.dungeons.first { 30 <= syncCap(it.levelMax) }, "normal"), rng)
             .let { f -> f.copy(party = f.party.map { it.copy(maxHealth = 1e7, health = 1e6) }) }
 
         val shown = value(spellStats(data.spell("greater_heal")!!, PlayerClass.PRIEST, 30, s.me, stats), "HEAL")

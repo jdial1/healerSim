@@ -23,7 +23,10 @@ class StashTest {
     private fun run(cls: PlayerClass, carry: String?, level: Int = 20): GameState {
         val rng = Rng(2)
         val s = engine.newCharacter(cls, rng).withMe { it.copy(level = level) }
-        return engine.reduce(s, Action.StartDungeon(data.dungeons.first(), "normal", false, 0, carry), rng)
+        // Where a character of this level belongs: in the Deadmines a level 40
+        // is synced down to 4 and would measure a level-4 potion.
+        val dungeon = data.dungeons.first { !it.endless && level <= syncCap(it.levelMax) }
+        return engine.reduce(s, Action.StartDungeon(dungeon, "normal", false, 0, carry), rng)
             .let { f -> f.copy(party = f.party.map { it.copy(maxHealth = 1e6, health = 1e6 / 2) }) }
     }
 

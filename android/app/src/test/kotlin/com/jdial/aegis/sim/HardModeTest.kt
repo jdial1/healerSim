@@ -29,15 +29,18 @@ class HardModeTest {
     }
 
     @Test
-    fun `hard mode is tougher, and tougher still when you have out-levelled it`() {
+    fun `hard mode is tougher, and an out-levelled one is synced rather than scaled`() {
         val plain = run(3, false)
         val heavy = run(3, true)
         assertTrue(heavy.hardMode)
         assertEquals(plain.enemyMaxHealth * hard.healthMultiplier, heavy.enemyMaxHealth, 1e-9)
 
-        // Ten levels above the dungeon's range: the step takes care of that.
+        // Ten levels above the range: level sync plays it at one over, so the
+        // step covers exactly that one level rather than ten. Out-levelling is
+        // handled by making you the dungeon's level, not the dungeon yours.
         val over = run(deadmines.levelMax + 10, true)
-        val step = 1 + 10 * hard.overLevelStep
+        assertEquals(syncCap(deadmines.levelMax), over.me.level)
+        val step = 1 + (syncCap(deadmines.levelMax) - deadmines.levelMax) * hard.overLevelStep
         assertEquals(plain.enemyMaxHealth * hard.healthMultiplier * step, over.enemyMaxHealth, 1e-9)
         assertEquals(hard.damageMultiplier * step, tick.hardDamage(over), 1e-9)
         assertEquals(1.0, tick.hardDamage(plain), 0.0)
