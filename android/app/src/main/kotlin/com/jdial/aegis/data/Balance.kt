@@ -171,6 +171,26 @@ data class RolesBalance(
     /** It triages: nobody gets topped off, so chip damage accumulates. */
     val aiHealerHealBelowFraction: Double = 0.92,
     /**
+     * How often the AI healer commits, in ticks. One is every tick.
+     *
+     * The note above says simulating an AI's *spell choice* is cost without
+     * signal, and that still holds. Its **judgment** is a different thing: a
+     * healer limited only by mana and heal size is a fuel tank, so a tank or
+     * DPS player was graded on whether that tank ran dry and never on anything
+     * they did. A delay is observable without modelling a rotation -- the bar
+     * dips and stays dipped for a beat, and closing that gap is the seat's job.
+     */
+    val aiHealerReactionTicks: Int = 1,
+    /**
+     * Triage by lowest current health instead of by lowest health *fraction*.
+     *
+     * The mistake a real healer makes. A tank at 50 of 130 is in far more
+     * danger than a mage at 40 of 65, and raw numbers say the opposite, so the
+     * squishy one gets topped up while the tank sits low. Left to the player to
+     * notice and answer, which is the whole of the seat.
+     */
+    val aiHealerTriageByRawHealth: Boolean = false,
+    /**
      * How steeply the AI healer's healing and mana grow with level, pivoting
      * on [aiHealerLevelPivot]: 1.0 is the old straight line.
      *

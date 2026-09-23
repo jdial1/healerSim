@@ -12,6 +12,13 @@ import org.junit.Test
  * It is a budget, not a rotation, because the player cannot observe an AI's
  * spell choice -- only whether the bars stayed up and whether it ran dry.
  *
+ * Its *judgment* is a separate thing, and the tests below pin two limits on it.
+ * A healer bounded only by mana and heal size is a fuel tank: a tank or DPS
+ * player was graded on whether that tank ran dry and never on anything they
+ * did. It now answers late, and it triages by raw health, which is the mistake
+ * a real healer makes. Both are visible on the frames without modelling a
+ * rotation, and closing the gap they leave is the seat's whole job.
+ *
  * It heals over time rather than instantly, so its work shows on the party
  * frames like any other heal, and it pays for the whole heal at cast: a healer
  * topping someone up has spent the mana whether or not it all fit. Charging
@@ -92,7 +99,11 @@ class AiHealerTest {
         val r = tick.aiHealerTick(state(999.0), dpsParty(30.0, 80.0, 100.0, 90.0))
         val tank = r.party.first { it.id == "1" }
         assertEquals("health does not jump; the buff does the work", 30.0, tank.health, 0.0)
-        assertEquals(cfg.aiHealerHeal(10), healing(r, "1"), 1e-9)
+        // A beat's worth in one commitment: it acts every
+        // [aiHealerReactionTicks] and heals for all of them, so its throughput
+        // is unchanged and only its timing is late.
+        val beat = cfg.aiHealerReactionTicks
+        assertEquals(cfg.aiHealerHeal(10) * beat, healing(r, "1"), 1e-9)
 
         // Already carrying it, so the next tick goes to the next lowest.
         val again = tick.aiHealerTick(state(999.0), r.party)
@@ -116,7 +127,8 @@ class AiHealerTest {
         val r = tick.aiHealerTick(state(start), dpsParty(80.0, 100.0, 100.0, 100.0))
         assertEquals(
             "the whole heal was charged, not the part that fit",
-            start + cfg.aiHealerRegen(10) - heal * cfg.aiHealerManaPerHealPoint,
+            start + cfg.aiHealerRegen(10) -
+                heal * cfg.aiHealerReactionTicks * cfg.aiHealerManaPerHealPoint,
             r.manaLeft,
             1e-9,
         )
@@ -218,5 +230,44 @@ class AiHealerTest {
         val low = s.copy(aiHealerMana = s.aiHealerManaMax * 0.2, restTicks = 30)
         val rested = engine.reduce(low, Action.Tick(1), rng)
         assertTrue("the breather should refill it", rested.aiHealerMana > low.aiHealerMana + cap * 0.01)
+    }
+
+    @Test
+    fun `it triages by raw health, which undervalues the tank`() {
+        // The tank at 40 of 130 is in far more danger than the DPS at 30 of 65,
+        // and raw numbers say the opposite. The AI reads the raw numbers.
+        val party = listOf(
+            unit("1", UnitRole.TANK, 40.0, maxHp = 130.0),
+            unit("2", UnitRole.DPS, 30.0, maxHp = 65.0),
+            unit("3", UnitRole.HEALER, 100.0),
+            unit(PLAYER_UNIT_ID, UnitRole.DPS, 100.0),
+        )
+        assertTrue("this test only means anything with the flag on", cfg.aiHealerTriageByRawHealth)
+        val r = tick.aiHealerTick(state(999.0), party)
+        assertTrue("the DPS looked lower and got the heal", healing(r, "2") > 0)
+        assertEquals("the tank, in real danger, got nothing", 0.0, healing(r, "1"), 0.0)
+    }
+
+    @Test
+    fun `it commits only on its own beat, and for the whole beat`() {
+        val beat = cfg.aiHealerReactionTicks
+        assertTrue("this test only means anything with a delay", beat > 1)
+
+        // A tick that is not its beat: nothing is healed, and the only thing
+        // that moves is regen.
+        val off = tick.aiHealerTick(
+            state(100.0).copy(combatElapsedTicks = 1),
+            dpsParty(30.0, 80.0, 100.0, 90.0),
+        )
+        assertEquals("no heal off the beat", 0.0, off.healed, 0.0)
+        assertEquals(100.0 + cfg.aiHealerRegen(10), off.manaLeft, 1e-9)
+
+        // On the beat it heals for every tick it skipped, so skipping ticks is
+        // not a discount. A delay that cut its spend would be a buff.
+        val on = tick.aiHealerTick(
+            state(999.0).copy(combatElapsedTicks = beat),
+            dpsParty(30.0, 80.0, 100.0, 90.0),
+        )
+        assertEquals(cfg.aiHealerHeal(10) * beat, on.healed, 1e-9)
     }
 }

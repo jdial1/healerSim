@@ -527,6 +527,17 @@ fun OutcomeDialog(
                     StatRow("DPS", String.format("%.1f", outcome.stats.dps))
                 }
 
+                // On a loss, name who went down first and when. The run already
+                // knew; it reported a count, which is a number you cannot learn
+                // anything from. Not shown on a clear, where a death that was
+                // recovered from is the story of a good run rather than a cause.
+                if (outcome.kind != DungeonOutcomeKind.SUCCESS && outcome.firstDownName.isNotEmpty()) {
+                    StatRow(
+                        "First down",
+                        "${outcome.firstDownName}  ·  ${clearTimeLabel(outcome.firstDownTick)}",
+                    )
+                }
+
                 // Levelling up can unlock a spell rank or a stronger potion. The
                 // web app shows this; Android computed it and dropped it.
                 val rewards = outcome.upgradedSpellIds

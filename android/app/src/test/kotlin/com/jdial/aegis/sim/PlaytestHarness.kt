@@ -54,6 +54,8 @@ class PlaytestHarness {
     internal data class Run(
         val cls: String, val level: Int, val dungeon: String, val hard: Boolean, val seed: Int,
         val outcome: String, val ticks: Int, val deaths: Int, val missedKicks: Int,
+        /** Who fell first, and at which tick. A death count cannot be read back. */
+        val firstDown: String, val firstDownTick: Int,
         val kicks: Int, val dispels: Int, val defensives: Int, val addsKilled: Int,
         val xp: Int, val dps: Double, val hps: Double, val lowestHealthPct: Double,
         val aiHealerLowPct: Double,
@@ -64,6 +66,7 @@ class PlaytestHarness {
     ) {
         fun json(): String = """{"cls":"$cls","level":$level,"dungeon":"$dungeon","hard":$hard,"seed":$seed,""" +
             """"outcome":"$outcome","ticks":$ticks,"deaths":$deaths,"missedKicks":$missedKicks,""" +
+            """"firstDown":"$firstDown","firstDownTick":$firstDownTick,""" +
             """"kicks":$kicks,"dispels":$dispels,"defensives":$defensives,"addsKilled":$addsKilled,""" +
             """"xp":$xp,"dps":${"%.1f".format(dps)},"hps":${"%.1f".format(hps)},""" +
             """"lowestHealthPct":${"%.1f".format(lowestHealthPct)},""" +
@@ -312,6 +315,8 @@ class PlaytestHarness {
             ticks = outcome?.clearTicks ?: ticks,
             deaths = outcome?.deaths ?: 0,
             missedKicks = outcome?.missedKicks ?: 0,
+            firstDown = outcome?.firstDownName ?: s.runFirstDownName,
+            firstDownTick = outcome?.firstDownTick ?: s.runFirstDownTick,
             kicks = kicks, dispels = dispels, defensives = defensives, addsKilled = addsKilled,
             xp = outcome?.xpGained ?: 0,
             dps = outcome?.stats?.dps ?: 0.0,

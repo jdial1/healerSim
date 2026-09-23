@@ -317,6 +317,12 @@ data class DungeonOutcome(
     val clearTicks: Int = 0,
     val deaths: Int = 0,
     val missedKicks: Int = 0,
+    /**
+     * Who fell first, and when. The result screen names them on a loss: a
+     * failure you cannot attribute is noise rather than a lesson.
+     */
+    val firstDownName: String = "",
+    val firstDownTick: Int = 0,
 )
 
 /**
@@ -554,6 +560,17 @@ data class GameState(
     /** Damage this client's player has dealt this run. Zero for a healer. */
     val runDamageDealt: Double = 0.0,
     /**
+     * Who went down first this run, and at which combat tick.
+     *
+     * [runDeaths] is a count, so a wipe could say how many fell and never who
+     * or when. "The boss spiked" and "I lost the tank at forty seconds" are the
+     * same run described by a player who cannot see the cause and one who can.
+     * Set once and never overwritten -- the first one is the one that explains
+     * the rest.
+     */
+    val runFirstDownName: String = "",
+    val runFirstDownTick: Int = 0,
+    /**
      * XP awarded this run, per party slot, for every human in it.
      *
      * The engine only ever applied XP to the local player, and the frame
@@ -680,6 +697,8 @@ data class GameState(
         runHealOverheal = 0.0,
         runManaSpentHealing = 0.0,
         runDamageDealt = 0.0,
+        runFirstDownName = "",
+        runFirstDownTick = 0,
         runXpAwards = emptyMap(),
     )
 }

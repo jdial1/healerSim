@@ -16,6 +16,15 @@ data class DungeonRecord(
     val lastTicks: Int = 0,
     val bestDps: Double = 0.0,
     val bestHps: Double = 0.0,
+    /**
+     * The most healing ever got out of a point of mana here.
+     *
+     * [bestDps] and [bestHps] are volume: a player who fires everything
+     * constantly beats one who waited. This is the number that rewards the
+     * waiting, and it is the only record a healer can improve without going
+     * faster.
+     */
+    val bestHpm: Double = 0.0,
     /** Cleared with nobody down. */
     val clean: Boolean = false,
     /** Cleared with every kickable cast kicked. */
@@ -53,6 +62,7 @@ fun Map<String, DungeonRecord>.withRun(outcome: DungeonOutcome): Pair<Map<String
         lastTicks = outcome.clearTicks,
         bestDps = maxOf(was.bestDps, outcome.stats.dps),
         bestHps = maxOf(was.bestHps, outcome.stats.hps),
+        bestHpm = maxOf(was.bestHpm, outcome.stats.hpm),
         clean = was.clean || clean,
         sharp = was.sharp || sharp,
     )

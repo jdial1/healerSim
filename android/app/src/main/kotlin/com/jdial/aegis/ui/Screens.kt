@@ -587,7 +587,14 @@ private fun DungeonCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     BasicText(
                         "BEST ${clearTimeLabel(record.bestTicks)}   ·   ${record.clears} CLEAR" +
-                            if (record.clears == 1) "" else "S",
+                            (if (record.clears == 1) "" else "S") +
+                            // The efficiency record, beside the speed one. Time
+                            // rewards firing everything; this rewards the heal
+                            // you did not need to cast, and it is the only
+                            // record here a healer can push without going
+                            // faster. bestHps and bestDps are volume, and are
+                            // deliberately still not shown.
+                            (if (record.bestHpm > 0) "   ·   ${"%.2f".format(record.bestHpm)} HPM" else ""),
                         style = AegisType.label.copy(color = Gilt.core),
                     )
                     Spacer(Modifier.weight(1f))

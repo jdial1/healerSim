@@ -298,6 +298,11 @@ class GameTick(
     /** The AI healer's heal over time, so its work shows on the party frames. */
     private val AI_HEAL_BUFF = "ai_mending"
 
+    /** Whoever went from alive to dead between these two snapshots of the party. */
+    private fun fellThisTick(before: List<Unit>, after: List<Unit>): Unit? =
+        after.filter { u -> !u.isAlive && before.any { it.id == u.id && it.isAlive } }
+            .minByOrNull { it.id }
+
     internal fun aiHealerTick(s: GameState, party: List<Unit>): AiHealResult {
         val cfg = data.balance.roles
         val healer = party.firstOrNull {
@@ -313,14 +318,32 @@ class GameTick(
             s.aiHealerMana + cfg.aiHealerRegen(healer.level),
         )
 
-        // Lowest health fraction, ties broken by id so the choice cannot depend
-        // on party order. Someone already carrying the AI's heal is skipped:
-        // it is a heal over time now, and stacking it on one target would be
-        // the AI paying twice for healing that lands once.
+        // It only commits on its own beat, and when it does it commits the whole
+        // beat's worth at once (see [amount] below).
+        //
+        // Skipping ticks without scaling the commitment up would have *lowered*
+        // its mana spend, which is a buff: it would finish fights with mana in
+        // hand, and `IdlePlayerTest` rightly fails that -- a healer that never
+        // tires makes every other seat optional. Throughput is unchanged. Only
+        // the timing is worse, and timing is the part the player answers.
+        val beat = cfg.aiHealerReactionTicks.coerceAtLeast(1)
+        if (beat > 1 && s.combatElapsedTicks % beat != 0) {
+            return AiHealResult(party, mana, 0.0)
+        }
+
+        // Ties broken by id so the choice cannot depend on party order. Someone
+        // already carrying the AI's heal is skipped: it is a heal over time now,
+        // and stacking it on one target would be the AI paying twice for
+        // healing that lands once.
+        val triage: Comparator<Unit> = if (cfg.aiHealerTriageByRawHealth) {
+            compareBy<Unit> { it.health }.thenBy { it.id }
+        } else {
+            compareBy<Unit> { it.health / it.maxHealth }.thenBy { it.id }
+        }
         val hurt = party.filter { it.isAlive && it.maxHealth > 0 }
             .filter { it.health / it.maxHealth < cfg.aiHealerHealBelowFraction }
             .filter { u -> u.buffs.none { it.id == AI_HEAL_BUFF } }
-            .minWithOrNull(compareBy<Unit> { it.health / it.maxHealth }.thenBy { it.id })
+            .minWithOrNull(triage)
             ?: return AiHealResult(party, mana, 0.0)
 
         // Paid in full, on the heal it commits to rather than the part that
@@ -328,7 +351,7 @@ class GameTick(
         // mana either way, and charging only for what fit is why the AI's mana
         // never moved: it could carry a party through a whole dungeon without
         // tiring, which made the tank's seat optional.
-        val amount = cfg.aiHealerHeal(healer.level)
+        val amount = cfg.aiHealerHeal(healer.level) * beat
         val cost = amount * cfg.aiHealerManaPerHealPoint
         if (cost > mana) return AiHealResult(party, mana, 0.0)
 
@@ -1200,6 +1223,8 @@ class GameTick(
                 clearTicks = s.combatElapsedTicks,
                 deaths = s.runDeaths,
                 missedKicks = s.runMissedKicks,
+                firstDownName = s.runFirstDownName,
+                firstDownTick = s.runFirstDownTick,
                 hardMode = s.hardMode,
                 keystone = s.keystone,
                 pace = s.dungeonPace ?: "normal",
@@ -1393,6 +1418,14 @@ class GameTick(
             // This client's own damage: its casts and its DoTs (see threatByActor).
             runDamageDealt = s.runDamageDealt + s.me.pendingEnemyDamage + enemyDots + s.me.pendingAddDamage.values.sum(),
             runDeaths = s.runDeaths + max(0, s.party.count { it.isAlive } - sys.party.count { it.isAlive }),
+            // The first to fall, named once. Ties broken by id, for the same
+            // reason the AI healer's triage is: the answer cannot depend on
+            // party order.
+            runFirstDownName = s.runFirstDownName.ifEmpty {
+                fellThisTick(s.party, sys.party)?.name ?: ""
+            },
+            runFirstDownTick = if (s.runFirstDownName.isNotEmpty()) s.runFirstDownTick
+            else if (fellThisTick(s.party, sys.party) != null) s.combatElapsedTicks else 0,
             adds = addsNow,
             bossAddWaves = s.bossAddWaves + if (callAdds) 1 else 0,
             bossPhase = s.bossPhase + if (enterPhase) 1 else 0,
@@ -1509,6 +1542,8 @@ class GameTick(
                 clearTicks = s.combatElapsedTicks,
                 deaths = s.runDeaths,
                 missedKicks = s.runMissedKicks,
+                firstDownName = s.runFirstDownName,
+                firstDownTick = s.runFirstDownTick,
                 hardMode = s.hardMode,
                 keystone = s.keystone,
                 pace = s.dungeonPace ?: "normal",
