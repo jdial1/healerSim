@@ -25,6 +25,21 @@ data class DungeonRecord(
      * faster.
      */
     val bestHpm: Double = 0.0,
+    /**
+     * The least of this seat's own effort ever wasted here, as a percentage.
+     *
+     * -1 until the first clear, because nought percent waste is a real and
+     * excellent reading and cannot double as "unset" the way [bestTicks]'s zero
+     * can.
+     *
+     * Measured against this character's own history and nothing else. A single
+     * threshold could not work: waste means overheal to a healer, a defensive
+     * left ready to a tank and damage past the line to a damage dealer, and the
+     * three do not live on the same scale. Your own best is the only comparison
+     * that means the same thing in every seat -- and the only one this soul
+     * allows.
+     */
+    val lowestWastePct: Double = -1.0,
     /** Cleared with nobody down. */
     val clean: Boolean = false,
     /** Cleared with every kickable cast kicked. */
@@ -43,9 +58,12 @@ data class RunHighlights(
     val keystone: Int = 0,
     /** The consumable this clear dropped. */
     val found: com.jdial.aegis.data.Spell? = null,
+    /** Less of this seat's effort wasted here than ever before. */
+    val leanest: Boolean = false,
 ) {
     val any: Boolean get() =
-        newBest || firstClear || clean || sharp || charm != null || keystone > 0 || found != null
+        newBest || firstClear || clean || sharp || leanest ||
+            charm != null || keystone > 0 || found != null
 }
 
 /** A cleared dungeon's mark on the record, and what it was worth saying. */
@@ -56,6 +74,11 @@ fun Map<String, DungeonRecord>.withRun(outcome: DungeonOutcome): Pair<Map<String
     val clean = outcome.deaths == 0
     val sharp = outcome.missedKicks == 0
     val newBest = outcome.clearTicks > 0 && (was.bestTicks == 0 || outcome.clearTicks < was.bestTicks)
+    // Time and waste pull against each other -- firing everything is fast and
+    // wasteful -- so they are kept as two records rather than combined. A run
+    // can set one, the other, both, or neither, and there is deliberately no
+    // score that says which clear was better.
+    val leanest = was.lowestWastePct < 0 || outcome.stats.wastePct < was.lowestWastePct
     val now = was.copy(
         clears = was.clears + 1,
         bestTicks = if (newBest) outcome.clearTicks else was.bestTicks,
@@ -63,6 +86,7 @@ fun Map<String, DungeonRecord>.withRun(outcome: DungeonOutcome): Pair<Map<String
         bestDps = maxOf(was.bestDps, outcome.stats.dps),
         bestHps = maxOf(was.bestHps, outcome.stats.hps),
         bestHpm = maxOf(was.bestHpm, outcome.stats.hpm),
+        lowestWastePct = if (leanest) outcome.stats.wastePct else was.lowestWastePct,
         clean = was.clean || clean,
         sharp = was.sharp || sharp,
     )
@@ -71,6 +95,7 @@ fun Map<String, DungeonRecord>.withRun(outcome: DungeonOutcome): Pair<Map<String
         firstClear = was.clears == 0,
         clean = clean && !was.clean,
         sharp = sharp && !was.sharp,
+        leanest = leanest && was.clears > 0,
     )
 }
 

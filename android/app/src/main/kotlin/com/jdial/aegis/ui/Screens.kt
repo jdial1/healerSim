@@ -594,7 +594,17 @@ private fun DungeonCard(
                             // record here a healer can push without going
                             // faster. bestHps and bestDps are volume, and are
                             // deliberately still not shown.
-                            (if (record.bestHpm > 0) "   ·   ${"%.2f".format(record.bestHpm)} HPM" else ""),
+                            (if (record.bestHpm > 0) "   ·   ${"%.2f".format(record.bestHpm)} HPM" else "") +
+                            // Beside the clear time, never folded into it. The two
+                            // pull against each other and there is no score here
+                            // that says which run was the better one.
+                            (
+                                if (record.lowestWastePct >= 0) {
+                                    "   ·   ${record.lowestWastePct.toInt()}% WASTED"
+                                } else {
+                                    ""
+                                }
+                                ),
                         style = AegisType.label.copy(color = Gilt.core),
                     )
                     Spacer(Modifier.weight(1f))

@@ -277,6 +277,104 @@ it per encounter.
 
 ---
 
+# Round four: further out
+
+Round three borrowed from games. This round widens to disciplines that solved the
+same problems without calling them games: crews who hold stations, clinicians who
+triage, musicians who read parts rather than scores, and people who design
+information for a living. A soul built on "one seat of five, answerable for what
+the others cost you" has more in common with a cockpit than with most of its own
+genre.
+
+**Shipped from round three:** 52 (the telegraph's number), 55 (habits), 56 (a
+tank metric that moves, on the third attempt). The rest of round three is still
+open.
+
+Confidence is marked as before. Where a real practice is the source it is named
+as a design borrow and nothing more.
+
+## Let one go to save two — mass-casualty triage
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 66 | Field triage sorts casualties into categories including one for those who cannot be saved with the resources present, so effort goes where it changes an outcome. **High** on the practice | Mark a frame **unsavable** when the incoming figure already exceeds health, shield and everything the seat could land in the window | The healer stops pouring a full cast into someone who is going to die anyway and covers the two who will live, which is the hardest decision the role has and one the game has never actually asked | Answerable vigilance | Pillar 2, Pillar 3. **Only possible because #52 shipped** -- the arithmetic now exists. **The constraint:** it must state a fact, never advise; the frame says what will happen, not what to do |
+
+## Say nothing that does not change a decision — aviation and motorsport
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 67 | The sterile cockpit rule: below a set altitude, non-essential communication stops. **High** | During a telegraphed cast, the frames suppress everything not actionable in that window -- level labels, expired auras, records | The densest second of the fight is also its quietest screen, so the thing that matters is the thing you see | Answerable vigilance | `interface_voice` *Say It Once*, `unreadable_screen` |
+| 68 | A race engineer transmits only what changes the driver's next decision. **Medium** on specifics, high on the principle | An audit pass over every string in combat: if it cannot change what the player does in the next few seconds, it belongs on the result screen or nowhere | Players stop filtering the interface and start trusting it | Cool focus | `interface_voice` |
+| 69 | Clinical alarm fatigue: past a handful of simultaneous alarms, staff stop responding to all of them. **High** on the finding | A hard cap on simultaneous alerts, where a new one must displace the least urgent rather than join it | Every alert that survives is worth looking at, which is the only way an alert keeps working | Answerable vigilance | `buzzer`, `cheerful_toast`, `audio_information` |
+
+## The part, then the score — orchestral scoring
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 70 | A player reads their own part; only the conductor holds the full score. **High** | After a run ends, offer the **full score**: what the other four seats were dealing with, tick by tick, in the fight you just played | Players learn why the tank was silent for nine seconds, and the next run from that seat starts with that knowledge | Answerable vigilance | Pillar 3, `legible_failure`. **The constraint:** after the run, never during -- and it shows what the seats *faced*, never how well anyone played them, or it is `The Grade` |
+
+## Simple on the surface, deep underneath — Magic: The Gathering design
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 71 | Lenticular design: a card reads plainly to a new player and reveals its depth to an expert, with no separate text for either. **High** -- it is Rosewater's own term | Write charm and talent text so the first line is what it does and the second is what it costs, with the interaction left implicit for whoever is looking for it | A new player reads a sentence, an expert reads a build, and neither needs a different game | Cool focus | `depth_without_an_on_ramp` -- the pitfall Vigil inherits from Loathing, and the one a phone game with no wiki is most exposed to |
+
+## The same place, played differently — *Hitman*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 72 | Mastery per location unlocks new starting conditions for that location, not global power. **High** | A per-dungeon mastery track that unlocks *starting* options there -- open at the boss, begin with a charm equipped, start a pull in | Replaying a place becomes a different approach rather than a higher number, which is exactly what keystones do to difficulty and nothing yet does to approach | Cool focus | Career, `difficulty_ladder`, `grind_disguised_as_progress` |
+
+## Acting off your own turn — tabletop reactions
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 73 | A reaction is spent outside your turn, in response to something specific. **High** | An ability castable *only* during a telegraph window, costing something the rotation wanted | The wind-up stops being a countdown you watch and becomes a window you act in, which is where a seat's best play should live | Answerable vigilance | Pillar 3, `synergy_engines`. Pairs with #52 and #66 |
+
+## Practise the tell — fighting-game training mode
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 74 | Training mode repeats one situation on demand until it is learned. **High** | A drill: one boss cast, on a loop, no rewards, instant reset | A player learns a tell in ninety seconds instead of across six wipes | Cool focus | `workbench`. Distinct from the lab (#42): the lab measures a build, a drill teaches a hand |
+
+## The rulebook is on the desk — *Papers, Please*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 75 | The rules change per shift and the book is yours to consult mid-shift. **High** | An in-run reference for what this run's affixes and keystone actually do, openable without leaving the fight | A player can check the rule instead of learning it from a wipe, and the game still never tells them what to do about it | Cool focus | `trusting_the_player`, `hidden_math` |
+
+## Share the result, not the answer — *Wordle*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 76 | The share grid conveys a result and spoils nothing. **High** | A clear as a short shareable string: place, keystone, time, waste, nobody-down -- and no build, no route, no advice | Results travel between people who already talk, without a leaderboard and without spoiling how it was done | Cool focus | `social_safety`, *Designs Travel as Text*. **The constraint:** no identity attached and nothing aggregated anywhere |
+
+## Every pixel earns its place — information design
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 77 | Tufte's data-ink ratio: ink that carries no data should be removed. **High** | Audit the party frame element by element and delete anything that carries no data at the moment it is shown | The frame gets denser in information and quieter in decoration, at the row heights a phone actually has | Cool focus | Already latent in the code -- "a title line above a bar is height that carries no data" is this rule, unnamed. Naming it makes it an audit rather than an instinct |
+
+## A second bar that inverts the question — *Sekiro*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 78 | Posture sits beside health and changes what the fight is about: pressure, not attrition. **High** | An enemy composure only one seat can erode, which when broken opens a window for the whole party | That seat's job stops being throughput and becomes timing, and the party's damage has a rhythm rather than a rate | Answerable vigilance | Pillar 3, *Each Seat Owns One Number*. **The constraint:** one seat erodes it, or it is a second health bar for everybody |
+
+## Annotate, never rate — chess notation
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 79 | Annotation marks a move as interesting, dubious or brilliant without scoring the player. **High** | The post-run log marks events as notable -- the cast that landed, the cooldown that came late -- and never attaches a rating to any of them | Players read their run as a sequence of interesting moments rather than a report card | Answerable vigilance | `legible_failure`, *Never Grade the Others*. The distinction this makes precise: an annotated *event* is not a graded *player* |
+
+## The tool only one seat carries — *Deep Rock Galactic*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 80 | Each class carries a traversal tool the others depend on, so the kit interlocks outside combat as well as in it. **High** | One out-of-combat utility per seat that the party needs -- opening a shortcut, disarming a hazard between pulls | A seat's value is visible before the fight starts, not only in the middle of one | Answerable vigilance | Pillar 1 *The Hole Is the Job*. **The risk:** the inverse of `solo_wizard` -- if every seat can eventually do all of them, the interlock dissolves |
+
+---
+
 ## Ideas the soul rules out
 
 Worth writing down, because they are the ones that will keep getting suggested.
@@ -302,3 +400,5 @@ designs in their own games and would quietly dismantle this one.
 |---|---|---|
 | *XCOM*'s hit chance | Show the odds, then roll after the player commits | This is the clearest possible violation of **The Dice**. XCOM's whole drama is the 95% that missed; Vigil's promise is that a loss traces to a decision, and a coin flip after the decision severs that. Its influence here is as a counterexample, which is why the soul spells out that a *target* roll is allowed and an *outcome* roll is not. |
 | *Left 4 Dead*'s AI Director | Pace encounters against how the player is doing | Rubber-banding makes a run unreconstructable: the same play produces different fights, so the player cannot learn the encounter and cannot trace a wipe. It also quietly grades the player in order to decide. The affix and keystone systems already give variety the player can *see before committing*, which is the legible version of the same goal. |
+| *Dishonored*'s chaos system | Track how the player plays and change the world in response | It grades you, and it grades you *morally*. Vigil's whole contract is that you are answerable for your seat and never scored for it, and a system that silently rates your play and then alters the game is the most invasive possible version of `The Grade`. |
+| *Kerbal Space Program*'s revert-to-launch | Undo a run that went wrong | `backdoor_rewind`. The receipt is the product here -- the first faller, the let-through cast, the waste figure. An undo makes every one of them optional, and a consequence you can decline is not a consequence. |

@@ -1365,9 +1365,19 @@ private fun PartyRow(
                 // shield is visibly the answer to it.
                 val hit = state.enemyCast?.incoming?.get(unit.id) ?: 0.0
                 if (hit > 0 && !dead) {
+                    // Field triage names the ones it cannot save, so effort goes
+                    // where it changes an outcome. Saying "LETHAL" rather than
+                    // leaving the player to compare two numbers under pressure is
+                    // the whole value: the hardest call the seat has is whether to
+                    // spend a cast here at all, and it can only be made if the
+                    // answer is legible in the half-second available.
+                    //
+                    // It states what will happen and never what to do about it --
+                    // a shield or a big heal may still beat it, and the game does
+                    // not have an opinion on whether to try.
                     val lethal = hit >= unit.health + unit.shield
                     BasicText(
-                        "-${hit.roundToInt()}",
+                        if (lethal) "LETHAL -${hit.roundToInt()}" else "-${hit.roundToInt()}",
                         modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp),
                         style = AegisType.numeric.copy(
                             fontSize = 12.sp,
@@ -1528,7 +1538,14 @@ private fun PartyRow(
                     // percentage changes every cast, so the live number takes
                     // the line when there is one. The row keeps its height
                     // either way.
-                    if (rowHeight > 56.dp) {
+                    // The sterile cockpit rule: below a set altitude, non-essential
+                    // communication stops. While a cast is winding up at this
+                    // frame, the secondary line carries nothing that can change
+                    // what the player does in that window -- a level never can,
+                    // and the other quantity is already the large line's
+                    // companion -- so it stands down until the cast lands.
+                    val sterile = hit > 0 && !dead
+                    if (rowHeight > 56.dp && !sterile) {
                         // Whichever of the two the large line above did not take.
                         val (small, tint) = when {
                             dead -> "LV ${unit.level}" to Ink.secondary
