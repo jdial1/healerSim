@@ -251,7 +251,15 @@ class GameTick(
         // It has to notice first. A tank that taunts on the frame the boss turns
         // is a tank nobody has to cover for, and then the healer's seat is graded
         // on nothing but whether the AI healer's mana held.
-        val noticed = offTank >= data.balance.roles.aiTankNoticeTicks
+        // "late" is slower to see it, "steady" quicker. The habit scales the
+        // balance number rather than replacing it, so one dial still tunes them
+        // all and a habit is a character rather than a second set of numbers.
+        val notice = when (tank?.habit) {
+            "late" -> data.balance.roles.aiTankNoticeTicks * 2
+            "steady" -> data.balance.roles.aiTankNoticeTicks / 2
+            else -> data.balance.roles.aiTankNoticeTicks
+        }
+        val noticed = offTank >= notice
         if (tank == null || cooldown > 0 || !noticed ||
             s.enemyTargetId == null || s.enemyTargetId == tank.id
         ) {
@@ -296,9 +304,13 @@ class GameTick(
         // There has to be a threat table before there is anything to overtake.
         if (s.combatElapsedTicks < cfg.aiDpsGreedEveryTicks) return emptyMap()
         if (s.combatElapsedTicks % cfg.aiDpsGreedEveryTicks >= cfg.aiDpsGreedTicks) return emptyMap()
-        val greedy = s.party
+        val candidates = s.party
             .filter { it.role == UnitRole.DPS && it.isAlive && !s.isHuman(it.id) }
-            .minByOrNull { it.id } ?: return emptyMap()
+            // "careful" never overreaches; "greedy" goes first when both are
+            // present. Still no rng: the sort is stable and id breaks ties.
+            .filter { it.habit != "careful" }
+            .sortedWith(compareByDescending<Unit> { it.habit == "greedy" }.thenBy { it.id })
+        val greedy = candidates.firstOrNull() ?: return emptyMap()
         // Its own share of the scripted pool, again, times the excess. The share
         // is recomputed rather than read back off the unit because threat on the
         // unit is cumulative and this is a per-tick quantity.
@@ -358,24 +370,58 @@ class GameTick(
      * counted since before the game had any other role, and duplicating it here
      * would give one quantity two sources of truth.
      */
-    private fun seatEffort(s: GameState, enemyDots: Double): Double =
+    private fun seatEffort(s: GameState, struck: List<Unit>, enemyDots: Double): Double =
         when (s.playerRole) {
-            // What they cast, not the threat on the unit afterwards. The unit's
-            // threat is accrued in the same `copy` this is read from, so the
-            // delta would always be zero -- and a player tank holds the line with
-            // what they actually cast anyway, which is what this already is.
-            UnitRole.TANK -> s.me.pendingPlayerThreat
+            // Damage taken, not threat generated. Threat was the wrong quantity:
+            // a tank always has it in surplus once it is holding, so the number
+            // read 97-99% in every run the --seats sweep played and could not
+            // tell two of them apart. What a tank actually wastes is the
+            // cooldown it did not spend.
+            UnitRole.TANK -> {
+                val me = s.unit(s.localUnitId)
+                val was = me?.health ?: 0.0
+                val now = struck.firstOrNull { it.id == s.localUnitId }?.health ?: was
+                val lost = max(0.0, was - now)
+                // Only the hits a defensive was for. Chip damage is not a
+                // decision, and counting it drowned the ones that were.
+                val big = (me?.maxHealth ?: 0.0) * data.balance.roles.tankBigHitFraction
+                if (big > 0 && lost >= big) lost else 0.0
+            }
             UnitRole.DPS ->
                 s.me.pendingEnemyDamage + enemyDots + s.me.pendingAddDamage.values.sum()
             UnitRole.HEALER -> 0.0
         }
 
+    /** Whether this tick's effort bought the seat nothing. */
+    private fun seatEffortWasted(s: GameState): Boolean = when (s.playerRole) {
+        // Damage that landed while a defensive sat ready is damage the seat chose
+        // to take. An assist, inverted: the tank's contribution is the harm it
+        // stopped, so its waste is the harm it could have stopped and did not.
+        UnitRole.TANK -> defensiveReady(s)
+        UnitRole.DPS -> overThePullLine(s)
+        UnitRole.HEALER -> false
+    }
+
     /**
-     * Whether the local seat is already clear of the pull line, which is what
-     * makes this tick's effort surplus.
+     * A defensive the local seat could have raised and has not.
      *
-     * A tank above it is safe and does not need the threat; a damage dealer above
-     * it is about to take the enemy, so the damage bought risk and nothing else.
+     * Shaped like [kickReady]: content decides, not code. Any spell carrying
+     * `damageReduction` counts, which is the same rule [activeMitigation] uses to
+     * apply one.
+     */
+    internal fun defensiveReady(s: GameState): Boolean {
+        val p = s.participants[s.localUnitId] ?: return false
+        // Already up: the cooldown is spent and this tick is not waste.
+        if (p.playerCombatBuffs.any { it.id == BUFF_ACTIVE_MITIGATION }) return false
+        return p.unlockedSpells.any { id ->
+            data.spell(id)?.damageReduction != null && (p.spellCooldowns[id] ?: 0) <= 0
+        }
+    }
+
+    /**
+     * Whether a damage dealer is past the point where the enemy comes for them,
+     * so the damage bought risk and nothing else.
+     *
      * The margin is the one `resolveEnemyTarget` actually enforces, so the number
      * on the result screen and the rule in the engine are the same rule.
      */
@@ -384,13 +430,7 @@ class GameTick(
         if (!me.isAlive || me.threat <= 0.0) return false
         val margin = data.balance.threat.overtakeMultiplier
         val rival = s.party.filter { it.isAlive && it.id != me.id }.maxOfOrNull { it.threat } ?: 0.0
-        return when (s.playerRole) {
-            // Holding it with room to spare: more threat changes nothing.
-            UnitRole.TANK -> s.enemyTargetId == me.id && me.threat >= rival * margin
-            // Past the point where the enemy comes for you.
-            UnitRole.DPS -> me.threat >= rival * margin || s.enemyTargetId == me.id
-            UnitRole.HEALER -> false
-        }
+        return me.threat >= rival * margin || s.enemyTargetId == me.id
     }
 
     /** Whoever went from alive to dead between these two snapshots of the party. */
@@ -744,6 +784,59 @@ class GameTick(
     }
 
     /**
+     * What one attack will take off one unit, before its shield eats any of it.
+     *
+     * Extracted so the number the telegraph shows and the number that lands are
+     * the same expression rather than two that agree today. A forecast that
+     * drifts from the hit is a flavourful lie, and the one thing a healer cannot
+     * be told is a damage figure that turns out to be wrong.
+     */
+    private fun incomingHit(
+        ctx: CastContext,
+        u: Unit,
+        tpl: AttackTemplate,
+        partyDamageMult: Double,
+        tankDead: Boolean,
+        hooks: ClassHooks,
+    ): Double {
+        val s = ctx.state
+        var dmg = tpl.damage * incomingDamage(
+            s, u, DamageSource.BOSS_ATTACK, partyDamageMult,
+            singleTarget = tpl.targeting != Targeting.ALL_LIVING,
+        )
+        dmg *= hooks.damageTakenMultiplier(ctx, "boss_attack", u)
+        dmg *= activeMitigation(s, u)
+        if (tpl.interruptible && tpl.castTicks > 0 && kickReady(s)) {
+            dmg *= data.encounters.unkickedDamageMultiplier
+        }
+        if (u.role == UnitRole.TANK) dmg *= tankShare(s)
+        // With the tank down, everyone else takes double.
+        if (tankDead && (u.role == UnitRole.DPS || u.role == UnitRole.HEALER)) dmg *= 2
+        return dmg
+    }
+
+    /**
+     * What the cast currently winding up will take off each unit it is aimed at.
+     *
+     * Recomputed every tick rather than stamped when the cast begins, because
+     * mitigation changes during the wind-up -- that is the whole point of a
+     * well-timed defensive, and a figure fixed at cast time would go stale the
+     * moment the player answered it.
+     */
+    internal fun forecastCast(ctx: CastContext, cast: EnemyCast, party: List<Unit>): Map<String, Double> {
+        val dungeon = ctx.state.currentDungeon ?: return emptyMap()
+        val profile = combatProfile(dungeon, ctx.state)
+        val tpl = profile.attackTemplates.firstOrNull { it.abilityId == cast.abilityId } ?: return emptyMap()
+        val mult = ctx.state.bossSelfBuffs.maxOfOrNull { it.partyDamageMultiplier } ?: 1.0
+        val tank = party.firstOrNull { it.role == UnitRole.TANK }
+        val tankDead = tank == null || tank.health <= 0
+        val hooks = hooksFor(ctx.cls)
+        return party
+            .filter { it.isAlive && it.id in cast.targets }
+            .associate { u -> u.id to incomingHit(ctx, u, tpl, mult, tankDead, hooks) }
+    }
+
+    /**
      * An attack landing on [targets]. Shared by instant attacks and casts, so a
      * telegraphed hit is the same hit, a moment later -- with the mitigation
      * that is up when it lands, which is what makes a well-timed defensive count.
@@ -764,20 +857,10 @@ class GameTick(
         val hooks = hooksFor(ctx.cls)
         val natRank = ctx.ranks("natural_perfection")
 
-        val kickWasReady = kickReady(s)
         var npAdd = 0
         val next = party.map { u ->
             if (u.health <= 0 || u.id !in targets) return@map u
-            var dmg = tpl.damage * incomingDamage(
-                s, u, DamageSource.BOSS_ATTACK, partyDamageMult,
-                singleTarget = tpl.targeting != Targeting.ALL_LIVING,
-            )
-            dmg *= hooks.damageTakenMultiplier(ctx, "boss_attack", u)
-            dmg *= activeMitigation(s, u)
-            if (tpl.interruptible && tpl.castTicks > 0 && kickWasReady) dmg *= data.encounters.unkickedDamageMultiplier
-            if (u.role == UnitRole.TANK) dmg *= tankShare(s)
-            // With the tank down, everyone else takes double.
-            if (tankDead && (u.role == UnitRole.DPS || u.role == UnitRole.HEALER)) dmg *= 2
+            val dmg = incomingHit(ctx, u, tpl, partyDamageMult, tankDead, hooks)
             val out = applyDamageToUnit(u, dmg, natRank)
             if (out.naturalPerfectionTick) npAdd = 1
             u.copy(
@@ -1277,11 +1360,15 @@ class GameTick(
             val id = "${i + 1}"
             val lv = allyLevel()
             when (role) {
+                // The habit travels with the name. No new draw enters the rng
+                // stream: the template was already picked, and its habit comes
+                // along with it.
                 UnitRole.TANK -> stats.maxHealthForRole("TANK", lv).toDouble().let {
-                    Unit(id, tankTpl.name, role, lv, it, it)
+                    Unit(id, tankTpl.name, role, lv, it, it, habit = tankTpl.habit)
                 }
                 UnitRole.DPS -> stats.maxHealthForRole("DPS", lv).toDouble().let {
-                    Unit(id, dpsTpls[dpsUsed++].name, role, lv, it, it)
+                    val tpl = dpsTpls[dpsUsed++]
+                    Unit(id, tpl.name, role, lv, it, it, habit = tpl.habit)
                 }
                 // Named off the pool by level rather than a draw, so no new
                 // randomness enters the stream.
@@ -1541,9 +1628,9 @@ class GameTick(
             // "Over the line" is measured on the state *before* the tick, because
             // the question is whether this tick's work was needed when it was
             // committed, not whether it turned out to be.
-            runSeatEffort = s.runSeatEffort + seatEffort(s, enemyDots),
+            runSeatEffort = s.runSeatEffort + seatEffort(s, struck, enemyDots),
             runSeatWaste = s.runSeatWaste +
-                if (overThePullLine(s)) seatEffort(s, enemyDots) else 0.0,
+                if (seatEffortWasted(s)) seatEffort(s, struck, enemyDots) else 0.0,
             adds = addsNow,
             bossAddWaves = s.bossAddWaves + if (callAdds) 1 else 0,
             bossPhase = s.bossPhase + if (enterPhase) 1 else 0,
@@ -2171,7 +2258,11 @@ class GameTick(
                 bossSelfBuffs = boss.bossSelfBuffs,
                 mechanicCooldown = boss.mechanicCooldown,
                 mechanicOrdinal = boss.mechanicOrdinal,
-                enemyCast = boss.enemyCast,
+                // The telegraph carries its own arithmetic, refreshed each tick
+                // against the mitigation that is up right now.
+                enemyCast = boss.enemyCast?.let {
+                    it.copy(incoming = forecastCast(ctx, it, s.party))
+                },
                 runMissedKicks = s.runMissedKicks + if (boss.missedKick) 1 else 0,
                 // The first one, named. A count tells a player they were not
                 // sharp; the name tells them what to kick next time.

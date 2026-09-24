@@ -1354,6 +1354,29 @@ private fun PartyRow(
                     }
                 }
 
+                // What the winding-up cast will take off this frame, and whether
+                // that kills them.
+                //
+                // The outline already said "something is coming here". A healer
+                // reading five bars still had to guess which of the outlined ones
+                // would actually die, and the lowest bar is frequently not that
+                // one. The figure is the engine's own -- one expression shared
+                // with the hit -- and it is before this unit's shield, so a
+                // shield is visibly the answer to it.
+                val hit = state.enemyCast?.incoming?.get(unit.id) ?: 0.0
+                if (hit > 0 && !dead) {
+                    val lethal = hit >= unit.health + unit.shield
+                    BasicText(
+                        "-${hit.roundToInt()}",
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp),
+                        style = AegisType.numeric.copy(
+                            fontSize = 12.sp,
+                            color = if (lethal) Vital.critical else Gilt.bright,
+                            shadow = TextOutline,
+                        ),
+                    )
+                }
+
                 // Who the enemy is actually on, in every lens including a
                 // healer's.
                 //

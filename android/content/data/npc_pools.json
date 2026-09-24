@@ -1,80 +1,114 @@
 {
   "allyHealthDefaults": {
-    "TANK": { "base": 130, "perLevel": 26 },
-    "DPS": { "base": 65, "perLevel": 12 }
+    "TANK": {
+      "base": 130,
+      "perLevel": 26
+    },
+    "DPS": {
+      "base": 65,
+      "perLevel": 12
+    }
   },
   "tankPool": [
     {
       "name": "Tanky McShield",
-      "role": "TANK"
+      "role": "TANK",
+      "habit": "late"
     },
     {
       "name": "Ironheart Bear",
-      "role": "TANK"
+      "role": "TANK",
+      "habit": "steady"
     },
     {
       "name": "Sunbreaker",
-      "role": "TANK"
+      "role": "TANK",
+      "habit": "late"
     },
     {
       "name": "Stonekin",
-      "role": "TANK"
+      "role": "TANK",
+      "habit": ""
     }
   ],
   "dpsPool": [
     {
       "name": "Zappy Mage",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": "greedy"
     },
     {
       "name": "Sneaky Rogue",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": "careful"
     },
     {
       "name": "Shadow Warlock",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": "greedy"
     },
     {
       "name": "Wildfire Mage",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": ""
     },
     {
       "name": "Frostweaver",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": "careful"
     },
     {
       "name": "Blade Dancer",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": "greedy"
     },
     {
       "name": "Hunter Mark",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": ""
     },
     {
       "name": "Demon Hunter",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": "careful"
     },
     {
       "name": "Retri Pally",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": "greedy"
     },
     {
       "name": "Shadow Priest",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": ""
     },
     {
       "name": "Windwalker",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": "greedy"
     },
     {
       "name": "Feral Kitty",
-      "role": "DPS"
+      "role": "DPS",
+      "habit": "careful"
     }
   ],
   "healerPool": [
-    { "name": "Mercy Wraithbane", "role": "HEALER" },
-    { "name": "Brother Cairn", "role": "HEALER" },
-    { "name": "Sunwell Adept", "role": "HEALER" },
-    { "name": "Thornweave", "role": "HEALER" }
+    {
+      "name": "Mercy Wraithbane",
+      "role": "HEALER"
+    },
+    {
+      "name": "Brother Cairn",
+      "role": "HEALER"
+    },
+    {
+      "name": "Sunwell Adept",
+      "role": "HEALER"
+    },
+    {
+      "name": "Thornweave",
+      "role": "HEALER"
+    }
   ]
 }

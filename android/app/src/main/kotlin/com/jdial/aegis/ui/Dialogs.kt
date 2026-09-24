@@ -530,7 +530,7 @@ fun OutcomeDialog(
                     // good clear from a lucky one.
                     if (!group) {
                         StatRow(
-                            if (playerRole == UnitRole.TANK) "Threat not needed" else "Damage past the line",
+                            if (playerRole == UnitRole.TANK) "Took it with a defensive ready" else "Damage past the line",
                             "${outcome.stats.wastePct.toInt()}%",
                         )
                     }

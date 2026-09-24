@@ -180,6 +180,103 @@ which is the component's *Never Congratulate a Number* in as many words.
 
 ---
 
+# Round three: borrowed from outside
+
+Rounds one and two were derived inward, from Vigil's own rules. That finds gaps
+but it cannot find *inventions* -- a soul tells you what a feature must be, never
+what it could be. This round starts from designs outside the family and asks what
+each one would look like in a seat-based party game.
+
+Every row names its source and a confidence level, per the library's rule about
+not inventing game facts. **Low means verify it before building on it.** Where a
+borrow would break a Vigil rule if taken whole, the constraint is stated rather
+than glossed.
+
+Two of these supersede earlier ideas: **56** replaces the tank half of #34, which
+the `--seats` sweep showed reads 97-99% at every level and therefore cannot tell
+two runs apart, and **55** is round two's #2 with better provenance.
+
+## Perfect information — *Into the Breach*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 52 | *Into the Breach* shows each enemy's target before you commit. **High** | Put the *number* on the telegraph: how much the winding-up cast will take off each frame it is aimed at | The healer pre-shields the frame that will actually die rather than the one that currently looks lowest, so triage becomes arithmetic instead of a guess | Answerable vigilance | Pillar 3, `legible_failure`. No conflict -- the game already telegraphs intent; this makes the intent quantitative |
+
+## Three numbers, no score — Zachtronics
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 53 | *Opus Magnum* and *SpaceChem* rate a solution on cost, cycles and area as separate histograms and never grade it. **High** | Three incomparable numbers per clear -- time, waste, nobody-down -- each a histogram against your own history, never combined | No single best clear exists, so players chase whichever axis they care about and a fast sloppy run stops dominating a slow clean one | Cool focus | *Measure, Don't Grade*, *Efficiency Not Volume*. **The constraint:** combining them into one score would be a grade, and a grade is what this soul refuses |
+
+## Teammates who are wrong in character — *Darkest Dungeon*
+
+The soul names "The Teammates Are the Budget" as its hardest cost. Darkest
+Dungeon's answer is that one escalating number plus a table of named afflictions
+generates endless characterful fallibility, which is far cheaper than authoring
+it per encounter.
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 54 | Stress and afflictions: a second bar that changes how a character *behaves*, not how hard they hit. **High** on the system | Teammate strain, rising with big hits taken and with each death, degrading judgment as it climbs -- the tank notices later, the damage dealer overreaches more often | Fallibility escalates over a fight instead of being constant, so the late pulls ask more of the player's seat than the early ones did | Answerable vigilance | *Competent Enough to Play With, Fallible Enough to Matter*. **The constraint:** strain has to be visible on the frame, or a teammate degrading is `illegible_chaos` rather than something to answer |
+| 55 | Each hero carries quirks drawn per run. **High** | One named habit per name in `npc_pools.json`, drawn at run start: taunts late, opens early, saves nothing | The roster on the queue sheet becomes something to read, and the consumable choice has a specific flaw to cover | Answerable vigilance | Pillar 1, `scarcity_economy`. Supersedes round two's #2 |
+
+## Credit the assist — team sports statistics
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 56 | An assist credits enabling rather than scoring. **High** on the concept | Redefine the tank's waste as **mitigation unspent**: the share of damage that landed while a defensive sat available and off cooldown | A tank stops measuring itself on threat it always had in surplus and starts measuring the cooldown it held too long -- a number that varies run to run | Cool focus | *Name the Waste, Then Price It*. **Replaces the tank half of #34**, which the sweep proved degenerate |
+| 57 | The assist column exists beside the goal column. **High** | A seat report in assists: damage the tank absorbed that the healer never chased, casts kicked that would have landed | Players judge themselves against the size of the hole they filled rather than against a total | Answerable vigilance | Pillar 1. **The constraint:** an assist credits *your* seat. The moment it reports what a teammate did well or badly it is `The Grade` |
+
+## Introduce, develop, twist, test — Nintendo level design
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 58 | The four-part structure widely documented in *Mario* level design. **High** on the pattern, **medium** on the label usually attached to it | Require a dungeon's pull sequence to introduce a mechanic, develop it, twist it, then test it -- encoded as a shape in `encounters.json` rather than left to taste | A dungeon teaches itself in four pulls, and a place becomes memorable for what it asked rather than for its enemy art | Answerable vigilance | Pillar 3. Attacks the problem the README already names: most pulls were a reskin of another |
+
+## Recipes you can draft toward — *Vampire Survivors*, *Binding of Isaac*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 59 | Published evolutions and transformations that announce themselves when assembled. **High** | Charm-and-talent combinations that name themselves when complete, listed where a player can plan for them | The build acquires an identity to aim at, so the pre-run choice is a plan rather than a shrug | Cool focus | `synergy_engines`. **The constraint:** a named combination still has to carry a cost, or it is the pure-upside reward nobody thinks about |
+
+## Assist mode, stated plainly — *Celeste*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 60 | Assist mode is named, explained, never hidden, and never locks content or annotates a save. **High** | The AI competence setting in that framing: it changes only what teammates get wrong, never boss damage, and marks nothing on the record | Players tune how much of the fight is theirs to answer without being told they cheated | Answerable vigilance | `covering_party`, `unfair_rungs`. **The constraint:** the moment it touches boss damage it is a difficulty slider, which is the thing Vigil says a seat-based game must not confuse this with |
+
+## Failure clocks that run separately — *FTL*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 61 | Hull, oxygen and fire are separate clocks, each demanding a different response. **High** | One second clock per seat that only that seat can read -- an enrage timer for the tank, a mana-burn stack for the healer | Each seat has a private deadline, so the same fight is paced differently depending on where you sit | Answerable vigilance | Pillar 3. **The constraint:** one clock per seat, not two for everybody -- two visible deadlines on a phone is `unreadable_screen` |
+
+## Read the body, not the bar — *Monster Hunter*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 62 | Monsters telegraph through animation and body state; damage numbers were absent for much of the series. **Medium** | For one seat, the boss's next move is legible from its sprite state rather than from a cast bar | That seat learns to watch the enemy instead of a widget, and the fight feels like a creature rather than a timer | Answerable vigilance | *Change the Window*. **The risks:** a tiny art budget, and `diegesis_at_the_cost_of_legibility` if the sprite is the *only* channel |
+
+## Itemise the causes — *Dwarf Fortress*, *RimWorld*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 63 | Every event gets a plain-language log line, and the post-mortem is reconstructed from it. **High** | Turn the wipe receipt into a short log of the last several events rather than two named fields | Players reconstruct the collapse and retell it, instead of reading a cause they were handed | Answerable vigilance | `legible_failure`. Extends the first-faller and let-through lines already shipped |
+
+## Gear fear — *Escape from Tarkov* (the Tether soul)
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 64 | Bringing better gear raises both your power and the cost of dying. **High** | Make the stash choice bite: a rarer consumable is worth more and a wipe still spends it, so the good flask is one you have to decide to risk | The pre-run choice stops being "bring the best" and becomes "is this the run for it" | Cool focus | `scarcity_economy`. **The constraint:** never let it become hoarding -- `hoarder_s_paralysis` is the failure, and a stash that only ever grows is the symptom |
+
+## Saying no as a skill — *Slay the Spire*
+
+| # | Source & confidence | Mechanic | → Dynamic | → Tone | Serves / risks |
+|---|---|---|---|---|---|
+| 65 | Skipping a card reward is frequently the correct play. **High** | Let a player decline a clear's reward for a mark on the record | Turning things down becomes a way to prove something, and the reward stops being automatic | Cool focus | `scarcity_economy`, `difficulty_ladder` |
+
+---
+
 ## Ideas the soul rules out
 
 Worth writing down, because they are the ones that will keep getting suggested.
@@ -195,3 +292,13 @@ Each fails a named check.
 | An auto-cast or assist that picks targets | `automation`, "Never Automate the Decision" | Targeting *is* the decision. Automating it deletes the game. |
 | A cross-player leaderboard for `bestTicks` | `social_safety` vs `difficulty_ladder` | The soul resolves this conflict by keeping the ladder and dropping the comparison. |
 | A crit or proc roll that can make a cast *fail* | **The Dice** (`legible_failure`) | Reward rolls are allowed, target rolls are allowed; a roll that decides whether your own action worked is not. |
+
+### Outside ideas deliberately refused
+
+Knowing which borrows to turn down is half of borrowing. Both of these are good
+designs in their own games and would quietly dismantle this one.
+
+| Source | The idea | Why it is refused |
+|---|---|---|
+| *XCOM*'s hit chance | Show the odds, then roll after the player commits | This is the clearest possible violation of **The Dice**. XCOM's whole drama is the 95% that missed; Vigil's promise is that a loss traces to a decision, and a coin flip after the decision severs that. Its influence here is as a counterexample, which is why the soul spells out that a *target* roll is allowed and an *outcome* roll is not. |
+| *Left 4 Dead*'s AI Director | Pace encounters against how the player is doing | Rubber-banding makes a run unreconstructable: the same play produces different fights, so the player cannot learn the encounter and cannot trace a wipe. It also quietly grades the player in order to decide. The affix and keystone systems already give variety the player can *see before committing*, which is the legible version of the same goal. |

@@ -763,7 +763,24 @@ data class Dungeon(
 data class RoleHealth(val base: Double, val perLevel: Double)
 
 @Serializable
-data class NpcTemplate(val name: String, val role: String)
+data class NpcTemplate(
+    val name: String,
+    val role: String,
+    /**
+     * One named habit this teammate plays with, drawn with the name.
+     *
+     * The soul's hardest cost is that every seat the player does not hold has to
+     * be written as a teammate good enough to play beside and wrong often enough
+     * to matter. A habit per name is the cheap version of that: the same two
+     * dials the engine already has, set differently per teammate, so the hole the
+     * player fills is a different shape each run. Empty means the balance
+     * default.
+     *
+     * Known to the engine: "late" and "steady" on a tank, "greedy" and "careful"
+     * on a damage dealer. Anything else reads as the default.
+     */
+    val habit: String = "",
+)
 
 @Serializable
 data class NpcPools(

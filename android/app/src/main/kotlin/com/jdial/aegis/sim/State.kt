@@ -179,6 +179,8 @@ data class Unit(
      * zeroed on phase transition and when a unit dies instead.
      */
     val threat: Double = 0.0,
+    /** This teammate's named habit; see [com.jdial.aegis.data.NpcTemplate.habit]. */
+    val habit: String = "",
 ) {
     val isAlive: Boolean get() = health > 0
 }
@@ -214,6 +216,19 @@ data class EnemyCast(
     val totalTicks: Int,
     val interruptible: Boolean = false,
     val tell: String = "",
+    /**
+     * What this cast will take off each unit it is aimed at, by unit id, before
+     * that unit's shield eats any of it.
+     *
+     * Into the Breach shows which tile an enemy will hit before you commit; this
+     * is the same promise with the number attached. A healer was reading five
+     * bars and guessing which one the incoming cast would actually kill, and the
+     * lowest bar is frequently not that one. Recomputed every tick, because
+     * mitigation changes during the wind-up.
+     *
+     * Derived, so a guest gets it from the frame and never computes it.
+     */
+    val incoming: Map<String, Double> = emptyMap(),
 ) {
     /** 0 at the start of the wind-up, 1 as it lands. */
     val progress: Float get() = if (totalTicks <= 0) 1f else 1f - remainingTicks.toFloat() / totalTicks

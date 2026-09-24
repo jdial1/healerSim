@@ -220,6 +220,21 @@ data class RolesBalance(
     val aiDpsGreedTicks: Int = 0,
     val aiDpsGreedMultiplier: Double = 1.0,
     /**
+     * How much of a tank's health has to come off in one tick before the hit
+     * counts as one a defensive was for.
+     *
+     * Two definitions of a tank's waste have now read 96-100% in every run the
+     * --seats sweep played, which is a number that cannot tell two of them apart.
+     * Threat failed because a tank always has it in surplus. "Damage taken with a
+     * defensive ready" failed for a duller reason: a defensive is off cooldown on
+     * nearly every tick, so nearly all chip damage qualified.
+     *
+     * A defensive is not for chip damage. It is for the hit that would have
+     * mattered, so only those are counted -- and then the number is about whether
+     * the button was pressed for the ones worth pressing it for.
+     */
+    val tankBigHitFraction: Double = 0.08,
+    /**
      * How steeply the AI healer's healing and mana grow with level, pivoting
      * on [aiHealerLevelPivot]: 1.0 is the old straight line.
      *
