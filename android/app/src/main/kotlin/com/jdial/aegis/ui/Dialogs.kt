@@ -538,6 +538,17 @@ fun OutcomeDialog(
                     )
                 }
 
+                // Named on a clear too, unlike the first death: a let-through
+                // cast is exactly what cost the Sharp mark, and a count told
+                // nobody which one to watch for.
+                if (outcome.firstMissedKick.isNotEmpty()) {
+                    StatRow(
+                        "Let through",
+                        outcome.firstMissedKick +
+                            if (outcome.missedKicks > 1) "  ·  +${outcome.missedKicks - 1} more" else "",
+                    )
+                }
+
                 // Levelling up can unlock a spell rank or a stronger potion. The
                 // web app shows this; Android computed it and dropped it.
                 val rewards = outcome.upgradedSpellIds

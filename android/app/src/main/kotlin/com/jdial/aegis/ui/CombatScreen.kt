@@ -1070,6 +1070,42 @@ private fun healthColor(pct: Float): Color = when {
     else -> Vital.healthy
 }
 
+/**
+ * What a party frame is mostly about, which is not the same question in every
+ * seat.
+ *
+ * The frame used to be a healer's frame in all three roles: health filled the
+ * row and threat, if it showed at all, was four device pixels at the bottom. A
+ * tank's whole job is the threat table, so a tank was reading five bars they
+ * cannot act on and inferring the one they can from a sliver.
+ *
+ * - [HEALTH] the row is health. A healer asks one question.
+ * - [THREAT] the row is this unit's share of the aggro holder; health drops to a
+ *   strip. A tank watches the other four creep toward the pull notch.
+ * - [SPLIT] both, stacked. A damage dealer is genuinely asking two questions:
+ *   am I about to pull, and is the party holding.
+ */
+private enum class FrameLens { HEALTH, THREAT, SPLIT }
+
+/**
+ * Below this a split row is two illegible slivers rather than two bars, so it
+ * stays health-first. The row can be as short as 48dp on a small screen, and
+ * half of that carries the name overlay and the aura sockets as well.
+ */
+private val SplitFrameMinHeight = 64.dp
+
+/**
+ * Threat falls back to health for every role until something holds aggro. A
+ * lens with no data behind it is worse than the one it replaced -- a tank
+ * staring at an empty row before the pull learns less than one watching health.
+ */
+private fun frameLens(role: UnitRole, threat: ThreatReadout?, rowHeight: Dp): FrameLens = when {
+    threat == null -> FrameLens.HEALTH
+    role == UnitRole.TANK -> FrameLens.THREAT
+    role == UnitRole.DPS && rowHeight >= SplitFrameMinHeight -> FrameLens.SPLIT
+    else -> FrameLens.HEALTH
+}
+
 @Composable
 private fun PartyRow(
     unit: Unit,
@@ -1123,6 +1159,7 @@ private fun PartyRow(
     val accent = LocalAccent.current
     val dead = !unit.isAlive
     val incoming = !dead && state.enemyCast?.targets?.contains(unit.id) == true
+    val lens = frameLens(state.playerRole, threat, rowHeight)
 
     ForgedPanel(
         modifier = Modifier
@@ -1157,12 +1194,20 @@ private fun PartyRow(
                     if (unit.shield > 0) add("shielded")
                 }
                 val threatSaid = threat?.let {
-                    if (it.hasAggro) ", has aggro" else ", ${it.pct} percent threat"
-                } ?: ""
+                    if (it.hasAggro) "has aggro" else "${it.pct} percent threat"
+                }
+                // Spoken in the order the frame is drawn. Leading with health
+                // whatever the seat would keep a healer's priorities for a tank,
+                // whose frame is mostly the threat table.
+                val vitals = if (lens == FrameLens.THREAT) {
+                    listOfNotNull(threatSaid, "$pct percent health")
+                } else {
+                    listOfNotNull("$pct percent health", threatSaid)
+                }
                 contentDescription = if (dead) {
                     "$label, $roleLabel, dead"
                 } else {
-                    "$label, $roleLabel, $pct percent health" + threatSaid +
+                    "$label, $roleLabel, " + vitals.joinToString(", ") +
                         (if (auras.isEmpty()) "" else ", " + auras.joinToString(", ")) +
                         (if (incoming) ", ${state.enemyCast?.name} incoming" else "") +
                         (if (selected) ", targeted" else "")
@@ -1232,6 +1277,22 @@ private fun PartyRow(
                         RoundedCornerShape(2.dp),
                     ),
             ) {
+                // Which quantity gets the row and which gets a strip. Both
+                // groups are drawn exactly as they always were; all that moves
+                // is the box they are confined to, so there is one layout and
+                // not three.
+                val healthArea = when (lens) {
+                    FrameLens.HEALTH -> Modifier.fillMaxSize()
+                    FrameLens.THREAT -> Modifier.align(Alignment.TopStart).fillMaxWidth().height(5.dp)
+                    FrameLens.SPLIT -> Modifier.align(Alignment.TopStart).fillMaxWidth().fillMaxHeight(0.46f)
+                }
+                val threatArea = when (lens) {
+                    FrameLens.HEALTH -> Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp)
+                    FrameLens.THREAT -> Modifier.fillMaxSize()
+                    FrameLens.SPLIT -> Modifier.align(Alignment.BottomStart).fillMaxWidth().fillMaxHeight(0.46f)
+                }
+
+                Box(healthArea) {
                     // Bands are layered widest-first and each is drawn from the
                     // left, so the narrower one on top leaves the previous band
                     // showing as the segment beyond it. That gives health |
@@ -1273,32 +1334,32 @@ private fun PartyRow(
                     // The game is called Overheal. When committed healing runs
                     // past the top of the bar, the surplus is being thrown away —
                     // say so with a gilt cap rather than a number.
-                if (overhealing) {
-                    Box(
-                        Modifier
-                            .align(Alignment.CenterEnd)
-                            .width(2.dp)
-                            .fillMaxHeight()
-                            .background(Gilt.core),
-                    )
+                    //
+                    // A healer only. On a tank's or a damage dealer's frame the
+                    // committed healing is the *AI healer's*, so the cap was
+                    // reporting that somebody else was wasting mana -- a verdict
+                    // on another seat's play, which is the one thing these frames
+                    // must never carry.
+                    if (overhealing && state.playerRole == UnitRole.HEALER) {
+                        Box(
+                            Modifier
+                                .align(Alignment.CenterEnd)
+                                .width(2.dp)
+                                .fillMaxHeight()
+                                .background(Gilt.core),
+                        )
+                    }
                 }
 
-                // Threat, as a second bar under the health one. Omen and KTM
-                // drew a row per unit and so does this: the length is that
-                // unit's share of whoever currently holds the enemy, and the
-                // gilt notch is the pull line the engine really checks. A tank
-                // watches the other four creep toward their notch; a damage
-                // dealer watches their own. Either way every cast moves it,
-                // because the denominator belongs to the aggro holder and not
+                // Threat. Omen and KTM drew a row per unit and so does this: the
+                // length is that unit's share of whoever currently holds the
+                // enemy, and the gilt notch is the pull line the engine really
+                // checks. A tank watches the other four creep toward their notch;
+                // a damage dealer watches their own. Either way every cast moves
+                // it, because the denominator belongs to the aggro holder and not
                 // to the person reading the bar.
                 if (threat != null && !dead) {
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .background(Obsidian.abyss.copy(alpha = 0.8f)),
-                    ) {
+                    Box(threatArea.background(Obsidian.abyss.copy(alpha = 0.8f))) {
                         Box(
                             Modifier
                                 .fillMaxWidth(threatFrac)
@@ -1390,6 +1451,21 @@ private fun PartyRow(
                             "DEAD",
                             style = AegisType.label.copy(color = Vital.critical, shadow = TextOutline),
                         )
+                    } else if (lens == FrameLens.THREAT && threat != null) {
+                        // A tank's live number is the threat table, so it takes
+                        // the large line and health drops to the small one below.
+                        BasicText(
+                            "${threat.pct}%",
+                            style = AegisType.numeric.copy(
+                                fontSize = 15.sp,
+                                color = when {
+                                    threat.hasAggro -> Gilt.bright
+                                    threat.closing -> Vital.critical
+                                    else -> Ink.primary
+                                },
+                                shadow = TextOutline,
+                            ),
+                        )
                     } else if (ui.healthTextPercent) {
                         // Percent for urgency, deficit (on the left) for which
                         // heal covers the gap. "1240 / 1450" makes the player do
@@ -1409,16 +1485,24 @@ private fun PartyRow(
                     // the line when there is one. The row keeps its height
                     // either way.
                     if (rowHeight > 56.dp) {
+                        // Whichever of the two the large line above did not take.
+                        val (small, tint) = when {
+                            dead -> "LV ${unit.level}" to Ink.secondary
+                            lens == FrameLens.THREAT ->
+                                "${(pct * 100).roundToInt()}%" to
+                                    (if (ui.colourBlindBands) healthColorCb(pct) else healthColor(pct))
+                            threat != null -> "${threat.pct}%" to when {
+                                threat.hasAggro -> Gilt.bright
+                                threat.closing -> Vital.critical
+                                else -> Ink.secondary
+                            }
+                            else -> "LV ${unit.level}" to Ink.secondary
+                        }
                         BasicText(
-                            if (threat != null && !dead) "${threat.pct}%" else "LV ${unit.level}",
+                            small,
                             style = AegisType.label.copy(
                                 fontSize = 10.sp,
-                                color = when {
-                                    threat == null || dead -> Ink.secondary
-                                    threat.hasAggro -> Gilt.bright
-                                    threat.closing -> Vital.critical
-                                    else -> Ink.secondary
-                                },
+                                color = tint,
                                 shadow = TextOutline,
                             ),
                         )
@@ -1454,8 +1538,15 @@ private fun PartyRow(
                             // A heal absorb shows how much healing it still eats.
                             stacks = if (d.absorbLeft > 0) d.absorbLeft.roundToInt() else d.stacks,
                             kerbColor = when {
+                                // Armed: about to go off, and everyone's problem.
                                 d.isArmed -> Color(0xFFF97316)
-                                d.dispellable -> Dispel
+                                // Dispellable is a *cue to act*, and only a healer
+                                // can: `cleanse` in utility_spells.json is granted
+                                // by role HEALER. Highlighting it on a tank's or a
+                                // damage dealer's frame marks a job that seat does
+                                // not have. If a tank ever learns a dispel, this
+                                // becomes a loadout check rather than a role one.
+                                d.dispellable && state.playerRole == UnitRole.HEALER -> Dispel
                                 else -> null
                             },
                         )

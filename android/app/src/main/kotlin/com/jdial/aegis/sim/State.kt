@@ -323,6 +323,8 @@ data class DungeonOutcome(
      */
     val firstDownName: String = "",
     val firstDownTick: Int = 0,
+    /** The first kickable cast that was let through, named. */
+    val firstMissedKick: String = "",
 )
 
 /**
@@ -571,6 +573,12 @@ data class GameState(
     val runFirstDownName: String = "",
     val runFirstDownTick: Int = 0,
     /**
+     * The first kickable cast this run that was allowed to land while a kick was
+     * ready. [runMissedKicks] counts them, which tells a player only that they
+     * were not sharp; the name tells them what to watch for.
+     */
+    val runFirstMissedKick: String = "",
+    /**
      * XP awarded this run, per party slot, for every human in it.
      *
      * The engine only ever applied XP to the local player, and the frame
@@ -699,6 +707,7 @@ data class GameState(
         runDamageDealt = 0.0,
         runFirstDownName = "",
         runFirstDownTick = 0,
+        runFirstMissedKick = "",
         runXpAwards = emptyMap(),
     )
 }

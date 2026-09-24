@@ -461,6 +461,8 @@ class GameTick(
         val state: Pair<String, Int>? = null,
         /** A kickable cast landed that somebody could have kicked. */
         val missedKick: Boolean = false,
+        /** Which cast that was, so the miss can be named rather than counted. */
+        val missedKickName: String = "",
     )
 
     /**
@@ -524,6 +526,7 @@ class GameTick(
             return BossAi(
                 landed, bossBuffs, cooldown, ordinal, np, null, tpl.grantsState?.let { it to tpl.stateTicks },
                 missedKick = tpl.interruptible && tpl.castTicks > 0 && kickReady(s),
+                missedKickName = tpl.name,
             )
         }
 
@@ -1225,6 +1228,7 @@ class GameTick(
                 missedKicks = s.runMissedKicks,
                 firstDownName = s.runFirstDownName,
                 firstDownTick = s.runFirstDownTick,
+                firstMissedKick = s.runFirstMissedKick,
                 hardMode = s.hardMode,
                 keystone = s.keystone,
                 pace = s.dungeonPace ?: "normal",
@@ -1544,6 +1548,7 @@ class GameTick(
                 missedKicks = s.runMissedKicks,
                 firstDownName = s.runFirstDownName,
                 firstDownTick = s.runFirstDownTick,
+                firstMissedKick = s.runFirstMissedKick,
                 hardMode = s.hardMode,
                 keystone = s.keystone,
                 pace = s.dungeonPace ?: "normal",
@@ -2054,6 +2059,11 @@ class GameTick(
                 mechanicOrdinal = boss.mechanicOrdinal,
                 enemyCast = boss.enemyCast,
                 runMissedKicks = s.runMissedKicks + if (boss.missedKick) 1 else 0,
+                // The first one, named. A count tells a player they were not
+                // sharp; the name tells them what to kick next time.
+                runFirstMissedKick = s.runFirstMissedKick.ifEmpty {
+                    if (boss.missedKick) boss.missedKickName else ""
+                },
                 enemyState = boss.state?.first ?: s.enemyState,
                 enemyStateTicks = boss.state?.second ?: s.enemyStateTicks,
                 interruptibleCasts = s.interruptibleCasts + if (castStarted && boss.enemyCast?.interruptible == true) 1 else 0,

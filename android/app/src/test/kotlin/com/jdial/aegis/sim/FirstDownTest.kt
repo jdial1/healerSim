@@ -47,16 +47,35 @@ class FirstDownTest {
     }
 
     @Test
+    fun `a let-through cast is named, not just counted`() {
+        // Idle: nobody is kicking anything, so something gets through.
+        val missed = idleRuns().filter { it.missedKicks > 0 }
+        assertTrue("the harness let nothing through to name", missed.isNotEmpty())
+        for (r in missed) {
+            assertTrue(
+                "seed ${r.seed} let ${r.missedKicks} through and named none",
+                r.firstMissedKick.isNotEmpty(),
+            )
+        }
+    }
+
+    @Test
     fun `the name survives the end of the run and is gone by the next one`() {
-        val s = GameState(runFirstDownName = "Tanky McShield", runFirstDownTick = 120)
+        val s = GameState(
+            runFirstDownName = "Tanky McShield",
+            runFirstDownTick = 120,
+            runFirstMissedKick = "Mortal Strike",
+        )
 
         // endedRun deliberately keeps the run accumulators: the outcome screen
         // is built after it and reads them.
         assertEquals("Tanky McShield", s.endedRun().runFirstDownName)
         assertEquals(120, s.endedRun().runFirstDownTick)
+        assertEquals("Mortal Strike", s.endedRun().runFirstMissedKick)
 
         // clearedCombat is what wipes the slate, and it runs when a run starts.
         assertEquals("", s.clearedCombat().runFirstDownName)
         assertEquals(0, s.clearedCombat().runFirstDownTick)
+        assertEquals("", s.clearedCombat().runFirstMissedKick)
     }
 }
