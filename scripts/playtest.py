@@ -9,6 +9,19 @@ defensive -- and prints one JSON line per run. This aggregates those lines.
     python scripts/playtest.py --hard --levels 3,8,12
     python scripts/playtest.py --by dungeon                       # group differently
 
+Checking a change from every seat, which is the thing nothing else does:
+
+    python scripts/playtest.py --seats
+    python scripts/playtest.py --seats --levels 20,34,47 --runs 8
+
+The same fight has to be a different problem from each seat without becoming
+three sets of numbers that drift apart, and a change aimed at one seat lands on
+all three. A plausible pair of AI-healer values once cleared nothing at all at
+level 47 played well, and the only reason that surfaced was a test that happened
+to cover a warrior. --seats plays one class per role over the same levels and
+prints the spread, so a change that helps one seat and breaks another shows up
+as a number rather than as a bug report.
+
 Tuning a number, one value at a time (the content file is restored afterwards):
 
     python scripts/playtest.py --sweep hard.damageMultiplier=1.2,1.6,2.0
@@ -27,7 +40,12 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ANDROID = os.path.join(ROOT, 'android')
-CONTENT = os.path.join(ANDROID, 'content', 'encounters.json')
+CONTENT = os.path.join(ANDROID, 'content', 'data', 'encounters.json')
+
+# One built class per seat. --seats plays these three over the same levels so the
+# spread between them is readable; the point is the role, not the class.
+SEATS = {'HEALER': 'PRIEST', 'TANK': 'WARRIOR', 'DPS': 'MAGE'}
+ROLE_OF = {cls: role for role, cls in SEATS.items()}
 
 
 def run_harness(classes, levels, runs, hard, pace, idle=False, keystone=0):
@@ -88,6 +106,57 @@ def summarise(rows, by):
         )
 
 
+def divergence(rows, levels):
+    """One block per level: how each seat fared, and how far apart they are.
+
+    Reports the spread rather than a verdict, for the same reason the record
+    screen does: what a seat's clear rate *should* be is a tuning question, and
+    whether the three seats agree is not.
+    """
+    print(
+        f'{"LEVEL":<6} {"SEAT":<8} {"CLASS":<9} {"RUNS":>4} {"CLEAR":>6} {"TIME":>7} '
+        f'{"DEATHS":>7} {"WASTE":>6} {"LOWEST":>7}'
+    )
+    worst = []
+    for level in levels:
+        at_level = [r for r in rows if r['level'] == level]
+        if not at_level:
+            continue
+        rates = {}
+        for role, cls in SEATS.items():
+            g = [r for r in at_level if r['cls'] == cls]
+            if not g:
+                continue
+            cleared = [r for r in g if r['outcome'] == 'SUCCESS']
+            rate = len(cleared) / len(g) * 100
+            rates[role] = rate
+            time = statistics.mean(r['ticks'] for r in cleared) / 10 if cleared else 0
+            print(
+                f'{level:<6} {role:<8} {cls:<9} {len(g):>4} {rate:>5.0f}% {time:>6.1f}s '
+                f'{statistics.mean(r["deaths"] for r in g):>7.2f} '
+                f'{statistics.mean(r.get("wastePct", 0) for r in g):>5.0f}% '
+                f'{statistics.mean(r["lowestHealthPct"] for r in g):>6.0f}%'
+            )
+        if len(rates) > 1:
+            spread = max(rates.values()) - min(rates.values())
+            low = min(rates, key=rates.get)
+            # 40 points apart is not a seat playing differently, it is a seat
+            # that has stopped working. Loose on purpose: this is a floor against
+            # one window rotting, not a balance lock.
+            flag = '   <-- one seat is far behind' if spread >= 40 else ''
+            print(f'{"":<6} {"spread":<8} {"":<9} {"":>4} {spread:>5.0f}%  worst: {low}{flag}')
+            if flag:
+                worst.append((level, low, spread))
+        print()
+
+    if worst:
+        print('Seats far behind their peers at the same level:')
+        for level, role, spread in worst:
+            print(f'  level {level}: {role} is {spread:.0f} points off the best seat')
+    else:
+        print('No seat is more than 40 points behind another at any level tested.')
+
+
 def set_value(path, value):
     """Sets one dotted key in encounters.json, e.g. hard.damageMultiplier."""
     with open(CONTENT, encoding='utf-8') as f:
@@ -111,12 +180,20 @@ def main():
     ap.add_argument('--hard', action='store_true', help='play the cleared-it-already version')
     ap.add_argument('--keystone', type=int, default=0, help='hard-mode keystone level: each one is another affix')
     ap.add_argument('--idle', action='store_true', help='the player does nothing: does the seat matter?')
+    ap.add_argument(
+        '--seats', action='store_true',
+        help='play one class per role over the same levels and report the spread between seats',
+    )
     ap.add_argument('--by', default='cls,level', help='what to group the report by')
     ap.add_argument('--sweep', help='KEY=v1,v2,... in encounters.json, one report per value')
     ap.add_argument('--json', help='write the raw runs here as well')
     args = ap.parse_args()
 
     by = args.by.split(',')
+    # --seats owns the class list: the comparison is only readable if every seat
+    # plays the same levels, and a stray --classes would silently drop one.
+    if args.seats:
+        args.classes = ','.join(SEATS.values())
     rows = []
     if args.sweep:
         key, values = args.sweep.split('=', 1)
@@ -129,13 +206,19 @@ def main():
                 batch = run_harness(args.classes, args.levels, args.runs, args.hard, args.pace, args.idle, args.keystone)
                 for r in batch:
                     r[key] = value
-                summarise(batch, by)
+                if args.seats:
+                    divergence(batch, [int(x) for x in args.levels.split(',')])
+                else:
+                    summarise(batch, by)
                 rows += batch
         finally:
             shutil.move(backup, CONTENT)
     else:
         rows = run_harness(args.classes, args.levels, args.runs, args.hard, args.pace, args.idle, args.keystone)
-        summarise(rows, by)
+        if args.seats:
+            divergence(rows, [int(x) for x in args.levels.split(',')])
+        else:
+            summarise(rows, by)
 
     if args.json:
         with open(args.json, 'w', encoding='utf-8') as f:

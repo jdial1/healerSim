@@ -60,6 +60,10 @@ class PlaytestHarness {
         val firstMissedKick: String,
         val kicks: Int, val dispels: Int, val defensives: Int, val addsKilled: Int,
         val xp: Int, val dps: Double, val hps: Double, val lowestHealthPct: Double,
+        /** The share of this seat's own effort that bought nothing. One per seat. */
+        val wastePct: Double,
+        /** A healer's waste, under its own name. Equal to [wastePct] in a healer run. */
+        val overhealPct: Double,
         val aiHealerLowPct: Double,
         /** Share of fighting ticks the enemy was on this player: how often a damage dealer pulled it. */
         val aggroPct: Double,
@@ -73,6 +77,7 @@ class PlaytestHarness {
             """"kicks":$kicks,"dispels":$dispels,"defensives":$defensives,"addsKilled":$addsKilled,""" +
             """"xp":$xp,"dps":${"%.1f".format(dps)},"hps":${"%.1f".format(hps)},""" +
             """"lowestHealthPct":${"%.1f".format(lowestHealthPct)},""" +
+            """"wastePct":${"%.1f".format(wastePct)},"overhealPct":${"%.1f".format(overhealPct)},""" +
             """"aiHealerLowPct":${"%.1f".format(aiHealerLowPct)},""" +
             """"aggroPct":${"%.1f".format(aggroPct)},""" +
             """"resAvgPct":${"%.1f".format(resAvgPct)},"resCapPct":${"%.1f".format(resCapPct)},""" +
@@ -325,6 +330,8 @@ class PlaytestHarness {
             xp = outcome?.xpGained ?: 0,
             dps = outcome?.stats?.dps ?: 0.0,
             hps = outcome?.stats?.hps ?: 0.0,
+            wastePct = outcome?.stats?.wastePct ?: 0.0,
+            overhealPct = outcome?.stats?.overhealPct ?: 0.0,
             lowestHealthPct = lowest,
             aiHealerLowPct = aiLow,
             aggroPct = if (fighting == 0) 0.0 else onMe * 100.0 / fighting,

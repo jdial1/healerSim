@@ -241,8 +241,22 @@ class GameTick(
         // few dangerous seconds rather than the rest of the fight.
         val cooldown = max(0, s.aiTauntCooldown - 1)
         val tank = s.party.firstOrNull { it.role == UnitRole.TANK && it.isAlive && !s.isHuman(it.id) }
-        if (tank == null || cooldown > 0 || s.enemyTargetId == null || s.enemyTargetId == tank.id) {
-            return if (cooldown == s.aiTauntCooldown) s else s.copy(aiTauntCooldown = cooldown)
+        // Time since the enemy turned, kept here so the delay means "since it
+        // turned" rather than "since the clock last came round".
+        val offTank = if (tank == null || s.enemyTargetId == null || s.enemyTargetId == tank.id) {
+            0
+        } else {
+            s.aiTankOffTankTicks + 1
+        }
+        // It has to notice first. A tank that taunts on the frame the boss turns
+        // is a tank nobody has to cover for, and then the healer's seat is graded
+        // on nothing but whether the AI healer's mana held.
+        val noticed = offTank >= data.balance.roles.aiTankNoticeTicks
+        if (tank == null || cooldown > 0 || !noticed ||
+            s.enemyTargetId == null || s.enemyTargetId == tank.id
+        ) {
+            return if (cooldown == s.aiTauntCooldown && offTank == s.aiTankOffTankTicks) s
+            else s.copy(aiTauntCooldown = cooldown, aiTankOffTankTicks = offTank)
         }
         val cfg = data.balance.threat
         val top = s.party.filter { it.isAlive }.maxOfOrNull { it.threat } ?: 0.0
@@ -254,7 +268,39 @@ class GameTick(
             tauntedById = tank.id,
             tauntLockTicks = cfg.aiTauntLockTicks,
             aiTauntCooldown = cfg.aiTauntCooldownTicks,
+            aiTankOffTankTicks = 0,
         )
+    }
+
+    /**
+     * The AI damage dealer that overreaches.
+     *
+     * Its threat per tick is a fixed share of the scripted damage -- about 0.28
+     * against the tank's 0.375 -- so it could never cross the pull line, which
+     * made it incapable of the one mistake its human equivalent makes constantly.
+     * In a greed window it generates several times its usual threat, takes the
+     * enemy, and wears the hit until the tank notices.
+     *
+     * Returns the extra threat to credit, keyed by unit id, so it joins
+     * `threatByActor` and needs no new path through [applyThreat]. Deterministic:
+     * the window opens on the tick count and the unit is the lowest-id AI damage
+     * dealer, so nothing here touches the rng.
+     */
+    internal fun aiDpsGreed(s: GameState, scriptedDamage: Double): Map<String, Double> {
+        val cfg = data.balance.roles
+        if (cfg.aiDpsGreedEveryTicks <= 0 || cfg.aiDpsGreedTicks <= 0) return emptyMap()
+        if (s.combatElapsedTicks % cfg.aiDpsGreedEveryTicks >= cfg.aiDpsGreedTicks) return emptyMap()
+        val greedy = s.party
+            .filter { it.role == UnitRole.DPS && it.isAlive && !s.isHuman(it.id) }
+            .minByOrNull { it.id } ?: return emptyMap()
+        // Its own share of the scripted pool, again, times the excess. The share
+        // is recomputed rather than read back off the unit because threat on the
+        // unit is cumulative and this is a per-tick quantity.
+        val dpsCount = s.party.count { it.role == UnitRole.DPS && it.isAlive }
+        if (dpsCount == 0) return emptyMap()
+        val tankShare = data.balance.threat.tankDamageShare
+        val perDps = scriptedDamage * (1.0 - tankShare) / dpsCount
+        return mapOf(greedy.id to perDps * (cfg.aiDpsGreedMultiplier - 1.0))
     }
 
     /**
@@ -297,6 +343,49 @@ class GameTick(
      */
     /** The AI healer's heal over time, so its work shows on the party frames. */
     private val AI_HEAL_BUFF = "ai_mending"
+
+    /**
+     * What the local seat put in this tick, in the unit its own job is measured
+     * in: threat for a tank, damage for a damage dealer.
+     *
+     * A healer is absent on purpose. Its waste is overheal, which the run has
+     * counted since before the game had any other role, and duplicating it here
+     * would give one quantity two sources of truth.
+     */
+    private fun seatEffort(s: GameState, enemyDots: Double): Double =
+        when (s.playerRole) {
+            // What they cast, not the threat on the unit afterwards. The unit's
+            // threat is accrued in the same `copy` this is read from, so the
+            // delta would always be zero -- and a player tank holds the line with
+            // what they actually cast anyway, which is what this already is.
+            UnitRole.TANK -> s.me.pendingPlayerThreat
+            UnitRole.DPS ->
+                s.me.pendingEnemyDamage + enemyDots + s.me.pendingAddDamage.values.sum()
+            UnitRole.HEALER -> 0.0
+        }
+
+    /**
+     * Whether the local seat is already clear of the pull line, which is what
+     * makes this tick's effort surplus.
+     *
+     * A tank above it is safe and does not need the threat; a damage dealer above
+     * it is about to take the enemy, so the damage bought risk and nothing else.
+     * The margin is the one `resolveEnemyTarget` actually enforces, so the number
+     * on the result screen and the rule in the engine are the same rule.
+     */
+    private fun overThePullLine(s: GameState): Boolean {
+        val me = s.unit(s.localUnitId) ?: return false
+        if (!me.isAlive || me.threat <= 0.0) return false
+        val margin = data.balance.threat.overtakeMultiplier
+        val rival = s.party.filter { it.isAlive && it.id != me.id }.maxOfOrNull { it.threat } ?: 0.0
+        return when (s.playerRole) {
+            // Holding it with room to spare: more threat changes nothing.
+            UnitRole.TANK -> s.enemyTargetId == me.id && me.threat >= rival * margin
+            // Past the point where the enemy comes for you.
+            UnitRole.DPS -> me.threat >= rival * margin || s.enemyTargetId == me.id
+            UnitRole.HEALER -> false
+        }
+    }
 
     /** Whoever went from alive to dead between these two snapshots of the party. */
     private fun fellThisTick(before: List<Unit>, after: List<Unit>): Unit? =
@@ -1080,6 +1169,14 @@ class GameTick(
             hpm = if (s.runManaSpentHealing > 0) eff / s.runManaSpentHealing else 0.0,
             damageDone = s.runDamageDealt,
             dps = s.runDamageDealt / sec,
+            // One waste number, whichever seat was played. A healer's is overheal
+            // and always was; the other two are the effort spent while already
+            // clear of the pull line.
+            wastePct = when {
+                s.playerRole == UnitRole.HEALER -> if (raw > 0) 100 * s.runHealOverheal / raw else 0.0
+                s.runSeatEffort > 0 -> 100 * s.runSeatWaste / s.runSeatEffort
+                else -> 0.0
+            },
         )
     }
 
@@ -1399,7 +1496,11 @@ class GameTick(
                 struck,
                 healEffective = healEffectiveThisTick,
                 scriptedPartyDamage = scriptedDamage,
-                threatByActor = threatByActor,
+                // Plus whatever an AI damage dealer is overreaching by this tick.
+                // Injected here rather than into threatByActor where it is built,
+                // because the greed is a multiple of the scripted damage and that
+                // is not known until further down.
+                threatByActor = threatByActor + aiDpsGreed(s, scriptedDamage),
                 aiHealerHealing = aiHealerHealingThisTick,
                 localUnitId = s.localUnitId,
                 // A tank earns the tank's share of the party's damage as threat
@@ -1430,6 +1531,13 @@ class GameTick(
             },
             runFirstDownTick = if (s.runFirstDownName.isNotEmpty()) s.runFirstDownTick
             else if (fellThisTick(s.party, sys.party) != null) s.combatElapsedTicks else 0,
+            // The seat's own effort this tick, and whether it bought anything.
+            // "Over the line" is measured on the state *before* the tick, because
+            // the question is whether this tick's work was needed when it was
+            // committed, not whether it turned out to be.
+            runSeatEffort = s.runSeatEffort + seatEffort(s, enemyDots),
+            runSeatWaste = s.runSeatWaste +
+                if (overThePullLine(s)) seatEffort(s, enemyDots) else 0.0,
             adds = addsNow,
             bossAddWaves = s.bossAddWaves + if (callAdds) 1 else 0,
             bossPhase = s.bossPhase + if (enterPhase) 1 else 0,

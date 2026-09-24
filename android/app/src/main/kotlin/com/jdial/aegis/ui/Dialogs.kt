@@ -525,6 +525,15 @@ fun OutcomeDialog(
                     // They were shown four healing numbers, all zero.
                     StatRow("Damage done", outcome.stats.damageDone.toInt().toString())
                     StatRow("DPS", String.format("%.1f", outcome.stats.dps))
+                    // Every seat gets a waste number. A healer's is "Overheal"
+                    // above; these two had none, so there was no way to tell a
+                    // good clear from a lucky one.
+                    if (!group) {
+                        StatRow(
+                            if (playerRole == UnitRole.TANK) "Threat not needed" else "Damage past the line",
+                            "${outcome.stats.wastePct.toInt()}%",
+                        )
+                    }
                 }
 
                 // On a loss, name who went down first and when. The run already

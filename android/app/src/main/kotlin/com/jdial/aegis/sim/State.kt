@@ -280,6 +280,16 @@ data class RunStats(
     val overhealPct: Double = 0.0,
     val hpm: Double = 0.0,
     /**
+     * The share of this seat's own effort that achieved nothing, whatever seat it
+     * was. A healer's is [overhealPct] and always has been; a tank's is threat
+     * built while already safely holding; a damage dealer's is damage dealt while
+     * already over the pull line, which bought risk and nothing else.
+     *
+     * One number per seat, so the result screen asks the same question of all
+     * three and the record can rank efficiency rather than volume.
+     */
+    val wastePct: Double = 0.0,
+    /**
      * What this player dealt, for a tank or DPS. The healing numbers above
      * are zero for them, and the result screen used to show exactly those.
      */
@@ -509,6 +519,13 @@ data class GameState(
     val enemyTargetId: String? = null,
     /** While positive, [enemyTargetId] is held by a taunt regardless of the table. */
     val tauntLockTicks: Int = 0,
+    /**
+     * How long the enemy has been on somebody other than the AI tank. What
+     * `RolesBalance.aiTankNoticeTicks` is measured against: the delay has to be
+     * "since it turned", not a slice of the clock, or the tank's reaction would
+     * be fast or slow depending on when in the tick cycle the pull happened.
+     */
+    val aiTankOffTankTicks: Int = 0,
     val tauntedById: String? = null,
     /** Ticks until the AI tank may taunt again. */
     val aiTauntCooldown: Int = 0,
@@ -578,6 +595,21 @@ data class GameState(
      * were not sharp; the name tells them what to watch for.
      */
     val runFirstMissedKick: String = "",
+    /**
+     * The seat's own output this run, and the share of it that bought nothing.
+     *
+     * One pair for whichever seat is local, because only one ever is. A tank
+     * counts threat and a damage dealer counts damage; the units differ and the
+     * question does not -- "how much of what I did was needed". A healer's
+     * version of this is [runHealEffective] against [runHealOverheal], which
+     * already existed and is where the game got its name.
+     *
+     * Vigil asks every seat for a waste number. Two of the three had none, which
+     * is why the tank and damage seats had no way to tell a good clear from a
+     * lucky one.
+     */
+    val runSeatEffort: Double = 0.0,
+    val runSeatWaste: Double = 0.0,
     /**
      * XP awarded this run, per party slot, for every human in it.
      *
@@ -708,6 +740,9 @@ data class GameState(
         runFirstDownName = "",
         runFirstDownTick = 0,
         runFirstMissedKick = "",
+        runSeatEffort = 0.0,
+        runSeatWaste = 0.0,
+        aiTankOffTankTicks = 0,
         runXpAwards = emptyMap(),
     )
 }

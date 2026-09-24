@@ -1193,9 +1193,12 @@ private fun PartyRow(
                     if (unit.buffs.isNotEmpty()) add("${unit.buffs.size} heal over time")
                     if (unit.shield > 0) add("shielded")
                 }
+                // With no threat table -- a healer -- "has aggro" is still said,
+                // because the frame draws it and the spoken frame must carry
+                // whatever the drawn one does.
                 val threatSaid = threat?.let {
                     if (it.hasAggro) "has aggro" else "${it.pct} percent threat"
-                }
+                } ?: "has aggro".takeIf { unit.id == state.enemyTargetId }
                 // Spoken in the order the frame is drawn. Leading with health
                 // whatever the seat would keep a healer's priorities for a tank,
                 // whose frame is mostly the threat table.
@@ -1349,6 +1352,24 @@ private fun PartyRow(
                                 .background(Gilt.core),
                         )
                     }
+                }
+
+                // Who the enemy is actually on, in every lens including a
+                // healer's.
+                //
+                // A healer gets no threat table on purpose -- their window is
+                // health -- but they still have to know which frame has the
+                // boss's attention. Without it, an AI damage dealer overreaching
+                // and taking a hit arrives as spike damage with no author, which
+                // is illegible chaos rather than something to answer.
+                if (unit.id == state.enemyTargetId && !dead) {
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterStart)
+                            .width(3.dp)
+                            .fillMaxHeight()
+                            .background(Gilt.bright),
+                    )
                 }
 
                 // Threat. Omen and KTM drew a row per unit and so does this: the

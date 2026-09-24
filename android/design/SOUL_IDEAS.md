@@ -79,6 +79,107 @@ there first.
 
 ---
 
+# Round two
+
+Round one was derived from draft pillars. Vigil is a written soul now
+(`souls/vigil.txt`), so this round is derived from its **named rules** and from
+the components it claims, which is a stricter test: each idea below cites the
+rule it serves by name.
+
+**Shipped since round one:** 1 (partly -- the AI healer has a reaction delay and
+triages by raw health), 10 (`bestHpm`), 21 (partly -- the first faller is named,
+not yet the three largest hits), 22, 28. The party-frame lens work (tank's row
+inverts to threat, DPS splits, healer unchanged) was not in round one and lands
+squarely on **Change the Window, Not Just the Verbs**.
+
+**Satisfied already, nothing to build:** *No Handover Path* (a silent teammate
+becomes `isHuman = false` and the AI resumes their damage), *One Simulation,
+Every Seat* (`GameState.actingAs`), and the workbench's *Refactoring Is Free*
+(the free respec).
+
+## "Competent Enough to Play With, Fallible Enough to Matter"
+
+The AI healer now has judgment limits. The AI **tank** and **DPS** still have
+none -- `aiTauntCooldownTicks` is a throughput limit, not a judgment one -- so a
+healer is still playing beside two fuel tanks.
+
+| # | Mechanic | → Dynamic | → Tone | Serves |
+|---|---|---|---|---|
+| 29 | Give the AI tank a reaction delay before it taunts, and a chance to taunt the wrong add when several are up | A healer feels the boss turn and stay turned for a beat, and starts holding a cooldown for it instead of spending on chip damage | Answerable vigilance | `covering_party` |
+| 30 | Let an AI damage dealer occasionally push past the pull line and wear a hit | Spike damage on a non-tank acquires an author the healer can see coming, rather than arriving as noise | Answerable vigilance | `covering_party`, Pillar 1 |
+| 31 | In the wipe receipt, state teammate *events* -- "taunt came 1.4s after the boss turned" -- as facts, never as a rating | Players learn the shape of the hole they were filling | Answerable vigilance | `legible_failure` — **but read against *Never Grade the Others*.** An event is not a quality, and this is the closest any idea here comes to that line. Judge it carefully. |
+
+## "The Hole Is the Job"
+
+| # | Mechanic | → Dynamic | → Tone | Serves |
+|---|---|---|---|---|
+| 32 | Where a class covers another seat's job, show the reduced effect on the button itself, not only in the tooltip | Players read a cover ability as a stopgap rather than a second job | Answerable vigilance | `solo_wizard` |
+| 33 | A test asserting no class's granted utilities cover more than one other seat's job (`utility_spells.json` is the single source) | Convergence on the self-sufficient class fails the build instead of being found in playtesting | Answerable vigilance | `solo_wizard` |
+
+## "Name the Waste, Then Price It"
+
+The rule says *every* seat gets a waste metric. Only the healer has one, which
+is why #12 from round one is still blocked: a third clear mark keyed on
+`overhealPct` would be free for tanks and DPS.
+
+| # | Mechanic | → Dynamic | → Tone | Serves |
+|---|---|---|---|---|
+| 34 | Tank waste: threat built past the pull line while already holding, accumulated from the `threat` already on `Unit` | A tank stops globalling threat it cannot use and starts spending those beats on mitigation | Cool focus | Pillar 2 |
+| 35 | DPS waste: damage dealt while above the pull line -- output that bought risk and nothing else | The fastest rotation stops being the best one, in a number rather than in a wipe | Cool focus | Pillar 2 |
+| 36 | One waste-buy-back per role: surplus threat into a defensive charge, held-back damage into a burst window | Builds form around the waste, and the shameful number becomes an archetype | Cool focus | *At Least One Build Buys the Waste Back* |
+| 37 | Decide what `bestDps` and `bestHps` are for -- they are recorded and displayed nowhere -- and either convert them to per-resource equivalents or delete them | The record stops holding volume metrics nobody sees | Cool focus | *Efficiency, Not Volume*, `proof_nobody_sees` |
+| 38 | Rank endless by efficiency per wave, not waves alone | The endless run becomes a resource curve to hold rather than a health-bar treadmill | Cool focus | Pillar 2, `stagnant_mid_game` |
+
+## "Change the Window, Not Just the Verbs"
+
+The lens work changed *how* each seat reads the party. Nothing yet changes what
+the **encounter** shows each seat.
+
+| # | Mechanic | → Dynamic | → Tone | Serves |
+|---|---|---|---|---|
+| 39 | A boss cast whose tell is legible from one seat only: a party debuff pattern the healer can read, a stance change only the tank sees | The seat that can see it must act, and in single player the AI cannot, so it is unambiguously yours | Answerable vigilance | Pillar 3 |
+| 40 | The healer's missing instrument: incoming damage over the next few ticks, per frame | The healer's primary reading becomes the derivative, which is what triage is | Answerable vigilance | Pillar 3, `legible_failure` |
+| 41 | A live forecast of what the next point of the signature stat buys, on the character sheet | Build decisions leave guesswork without the game giving advice | Cool focus | *Each Seat Owns One Number* |
+
+## The workbench, by its own rules
+
+Still absent, and the component's rules are sharper than round one's version of
+this.
+
+| # | Mechanic | → Dynamic | → Tone | Serves |
+|---|---|---|---|---|
+| 42 | A lab beside the floor: one pull, no rewards, instant restart, any dungeon and keystone -- loading the same `balance.json` the run does | An expert tests a charm swap in thirty seconds instead of committing a run | Cool focus | *A Lab Beside the Floor*; `lab_that_lies` is the risk if the lab ever relaxes a cap |
+| 43 | Build codes that carry their claim: talents, charm and consumable *plus* the HPM and clear time they earned | A posted build arrives with its measurement attached and means the same thing in the reader's game | Cool focus | *Designs Travel as Text, With Their Context* |
+| 44 | Your own clears as a histogram of time and HPM against your own history -- no stars, no advice | Players judge a build against their own record, which is the only comparison this soul allows | Cool focus | *Measure, Don't Grade*, `social_safety` |
+| 45 | A readable view of the coefficients `balance.json` currently hides | The browser tab beside the game stops being necessary, and there is no community here to write that wiki | Cool focus | `outside_tool`, `hidden_math` |
+
+## interface_voice, currently only a Trace
+
+Vigil claims this component; the game holds it by habit rather than by rule.
+`RunHighlights` is documented as being "for the outcome screen to shout about,"
+which is the component's *Never Congratulate a Number* in as many words.
+
+| # | Mechanic | → Dynamic | → Tone | Serves |
+|---|---|---|---|---|
+| 46 | Convert the outcome screen's shouts into statements: the mark is the fact, not a celebration of it | A number stops being something players perform for | Cool focus | *Never Congratulate a Number* |
+| 47 | Audit the result screen for anything the party frames already said during the run | Redundant lines stop training players to skip the screen that carries the receipt | Cool focus | *Say It Once* |
+| 48 | Audit `Vital.critical`: it currently carries the ghost-damage band, the incoming-cast outline and closing threat | Red means danger everywhere, so it keeps meaning danger anywhere | Cool focus | *Warning Colours Mean Danger* |
+
+## audio_information, per Vigil's own tuning note
+
+| # | Mechanic | → Dynamic | → Tone | Serves |
+|---|---|---|---|---|
+| 49 | Duck the ambience as the party's lowest health falls, so a bad moment sounds different before it looks different | Players hear the run turning while their eyes are on one frame | Answerable vigilance | *The Mix Follows the State* |
+| 50 | Mark a let-through kickable cast by dropping a sound layer, never by adding a buzzer | The game stays unmuted, which keeps its cheapest information channel | Answerable vigilance | *Mistakes Remove Sound; They Don't Add It*, `buzzer` |
+
+## The cost the soul names
+
+| # | Mechanic | → Dynamic | → Tone | Serves |
+|---|---|---|---|---|
+| 51 | Extend `scripts/playtest.py` to sweep all three seats per dungeon and report where the same fight diverges | A mechanic change is checked from every window before it ships, instead of the least-played seat rotting quietly | Cool focus | *Balancing One Fight Three Times* |
+
+---
+
 ## Ideas the soul rules out
 
 Worth writing down, because they are the ones that will keep getting suggested.

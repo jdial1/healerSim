@@ -191,6 +191,35 @@ data class RolesBalance(
      */
     val aiHealerTriageByRawHealth: Boolean = false,
     /**
+     * How long the enemy has to be off the AI tank before it notices and taunts.
+     * Zero is what it did: taunt the instant the cooldown allowed.
+     *
+     * The AI healer got judgment limits and the other two seats did not, so a
+     * *healer* was still playing beside fuel tanks. One number buys two flaws
+     * here, both of them a real tank's: the boss stays turned for a beat, and
+     * because the taunt still fires eagerly once the beat is up, a brief pull
+     * that would have resolved itself can spend the cooldown the real one
+     * needed.
+     */
+    val aiTankNoticeTicks: Int = 0,
+    /**
+     * How often an AI damage dealer overreaches, and by how much.
+     *
+     * An AI damage dealer earns 0.283 of the scripted damage in threat per tick
+     * against the tank's 0.375, so it could never pull -- it was incapable of
+     * the mistake its human equivalent makes constantly. In its greed window it
+     * generates [aiDpsGreedMultiplier] times its usual threat, which is enough
+     * to cross the pull line, and then it wears the hit until the tank notices.
+     *
+     * Deterministic: the window opens on the tick count and the unit is chosen
+     * by id, so nothing here draws from the rng.
+     *
+     * Zero ticks is off, which is what it did.
+     */
+    val aiDpsGreedEveryTicks: Int = 0,
+    val aiDpsGreedTicks: Int = 0,
+    val aiDpsGreedMultiplier: Double = 1.0,
+    /**
      * How steeply the AI healer's healing and mana grow with level, pivoting
      * on [aiHealerLevelPivot]: 1.0 is the old straight line.
      *
