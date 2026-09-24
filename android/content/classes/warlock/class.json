@@ -1,0 +1,43 @@
+{
+  "id": "WARLOCK",
+  "name": "Affliction Lock",
+  "role": "DPS",
+  "description": "Stacks rot and waits. Not finished yet.",
+  "iconKey": "skull",
+  "color": "bg-violet-700",
+  "textColor": "text-violet-300",
+  "hoverBorderClass": "hover:border-violet-500",
+  "locked": true,
+  "portraitUrl": "",
+  "portraitIcon": "warlock",
+  "portraitGlow": "spell",
+  "passiveTraitName": "Nightfall",
+  "passiveTraitDescription": "Your rot occasionally blooms early.",
+  "passiveTraitIcon": "wow/spell_nature_wispsplode",
+  "tutorial": {
+    "passiveDescription": "Nightfall: Your rot occasionally blooms early."
+  },
+  "statCurves": {
+    "baseIntellect": 32,
+    "baseSpirit": 14,
+    "intellectPerLevel": 3.8,
+    "spiritPerLevel": 1.0,
+    "baseUniqueStat": 9,
+    "uniqueStatPerLevel": 0.6
+  },
+  "progression": {
+    "starterSpells": [
+      "corruption",
+      "shadow_bolt"
+    ],
+    "spellOrder": [
+      "corruption",
+      "shadow_bolt",
+      "unstable_affliction",
+      "seed_of_corruption",
+      "healthstone",
+      "demon_armor",
+      "shadowburn"
+    ]
+  }
+}

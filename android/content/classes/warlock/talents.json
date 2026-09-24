@@ -1,0 +1,305 @@
+[
+  {
+    "id": "wl_r0c0",
+    "name": "Improved Corruption",
+    "description": "Increases power by 2% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_warlock_demonicempowerment",
+    "gridX": 0,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r0c2",
+    "name": "Suppression",
+    "description": "Increases critical strike chance by 1% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_warlock_ancientgrimoire",
+    "gridX": 2,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r0c4",
+    "name": "Fel Concentration",
+    "description": "Increases maximum resource by 3% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_warlock_avoidance",
+    "gridX": 4,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r1c1",
+    "name": "Shadow Mastery",
+    "description": "Increases power by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_warlock_shadowflame",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "wl_r0c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r1c3",
+    "name": "Malediction",
+    "description": "Increases critical strike chance by 2% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_warlock_backdraft",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "wl_r0c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r2c0",
+    "name": "Nightfall",
+    "description": "Increases haste by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_warlock_backdraftgreen",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r2c2",
+    "name": "Unstable Affliction",
+    "description": "Unlocks Unstable Affliction.",
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_shadow_unstableaffliction_3",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "wl_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "unstable_affliction"
+  },
+  {
+    "id": "wl_r2c4",
+    "name": "Soul Siphon",
+    "description": "Returns resource on each direct cast.",
+    "maxPoints": 3,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_warlock_soulsiphon",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaReturnOnDirectHeal": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r3c1",
+    "name": "Seed of Corruption",
+    "description": "Unlocks Seed of Corruption.",
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_shadow_seedofdestruction",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "wl_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "seed_of_corruption"
+  },
+  {
+    "id": "wl_r3c3",
+    "name": "Death's Embrace",
+    "description": "Increases critical strike chance by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_shadow_deathsembrace",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "wl_r1c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r4c2",
+    "name": "Contagion",
+    "description": "Increases power by 5% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_shadow_contagion",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "wl_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 5
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r4c4",
+    "name": "Fel Stamina",
+    "description": "Increases toughness by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_warlock_baneofhavoc",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "wl_r3c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r5c1",
+    "name": "Eradication",
+    "description": "Increases haste by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_warlock_eradication",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "wl_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r5c3",
+    "name": "Everlasting Affliction",
+    "description": "Increases power by 6% per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_warlock_everlastingaffliction",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "wl_r4c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 6
+    },
+    "points": 0
+  },
+  {
+    "id": "wl_r6c2",
+    "name": "Haunt",
+    "description": "Increases power by 10%.",
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/ability_warlock_haunt",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "wl_r5c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 10
+    },
+    "points": 0
+  }
+]

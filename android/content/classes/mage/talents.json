@@ -1,0 +1,341 @@
+[
+  {
+    "id": "m_r0c0",
+    "name": "Improved Frostbolt",
+    "description": "Frostbolt deals 5% more damage per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_frost_frostbolt",
+    "gridX": 0,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:frostbolt": 5
+    }
+  },
+  {
+    "id": "m_r0c2",
+    "name": "Arcane Focus",
+    "description": "Increases critical strike chance by 1% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_mage_arcanebarrage",
+    "gridX": 2,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "m_r0c4",
+    "name": "Frost Channeling",
+    "description": "Increases maximum mana by 3% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_frost_frost",
+    "gridX": 4,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "m_r1c1",
+    "name": "Elemental Precision",
+    "description": "Increases spell damage by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_frost_summonwaterelemental",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "m_r0c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "m_r1c3",
+    "name": "Piercing Ice",
+    "description": "Frostbolt's chill lasts 1.5 seconds longer per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_frost_piercingchill",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "m_r0c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "chillTicks": 15
+    }
+  },
+  {
+    "id": "m_r2c0",
+    "name": "Icy Veins",
+    "description": "Increases haste by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_frost_arcticwinds",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "m_r2c2",
+    "name": "Arcane Missiles",
+    "description": "Unlocks Arcane Missiles.",
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_nature_starfall",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "m_r1c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "arcane_missiles"
+  },
+  {
+    "id": "m_r2c4",
+    "name": "Arcane Meditation",
+    "description": "Frostbolt costs 2 less mana per rank.",
+    "maxPoints": 3,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_mage_arcanebarrage_nightborne",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cost:frostbolt": 2
+    }
+  },
+  {
+    "id": "m_r3c1",
+    "name": "Empowered Fireball",
+    "description": "Fireball deals 8% more damage per rank.",
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_fire_fireball",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "m_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:fireball": 8
+    }
+  },
+  {
+    "id": "m_r3c3",
+    "name": "Shatter",
+    "description": "Shatter grants a further 8% critical strike chance per rank.",
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_mage_shattershield",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "m_r2c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "shatterCrit": 8
+    }
+  },
+  {
+    "id": "m_r4c0",
+    "name": "Living Bomb",
+    "description": "Unlocks Living Bomb.",
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_mage_livingbomb",
+    "gridX": 0,
+    "gridY": 4,
+    "prerequisites": [
+      "m_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "living_bomb"
+  },
+  {
+    "id": "m_r4c2",
+    "name": "Molten Fury",
+    "description": "Deals 8% more damage per rank to an enemy below 35% health.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_mage_moltenarmor",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "m_r3c1"
+    ],
+    "exclusiveWith": [
+      "m_r4c4"
+    ],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "execute": 8
+    }
+  },
+  {
+    "id": "m_r4c4",
+    "name": "Arcane Potency",
+    "description": "Arcane Missiles deals 10% more damage per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_arcane_arcanepotency",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "m_r3c3"
+    ],
+    "exclusiveWith": [
+      "m_r4c2"
+    ],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:arcane_missiles": 10
+    }
+  },
+  {
+    "id": "m_r5c1",
+    "name": "Netherwind Presence",
+    "description": "Counterspell's cooldown is 3 seconds shorter per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_mage_netherwindpresence",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "m_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:counterspell": 30
+    }
+  },
+  {
+    "id": "m_r5c3",
+    "name": "Torment the Weak",
+    "description": "Deals 6% more damage per rank to a chilled enemy.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_mage_tormentoftheweak",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "m_r4c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "chilledDamage": 6
+    }
+  },
+  {
+    "id": "m_r6c2",
+    "name": "Arcane Power",
+    "description": "Living Bomb deals 25% more damage, and its cooldown is 3 seconds shorter.",
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/spell_arcane_arcane01",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "m_r5c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:living_bomb": 25,
+      "cooldown:living_bomb": 30
+    }
+  }
+]

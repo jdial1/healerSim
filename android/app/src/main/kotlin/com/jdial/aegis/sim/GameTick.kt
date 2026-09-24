@@ -1,8 +1,14 @@
 package com.jdial.aegis.sim
 
+import com.jdial.aegis.data.Affix
+import com.jdial.aegis.data.AddTemplate
+import com.jdial.aegis.data.affixesFor
 import com.jdial.aegis.data.AttackTemplate
 import com.jdial.aegis.data.BossCombat
 import com.jdial.aegis.data.Dungeon
+import com.jdial.aegis.data.DebuffMechanic
+import com.jdial.aegis.data.enrageAfterTicks
+import com.jdial.aegis.data.pullCombat
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.Targeting
@@ -26,29 +32,390 @@ class GameTick(
     private val stats: PlayerStats,
     private val progression: Progression,
 ) {
+    /** The beat a boss takes as it changes phase, before the new rotation starts. */
+    private val phaseOpeningTicks = 20
+
     private val defaultMechanicMin = 2 * TICKS_PER_SECOND
     private val defaultMechanicMax = 5 * TICKS_PER_SECOND
 
-    private fun combatProfile(dungeon: Dungeon): BossCombat {
-        val c = dungeon.bossCombat
+    private fun combatProfile(dungeon: Dungeon, s: GameState? = null): BossCombat {
+        val c = if (s != null && s.combatPhase == CombatPhase.TRASH) {
+            data.encounters.pullCombat(dungeon.id, TRASH_PACK_COUNT - s.trashPullsRemaining)
+        } else {
+            dungeon.bossCombat?.let { boss -> withPhases(boss, s?.bossPhase ?: 0) }
+        }
+        // The one place a rotation is assembled, so the one place affixes lay
+        // their own mechanic over it and wind the clock in.
+        val affixes = affixesOf(s, dungeon)
+        val gap = affixes.fold(1.0) { m, a -> m * a.mechanicInterval }
         return BossCombat(
-            debuffTemplates = c?.debuffTemplates ?: emptyList(),
+            debuffTemplates = (c?.debuffTemplates ?: emptyList()) + affixes.mapNotNull { it.debuff },
             selfBuffTemplates = c?.selfBuffTemplates ?: emptyList(),
             attackTemplates = c?.attackTemplates ?: emptyList(),
-            mechanicIntervalTicksMin = c?.mechanicIntervalTicksMin ?: defaultMechanicMin,
-            mechanicIntervalTicksMax = c?.mechanicIntervalTicksMax ?: defaultMechanicMax,
+            mechanicIntervalTicksMin =
+                max(5, ((c?.mechanicIntervalTicksMin ?: defaultMechanicMin) * gap).roundToInt()),
+            mechanicIntervalTicksMax =
+                max(6, ((c?.mechanicIntervalTicksMax ?: defaultMechanicMax) * gap).roundToInt()),
+        )
+    }
+
+    // --- threat --------------------------------------------------------------
+    //
+    // Dormant in this increment: the table is built and carried, but no dungeon
+    // opts into Targeting.HIGHEST_THREAT, so nothing consults it. Building it
+    // first lets the model settle against the parity corpus before any content
+    // depends on it.
+
+    /**
+     * Who the enemy is on, from the threat table as it stood at the end of last
+     * tick.
+     *
+     * Draws nothing from the rng, and must never start doing so: every parity
+     * scenario is a recording of one seeded stream, and an extra draw per tick
+     * would desynchronise all of them. Ties break on ascending id so the answer
+     * cannot depend on party list order either.
+     */
+    internal fun resolveEnemyTarget(s: GameState): String? {
+        val living = s.party.filter { it.isAlive }
+        if (living.isEmpty()) return null
+
+        if (s.tauntLockTicks > 0) {
+            living.firstOrNull { it.id == s.tauntedById }?.let { return it.id }
+        }
+
+        val best = living.minWith(compareByDescending<Unit> { it.threat }.thenBy { it.id })
+        val current = living.firstOrNull { it.id == s.enemyTargetId } ?: return best.id
+        // Hysteresis: you have to beat the current target by a margin, not tie
+        // it, or the enemy flickers between two units trading the lead.
+        val margin = data.balance.threat.overtakeMultiplier
+        return if (best.threat > current.threat * margin) best.id else current.id
+    }
+
+    /**
+     * Adds this tick's threat to the table.
+     *
+     * Healing counts only where it landed -- overheal generates none, which is
+     * the one piece of threat a healer can actually play around. Scripted party
+     * damage is attributed to the units notionally dealing it, so a tank builds
+     * a lead a player has to respect once content starts using it.
+     */
+    internal fun accrueThreat(
+        party: List<Unit>,
+        healEffective: Double,
+        scriptedPartyDamage: Double,
+        /**
+         * Threat each participant generated this tick from their own casts,
+         * keyed by unit id and already scaled by each spell's threatMultiplier.
+         * Not their damage -- see Participant.pendingPlayerThreat.
+         */
+        threatByActor: Map<String, Double> = emptyMap(),
+        /**
+         * Effective healing done by the party's AI healer this tick, credited to
+         * whichever healer slot is not the player's. Without this the AI healer
+         * is the one unit in the game that can heal all fight and never appear
+         * on the table, so a player tank could never lose aggro to their healer
+         * -- exactly the situation the coefficient exists to create.
+         */
+        aiHealerHealing: Double = 0.0,
+        /** Which slot the passive and HoT healing in [healEffective] belongs to. */
+        localUnitId: String = PLAYER_UNIT_ID,
+        /**
+         * Whether the tank is credited with its share of the party's scripted
+         * damage. True for an AI tank, which is doing the work the scripted
+         * number stands for. False for a person: a player tank holds the line
+         * with what they actually cast, or does not hold it. Without this a
+         * tank who pressed nothing all run still kept the boss on themselves,
+         * and so could not lose.
+         */
+        tankEarnsScriptedThreat: Boolean = true,
+    ): List<Unit> {
+        val cfg = data.balance.threat
+        val living = party.filter { it.isAlive }
+        // No early return on an empty party: the corpse-zeroing below still has
+        // to run, or a wipe leaves the last unit to die holding the top of the
+        // table when the pull resets.
+        val tank = living.firstOrNull { it.role == UnitRole.TANK }
+        val dps = living.filter { it.role == UnitRole.DPS }
+        val tankDamage =
+            if (tank != null && tankEarnsScriptedThreat) scriptedPartyDamage * cfg.tankDamageShare else 0.0
+        val perDps = if (dps.isEmpty()) 0.0 else (scriptedPartyDamage - tankDamage) / dps.size
+
+        fun mult(role: UnitRole) = cfg.roleMultiplier[role.name] ?: 1.0
+
+        return party.map { u ->
+            if (!u.isAlive) {
+                // A corpse holds no threat; it would otherwise still be leading
+                // the table when it is resurrected or the pull resets.
+                if (u.threat == 0.0) u else u.copy(threat = 0.0)
+            } else {
+                val damage = when {
+                    u.role == UnitRole.TANK -> tankDamage
+                    u.role == UnitRole.DPS -> perDps
+                    else -> 0.0
+                }
+                // Healing is worth half its landed value in threat, as in
+                // WotLK, and overheal is worth nothing -- the caller only ever
+                // passes effective healing. Cast heals arrive via
+                // threatByActor with the coefficient already applied; what
+                // reaches healEffective here is passive and HoT healing, which
+                // is still resolved for this client's participant only.
+                val healing = when {
+                    u.id == localUnitId -> healEffective * cfg.healingCoefficient
+                    u.role == UnitRole.HEALER -> aiHealerHealing * cfg.aiHealerThreatCoefficient
+                    else -> 0.0
+                }
+                // The player's own threat is theirs alone, and is what lets a
+                // DPS pull off a tank that only generates scripted threat.
+                val own = threatByActor[u.id] ?: 0.0
+                val gained = (damage + healing + own) * mult(u.role)
+                if (gained == 0.0) u else u.copy(threat = u.threat + gained)
+            }
+        }
+    }
+
+    /**
+     * How much of the party's scripted damage the AI is still responsible for.
+     *
+     * Each human takes over one slot, so the scripted pool shrinks by whatever
+     * that role was contributing. The three balance constants are the *result*
+     * for exactly one human, so the generalisation has to reproduce them
+     * exactly rather than approximately -- see the identity below.
+     *
+     * This is also what hands a slot back when somebody disconnects. A dropped
+     * player is marked `isHuman = false` rather than removed, so they stop
+     * subtracting here and the AI simply resumes doing their damage. There is
+     * no separate handover path to get wrong, and a run does not end because
+     * one phone lost signal.
+     *
+     * The arithmetic is deliberately `1.0 - Σ(1 - share)`: with a single healer
+     * that is `1.0 - (1.0 - 1.0)`, which is bit-identical to 1.0 in IEEE-754,
+     * so the enemy-damage expression stays the exact identity parity/golden.json
+     * was recorded against. [DamageTest] pins that.
+     */
+    internal fun aiDamageShare(s: GameState): Double {
+        val roles = data.balance.roles
+        fun shareFor(role: UnitRole) = when (role) {
+            UnitRole.HEALER -> roles.aiShareWhenHealer
+            UnitRole.DPS -> roles.aiShareWhenDps
+            UnitRole.TANK -> roles.aiShareWhenTank
+        }
+        // Single player is a map of one, so this is one subtraction of zero.
+        val taken = s.participants.values
+            .filter { it.isHuman }
+            .sumOf { 1.0 - shareFor(it.role) }
+        return (1.0 - taken).coerceIn(0.0, 1.0)
+    }
+
+    /**
+     * A cast defensive cooldown's reduction, for the player's own unit only.
+     *
+     * Applied here rather than through damageTakenMultiplier because that hook
+     * is per-class and this is not: any class with a spell carrying
+     * `damageReduction` gets it, which is what makes active mitigation content
+     * rather than code.
+     */
+    internal fun activeMitigation(s: GameState, u: Unit): Double {
+        // Whoever occupies the slot, not slot 5: a defensive is the caster's own
+        // and every participant carries their own buff list.
+        val buff = s.participants[u.id]?.playerCombatBuffs
+            ?.firstOrNull { it.id == BUFF_ACTIVE_MITIGATION }
+            ?: return 1.0
+        val reduction = buff.magnitude ?: return 1.0
+        return (1.0 - reduction).coerceIn(0.0, 1.0)
+    }
+
+    /**
+     * The AI tank taking the enemy back.
+     *
+     * A DPS player doing the damage they are meant to do out-threats an AI
+     * tank, whose share of the scripted damage is small -- so the boss turned
+     * to them and stayed there, and a player playing well died for it. The
+     * setting for this existed (aiTauntCooldownTicks) and nothing read it.
+     *
+     * Only when the player is not the healer: healer runs never target by
+     * threat, and the recorded ones must not change. Draws nothing from the rng.
+     */
+    internal fun aiTankTaunt(s: GameState): GameState {
+        // A healer's run too, now that the boss can be pulled off the tank by
+        // healing: the AI tank takes it back on cooldown, so pulling aggro is a
+        // few dangerous seconds rather than the rest of the fight.
+        val cooldown = max(0, s.aiTauntCooldown - 1)
+        val tank = s.party.firstOrNull { it.role == UnitRole.TANK && it.isAlive && !s.isHuman(it.id) }
+        if (tank == null || cooldown > 0 || s.enemyTargetId == null || s.enemyTargetId == tank.id) {
+            return if (cooldown == s.aiTauntCooldown) s else s.copy(aiTauntCooldown = cooldown)
+        }
+        val cfg = data.balance.threat
+        val top = s.party.filter { it.isAlive }.maxOfOrNull { it.threat } ?: 0.0
+        return s.copy(
+            party = s.party.map {
+                if (it.id == tank.id) it.copy(threat = max(it.threat, top * cfg.tauntOvertakeMultiplier)) else it
+            },
+            enemyTargetId = tank.id,
+            tauntedById = tank.id,
+            tauntLockTicks = cfg.aiTauntLockTicks,
+            aiTauntCooldown = cfg.aiTauntCooldownTicks,
+        )
+    }
+
+    /**
+     * An AI DPS interrupting the boss.
+     *
+     * Only with no human DPS in the run -- then it is the people's job, and
+     * "who kicks?" is theirs to settle. It lets the first interruptible cast
+     * through and kicks every second one, a moment after it starts, so a
+     * healer or tank sees both what a cast does and what a kick saves them.
+     * Deterministic: no rng.
+     */
+    internal fun aiKick(s: GameState): GameState {
+        val cast = s.enemyCast ?: return s
+        if (!cast.interruptible || s.interruptibleCasts % 2 != 0) return s
+        if (s.participants.values.any { it.isHuman && it.role == UnitRole.DPS }) return s
+        if (cast.totalTicks - cast.remainingTicks < data.encounters.aiKickDelayTicks) return s
+        val kicker = s.party.firstOrNull { it.role == UnitRole.DPS && it.isAlive && !s.isHuman(it.id) } ?: return s
+        return s.copy(enemyCast = null, lastInterruptBy = kicker.id, exposedTicks = data.encounters.pressure.exposedTicks)
+    }
+
+    // --- the AI healer -------------------------------------------------------
+
+    internal data class AiHealResult(
+        val party: List<Unit>,
+        val manaLeft: Double,
+        val healed: Double,
+    )
+
+    /**
+     * One tick of the party's AI healer.
+     *
+     * Exists only when the player is not the healer -- when they are, slot "5"
+     * is them and there is no AI one. Triage, not a rotation: it tops up the
+     * unit furthest from full and stops there, so chip damage accumulates and
+     * a real spike still kills someone. When the budget runs dry, people die,
+     * which is the whole tension of the role the player just stopped playing.
+     *
+     * Draws nothing from the rng, for the same reason nothing else added since
+     * increment 1 does.
+     */
+    /** The AI healer's heal over time, so its work shows on the party frames. */
+    private val AI_HEAL_BUFF = "ai_mending"
+
+    /** Whoever went from alive to dead between these two snapshots of the party. */
+    private fun fellThisTick(before: List<Unit>, after: List<Unit>): Unit? =
+        after.filter { u -> !u.isAlive && before.any { it.id == u.id && it.isAlive } }
+            .minByOrNull { it.id }
+
+    internal fun aiHealerTick(s: GameState, party: List<Unit>): AiHealResult {
+        val cfg = data.balance.roles
+        val healer = party.firstOrNull {
+            // Any healer slot no human is driving. Excluding only slot 5 was the
+            // same assumption everywhere else made: that the human is always
+            // there. A second human joining as the healer in slot 4 would have
+            // been played by the AI and by their owner at once.
+            it.role == UnitRole.HEALER && !s.isHuman(it.id) && it.isAlive
+        } ?: return AiHealResult(party, s.aiHealerMana, 0.0)
+
+        val mana = min(
+            cfg.aiHealerMaxMana(healer.level),
+            s.aiHealerMana + cfg.aiHealerRegen(healer.level),
+        )
+
+        // It only commits on its own beat, and when it does it commits the whole
+        // beat's worth at once (see [amount] below).
+        //
+        // Skipping ticks without scaling the commitment up would have *lowered*
+        // its mana spend, which is a buff: it would finish fights with mana in
+        // hand, and `IdlePlayerTest` rightly fails that -- a healer that never
+        // tires makes every other seat optional. Throughput is unchanged. Only
+        // the timing is worse, and timing is the part the player answers.
+        val beat = cfg.aiHealerReactionTicks.coerceAtLeast(1)
+        if (beat > 1 && s.combatElapsedTicks % beat != 0) {
+            return AiHealResult(party, mana, 0.0)
+        }
+
+        // Ties broken by id so the choice cannot depend on party order. Someone
+        // already carrying the AI's heal is skipped: it is a heal over time now,
+        // and stacking it on one target would be the AI paying twice for
+        // healing that lands once.
+        val triage: Comparator<Unit> = if (cfg.aiHealerTriageByRawHealth) {
+            compareBy<Unit> { it.health }.thenBy { it.id }
+        } else {
+            compareBy<Unit> { it.health / it.maxHealth }.thenBy { it.id }
+        }
+        val hurt = party.filter { it.isAlive && it.maxHealth > 0 }
+            .filter { it.health / it.maxHealth < cfg.aiHealerHealBelowFraction }
+            .filter { u -> u.buffs.none { it.id == AI_HEAL_BUFF } }
+            .minWithOrNull(triage)
+            ?: return AiHealResult(party, mana, 0.0)
+
+        // Paid in full, on the heal it commits to rather than the part that
+        // lands. A healer topping someone up who was nearly full has spent the
+        // mana either way, and charging only for what fit is why the AI's mana
+        // never moved: it could carry a party through a whole dungeon without
+        // tiring, which made the tank's seat optional.
+        val amount = cfg.aiHealerHeal(healer.level) * beat
+        val cost = amount * cfg.aiHealerManaPerHealPoint
+        if (cost > mana) return AiHealResult(party, mana, 0.0)
+
+        val ticks = cfg.aiHealerHotTicks
+        val buff = UnitBuff(
+            id = AI_HEAL_BUFF,
+            name = "Mending",
+            remainingTicks = ticks,
+            healingPerTick = amount / ticks,
+            icon = "wow/spell_holy_renew",
+            durationTicksMax = ticks,
+        )
+        return AiHealResult(
+            party = party.map { if (it.id == hurt.id) it.copy(buffs = it.buffs + buff) else it },
+            manaLeft = mana - cost,
+            // Threat is banked on the commitment, not the landing: the healing
+            // is already paid for and already on the target, and crediting it
+            // as the buff ticks would mean walking it back out of whatever the
+            // *player* healed that tick.
+            healed = amount,
         )
     }
 
     // --- targeting -----------------------------------------------------------
 
-    private fun selectTargets(party: List<Unit>, targeting: Targeting, rng: Rng): Set<String> {
+    /**
+     * Threat targeting turns on when somebody is playing a threat role.
+     *
+     * No dungeon opts in via its JSON, deliberately: doing that would change
+     * how the boss picks victims for a *healer* too, removing an rng draw and
+     * desynchronising every recorded parity scenario. Gating on the player's
+     * role instead means the healer game the goldens describe is bit-identical,
+     * while a tank or DPS gets a boss that actually responds to the table.
+     *
+     * Only single-target attacks convert. A raid-wide hit lands on everyone
+     * whoever is holding aggro.
+     */
+    private fun effectiveTargeting(s: GameState, t: Targeting): Targeting =
+        // Every run now, the healer's included: a healer spamming heavy heals
+        // or landing a big crit climbs the table like anyone else and draws the
+        // boss's single-target hits until the tank takes it back. Raid-wide
+        // hits, and the chip damage a healer's run spreads around the party,
+        // are untouched -- only who the boss singles out follows threat.
+        if (t == Targeting.SINGLE_RANDOM) Targeting.HIGHEST_THREAT else t
+
+    private fun selectTargets(
+        party: List<Unit>,
+        targeting: Targeting,
+        rng: Rng,
+        enemyTargetId: String?,
+    ): Set<String> {
         val living = party.filter { it.health > 0 }.map { it.id }
         if (living.isEmpty()) return emptySet()
         return when (targeting) {
             Targeting.ALL_LIVING -> living.toSet()
             Targeting.SINGLE_RANDOM -> setOf(rng.pick(living))
             Targeting.TWO_RANDOM -> rng.shuffled(living).take(2).toSet()
+            // Note this consumes no rng, unlike every mode above. That is why
+            // no existing dungeon may opt in: doing so would remove a draw from
+            // the seeded stream and desynchronise every later tick from the
+            // parity corpus. Falls back to the front of the list only if
+            // nothing has generated threat yet.
+            Targeting.HIGHEST_THREAT ->
+                setOf(enemyTargetId?.takeIf { id -> living.any { it == id } } ?: living.first())
         }
     }
 
@@ -89,7 +456,34 @@ class GameTick(
         val mechanicCooldown: Int,
         val mechanicOrdinal: Int,
         val naturalPerfectionAdd: Int,
+        val enemyCast: EnemyCast? = null,
+        /** A state the landed cast put the enemy in. */
+        val state: Pair<String, Int>? = null,
+        /** A kickable cast landed that somebody could have kicked. */
+        val missedKick: Boolean = false,
+        /** Which cast that was, so the miss can be named rather than counted. */
+        val missedKickName: String = "",
     )
+
+    /**
+     * The boss's rotation on the phase it has reached: each entered phase adds
+     * its templates, and a phase marked `replace` throws away what came before.
+     */
+    private fun withPhases(boss: BossCombat, entered: Int): BossCombat {
+        if (entered <= 0 || boss.phases.isEmpty()) return boss
+        var attacks = boss.attackTemplates
+        var debuffs = boss.debuffTemplates
+        for (phase in boss.phases.take(entered)) {
+            if (phase.replace) {
+                attacks = phase.attacks
+                debuffs = phase.debuffs
+            } else {
+                attacks = attacks + phase.attacks
+                debuffs = debuffs + phase.debuffs
+            }
+        }
+        return boss.copy(attackTemplates = attacks, debuffTemplates = debuffs)
+    }
 
     /**
      * Mechanics fire in strict round-robin across the kinds present
@@ -103,12 +497,15 @@ class GameTick(
         var ordinal = s.mechanicOrdinal
         var npAdd = 0
 
-        val dungeon = s.currentDungeon
-        if (s.combatPhase != CombatPhase.BOSS || dungeon == null) {
+        val dungeon = s.currentDungeon ?: return BossAi(party, bossBuffs, cooldown, ordinal, 0)
+        // Trash fights only if its pull has a rotation of its own.
+        if (s.combatPhase != CombatPhase.BOSS &&
+            data.encounters.pullCombat(dungeon.id, TRASH_PACK_COUNT - s.trashPullsRemaining) == null
+        ) {
             return BossAi(party, bossBuffs, cooldown, ordinal, 0)
         }
 
-        val profile = combatProfile(dungeon)
+        val profile = combatProfile(dungeon, s)
         val kinds = buildList {
             if (profile.debuffTemplates.isNotEmpty()) add("debuff")
             if (profile.selfBuffTemplates.isNotEmpty()) add("buff")
@@ -116,10 +513,28 @@ class GameTick(
         }
         if (kinds.isEmpty()) return BossAi(party, bossBuffs, cooldown, ordinal, 0)
 
+        // A cast in progress holds the rotation: it counts down, and lands on
+        // the targets it chose when it started. Mechanics never overlap.
+        s.enemyCast?.let { cast ->
+            if (cast.remainingTicks > 1) {
+                return BossAi(party, bossBuffs, cooldown, ordinal, 0, cast.copy(remainingTicks = cast.remainingTicks - 1))
+            }
+            val tpl = profile.attackTemplates.firstOrNull { it.abilityId == cast.abilityId }
+                ?: return BossAi(party, bossBuffs, cooldown, ordinal, 0, null)
+            val multNow = bossBuffs.maxOfOrNull { it.partyDamageMultiplier } ?: 1.0
+            val (landed, np) = hitTargets(ctx, party, tpl, dungeon, multNow, cast.targets.toSet())
+            return BossAi(
+                landed, bossBuffs, cooldown, ordinal, np, null, tpl.grantsState?.let { it to tpl.stateTicks },
+                missedKick = tpl.interruptible && tpl.castTicks > 0 && kickReady(s),
+                missedKickName = tpl.name,
+            )
+        }
+
         cooldown -= 1
         if (cooldown > 0) return BossAi(party, bossBuffs, cooldown, ordinal, 0)
 
         val partyDamageMultPre = bossBuffs.maxOfOrNull { it.partyDamageMultiplier } ?: 1.0
+        var newCast: EnemyCast? = null
         val kind = kinds[ordinal % kinds.size]
         val cycle = ordinal / kinds.size
         ordinal += 1
@@ -127,12 +542,19 @@ class GameTick(
         when (kind) {
             "debuff" -> {
                 val tpl = profile.debuffTemplates[cycle % profile.debuffTemplates.size]
-                val targets = selectTargets(party, tpl.targeting, rng)
+                val targets = selectTargets(
+                    party,
+                    effectiveTargeting(ctx.state, tpl.targeting),
+                    rng,
+                    ctx.state.enemyTargetId,
+                )
                 if (targets.isNotEmpty()) {
-                    // Note: a new debuff *replaces* the unit's whole debuff list.
+                    val mech = data.encounters.mechanics[tpl.abilityId]
+                    // Note: a new debuff *replaces* the unit's whole debuff list --
+                    // except the puzzle debuffs, which stay until dealt with.
                     party = party.map { u ->
                         if (u.id !in targets) u else u.copy(
-                            debuffs = listOf(
+                            debuffs = u.debuffs.filter { it.sourceAbilityId != tpl.abilityId && data.encounters.mechanics[it.sourceAbilityId] != null } + listOf(
                                 UnitDebuff(
                                     // The web app mints an id here via generateCombatUid,
                                     // which draws from the same PRNG. The draw must happen
@@ -144,6 +566,11 @@ class GameTick(
                                     icon = tpl.icon,
                                     sourceAbilityId = tpl.abilityId,
                                     dispellable = tpl.dispellable,
+                                    stacks = if (mech?.kind == DebuffMechanic.POISON || mech?.kind == DebuffMechanic.WOUND) 1 else 0,
+                                    clearedByDefensive = mech?.kind == DebuffMechanic.WOUND,
+                                    armedTicks = if (mech?.kind == DebuffMechanic.BOMB) mech.safeBelowTicks else 0,
+                                    charm = mech?.kind == DebuffMechanic.MIND_CONTROL,
+                                    absorbLeft = if (mech?.kind == DebuffMechanic.HEAL_ABSORB) mech.absorb else 0.0,
                                 ),
                             ),
                         )
@@ -167,9 +594,27 @@ class GameTick(
 
             else -> {
                 val tpl = profile.attackTemplates[cycle % profile.attackTemplates.size]
-                val result = applyAttackTemplate(ctx, party, tpl, dungeon, partyDamageMultPre, rng)
-                party = result.first
-                npAdd += result.second
+                if (tpl.castTicks > 0) {
+                    // The same draw an instant attack makes, at the same point:
+                    // only when the damage lands has changed.
+                    val targets = selectTargets(party, effectiveTargeting(s, tpl.targeting), rng, s.enemyTargetId)
+                    if (targets.isNotEmpty()) {
+                        newCast = EnemyCast(
+                            abilityId = tpl.abilityId,
+                            name = tpl.name,
+                            icon = tpl.icon,
+                            targets = party.map { it.id }.filter { it in targets },
+                            remainingTicks = tpl.castTicks,
+                            totalTicks = tpl.castTicks,
+                            interruptible = tpl.interruptible,
+                            tell = tpl.tell,
+                        )
+                    }
+                } else {
+                    val result = applyAttackTemplate(ctx, party, tpl, dungeon, partyDamageMultPre, rng)
+                    party = result.first
+                    npAdd += result.second
+                }
             }
         }
 
@@ -177,7 +622,7 @@ class GameTick(
             profile.mechanicIntervalTicksMin ?: defaultMechanicMin,
             profile.mechanicIntervalTicksMax ?: defaultMechanicMax,
         )
-        return BossAi(party, bossBuffs, cooldown, ordinal, npAdd)
+        return BossAi(party, bossBuffs, cooldown, ordinal, npAdd, newCast)
     }
 
     private fun applyAttackTemplate(
@@ -189,22 +634,53 @@ class GameTick(
         rng: Rng,
     ): Pair<List<Unit>, Int> {
         val s = ctx.state
-        val targets = selectTargets(party, tpl.targeting, rng)
+        val targets = selectTargets(party, effectiveTargeting(s, tpl.targeting), rng, s.enemyTargetId)
+        return hitTargets(ctx, party, tpl, dungeon, partyDamageMult, targets)
+    }
+
+    /**
+     * Whether a human damage dealer could have kicked right now: alive, with
+     * an interrupt off cooldown. A lesson only lands when someone could have
+     * learned it.
+     */
+    internal fun kickReady(s: GameState): Boolean = s.participants.values.any { p ->
+        p.isHuman && p.role == UnitRole.DPS && s.unit(p.unitId)?.isAlive == true &&
+            p.unlockedSpells.any { id -> data.spell(id)?.interrupts == true && (p.spellCooldowns[id] ?: 0) <= 0 }
+    }
+
+    /**
+     * An attack landing on [targets]. Shared by instant attacks and casts, so a
+     * telegraphed hit is the same hit, a moment later -- with the mitigation
+     * that is up when it lands, which is what makes a well-timed defensive count.
+     */
+    private fun hitTargets(
+        ctx: CastContext,
+        party: List<Unit>,
+        tpl: AttackTemplate,
+        dungeon: Dungeon,
+        partyDamageMult: Double,
+        targets: Set<String>,
+    ): Pair<List<Unit>, Int> {
+        val s = ctx.state
         if (targets.isEmpty()) return party to 0
 
         val tank = party.firstOrNull { it.role == UnitRole.TANK }
         val tankDead = tank == null || tank.health <= 0
         val hooks = hooksFor(ctx.cls)
-        val baseMult = progression.bossDamageMultiplier(dungeon.difficulty) *
-            (if (dungeon.endless) progression.endlessMultiplier(s.endlessStacks) else 1.0) *
-            partyDamageMult
         val natRank = ctx.ranks("natural_perfection")
 
+        val kickWasReady = kickReady(s)
         var npAdd = 0
         val next = party.map { u ->
             if (u.health <= 0 || u.id !in targets) return@map u
-            var dmg = tpl.damage * baseMult * progression.levelGapDamageMultiplier(u.level, dungeon.levelMax)
+            var dmg = tpl.damage * incomingDamage(
+                s, u, DamageSource.BOSS_ATTACK, partyDamageMult,
+                singleTarget = tpl.targeting != Targeting.ALL_LIVING,
+            )
             dmg *= hooks.damageTakenMultiplier(ctx, "boss_attack", u)
+            dmg *= activeMitigation(s, u)
+            if (tpl.interruptible && tpl.castTicks > 0 && kickWasReady) dmg *= data.encounters.unkickedDamageMultiplier
+            if (u.role == UnitRole.TANK) dmg *= tankShare(s)
             // With the tank down, everyone else takes double.
             if (tankDead && (u.role == UnitRole.DPS || u.role == UnitRole.HEALER)) dmg *= 2
             val out = applyDamageToUnit(u, dmg, natRank)
@@ -230,6 +706,8 @@ class GameTick(
         val paladinResolveHolyPower: Int,
         val healEffective: Double,
         val healOverheal: Double,
+        /** What each unit took this tick, absorbed included, by unit id. */
+        val damageTaken: Map<String, Double> = emptyMap(),
     )
 
     private fun processEnvironmentalTick(
@@ -261,6 +739,7 @@ class GameTick(
         var palHolyPower = 0
         var healEff = 0.0
         var healOh = 0.0
+        val taken = HashMap<String, Double>()
 
         for (unit in partyAfterBossAi) {
             var damage = 0.0
@@ -268,7 +747,19 @@ class GameTick(
                 val chance = rng.nextDouble()
                 val diff = s.currentDungeon?.difficulty ?: 1
                 if (allowAmbient) {
+                    // The enemy's own swings. In a run someone is tanking, they
+                    // land on whoever holds its attention and nobody else: the
+                    // tank takes the tank's share while it holds, and a damage
+                    // dealer who pulls it takes that same share instead. Rolling
+                    // the chip on every non-tank regardless read as mobs ignoring
+                    // a tank at full aggro. A healer's run keeps its random
+                    // spread -- there the boss picks by chance, not threat.
+                    val threatRun = s.playerRole != UnitRole.HEALER
+                    val holding = unit.id == s.enemyTargetId
                     damage = when {
+                        threatRun && holding && chance < env.tankProcChance ->
+                            (rng.nextDouble() * env.tankDamageRandomMax + diff) * env.ambientChipDamageMultiplier
+                        threatRun -> 0.0
                         unit.role == UnitRole.TANK && chance < env.tankProcChance ->
                             (rng.nextDouble() * env.tankDamageRandomMax + diff) * env.ambientChipDamageMultiplier
                         unit.role != UnitRole.TANK && chance < env.nonTankProcChance ->
@@ -276,15 +767,9 @@ class GameTick(
                         else -> 0.0
                     }
                 }
-                if (s.combatPhase == CombatPhase.BOSS && s.currentDungeon != null) {
-                    damage *= progression.bossDamageMultiplier(s.currentDungeon.difficulty)
-                    damage *= bossPartyDamageMult
-                }
-                if (s.currentDungeon?.endless == true) damage *= progression.endlessMultiplier(s.endlessStacks)
-                if (s.currentDungeon != null) {
-                    damage *= progression.levelGapDamageMultiplier(unit.level, s.currentDungeon.levelMax)
-                }
+                damage *= incomingDamage(s, unit, DamageSource.AMBIENT, bossPartyDamageMult)
                 damage *= hooks.damageTakenMultiplier(ctx, "trash_tick", unit)
+                damage *= activeMitigation(ctx.state, unit)
             }
 
             val tankHealthNow =
@@ -313,16 +798,40 @@ class GameTick(
             }
 
             // DoTs bypass shields and hit health directly.
-            val dotLevelMult = s.currentDungeon
-                ?.let { progression.levelGapDamageMultiplier(unit.level, it.levelMax) } ?: 1.0
+            val dotMult = incomingDamage(s, unit, DamageSource.DOT)
             val activeDebuffs = mutableListOf<UnitDebuff>()
+            var dotTaken = 0.0
             for (d in unit.debuffs) {
                 if (d.remainingTicks <= 0) continue
-                var dot = d.damagePerTick * dotLevelMult
-                if (s.currentDungeon?.endless == true) dot *= progression.endlessMultiplier(s.endlessStacks)
+                var dot = d.damagePerTick * dotMult * max(1, d.stacks)
+                val mech = data.encounters.mechanics[d.sourceAbilityId]
+                // A wound is gone the moment its carrier raises a defensive; an
+                // AI carrier raises one just before it would burst.
+                if (mech?.kind == DebuffMechanic.WOUND &&
+                    (activeMitigation(s, unit) < 1.0 || (!s.isHuman(unit.id) && d.stacks >= mech.maxStacks - 1))
+                ) continue
+                var next = d.copy(remainingTicks = d.remainingTicks - 1)
+                when (mech?.kind) {
+                    // Never runs out: every few ticks another stack, and the clock restarts.
+                    DebuffMechanic.POISON, DebuffMechanic.WOUND -> {
+                        val full = mech.durationTicks ?: d.remainingTicks
+                        if (next.remainingTicks <= full - mech.everyTicks) {
+                            val burst = mech.kind == DebuffMechanic.WOUND && d.stacks >= mech.maxStacks
+                            if (burst) dot += mech.burstDamage * dotMult
+                            val stacks = if (burst) 1 else min(mech.maxStacks, d.stacks + 1)
+                            next = next.copy(remainingTicks = full, stacks = stacks)
+                        }
+                    }
+                    // Left alone, it goes off on whoever carries it.
+                    DebuffMechanic.BOMB -> if (next.remainingTicks <= 0) dot += mech.burstDamage * dotMult
+                }
                 health = max(0.0, health - dot)
-                activeDebuffs += d.copy(remainingTicks = d.remainingTicks - 1)
+                dotTaken += dot
+                if (mech == null || next.remainingTicks > 0) activeDebuffs += next
             }
+            // Only read by the tank and DPS mechanics, and summed on the side,
+            // so the healer arithmetic above is untouched.
+            if (damage + dotTaken > 0) taken[unit.id] = damage + dotTaken
 
             val activeBuffs = mutableListOf<UnitBuff>()
             for (buff in unit.buffs) {
@@ -397,7 +906,7 @@ class GameTick(
         }
 
         // A shield emptied during this tick can trigger Aegis Burst.
-        val transition = hooks.onShieldTransition(ctx, partyAfterBossAi, out)
+        val transition = hooks.onShieldTransition(ctx, partyAfterBossAi, spreadDebuffs(out))
         return EnvResult(
             transition.party,
             nextNat,
@@ -407,7 +916,34 @@ class GameTick(
             palHolyPower,
             healEff + transition.healEffective,
             healOh + transition.healOverheal,
+            taken,
         )
+    }
+
+    /**
+     * One tick of every participant's class resource: rage from the hits they
+     * took, energy refilling, a Death Knight's memory of recent damage.
+     *
+     * Draws nothing from the rng. For a healer class the hook is the identity,
+     * so the recorded runs see exactly the participant they saw before.
+     */
+    internal fun classTick(s: GameState, damageTaken: Map<String, Double>): GameState {
+        val b = data.balance.classes
+        return s.withEachParticipant { p ->
+            if (p.role == UnitRole.HEALER) {
+                p
+            } else {
+                hooksFor(p.playerClass).classTick(
+                    ClassTick(
+                        participant = p,
+                        unit = s.party.firstOrNull { it.id == p.unitId },
+                        damageTaken = damageTaken[p.unitId] ?: 0.0,
+                        rating = stats.uniqueStatRating(p.playerClass, p.level, p.talents),
+                        balance = b,
+                    ),
+                )
+            }
+        }
     }
 
     /**
@@ -476,7 +1012,7 @@ class GameTick(
 
         val regen = manaRegenPerTick(lockTicks, spirit) +
             s.playerCombatBuffs.potionDrip() +
-            hooks.manaReturnOnTick(ctx, lockTicks)
+            hooks.resourceReturnOnTick(ctx, lockTicks)
         val mana = min(s.maxMana.toDouble(), s.mana + regen + env.manaFromHotTicks + env.paladinResolveMana)
 
         var buffs = env.playerCombatBuffs.tickBuffs()
@@ -488,12 +1024,12 @@ class GameTick(
         val healer = party.firstOrNull { it.role == UnitRole.HEALER }
         if (ctx.cls != null && healer != null &&
             ctx.ranks("spirit_of_redemption") > 0 &&
-            healer.health < healer.maxHealth * 0.3 &&
+            healer.health < healer.maxHealth * data.balance.rules.spiritOfRedemptionBelow &&
             icd.icdReady("spirit_redemption") &&
             !buffs.hasBuff("spirit_of_redemption_amp")
         ) {
-            buffs = buffs.addBuff("spirit_of_redemption_amp", TICKS_SPIRIT_REDEMPTION, 1)
-            icd = icd + ("spirit_redemption" to ICD_SPIRIT_REDEMPTION)
+            buffs = buffs.addBuff("spirit_of_redemption_amp", data.balance.rules.spiritOfRedemptionTicks, 1)
+            icd = icd + ("spirit_redemption" to data.balance.rules.spiritOfRedemptionCooldownTicks)
         }
 
         // Nature's Grace capstone: a steady party-wide heal every tick.
@@ -542,42 +1078,121 @@ class GameTick(
             hps = eff / sec,
             overhealPct = if (raw > 0) 100 * s.runHealOverheal / raw else 0.0,
             hpm = if (s.runManaSpentHealing > 0) eff / s.runManaSpentHealing else 0.0,
+            damageDone = s.runDamageDealt,
+            dps = s.runDamageDealt / sec,
         )
     }
+
+    /**
+     * Adds this award to the run's ledger for every human in the room.
+     *
+     * The local player's share is exactly [localXp] -- the number the engine
+     * already applied -- so single player records what it always awarded and
+     * nothing else moves. Everyone else is credited by [xpForLevel] on their
+     * own level, since the XP curve depends on it.
+     */
+    private fun creditEveryone(s: GameState, localXp: Int, xpForLevel: (Int) -> Int): Map<String, Int> {
+        val credited = s.participants.values.filter { it.isHuman }.associate { p ->
+            p.unitId to if (p.unitId == s.localUnitId) localXp else xpForLevel(p.trueLevel)
+        }
+        return s.runXpAwards + credited.mapValues { (id, xp) -> (s.runXpAwards[id] ?: 0) + xp }
+    }
+
+    /**
+     * What a run pays beyond its pace: hard mode, and the company kept.
+     *
+     * The group share is the whole reason to queue with people rather than
+     * with the AI that fills the seats anyway.
+     */
+    internal fun runBonus(s: GameState): Double {
+        val humans = s.participants.values.count { it.isHuman }
+        val group = if (humans >= 2) data.encounters.groupXpMultiplier else 1.0
+        val hard = if (s.hardMode) data.encounters.hard.xpMultiplier else 1.0
+        return group * hard
+    }
+
+    /** An XP award applied to this client's player, as a guest receives one. */
+    internal fun awardXp(s: GameState, xp: Int): GameState = withPostRunProgress(s, xp)
 
     /** Recomputes level, talent points and mana pool after an XP award. */
     private fun withPostRunProgress(s: GameState, xpGained: Int): GameState {
         val newXp = s.xp + xpGained
+        // From the XP, which is always the real one -- this is also what takes
+        // a synced character back to its own level when the run ends.
         val level = progression.levelFromTotalXp(newXp)
         val maxMana = stats.maxMana(s.playerClass, level, s.talents)
-        return s.copy(
+        val learned = s.playerClass?.let { data.grantsFor(it, level) }.orEmpty() - s.unlockedSpells.toSet()
+        return s.withMe {
+            var bar = it.activeActionBars
+            for (spell in learned) {
+                val free = bar.indexOf("")
+                if (free >= 0) bar = bar.toMutableList().also { b -> b[free] = spell }
+            }
+            it.copy(
+                level = level,
+                syncedFrom = 0,
+                maxMana = maxMana,
+                mana = min(maxMana.toDouble(), it.mana),
+                unlockedSpells = it.unlockedSpells + learned,
+                activeActionBars = bar,
+            )
+        }.copy(
             xp = newXp,
-            level = level,
             talentPoints = progression.talentPoints(level, s.talents),
-            maxMana = maxMana,
-            mana = min(maxMana.toDouble(), s.mana),
         )
     }
 
+    /**
+     * The party: one tank, three DPS, one healer, with the player in whichever
+     * role their class plays and the AI filling the other four.
+     *
+     * The player is always [PLAYER_UNIT_ID]. Ids are positional and load-bearing
+     * across the engine, the UI and the save, so the roles move between slots
+     * and the slots themselves never do.
+     *
+     * The rng draw order is deliberately unchanged from the healer-only version
+     * -- pick a tank, shuffle three DPS, then one level roll per AI slot in
+     * order. Adding or reordering a draw here would desynchronise every
+     * recorded parity scenario.
+     */
     fun generateParty(cls: PlayerClass, playerLevel: Int, rng: Rng): List<Unit> {
         fun allyLevel() = max(1, playerLevel + (rng.nextDouble() * 3).toInt() - 1)
 
+        val playerRole = runCatching { UnitRole.valueOf(data.bundle(cls).meta.role) }
+            .getOrDefault(UnitRole.HEALER)
+
         val tankTpl = rng.pick(data.npcPools.tankPool)
-        val dps = rng.shuffled(data.npcPools.dpsPool).take(3)
+        val dpsTpls = rng.shuffled(data.npcPools.dpsPool).take(3)
 
-        val tankLevel = allyLevel()
-        val tankHp = stats.maxHealthForRole("TANK", tankLevel).toDouble()
-        val healerHp = stats.healerMaxHealth(max(1, playerLevel)).toDouble()
+        // The four AI roles are the full group minus whatever the player is.
+        // partyRoles is the shared definition -- the queue lobby draws the same
+        // list, so what it shows you forming is what the engine actually builds.
+        val aiRoles = partyRoles(playerRole).dropLast(1)
 
-        return buildList {
-            add(Unit("1", tankTpl.name, UnitRole.TANK, tankLevel, tankHp, tankHp))
-            dps.forEachIndexed { i, tpl ->
-                val lv = allyLevel()
-                val hp = stats.maxHealthForRole("DPS", lv).toDouble()
-                add(Unit("${i + 2}", tpl.name, UnitRole.DPS, lv, hp, hp))
+        var dpsUsed = 0
+        val party = aiRoles.mapIndexed { i, role ->
+            val id = "${i + 1}"
+            val lv = allyLevel()
+            when (role) {
+                UnitRole.TANK -> stats.maxHealthForRole("TANK", lv).toDouble().let {
+                    Unit(id, tankTpl.name, role, lv, it, it)
+                }
+                UnitRole.DPS -> stats.maxHealthForRole("DPS", lv).toDouble().let {
+                    Unit(id, dpsTpls[dpsUsed++].name, role, lv, it, it)
+                }
+                // Named off the pool by level rather than a draw, so no new
+                // randomness enters the stream.
+                UnitRole.HEALER -> stats.healerMaxHealth(lv).toDouble().let {
+                    val pool = data.npcPools.healerPool
+                    val name = if (pool.isEmpty()) "Field Medic" else pool[lv % pool.size].name
+                    Unit(id, name, role, lv, it, it)
+                }
             }
-            add(Unit(HEALER_UNIT_ID, "Player (You)", UnitRole.HEALER, max(1, playerLevel), healerHp, healerHp))
         }
+
+        val selfLevel = max(1, playerLevel)
+        val selfHp = stats.playerMaxHealth(playerRole, selfLevel).toDouble()
+        return party + Unit(PLAYER_UNIT_ID, "Player (You)", playerRole, selfLevel, selfHp, selfHp)
     }
 
     private fun resolveFailure(ctx: CastContext, s: GameState, party: List<Unit>, rng: Rng): GameState? {
@@ -590,13 +1205,16 @@ class GameTick(
 
         val pullsCleared = TRASH_PACK_COUNT - s.trashPullsRemaining
         val paceXp = s.dungeonPace?.let { progression.pace(it).xpMultiplier } ?: 1.0
-        val xpGained = (progression.dungeonFailureXpGain(dungeon, s.level, pullsCleared) * paceXp).roundToInt()
+        val xpGained = (progression.dungeonFailureXpGain(dungeon, s.me.trueLevel, pullsCleared) * paceXp).roundToInt()
 
         val stats0 = runStats(s)
         val advanced = withPostRunProgress(s, xpGained)
         val rewards = progression.levelUpRewards(ctx.cls, s.talents, s.level, advanced.level)
         return advanced.endedRun().copy(
             party = ctx.cls?.let { generateParty(it, advanced.level, rng) } ?: party,
+            runXpAwards = creditEveryone(s, xpGained) { level ->
+                (progression.dungeonFailureXpGain(dungeon, level, pullsCleared) * paceXp).roundToInt()
+            },
             dungeonOutcome = DungeonOutcome(
                 kind = if (allDead) DungeonOutcomeKind.PARTY_WIPE else DungeonOutcomeKind.HEALER_DOWN,
                 dungeonId = dungeon.id,
@@ -605,6 +1223,16 @@ class GameTick(
                 leveledUp = advanced.level > s.level,
                 upgradedSpellIds = rewards.upgradedSpellIds,
                 upgradedPotion = rewards.upgradedPotion,
+                clearTicks = s.combatElapsedTicks,
+                deaths = s.runDeaths,
+                missedKicks = s.runMissedKicks,
+                firstDownName = s.runFirstDownName,
+                firstDownTick = s.runFirstDownTick,
+                firstMissedKick = s.runFirstMissedKick,
+                hardMode = s.hardMode,
+                keystone = s.keystone,
+                pace = s.dungeonPace ?: "normal",
+                spent = s.me.carried?.takeIf { s.me.carriedUsed },
             ),
         )
     }
@@ -631,46 +1259,245 @@ class GameTick(
         bossBuffsNext: List<BossBuff>,
         dpsPaceMultiplier: Double,
         rng: Rng,
+        healEffectiveThisTick: Double,
+        aiHealerHealingThisTick: Double,
+        damageTaken: Map<String, Double> = emptyMap(),
     ): GameState {
         val pd = data.balance.partyDps
         val partyDps = pd.base + s.level.toDouble().pow(pd.levelExponent) * pd.levelMultiplier
-        val deadDps = sys.party.count { it.role == UnitRole.DPS && it.health <= 0 }
-        // Losing DPS only slows the boss, not trash.
-        val bossDpsMult = if (s.combatPhase == CombatPhase.BOSS) 0.7.pow(deadDps) else 1.0
-        var enemyHealth = s.enemyHealth - partyDps * bossDpsMult * dpsPaceMultiplier * s.runDpsJitter
+        // The dead deal nothing. The scripted damage is the AI damage dealers'
+        // (and the AI tank's small share), so each AI damage dealer who falls
+        // takes their part of it with them -- all three down leaves only what
+        // the tank was doing. This used to be 0.7 per death, and on the boss
+        // only, so a tank and a healer with everyone else dead still killed a
+        // boss at a third of the pace: a tank who did nothing lost the whole
+        // party and cleared anyway. A person's own damage is counted apart
+        // (pendingEnemyDamage) and stops when they do.
+        val aiDps = sys.party.filter { it.role == UnitRole.DPS && !s.isHuman(it.id) }
+        val deadAi = aiDps.count { it.health <= 0 }
+        val tankShare = data.balance.threat.tankDamageShare
+        val bossDpsMult = if (aiDps.isEmpty()) 1.0 else 1.0 - deadAi.toDouble() / aiDps.size * (1.0 - tankShare)
+        // The scripted formula is not replaced, it is reinterpreted: it was
+        // always "what the party does to the enemy", and now it is "what the
+        // *AI* part of the party does", with the player making up the rest.
+        //
+        // The association here is load-bearing. aiShare is exactly 1.0 while the
+        // player heals, and pendingEnemyDamage is exactly 0.0 while no spell has
+        // school = DAMAGE, so this reduces to `x * 1.0 + 0.0` -- an exact
+        // IEEE-754 identity, not an approximation within some epsilon. That is
+        // what lets parity/golden.json still be compared byte-for-byte now that
+        // player damage exists. Do not "simplify" this into a form that
+        // reorders the multiply.
+        val aiShare = aiDamageShare(s)
+        val scriptedDamage = partyDps * bossDpsMult * dpsPaceMultiplier * s.runDpsJitter * aiShare
+        val enemyDots = s.enemyDebuffs.sumOf { it.damagePerTick }
+        val playerDamage = s.pendingEnemyDamage + enemyDots
+        // DoT ticks are worth their damage in threat; direct casts carry
+        // whatever their spell declared.
+        // Per caster, so a DPS pulls off the tank on their own threat and not
+        // on the party's. Enemy DoT ticks go to the local participant:
+        // UnitDebuff records the ability that applied it but not who cast it,
+        // which is the next thing a second damage-dealing human will need.
+        val threatByActor = s.participants.mapValues { (id, p) ->
+            p.pendingPlayerThreat + if (id == s.localUnitId) enemyDots else 0.0
+        }
+        val pressure = data.encounters.pressure
+        // Exposed, everything hits harder. Off, this is `x * 1.0`: exact.
+        val exposed = if (s.exposedTicks > 0) pressure.exposedDamageMultiplier else 1.0
+        val affixes = affixesOf(s)
+        // Adds: the AI clears them first unless a human damage dealer is there
+        // to choose; with the main enemy down they take everything. With no
+        // adds this is `scriptedDamage - 0.0`, exact.
+        val living = s.adds.filter { it.isAlive }
+        val humanDps = s.participants.values.any { it.isHuman && it.role == UnitRole.DPS }
+        val addShare = when {
+            living.isEmpty() -> 0.0
+            s.enemyHealth <= 0 || !humanDps -> 1.0
+            else -> data.encounters.addRules.aiAddShareWithHumanDps
+        }
+        val toAdds = scriptedDamage * addShare
+        // Enemy states: a shield holds until a kick exposes it; a reflect sends
+        // each player's direct damage back to them, and the AI holds its fire.
+        val state = s.enemyState.takeIf { s.enemyStateTicks > 0 }
+        val shieldBroken = state == STATE_SHIELD && s.exposedTicks > 0
+        val warded = state == STATE_REFLECT || (state == STATE_SHIELD && !shieldBroken)
+        // A shielder standing means the main enemy shrugs off part of everything
+        // aimed at it: the one add whose whole purpose is "kill me first".
+        val ward = (1.0 - living.filter { it.kind == AddTemplate.SHIELDER }.sumOf { it.healAmount })
+            .coerceIn(0.0, 1.0)
+        var enemyHealth = s.enemyHealth -
+            if (warded) 0.0 else (scriptedDamage - toAdds + playerDamage) * exposed * ward
+        val struck = if (state != STATE_REFLECT) sys.party else sys.party.map { u ->
+            val back = s.participants[u.id]?.pendingEnemyDamage ?: 0.0
+            if (back > 0 && u.isAlive) u.copy(health = max(0.0, u.health - back)) else u
+        }
+        val aimed = HashMap<String, Double>()
+        s.participants.values.forEach { p -> p.pendingAddDamage.forEach { (id, d) -> aimed[id] = (aimed[id] ?: 0.0) + d } }
+        // The AI's share goes to menders first, then runners, then the rest.
+        // What the AI kills first, and what a player is being told to. A bomb
+        // is on a clock; a shielder and a mender are both undoing the kill; a
+        // caster and a leech are bleeding the party; a runner is leaving with
+        // reinforcements. A plain add is last because it is only damage.
+        val aiFocus = living.minByOrNull {
+            when (it.kind) {
+                AddTemplate.BOMB -> -1
+                AddTemplate.SHIELDER -> 0
+                AddTemplate.MENDER -> 1
+                AddTemplate.CASTER -> 2
+                AddTemplate.LEECH -> 3
+                AddTemplate.RUNNER -> 4
+                AddTemplate.SPLITTER -> 5
+                AddTemplate.PACK -> 7
+                else -> 6
+            }
+        }?.id
+        val struckAdds = s.adds.map { a ->
+            val hit = ((aimed[a.id] ?: 0.0) + if (a.id == aiFocus) toAdds else 0.0) * exposed
+            if (hit <= 0) a else a.copy(health = max(0.0, a.health - hit))
+        }
+        // A splitter dies into its children, here, where it died. Killing one
+        // is progress rather than completion, which is the whole idea.
+        val split = struckAdds.filter { !it.isAlive && it.kind == AddTemplate.SPLITTER }
+            .flatMapIndexed { i, a -> spawnAdds(a.splitsInto, a.maxHealth, "s${s.combatElapsedTicks}-$i", affixes) }
+        // Bolstering: every one that falls makes the rest angrier, so the order
+        // you kill them in becomes the decision.
+        val fell = struckAdds.count { !it.isAlive } - s.adds.count { !it.isAlive }
+        val bolster = affixes.sumOf { it.bolsterPerDeath } * fell
+        val addsAfter = struckAdds.filter { it.isAlive }
+            .map { if (bolster > 0) it.copy(damagePerTick = it.damagePerTick * (1 + bolster)) else it } + split
+        // The next phase, if this tick took the boss past its threshold.
+        val phase = s.currentDungeon?.bossCombat?.phases?.getOrNull(s.bossPhase)
+        val enterPhase = s.combatPhase == CombatPhase.BOSS && phase != null &&
+            enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * phase.atHealth
+        val wave = s.currentDungeon?.let { data.encounters.bosses[it.id]?.adds?.getOrNull(s.bossAddWaves) }
+        val callAdds = s.combatPhase == CombatPhase.BOSS && wave != null &&
+            enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * wave.atHealth
+        var addsNow = if (callAdds) {
+            addsAfter + spawnAdds(wave!!.spawn, s.enemyMaxHealth, "b${s.combatElapsedTicks}", affixes)
+        } else {
+            addsAfter
+        }
+        if (enterPhase && phase!!.adds.isNotEmpty()) {
+            addsNow = addsNow + spawnAdds(phase.adds, s.enemyMaxHealth, "f${s.combatElapsedTicks}", affixes)
+        }
+        val exposeNow = s.combatPhase == CombatPhase.BOSS && pressure.exposedBelowHealth > 0 && !s.exposedAtHalf &&
+            enemyHealth > 0 && enemyHealth <= s.enemyMaxHealth * pressure.exposedBelowHealth
 
-        val base = s.copy(
-            party = sys.party,
-            mana = sys.mana,
-            playerCombatBuffs = sys.playerCombatBuffs,
-            internalCooldowns = sys.internalCooldowns,
-            capstoneForm = sys.capstoneForm,
-            holyPower = sys.holyPower,
-            mechanicCooldown = boss.mechanicCooldown,
-            mechanicOrdinal = boss.mechanicOrdinal,
+        val base = s.withEachParticipant {
+            // Drained every tick: what each participant dealt has now landed.
+            it.copy(pendingEnemyDamage = 0.0, pendingPlayerThreat = 0.0, pendingAddDamage = emptyMap())
+        }.withMe {
+            it.copy(
+                mana = sys.mana,
+                playerCombatBuffs = sys.playerCombatBuffs,
+                internalCooldowns = sys.internalCooldowns,
+                capstoneForm = sys.capstoneForm,
+                holyPower = sys.holyPower,
+            )
+        }.let { classTick(it.copy(party = sys.party), damageTaken) }.copy(
+            party = accrueThreat(
+                struck,
+                healEffective = healEffectiveThisTick,
+                scriptedPartyDamage = scriptedDamage,
+                threatByActor = threatByActor,
+                aiHealerHealing = aiHealerHealingThisTick,
+                localUnitId = s.localUnitId,
+                // A tank earns the tank's share of the party's damage as threat
+                // while they are playing: an AI tank always is, and a person is
+                // if they have cast in the last three seconds. Denying a human
+                // tank the share outright -- the idle-tank fix -- also denied it
+                // to one who was playing, and at level 32 the AI damage dealers
+                // out-threatened a playing tank ten to one: the boss spent
+                // every non-healer run on a damage dealer, hitting squishies
+                // for the unheld premium. That was the one lever under the
+                // three sustain findings.
+                tankEarnsScriptedThreat = sys.party.firstOrNull { it.role == UnitRole.TANK }
+                    ?.let { t -> !s.isHuman(t.id) || (s.participants[t.id]?.idleTicks ?: 0) < data.balance.rules.tankActiveTicks }
+                    ?: true,
+            ),
+            enemyDebuffs = s.enemyDebuffs
+                .map { it.copy(remainingTicks = it.remainingTicks - 1) }
+                .filter { it.remainingTicks > 0 },
             bossSelfBuffs = if (s.combatPhase == CombatPhase.BOSS) bossBuffsNext else emptyList(),
+            // This client's own damage: its casts and its DoTs (see threatByActor).
+            runDamageDealt = s.runDamageDealt + s.me.pendingEnemyDamage + enemyDots + s.me.pendingAddDamage.values.sum(),
+            runDeaths = s.runDeaths + max(0, s.party.count { it.isAlive } - sys.party.count { it.isAlive }),
+            // The first to fall, named once. Ties broken by id, for the same
+            // reason the AI healer's triage is: the answer cannot depend on
+            // party order.
+            runFirstDownName = s.runFirstDownName.ifEmpty {
+                fellThisTick(s.party, sys.party)?.name ?: ""
+            },
+            runFirstDownTick = if (s.runFirstDownName.isNotEmpty()) s.runFirstDownTick
+            else if (fellThisTick(s.party, sys.party) != null) s.combatElapsedTicks else 0,
+            adds = addsNow,
+            bossAddWaves = s.bossAddWaves + if (callAdds) 1 else 0,
+            bossPhase = s.bossPhase + if (enterPhase) 1 else 0,
+            // A phase change interrupts whatever was winding up and restarts the
+            // rotation, so the new one opens with its own first mechanic.
+            mechanicOrdinal = if (enterPhase) 0 else boss.mechanicOrdinal,
+            mechanicCooldown = if (enterPhase) phaseOpeningTicks else boss.mechanicCooldown,
+            enemyCast = if (enterPhase) null else s.enemyCast,
+            // An affix that grants a state does it on the clock, off the fight's
+            // elapsed ticks rather than an rng roll, so it is something to count
+            // rather than something to be surprised by.
+            enemyState = affixState(s, affixes)?.first
+                ?: if (shieldBroken || s.enemyStateTicks <= 1) null else s.enemyState,
+            enemyStateTicks = affixState(s, affixes)?.second
+                ?: if (shieldBroken) 0 else max(0, s.enemyStateTicks - 1),
+            exposedTicks = if (exposeNow) pressure.exposedTicks else max(0, s.exposedTicks - 1),
+            exposedAtHalf = s.exposedAtHalf || exposeNow,
         )
 
-        if (enemyHealth > 0) return finalizeProgress(base.copy(enemyHealth = enemyHealth))
+        // A pull is over when its adds are too; a boss's adds go with it.
+        if (enemyHealth > 0 || (s.combatPhase == CombatPhase.TRASH && addsNow.isNotEmpty())) {
+            return finalizeProgress(base.copy(enemyHealth = max(0.0, enemyHealth)))
+        }
 
         val dungeon = s.currentDungeon
         if (s.combatPhase == CombatPhase.TRASH) {
+            val hp = dungeon?.let { max(1.0, progression.trashMaxHealth(it) * hardScale(it, s.level, s.hardMode, s.keystone)) } ?: 1.0
+            // Whoever a runner brought comes first, and is not one of the planned pulls.
+            if (s.extraPulls > 0) {
+                return finalizeProgress(
+                    base.copy(
+                        extraPulls = s.extraPulls - 1, enemyHealth = hp, enemyMaxHealth = hp, restTicks = restAfterPull(s),
+                        enemyCast = null, enemyState = null, enemyStateTicks = 0,
+                    ),
+                )
+            }
             val remaining = s.trashPullsRemaining - 1
             if (remaining > 0) {
-                val hp = dungeon?.let { max(1.0, progression.trashMaxHealth(it)) } ?: 1.0
+                val index = TRASH_PACK_COUNT - remaining
                 return finalizeProgress(
-                    base.copy(trashPullsRemaining = remaining, enemyHealth = hp, enemyMaxHealth = hp),
+                    base.copy(
+                        trashPullsRemaining = remaining, enemyHealth = hp, enemyMaxHealth = hp, restTicks = restAfterPull(s),
+                        adds = pullAdds(dungeon?.id, index, hp, "p${s.combatElapsedTicks}", affixesOf(s)),
+                        enemyCast = null, enemyState = null, enemyStateTicks = 0,
+                    ).let {
+                        // A pull with a rotation of its own starts it fresh; the rest carry on as they always did.
+                        if (data.encounters.pullCombat(dungeon?.id, index) == null) it
+                        else it.copy(mechanicOrdinal = 0, mechanicCooldown = firstMechanicIn(dungeon?.id, index))
+                    },
                 )
             }
             // Trash cleared: the boss engages and the mechanic rotation resets.
-            val bossHp = max(1.0, dungeon?.bossHealth ?: 1000.0)
+            val bossHp = max(1.0, (dungeon?.bossHealth ?: 1000.0) * hardScale(dungeon, s.level, s.hardMode, s.keystone))
             val profile = dungeon?.let { combatProfile(it) }
             return finalizeProgress(
                 base.copy(
                     trashPullsRemaining = 0,
                     combatPhase = CombatPhase.BOSS,
+                    restTicks = restAfterPull(s),
+                    bossTicks = 0,
+                    adds = emptyList(),
+                    bossAddWaves = 0,
+                    bossPhase = 0,
+                    enemyState = null,
+                    enemyStateTicks = 0,
                     enemyHealth = bossHp,
                     enemyMaxHealth = bossHp,
+                    enemyCast = null,
                     mechanicCooldown = profile?.let {
                         rng.nextInt(
                             it.mechanicIntervalTicksMin ?: defaultMechanicMin,
@@ -689,11 +1516,14 @@ class GameTick(
         if (dungeon.endless) return advanceEndlessWave(ctx, base, sys, dungeon, rng)
 
         val paceXp = s.dungeonPace?.let { progression.pace(it).xpMultiplier } ?: 1.0
-        val xpGained = (progression.dungeonXpGain(dungeon, s.level) * paceXp).roundToInt()
+        // Pulling early pays, hard mode pays, and so does company. With none
+        // of them this is `* 1.0 * 1.0`, exact.
+        val extra = (1 + s.earlyPullBonus) * runBonus(s)
+        val xpGained = (progression.dungeonXpGain(dungeon, s.me.trueLevel) * paceXp * extra).roundToInt()
         val stats0 = runStats(s)
         // On a clear the web app keeps the mana it had entering this tick, so the
         // final tick's regen is deliberately discarded.
-        val advanced = withPostRunProgress(base.copy(mana = s.mana), xpGained)
+        val advanced = withPostRunProgress(base.withMe { it.copy(mana = s.mana) }, xpGained)
         val rewards = progression.levelUpRewards(ctx.cls, s.talents, s.level, advanced.level)
 
         return advanced.endedRun().copy(
@@ -702,6 +1532,9 @@ class GameTick(
                 if (!dungeon.endless && dungeon.id !in s.completedDungeonIds) s.completedDungeonIds + dungeon.id
                 else s.completedDungeonIds,
             party = ctx.cls?.let { generateParty(it, advanced.level, rng) } ?: sys.party,
+            runXpAwards = creditEveryone(s, xpGained) { level ->
+                (progression.dungeonXpGain(dungeon, level) * paceXp * extra).roundToInt()
+            },
             dungeonOutcome = DungeonOutcome(
                 kind = DungeonOutcomeKind.SUCCESS,
                 dungeonId = dungeon.id,
@@ -710,6 +1543,16 @@ class GameTick(
                 leveledUp = advanced.level > s.level,
                 upgradedSpellIds = rewards.upgradedSpellIds,
                 upgradedPotion = rewards.upgradedPotion,
+                clearTicks = s.combatElapsedTicks,
+                deaths = s.runDeaths,
+                missedKicks = s.runMissedKicks,
+                firstDownName = s.runFirstDownName,
+                firstDownTick = s.runFirstDownTick,
+                firstMissedKick = s.runFirstMissedKick,
+                hardMode = s.hardMode,
+                keystone = s.keystone,
+                pace = s.dungeonPace ?: "normal",
+                spent = s.me.carried?.takeIf { s.me.carriedUsed },
             ),
         )
     }
@@ -755,9 +1598,14 @@ class GameTick(
         val trashHp = max(1.0, progression.trashMaxHealth(next))
         val profile = combatProfile(next)
 
+        val credited = creditEveryone(s, waveXp) { level ->
+            (progression.dungeonXpGain(source, level) * data.balance.endless.bossKillXpFraction * paceXp).roundToInt()
+        }
+
         return finalizeProgress(
             advanced.copy(
                 party = party,
+                runXpAwards = credited,
                 currentDungeon = next,
                 endlessStacks = stacks,
                 combatPhase = CombatPhase.TRASH,
@@ -766,26 +1614,435 @@ class GameTick(
                 enemyMaxHealth = trashHp,
                 dungeonProgress = 0.0,
                 bossSelfBuffs = emptyList(),
+                enemyCast = null,
+                adds = emptyList(),
+                bossAddWaves = 0,
+                bossPhase = 0,
+                enemyState = null,
+                enemyStateTicks = 0,
                 mechanicCooldown = rng.nextInt(
                     profile.mechanicIntervalTicksMin ?: defaultMechanicMin,
                     profile.mechanicIntervalTicksMax ?: defaultMechanicMax,
                 ),
                 mechanicOrdinal = 0,
                 isCombatActive = true,
-                mana = min(advanced.maxMana.toDouble(), sys.mana),
-            ),
+            ).withMe { it.copy(mana = min(it.maxMana.toDouble(), sys.mana)) },
         )
+    }
+
+    /** The boss's hits, read off the party it changed, plus the environment's. */
+    private fun damageTakenThisTick(
+        before: List<Unit>,
+        afterBoss: List<Unit>,
+        env: Map<String, Double>,
+    ): Map<String, Double> {
+        val out = HashMap(env)
+        for (a in afterBoss) {
+            val b = before.firstOrNull { it.id == a.id } ?: continue
+            val hit = (b.health + b.shield) - (a.health + a.shield)
+            if (hit > 0) out[a.id] = (out[a.id] ?: 0.0) + hit
+        }
+        return out
+    }
+
+    /**
+     * The debuffs that reach past their carrier: a curse that jumps to the
+     * next ally, and a mind-controlled ally hitting the most hurt one. Runs on
+     * the timers the tick loop has just advanced; no rng.
+     */
+    private fun spreadDebuffs(party: List<Unit>): List<Unit> {
+        if (data.encounters.mechanics.isEmpty()) return party
+        var out = party
+        for (u in party) {
+            if (u.health <= 0) continue
+            for (d in u.debuffs) {
+                val m = data.encounters.mechanics[d.sourceAbilityId] ?: continue
+                val full = m.durationTicks ?: continue
+                val elapsed = full - d.remainingTicks
+                if (m.everyTicks <= 0 || elapsed <= 0 || elapsed % m.everyTicks != 0) continue
+                when (m.kind) {
+                    DebuffMechanic.CURSE_CHAIN -> {
+                        val next = out.firstOrNull { it.isAlive && it.debuffs.none { x -> x.sourceAbilityId == d.sourceAbilityId } }
+                            ?: continue
+                        val copy = d.copy(id = "${d.id}>${next.id}", remainingTicks = full)
+                        out = out.map { if (it.id == next.id) it.copy(debuffs = it.debuffs + copy) else it }
+                    }
+                    DebuffMechanic.MIND_CONTROL -> {
+                        val victim = out.filter { it.isAlive && it.id != u.id }
+                            .minByOrNull { it.health / it.maxHealth } ?: continue
+                        out = out.map {
+                            if (it.id != victim.id) it
+                            else it.copy(health = max(0.0, it.health - m.hitDamage))
+                        }
+                    }
+                }
+            }
+        }
+        return out
+    }
+
+    /**
+     * What kind of hit is landing: each takes a different set of the layers.
+     *
+     * Nested deliberately: this is the tick's own vocabulary, not persisted
+     * state, and the save-contract check covers the enums that are.
+     */
+    internal enum class DamageSource { BOSS_ATTACK, AMBIENT, DOT }
+
+    /**
+     * Everything that multiplies one hit on one party member, gathered here.
+     *
+     * The layers, and which kind of hit takes them. The order is the order the
+     * numbers were multiplied in before this function existed, because the
+     * parity corpus compares doubles and a reordered product is a different
+     * double.
+     *
+     *                           attack   ambient   dot
+     *  dungeon tier               yes    boss only  -
+     *  the boss's own buffs       yes    boss only  -
+     *  endless waves              yes      yes     yes
+     *  enrage, frenzy, hard mode  yes       -      yes     (via enrageMultiplier)
+     *  hard mode                   -       yes      -
+     *  how out-levelled it is     yes      yes     yes
+     *  a rushed extra pack         -       yes      -
+     *  a healer run's relief    tank only  yes      -
+     *  the target's defensive     yes      yes      -
+     *
+     * A new layer belongs in this table, not at a call site.
+     */
+    internal fun incomingDamage(
+        s: GameState,
+        unit: Unit,
+        source: DamageSource,
+        partyDamageMult: Double = 1.0,
+        /** A hit meant for one target: the only kind a loose boss can misplace. */
+        singleTarget: Boolean = false,
+    ): Double {
+        val dungeon = s.currentDungeon
+        val atBoss = s.combatPhase == CombatPhase.BOSS && dungeon != null
+        return when (source) {
+            DamageSource.BOSS_ATTACK -> {
+                var mult = progression.bossDamageMultiplier(dungeon?.difficulty ?: 1) *
+                    (if (dungeon?.endless == true) progression.endlessMultiplier(s.endlessStacks) else 1.0) *
+                    partyDamageMult * enrageMultiplier(s)
+                mult *= progression.levelGapDamageMultiplier(unit.level, dungeon?.levelMax ?: unit.level)
+                // Loose: nobody is holding it, and the squishy it found pays for
+                // that. Single-target hits only -- a raid-wide attack lands on
+                // everyone wherever the boss is facing, and charging the premium
+                // on those made every party-wide hit in a tank or damage run 25%
+                // worse than the same hit in a healer's.
+                if (singleTarget && s.playerRole != UnitRole.HEALER && unit.role != UnitRole.TANK) {
+                    mult *= data.encounters.unheldTargetDamage
+                }
+                mult
+            }
+            DamageSource.AMBIENT -> {
+                var mult = 1.0
+                if (atBoss) {
+                    mult *= progression.bossDamageMultiplier(dungeon!!.difficulty)
+                    mult *= partyDamageMult
+                }
+                if (dungeon?.endless == true) mult *= progression.endlessMultiplier(s.endlessStacks)
+                if (dungeon != null) mult *= progression.levelGapDamageMultiplier(unit.level, dungeon.levelMax)
+                if (s.combatPhase == CombatPhase.TRASH) {
+                    // A pack pulled early is still standing here.
+                    val packs = s.adds.count { it.kind == AddTemplate.PACK && it.isAlive }
+                    if (packs > 0) mult *= (1 + packs).toDouble()
+                }
+                if (s.playerRole == UnitRole.HEALER) mult *= data.encounters.healerRunChipDamage
+                mult *= hardDamage(s)
+                mult
+            }
+            DamageSource.DOT -> {
+                var mult = dungeon?.let { progression.levelGapDamageMultiplier(unit.level, it.levelMax) } ?: 1.0
+                if (dungeon?.endless == true) mult *= progression.endlessMultiplier(s.endlessStacks)
+                mult *= enrageMultiplier(s)
+                mult
+            }
+        }
+    }
+
+    /** What the tank takes, which depends on who is healing it. */
+    internal fun tankShare(s: GameState): Double =
+        if (s.playerRole == UnitRole.HEALER) data.encounters.healerRunTankDamage
+        else data.balance.roles.tankBossDamageTaken
+
+    /**
+     * Hard mode's scale: what it multiplies enemy health and damage by,
+     * including the step for every level the party is above the dungeon.
+     * Exactly 1.0 in normal mode, so nothing else changes.
+     */
+    internal fun hardScale(dungeon: Dungeon?, level: Int, hard: Boolean, keystone: Int = 0): Double {
+        if (!hard || dungeon == null) return 1.0
+        val h = data.encounters.hard
+        val over = max(0, level - dungeon.levelMax)
+        return h.healthMultiplier * (1 + over * h.overLevelStep) * (1 + keystone * h.keystoneStep)
+    }
+
+    /** What hard mode adds to what the enemy hits for. */
+    internal fun hardDamage(s: GameState): Double {
+        if (!s.hardMode) return 1.0
+        val h = data.encounters.hard
+        val over = max(0, s.level - (s.currentDungeon?.levelMax ?: s.level))
+        return h.damageMultiplier * (1 + over * h.overLevelStep) * (1 + s.keystone * h.keystoneStep)
+    }
+
+    /**
+     * Enemy damage growth: the enrage, once the boss has lasted past its
+     * timer, and a frenzy while one is up.
+     */
+    internal fun enrageMultiplier(s: GameState): Double {
+        val p = data.encounters.pressure
+        val frenzy = if (s.enemyState == STATE_FRENZY && s.enemyStateTicks > 0) data.encounters.frenzyDamageMultiplier else 1.0
+        val hard = hardDamage(s)
+        val after = (data.encounters.enrageAfterTicks(s.currentDungeon?.id) *
+            if (s.hardMode) data.encounters.hard.enrageScale else 1.0).toInt()
+        if (after <= 0 || s.bossTicks <= after) return frenzy * hard
+        return (1 + (s.bossTicks - after) * p.enrageRampPerTick) * frenzy * hard
+    }
+
+    /** The breather after a pull, unless this dungeon has none. */
+    private fun restAfterPull(s: GameState): Int =
+        if (s.currentDungeon?.let { data.encounters.rules[it.id]?.noRests } == true) 0 else data.encounters.pressure.restTicks
+
+    /**
+     * A breather between pulls: nothing attacks, nobody deals damage, and the
+     * party drinks. Cooldowns still run (Engine.tickCooldowns).
+     */
+    private fun rest(s: GameState): GameState {
+        val p = data.encounters.pressure
+        return s.copy(
+            restTicks = s.restTicks - 1,
+            combatElapsedTicks = s.combatElapsedTicks + 1,
+            floatingCombatTexts = s.floatingCombatTexts.filter { it.expiresAtCombatTick > s.combatElapsedTicks + 1 },
+            party = s.party.map {
+                if (!it.isAlive) it else it.copy(health = min(it.maxHealth, it.health + it.maxHealth * p.restHealthPerTick))
+            },
+            // The AI healer drinks too. Its regen in a fight is a trickle now,
+            // so this is where it actually recovers -- which is what makes its
+            // bar move: down across a pull, back up on the breather, and a long
+            // boss fight the one place it can truly run dry.
+            aiHealerMana = if (s.aiHealerManaMax <= 0) s.aiHealerMana
+            else min(s.aiHealerManaMax, s.aiHealerMana + s.aiHealerManaMax * p.restManaPerTick),
+        ).withEachParticipant {
+            it.copy(mana = min(it.maxMana.toDouble(), it.mana + it.maxMana * p.restManaPerTick))
+        }
+    }
+
+    /** The adds [templates] make, sized against [mainMaxHealth]; ids unique to this moment. */
+    internal fun spawnAdds(
+        templates: List<AddTemplate>,
+        mainMaxHealth: Double,
+        tag: String,
+        affixes: List<Affix> = emptyList(),
+    ): List<EnemyAdd> {
+        val every = data.encounters.addRules.menderEveryTicks
+        val tougher = affixes.fold(1.0) { m, a -> m * a.addHealth }
+        val angrier = affixes.fold(1.0) { m, a -> m * a.addDamage }
+        return templates.mapIndexed { i, t ->
+            val hp = max(1.0, t.health * mainMaxHealth * tougher)
+            EnemyAdd(
+                id = "add-$tag-$i",
+                kind = t.kind,
+                name = t.name,
+                looksLike = t.looksLike,
+                health = hp,
+                maxHealth = hp,
+                damagePerTick = t.damagePerTick * angrier,
+                // One number, read differently by kind: a bomb's blast, a
+                // caster's hit, a mender's heal, a shielder's grip.
+                healAmount = when (t.kind) {
+                    AddTemplate.BOMB, AddTemplate.CASTER -> t.blast
+                    AddTemplate.SHIELDER -> t.wardFraction
+                    else -> t.healFraction * mainMaxHealth
+                },
+                splitsInto = t.splitsInto,
+                timer = fuse(t.kind),
+                timerTotal = fuse(t.kind),
+            )
+        }
+    }
+
+    /**
+     * The state an affix hands the enemy this tick, if this is the tick for it.
+     * Only while it has none already: an affix does not cut a fight's own
+     * shield short, or extend it.
+     */
+    private fun affixState(s: GameState, affixes: List<Affix>): Pair<String, Int>? {
+        if (s.enemyStateTicks > 0) return null
+        val a = affixes.firstOrNull { it.enemyState.isNotEmpty() && it.stateEveryTicks > 0 } ?: return null
+        val due = s.combatElapsedTicks > 0 && s.combatElapsedTicks % a.stateEveryTicks == 0
+        return if (due) a.enemyState to a.stateTicks else null
+    }
+
+    /** The affixes this run carries. Empty on a normal run. */
+    internal fun affixesOf(s: GameState?, dungeon: Dungeon? = null): List<Affix> =
+        if (s == null || !s.hardMode) emptyList()
+        else data.encounters.affixesFor((dungeon ?: s.currentDungeon)?.id, true, s.keystone)
+
+    private fun fuse(kind: String): Int = when (kind) {
+        AddTemplate.MENDER -> data.encounters.addRules.menderEveryTicks
+        AddTemplate.CASTER -> data.encounters.addRules.casterEveryTicks
+        AddTemplate.BOMB -> data.encounters.addRules.bombFuseTicks
+        else -> 0
+    }
+
+    /** A trash pull's first mechanic comes after a fixed beat: no rng on the trash path. */
+    internal fun firstMechanicIn(dungeonId: String?, index: Int): Int =
+        data.encounters.pullCombat(dungeonId, index)?.let { it.mechanicIntervalTicksMin ?: defaultMechanicMin } ?: 0
+
+    /** What trash pull [index] of [dungeonId] brings besides its pack. */
+    internal fun pullAdds(
+        dungeonId: String?,
+        index: Int,
+        mainMaxHealth: Double,
+        tag: String,
+        affixes: List<Affix> = emptyList(),
+    ): List<EnemyAdd> {
+        val pull = dungeonId?.let { data.encounters.trash[it] }?.getOrNull(index)
+        // An affix that brings its own adds brings them to every pull, which is
+        // what makes a dungeon feel like it is under the affix rather than like
+        // one pull is.
+        val templates = pull?.adds.orEmpty() + affixes.flatMap { it.extraAdds }
+        if (templates.isEmpty()) return emptyList()
+        return spawnAdds(templates, mainMaxHealth, tag, affixes)
+    }
+
+    /**
+     * "Pull now": the next planned pack joins this fight as an add, with
+     * whatever that pull brings, and counts as fought. Not the last trash
+     * pull's successor -- the boss does not come early.
+     */
+    internal fun rushNextPull(s: GameState): GameState {
+        val dungeon = s.currentDungeon ?: return s
+        if (s.combatPhase != CombatPhase.TRASH || s.trashPullsRemaining <= 1) return s
+        val index = TRASH_PACK_COUNT - s.trashPullsRemaining + 1
+        val hp = max(1.0, progression.trashMaxHealth(dungeon))
+        val name = dungeon.enemies.takeIf { it.isNotEmpty() }?.let { it[index % it.size].name } ?: "Trash"
+        val tag = "r${s.combatElapsedTicks}"
+        val pack = EnemyAdd(id = "pack-$tag", kind = AddTemplate.PACK, name = name, looksLike = name, health = hp, maxHealth = hp)
+        return s.copy(
+            trashPullsRemaining = s.trashPullsRemaining - 1,
+            adds = s.adds + pack + pullAdds(dungeon.id, index, hp, tag, affixesOf(s)),
+        )
+    }
+
+    /**
+     * The adds' own clocks: menders cast and heal, runners run, and adds hit
+     * the healer. Damage to adds is resolved with the rest of the damage.
+     */
+    internal fun processAdds(s: GameState, party: List<Unit>): Pair<GameState, List<Unit>> {
+        if (s.adds.isEmpty()) return s to party
+        val rules = data.encounters.addRules
+        var enemyHealth = s.enemyHealth
+        var extra = s.extraPulls
+        var blast = 0.0
+        val adds = s.adds.mapNotNull { a ->
+            if (!a.isAlive) return@mapNotNull null
+            when (a.kind) {
+                AddTemplate.MENDER -> when {
+                    a.timer > 1 -> a.copy(timer = a.timer - 1)
+                    a.casting -> {
+                        if (enemyHealth > 0) enemyHealth = min(s.enemyMaxHealth, enemyHealth + a.healAmount)
+                        a.copy(casting = false, timer = rules.menderEveryTicks, timerTotal = rules.menderEveryTicks)
+                    }
+                    else -> a.copy(casting = true, timer = rules.menderCastTicks, timerTotal = rules.menderCastTicks)
+                }
+                AddTemplate.BOMB -> if (a.timer <= 1) { blast += a.healAmount; null } else a.copy(timer = a.timer - 1)
+                // A caster winds up at the party, and the cast can be kicked
+                // the same way a mender's can -- what lands is damage, not a
+                // heal, so ignoring it costs health rather than time.
+                AddTemplate.CASTER -> when {
+                    a.timer > 1 -> a.copy(timer = a.timer - 1)
+                    a.casting -> {
+                        blast += a.healAmount
+                        a.copy(casting = false, timer = rules.casterEveryTicks, timerTotal = rules.casterEveryTicks)
+                    }
+                    else -> a.copy(casting = true, timer = rules.casterCastTicks, timerTotal = rules.casterCastTicks)
+                }
+                AddTemplate.RUNNER -> when {
+                    !a.fleeing && a.health < a.maxHealth * rules.runnerFleeBelow ->
+                        a.copy(fleeing = true, timer = rules.runnerEscapeTicks, timerTotal = rules.runnerEscapeTicks)
+                    a.fleeing && a.timer <= 1 -> { extra += 1; null }
+                    a.fleeing -> a.copy(timer = a.timer - 1)
+                    else -> a
+                }
+                else -> a
+            }
+        }
+        // Adds go for whoever keeps the party alive.
+        val hurt = adds.sumOf { it.damagePerTick } * rules.damageScale *
+            (s.currentDungeon?.let { progression.bossDamageMultiplier(it.difficulty) } ?: 1.0)
+        // A leech feeds what it takes straight back into the enemy, so leaving
+        // one up is the healer healing the boss.
+        val leeched = adds.filter { it.kind == AddTemplate.LEECH }.sumOf { it.damagePerTick } *
+            rules.damageScale
+        if (leeched > 0 && enemyHealth > 0) enemyHealth = min(s.enemyMaxHealth, enemyHealth + leeched)
+        // Adds go for whoever keeps the party alive -- but not *only* them. Every
+        // point of add damage used to land on the one healer, so any content
+        // that added adds was content that killed the healer and nobody else:
+        // hard mode's affixes ended every run with HEALER_DOWN rather than with
+        // a fight anyone lost. The healer still takes the lion's share, which is
+        // the pressure the design wants; the rest is spread, which is what stops
+        // "more adds" from meaning "the healer, faster".
+        // In a run someone is tanking, adds are the tank's to pick up: they go
+        // for whoever holds the enemy's attention, all of them on it. In a
+        // healer's run they go for the healer, which is the pressure that game
+        // is built around.
+        val threatRun = s.playerRole != UnitRole.HEALER
+        val holder = party.firstOrNull { it.isAlive && it.id == s.enemyTargetId }
+        val victim = (if (threatRun) holder else null)
+            ?: party.firstOrNull { it.isAlive && it.role == UnitRole.HEALER }
+            ?: party.firstOrNull { it.isAlive }
+        val focus = if (threatRun && holder != null) 1.0 else rules.healerShare
+        val others = party.filter { it.isAlive && it.id != victim?.id }
+        val spread = if (others.isEmpty()) 0.0 else hurt * (1 - focus) / others.size
+        val hit = (if (hurt <= 0 || victim == null) party else party.map {
+            when {
+                it.id == victim.id -> it.copy(health = max(0.0, it.health - hurt * focus))
+                it.isAlive -> it.copy(health = max(0.0, it.health - spread))
+                else -> it
+            }
+        }).map { if (blast > 0 && it.isAlive) it.copy(health = max(0.0, it.health - blast)) else it }
+        return s.copy(adds = adds, enemyHealth = enemyHealth, extraPulls = extra) to hit
+    }
+
+    /**
+     * The AI healer's dispel, when no human is healing: the first ally with
+     * something safe to take, on a cooldown. It waits out a bomb. No rng.
+     */
+    internal fun aiDispel(s: GameState, party: List<Unit>): Pair<List<Unit>, Int> {
+        val every = data.encounters.aiDispelEveryTicks
+        val cooldown = max(0, s.aiDispelCooldown - 1)
+        if (every <= 0 || cooldown > 0) return party to cooldown
+        if (s.participants.values.any { it.isHuman && it.role == UnitRole.HEALER }) return party to cooldown
+        if (party.none { it.role == UnitRole.HEALER && it.isAlive }) return party to cooldown
+        val target = party.firstOrNull { it.isAlive && it.debuffs.toDispel(safeOnly = true) != null }
+            ?: return party to cooldown
+        val gone = target.debuffs.toDispel(safeOnly = true)!!
+        return party.map { if (it.id == target.id) it.copy(debuffs = it.debuffs - gone) else it } to every
     }
 
     // --- the tick ------------------------------------------------------------
 
     fun advance(state: GameState, rng: Rng, dpsMultiplierOverride: Double? = null): GameState {
         if (!state.isCombatActive) return state
+        if (state.restTicks > 0) return rest(state)
 
-        val s = state.copy(
-            combatElapsedTicks = state.combatElapsedTicks + 1,
-            floatingCombatTexts = state.floatingCombatTexts
-                .filter { it.expiresAtCombatTick > state.combatElapsedTicks + 1 },
+        // Threat is resolved first, off the table as it stood when last tick
+        // committed. Reading committed state rather than this tick's accrual is
+        // what makes the answer independent of evaluation order -- and what
+        // would let two machines that agree on tick N agree on tick N+1 without
+        // negotiating, if co-op ever happens.
+        val s = aiTankTaunt(
+            state.copy(
+                combatElapsedTicks = state.combatElapsedTicks + 1,
+                bossTicks = if (state.combatPhase == CombatPhase.BOSS) state.bossTicks + 1 else state.bossTicks,
+                floatingCombatTexts = state.floatingCombatTexts
+                    .filter { it.expiresAtCombatTick > state.combatElapsedTicks + 1 },
+                enemyTargetId = resolveEnemyTarget(state),
+                tauntLockTicks = max(0, state.tauntLockTicks - 1),
+            ),
         )
         val ctx = CastContext(s, data, stats, rng)
 
@@ -794,10 +2051,23 @@ class GameTick(
             ?: 1.0
 
         val boss = processBossAi(ctx, rng)
-        val withBoss = s.copy(
-            bossSelfBuffs = boss.bossSelfBuffs,
-            mechanicCooldown = boss.mechanicCooldown,
-            mechanicOrdinal = boss.mechanicOrdinal,
+        val castStarted = boss.enemyCast != null && s.enemyCast == null
+        val withBoss = aiKick(
+            s.copy(
+                bossSelfBuffs = boss.bossSelfBuffs,
+                mechanicCooldown = boss.mechanicCooldown,
+                mechanicOrdinal = boss.mechanicOrdinal,
+                enemyCast = boss.enemyCast,
+                runMissedKicks = s.runMissedKicks + if (boss.missedKick) 1 else 0,
+                // The first one, named. A count tells a player they were not
+                // sharp; the name tells them what to kick next time.
+                runFirstMissedKick = s.runFirstMissedKick.ifEmpty {
+                    if (boss.missedKick) boss.missedKickName else ""
+                },
+                enemyState = boss.state?.first ?: s.enemyState,
+                enemyStateTicks = boss.state?.second ?: s.enemyStateTicks,
+                interruptibleCasts = s.interruptibleCasts + if (castStarted && boss.enemyCast?.interruptible == true) 1 else 0,
+            ),
         )
 
         val env = processEnvironmentalTick(
@@ -828,18 +2098,34 @@ class GameTick(
             runHealOverheal = acc.runHealOverheal + sys.healOverheal,
         )
 
-        resolveFailure(ctx, acc, sys.party, rng)?.let { return it }
+        // Before the failure check, so a heal that lands this tick actually
+        // saves the unit rather than being applied to a corpse.
+        val ai = aiHealerTick(acc, sys.party)
+        val (partyAfterDispel, dispelCooldown) = aiDispel(acc, ai.party)
+        acc = acc.copy(aiHealerMana = ai.manaLeft, aiDispelCooldown = dispelCooldown)
+        val (withAdds, partyAfterAi) = processAdds(acc, partyAfterDispel)
+        acc = withAdds
+
+        resolveFailure(ctx, acc, partyAfterAi, rng)?.let { return it }
 
         // Presentation: record what healing landed this tick so the UI can float it.
         val floats = (s.floatingCombatTexts + floatsFrom(
             before = s.party,
-            after = sys.party,
+            after = partyAfterAi,
             crit = false,
             combatTick = s.combatElapsedTicks,
             startId = s.combatElapsedTicks.toLong() * 100,
         )).filter { it.expiresAtCombatTick > s.combatElapsedTicks }
 
-        return resolveOngoingCombat(ctx, acc, sys, boss, bossBuffsNext, dpsPace, rng)
+        return resolveOngoingCombat(
+            ctx, acc, sys.copy(party = partyAfterAi), boss, bossBuffsNext, dpsPace, rng,
+            // The AI healer's output is kept separate rather than excluded: it
+            // is threat, but it belongs to the AI healer's slot, not the
+            // player's.
+            healEffectiveThisTick = env.healEffective + sys.healEffective,
+            aiHealerHealingThisTick = ai.healed,
+            damageTaken = damageTakenThisTick(s.party, boss.party, env.damageTaken),
+        )
             .let { if (it.isCombatActive) it.copy(floatingCombatTexts = floats) else it }
     }
 }

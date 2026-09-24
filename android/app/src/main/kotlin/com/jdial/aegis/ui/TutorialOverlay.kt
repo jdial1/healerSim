@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import com.jdial.aegis.sim.UnitRole
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +53,7 @@ data class TutorialStep(
     val title: String,
     val body: String,
     val anchor: TutorialAnchor,
+    val icon: String? = null,
 )
 
 /** Shown once, in order, the first time a player reaches each screen. */
@@ -58,9 +61,11 @@ object Tutorial {
     val CLASS_SELECT = TutorialStep(
         id = "class-select",
         title = "Choose your path",
-        body = "Each healer plays differently. The Priest heals in bursts, the Druid " +
-            "keeps heals rolling over time. Your class colours the whole interface.",
+        body = "Every class plays a different job. Healers keep the party standing, " +
+            "tanks keep the enemy's attention, and damage dealers burn it down. Your " +
+            "class colours the whole interface.",
         anchor = TutorialAnchor.CENTER,
+        icon = "lorc/winged-shield",
     )
 
     val DUNGEONS = TutorialStep(
@@ -69,21 +74,150 @@ object Tutorial {
         body = "Three trash pulls, then the boss. Locked dungeons need a higher level — " +
             "clear what you can and the rest opens up.",
         anchor = TutorialAnchor.TOP,
+        icon = "lorc/crossed-swords",
     )
 
+    // Reordering is now an out-of-combat action, so neither card teaches it as
+    // a combat gesture. Both read the frame numbers, which are the point of the
+    // screen: percent for urgency, deficit for which heal fits.
     val COMBAT = TutorialStep(
         id = "combat",
         title = "Keep them alive",
-        // Reordering is now an out-of-combat action, so this card must not teach
-        // it as a combat gesture. It also reads the frame numbers, which are the
-        // point of the screen: percent for urgency, deficit for which heal fits.
         body = "Tap an ally to target them, then tap a spell to heal. Each frame shows " +
             "health percent and, when hurt, how much is missing. Watch the mana orb: " +
             "running dry is how runs are lost.",
         anchor = TutorialAnchor.BOTTOM,
+        icon = "wow/spell_holy_flashheal",
     )
 
-    val ALL = listOf(CLASS_SELECT, DUNGEONS, COMBAT)
+    /**
+     * The same slot, for a class that does not heal. Telling a Mage to "tap an
+     * ally to target them, then tap a spell to heal" is simply wrong, and a
+     * first-run card that is wrong is worse than none.
+     */
+    val COMBAT_DAMAGE = TutorialStep(
+        id = "combat",
+        title = "Burn it down",
+        body = "Spells hit the enemy — no target needed. Watch the threat bar: pull " +
+            "ahead of the tank and the enemy comes for you. Your healer is one of the " +
+            "party frames, and their mana runs out too.",
+        anchor = TutorialAnchor.BOTTOM,
+        icon = "wow/spell_fire_fireball02",
+    )
+
+    /**
+     * And for a tank, whom the damage card would tell to stay *behind* the
+     * tank.
+     */
+    val COMBAT_TANK = TutorialStep(
+        id = "combat",
+        title = "Hold its attention",
+        body = "Spells hit the enemy — no target needed. Your attacks build threat: keep " +
+            "the enemy on you, and taunt it back when it turns on someone else. Your " +
+            "class's resource sits beside the mana orb.",
+        anchor = TutorialAnchor.BOTTOM,
+        icon = "wow/ability_warrior_shieldguard",
+    )
+
+    // --- small cards for things that arrive later ---------------------------
+    // Each is shown once, the first time what it explains actually exists.
+
+    val TALENT_POINTS = TutorialStep(
+        id = "talent-points",
+        title = "A talent point",
+        body = "You levelled up and have a point to spend. The Talents tab shows a badge " +
+            "while any are unspent. Points can be refunded any time out of combat.",
+        anchor = TutorialAnchor.BOTTOM,
+        icon = "lorc/burning-book",
+    )
+
+    val TALENTS = TutorialStep(
+        id = "talents",
+        title = "Your talents",
+        body = "Each row opens at a level. Some nodes teach a new spell; the capstone at " +
+            "the bottom changes how the class plays. Below the tree: your action bar, " +
+            "charms and consumables.",
+        anchor = TutorialAnchor.TOP,
+        icon = "lorc/burning-book",
+    )
+
+    val CHARMS = TutorialStep(
+        id = "charms",
+        title = "A charm",
+        body = "Clearing a dungeon earned a charm. Wear one at a time, from Charms on the " +
+            "Talents tab. Each gives something and takes something. Charms belong to " +
+            "every character you make.",
+        anchor = TutorialAnchor.CENTER,
+        icon = "wow/inv_misc_candle_01",
+    )
+
+    val STASH = TutorialStep(
+        id = "stash",
+        title = "A consumable",
+        body = "The clear dropped a consumable. Put it on your action bar on the " +
+            "Talents tab to take it into the next run. You get one use per run, off the " +
+            "global cooldown, and using it spends it from your stash.",
+        anchor = TutorialAnchor.CENTER,
+        icon = "wow/inv_potion_70",
+    )
+
+    val HARD_MODE = TutorialStep(
+        id = "hard-mode",
+        title = "Hard mode",
+        body = "A cleared dungeon can be run on hard: enemies have more health and hit " +
+            "harder, with an affix on top. It is worth more XP and drops its own consumables.",
+        anchor = TutorialAnchor.TOP,
+        icon = "wow/ability_racial_bloodrage",
+    )
+
+    val KEYSTONES = TutorialStep(
+        id = "keystones",
+        title = "Keystones",
+        body = "Each hard clear raises that dungeon's keystone by one. The next run is a " +
+            "little tougher and carries one more affix. A wipe never lowers it. The queue " +
+            "lists each affix before you commit.",
+        anchor = TutorialAnchor.TOP,
+        icon = "wow/ability_warrior_shieldguard",
+    )
+
+    val BREATHER = TutorialStep(
+        id = "breather",
+        title = "Breather",
+        body = "Between pulls nothing attacks. Mana and health recover, and the timer shows " +
+            "when the next pull comes.",
+        anchor = TutorialAnchor.CENTER,
+        icon = "wow/inv_drink_05",
+    )
+
+    val ADDS = TutorialStep(
+        id = "adds",
+        title = "Adds",
+        body = "The boss called help. Some hit hard, some heal the boss, some explode. " +
+            "Their frames sit beside the boss, and killing the right one first is the fight.",
+        anchor = TutorialAnchor.TOP,
+        icon = "wow/ability_warrior_rallyingcry",
+    )
+
+    val AGGRO = TutorialStep(
+        id = "aggro",
+        title = "It's coming for you",
+        body = "You pulled threat off the tank. The enemy now hits you instead. Ease off " +
+            "until the tank takes it back. Big heals and big crits count too.",
+        anchor = TutorialAnchor.TOP,
+        icon = "wow/ability_warrior_cleave",
+    )
+
+    val ALL = listOf(
+        CLASS_SELECT, DUNGEONS, COMBAT, COMBAT_DAMAGE, COMBAT_TANK,
+        TALENT_POINTS, TALENTS, CHARMS, STASH, HARD_MODE, KEYSTONES, BREATHER, ADDS, AGGRO,
+    )
+
+    /** The combat card that matches what this player actually does. */
+    fun combatFor(role: UnitRole): TutorialStep = when (role) {
+        UnitRole.HEALER -> COMBAT
+        UnitRole.TANK -> COMBAT_TANK
+        UnitRole.DPS -> COMBAT_DAMAGE
+    }
 }
 
 @Composable
@@ -112,10 +246,14 @@ fun TutorialOverlay(step: TutorialStep, onDismiss: () -> Unit) {
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(8.dp).clip(CircleShape).background(accent.core),
-                    )
-                    Spacer(Modifier.height(0.dp))
+                    if (step.icon != null) {
+                        GameIcon(step.icon, size = 36.dp, accent = accent.core)
+                        Spacer(Modifier.width(6.dp))
+                    } else {
+                        Box(
+                            Modifier.size(8.dp).clip(CircleShape).background(accent.core),
+                        )
+                    }
                     BasicText(
                         "  " + step.title.uppercase(),
                         style = AegisType.title.copy(fontSize = 15.sp),

@@ -135,16 +135,19 @@ fun Unit.debuffStacksOf(abilityId: String): Int {
     return if (d.remainingTicks > 0) 1 else 0
 }
 
-/** Removes the first dispellable harmful aura, if any. */
-fun List<UnitDebuff>.dispelOne(): List<UnitDebuff> {
-    val i = indexOfFirst { it.category == "harmful" && it.dispellable }
-    return if (i < 0) this else filterIndexed { j, _ -> j != i }
+/**
+ * What a dispel on this unit takes: the first dispellable debuff that is safe
+ * to take, or -- unless [safeOnly] -- an armed bomb, which will go off.
+ */
+fun List<UnitDebuff>.toDispel(safeOnly: Boolean = false): UnitDebuff? {
+    val candidates = filter { it.category == "harmful" && it.dispellable && it.remainingTicks > 0 }
+    return candidates.firstOrNull { !it.isArmed } ?: if (safeOnly) null else candidates.firstOrNull()
 }
 
 // --- spell classification ---------------------------------------------------
 
 /** Every spell in the game is a heal; the mana potion is the sole exception. */
-fun Spell.isHeal(): Boolean = id != MANA_POTION_ID
+fun Spell.isHeal(): Boolean = id != MANA_POTION_ID && !isDamage
 
 fun Spell.isDirectHeal(): Boolean = when {
     id == MANA_POTION_ID -> false

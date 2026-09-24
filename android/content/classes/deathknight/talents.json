@@ -1,0 +1,315 @@
+[
+  {
+    "id": "dk_r0c0",
+    "name": "Bloodworms",
+    "description": "Blood Shield absorbs 10% more per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_antimagiczone",
+    "gridX": 0,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "bloodShield": 10
+    }
+  },
+  {
+    "id": "dk_r0c2",
+    "name": "Might of the Frozen Wastes",
+    "description": "Increases critical strike chance by 1% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_deathknight_frozencenter",
+    "gridX": 2,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r0c4",
+    "name": "Rune Tap",
+    "description": "Increases maximum mana by 3% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_empowerruneblade",
+    "gridX": 4,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r1c1",
+    "name": "Improved Death Strike",
+    "description": "Death Strike heals for a further 5% of recent damage per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_deathstrike",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "dk_r0c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "deathStrikeHeal": 5
+    }
+  },
+  {
+    "id": "dk_r1c3",
+    "name": "Subversion",
+    "description": "Generates 6% more threat per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_subversion",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "dk_r0c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "threat": 6
+    }
+  },
+  {
+    "id": "dk_r2c0",
+    "name": "Runic Focus",
+    "description": "Increases haste by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_deathknight_runicimpowerment",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r2c2",
+    "name": "Heart Strike",
+    "description": "Unlocks Heart Strike.",
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/inv_weapon_shortblade_40",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "dk_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "heart_strike"
+  },
+  {
+    "id": "dk_r2c4",
+    "name": "Scent of Blood",
+    "description": "Death Strike costs 2 less mana per rank.",
+    "maxPoints": 3,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_bloodplague",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cost:death_strike": 2
+    }
+  },
+  {
+    "id": "dk_r3c1",
+    "name": "Unholy Command",
+    "description": "Dark Command's cooldown is 1.5 seconds shorter.",
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_unholypresence",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "dk_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:dark_command": 15
+    }
+  },
+  {
+    "id": "dk_r3c3",
+    "name": "Butchery",
+    "description": "Heart Strike deals 10% more damage per rank.",
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_festering_strike",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "dk_r1c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:heart_strike": 10
+    }
+  },
+  {
+    "id": "dk_r4c2",
+    "name": "Vendetta",
+    "description": "Increases damage by 5% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_vendetta",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "dk_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 5
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r4c4",
+    "name": "Veteran of the Third War",
+    "description": "Increases Blood Shield rating by 2 per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_armyofthedead",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "dk_r3c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "uniqueStat": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "dk_r5c1",
+    "name": "Bone Shield",
+    "description": "Icebound Fortitude's cooldown is 5 seconds shorter per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_deathknight_brittlebones",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "dk_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:icebound_fortitude": 50
+    }
+  },
+  {
+    "id": "dk_r5c3",
+    "name": "Crimson Scourge",
+    "description": "Heart Strike's cooldown is 1 second shorter per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_scourgestrike",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "dk_r4c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:heart_strike": 10
+    }
+  },
+  {
+    "id": "dk_r6c2",
+    "name": "Dancing Rune Weapon",
+    "description": "Death Strike deals 25% more damage.",
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/spell_deathknight_empowerruneblade2",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "dk_r5c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:death_strike": 25
+    }
+  }
+]

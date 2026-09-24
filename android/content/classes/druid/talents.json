@@ -1,0 +1,274 @@
+[
+  {
+    "id": "d_r0c0",
+    "name": "Healing Focus",
+    "description": "Increases all healing by 3% per rank.",
+    "points": 0,
+    "maxPoints": 5,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_druid_healinginstincts",
+    "gridX": 0,
+    "gridY": 0,
+    "statBonus": {
+      "healingBoost": 3
+    }
+  },
+  {
+    "id": "d_r0c1",
+    "name": "Critical Focus",
+    "description": "Increases critical strike chance by 1.2% per rank.",
+    "points": 0,
+    "maxPoints": 4,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_nature_moonglow",
+    "gridX": 1,
+    "gridY": 0,
+    "statBonus": {
+      "critChance": 1.2
+    }
+  },
+  {
+    "id": "d_r0c3",
+    "name": "Mana Focus",
+    "description": "Increases maximum mana by 20 per rank.",
+    "points": 0,
+    "maxPoints": 4,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_nature_regeneration",
+    "gridX": 2,
+    "gridY": 0,
+    "statBonus": {
+      "manaPool": 20
+    }
+  },
+  {
+    "id": "d_r0c4",
+    "name": "Verdant Reservoir",
+    "description": "Your HoT ticks return 0.6 mana per point each tick.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/spell_nature_natureguardian",
+    "gridX": 3,
+    "gridY": 0,
+    "mechanicId": "druid_verdant_reservoir",
+    "statBonus": {
+      "uniqueStat": 1
+    }
+  },
+  {
+    "id": "d_r1c2",
+    "name": "Naturalist",
+    "description": "Unlocks Healing Touch.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_nature_healingtouch",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [],
+    "spellId": "healing_touch"
+  },
+  {
+    "id": "d_r1c4",
+    "name": "Cultivation",
+    "description": "Rejuvenation and Wild Growth HoTs heal for 8% more per point. Exclusive with Deep Roots.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/spell_nature_wispheal",
+    "gridX": 2,
+    "gridY": 1,
+    "prerequisites": [
+      "d_r0c4"
+    ],
+    "exclusiveWith": [
+      "d_r2c4"
+    ],
+    "mechanicId": "druid_path_cultivation"
+  },
+  {
+    "id": "d_r2c1",
+    "name": "Living Seed",
+    "description": "Crit heals plant a seed; next damage to that ally heals from the seed. Synergy: Natural Perfection adds potency.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_nature_abolishmagic",
+    "gridX": 1,
+    "gridY": 2,
+    "prerequisites": [
+      "d_r0c1"
+    ],
+    "mechanicId": "living_seed",
+    "synergyWith": [
+      "d_r3c1"
+    ]
+  },
+  {
+    "id": "d_r2c2",
+    "name": "Swiftmend",
+    "description": "Unlocks Swiftmend. Consumes Rejuvenation or Regrowth on the target for a burst of healing.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/inv_relics_idolofrejuvenation",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "d_r1c2"
+    ],
+    "spellId": "swiftmend"
+  },
+  {
+    "id": "d_r2c4",
+    "name": "Deep Roots",
+    "description": "Rejuvenation and Regrowth on the tank heal for 12% more per point. Exclusive with Cultivation.",
+    "points": 0,
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/spell_druid_germination_rejuvenation",
+    "gridX": 3,
+    "gridY": 2,
+    "prerequisites": [
+      "d_r0c4"
+    ],
+    "exclusiveWith": [
+      "d_r1c4"
+    ],
+    "mechanicId": "druid_path_deep_roots",
+    "statBonus": {
+      "uniqueStat": 0.85
+    }
+  },
+  {
+    "id": "d_r3c1",
+    "name": "Natural Perfection",
+    "description": "Each time you are hit, crit chance 2% for 10s, stacks 5. Synergy: Living Seed.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_druid_naturalperfection",
+    "gridX": 0,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c1"
+    ],
+    "mechanicId": "natural_perfection",
+    "synergyWith": [
+      "d_r2c1"
+    ]
+  },
+  {
+    "id": "d_r3c2",
+    "name": "Nature's Bounty",
+    "description": "Unlocks Wild Growth.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_druid_flourish",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c2"
+    ],
+    "spellId": "wild_growth"
+  },
+  {
+    "id": "d_r3c3",
+    "name": "Mastery: Harmony",
+    "description": "After a direct heal, your HoT ticks are 6% stronger per point for 6s. While any ally has your HoT, your direct heals are 6% stronger per point.",
+    "points": 0,
+    "maxPoints": 3,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_druid_balanceofpower",
+    "gridX": 2,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r0c3"
+    ],
+    "mechanicId": "druid_harmony"
+  },
+  {
+    "id": "d_r3c4",
+    "name": "Lifebloom",
+    "description": "Unlocks Lifebloom: HoT that blooms for extra healing when it expires.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/inv_misc_herb_felblossom",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c4"
+    ],
+    "spellId": "lifebloom"
+  },
+  {
+    "id": "d_r3c5",
+    "name": "Nature’s Cure",
+    "description": "Cleanse's cooldown is 1 second shorter per rank.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/spell_nature_removecurse",
+    "gridX": 4,
+    "gridY": 3,
+    "prerequisites": [
+      "d_r2c4"
+    ],
+    "statBonus": null,
+    "effects": {
+      "cooldown:cleanse": 10
+    }
+  },
+  {
+    "id": "d_r4c2",
+    "name": "Tree of Life",
+    "description": "Tree of Life: your HoTs cost 30% less, direct heals cost 20% more while active. Toggle in combat (capstone).",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_druid_treeoflife",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "d_r3c2"
+    ],
+    "mechanicId": "tree_of_life"
+  },
+  {
+    "id": "d_cap",
+    "name": "Nature's Grace",
+    "description": "The ground around you flowers: passively heal all living allies a small amount each combat tick for 20s. While active, your HoTs tick faster. Visual bloom on your character.",
+    "points": 0,
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/spell_nature_natureblessing",
+    "gridX": 2,
+    "gridY": 5,
+    "prerequisites": [
+      "d_r3c1",
+      "d_r4c2",
+      "d_r3c3"
+    ],
+    "mechanicId": "capstone_natures_grace",
+    "maxRankBonusDescription": "For 20s, every combat tick heals all living allies by 40% of your level each, and your HoTs tick at 150% rate."
+  }
+]

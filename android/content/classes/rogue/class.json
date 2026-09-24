@@ -1,0 +1,43 @@
+{
+  "id": "ROGUE",
+  "name": "Assassin Rogue",
+  "role": "DPS",
+  "description": "Bleeds things to death from behind. Fragile, and entirely unbothered by that.",
+  "iconKey": "dagger",
+  "color": "bg-yellow-600",
+  "textColor": "text-yellow-300",
+  "hoverBorderClass": "hover:border-yellow-400",
+  "locked": false,
+  "portraitUrl": "",
+  "portraitIcon": "rogue",
+  "portraitGlow": "spell",
+  "passiveTraitName": "Seal Fate",
+  "passiveTraitDescription": "Strikes cost energy and build combo points, two on a crit. Eviscerate spends them all.",
+  "passiveTraitIcon": "wow/spell_holy_surgeoflight",
+  "tutorial": {
+    "passiveDescription": "Seal Fate: Strikes cost energy and build combo points, two on a crit. Eviscerate spends them all."
+  },
+  "statCurves": {
+    "baseIntellect": 32,
+    "baseSpirit": 14,
+    "intellectPerLevel": 3.8,
+    "spiritPerLevel": 1.0,
+    "baseUniqueStat": 9,
+    "uniqueStatPerLevel": 0.6
+  },
+  "progression": {
+    "starterSpells": [
+      "sinister_strike",
+      "eviscerate"
+    ],
+    "spellOrder": [
+      "sinister_strike",
+      "eviscerate",
+      "rupture",
+      "fan_of_knives",
+      "crimson_vial",
+      "evasion",
+      "garrote"
+    ]
+  }
+}

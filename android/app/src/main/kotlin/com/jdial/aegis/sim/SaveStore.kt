@@ -24,11 +24,39 @@ data class CharacterBlob(
     val playerClass: String,
     val actionBarSpellIds: List<String> = emptyList(),
     val introTutorialComplete: Boolean = false,
+    /** Per dungeon id: clears, best time, marks. Defaulted, so old saves decode. */
+    val records: Map<String, DungeonRecord> = emptyMap(),
+    /** Charms this character has earned, and the one it is wearing. */
+    /**
+     * Superseded by [Roster.charmIds]: charms are account-wide now. Still read
+     * once, so a save from before the move keeps what it had earned.
+     */
+    val charmIds: List<String> = emptyList(),
+    val equippedCharmId: String? = null,
+    /** How far each dungeon's keystone has been pushed. */
+    val keystones: Map<String, Int> = emptyMap(),
+    /** Consumables held, by id, and how many of each. */
+    val stash: Map<String, Int> = emptyMap(),
 )
+
+/**
+ * Charms earned before they became account-wide lived on each character. Pool
+ * them onto the roster so nothing a player earned goes missing in the move.
+ */
+fun Roster.withCharmsPooled(): Roster {
+    val all = (charmIds + byClass.values.flatMap { it.charmIds }).distinct()
+    return if (all == charmIds) this else copy(charmIds = all)
+}
 
 @Serializable
 data class Roster(
     val v: Int = 2,
+    /**
+     * Every charm unlocked, by any character. Account-wide on purpose: a
+     * dungeon cleared on the Priest unlocks its charm for the Mage too, so
+     * trying another class is not starting the collection again.
+     */
+    val charmIds: List<String> = emptyList(),
     val lastPlayedClass: String? = null,
     val byClass: Map<String, CharacterBlob> = emptyMap(),
 )
@@ -47,11 +75,27 @@ data class UiSettings(
     val colourBlindBands: Boolean = false,
     val selfFirst: Boolean = false,
     val largeFrames: Boolean = false,
+    /**
+     * Opt in to the public queue. Off by default and staying that way: single
+     * player never opens a network connection, and this is the switch that
+     * decides whether any of it ever does.
+     */
+    val multiplayer: Boolean = false,
+    val sound: Boolean = true,
+    val haptics: Boolean = true,
 )
 
-/** Mirrors the web app's `aegis.suspend.v1`: one boss-phase run, read once. */
+/**
+ * Mirrors the web app's `aegis.suspend.v1`: one boss-phase run, read once.
+ *
+ * v2 because the player's own fields moved off GameState into
+ * [Participant]. A v1 file decodes without error -- ignoreUnknownKeys drops the
+ * old keys and `participants` defaults to empty -- and would resume a boss fight
+ * with no class, no spells and no mana. Rejecting it loses at most one
+ * in-progress fight; accepting it looks like the game eating a character.
+ */
 @Serializable
-data class SuspendedRun(val v: Int = 1, val playerClass: String, val state: GameState)
+data class SuspendedRun(val v: Int = 2, val playerClass: String, val state: GameState)
 
 class SaveStore(
     private val file: File,
@@ -71,7 +115,7 @@ class SaveStore(
      * R8 breakage would present.
      */
     fun load(): Roster =
-        runCatching { json.decodeFromString<Roster>(file.readText()) }
+        runCatching { json.decodeFromString<Roster>(file.readText()).withCharmsPooled() }
             .getOrElse { cause ->
                 if (file.exists()) {
                     runCatching { file.renameTo(File(file.parentFile, "${file.name}.corrupt")) }
@@ -97,7 +141,13 @@ class SaveStore(
         }
     }
 
-    fun serialize(state: GameState): CharacterBlob? {
+    fun serialize(
+        state: GameState,
+        records: Map<String, DungeonRecord> = emptyMap(),
+        charmIds: List<String> = emptyList(),
+        keystones: Map<String, Int> = emptyMap(),
+        stash: Map<String, Int> = emptyMap(),
+    ): CharacterBlob? {
         val cls = state.playerClass ?: return null
         return CharacterBlob(
             xp = state.xp,
@@ -106,11 +156,25 @@ class SaveStore(
             playerClass = cls.name,
             actionBarSpellIds = state.activeActionBars,
             introTutorialComplete = state.introTutorialComplete,
+            // Carried, not derived: merge() runs on every persist and a run's
+            // record is written once, when it ends.
+            records = records,
+            // What is owned is carried the same way records are; what is worn
+            // is state, so it comes back off the character.
+            charmIds = charmIds,
+            equippedCharmId = state.charm?.id,
+            keystones = keystones,
+            stash = stash,
         )
     }
 
     fun merge(roster: Roster, state: GameState): Roster {
-        val blob = serialize(state) ?: return roster
+        val cls = state.playerClass?.name
+        val was = roster.byClass[cls]
+        val blob = serialize(
+            state, was?.records.orEmpty(), was?.charmIds.orEmpty(), was?.keystones.orEmpty(),
+            was?.stash.orEmpty(),
+        ) ?: return roster
         return roster.copy(
             lastPlayedClass = blob.playerClass,
             byClass = roster.byClass + (blob.playerClass to blob),
@@ -118,7 +182,7 @@ class SaveStore(
     }
 
     /** Rebuilds full state from a stored blob, deriving everything else. */
-    fun restore(blob: CharacterBlob, rng: Rng): GameState? {
+    fun restore(blob: CharacterBlob, rng: Rng, ownedCharms: Collection<String> = blob.charmIds): GameState? {
         val cls = runCatching { PlayerClass.valueOf(blob.playerClass) }.getOrNull() ?: return null
         val base = engine.newCharacter(cls, rng)
 
@@ -126,23 +190,40 @@ class SaveStore(
             t.copy(points = (blob.talentRanks[t.id] ?: 0).coerceIn(0, t.talent.maxPoints))
         }
         val level = engine.progression.levelFromTotalXp(blob.xp)
-        val loadout = engine.progression.buildSpellLoadout(cls, talents)
+        val loadout = engine.progression.buildSpellLoadout(cls, talents, level)
         val maxMana = engine.stats.maxMana(cls, level, talents)
 
         // A saved bar order is honoured only if it holds the same spells.
-        val bar = blob.actionBarSpellIds.takeIf {
-            it.size == loadout.actionBar.size && it.sorted() == loadout.actionBar.sorted()
-        } ?: loadout.actionBar
+        // The consumable a player put on the bar is not part of the class's
+        // loadout, so it is set aside for the comparison and put back after --
+        // otherwise carrying one would reset the whole arrangement on load.
+        val isItem = { id: String -> engine.data.spell(id)?.isStashItem() == true }
+        val saved = blob.actionBarSpellIds
+        val plain = saved.map { if (isItem(it)) "" else it }
+        val bar = if (plain.size == loadout.actionBar.size && plain.sorted() == loadout.actionBar.sorted()) {
+            saved
+        } else {
+            loadout.actionBar
+        }
 
-        return base.copy(
+        return base.withMe {
+            it.copy(
+                level = level,
+                talents = talents,
+                unlockedSpells = loadout.unlockedSpells,
+                activeActionBars = bar,
+                maxMana = maxMana,
+                mana = maxMana.toDouble(),
+                // Only if it is still owned and still this class's: a save that
+                // names a charm it does not have gets no charm, not a crash.
+                charm = blob.equippedCharmId
+                    ?.takeIf { it in ownedCharms }
+                    ?.let { engine.data.charms[it] }
+                    ?.takeIf { it.cls == cls.name },
+            )
+        }.copy(
             xp = blob.xp,
-            level = level,
-            talents = talents,
             talentPoints = engine.progression.talentPoints(level, talents),
-            unlockedSpells = loadout.unlockedSpells,
-            activeActionBars = bar,
-            maxMana = maxMana,
-            mana = maxMana.toDouble(),
             completedDungeonIds = blob.completedDungeonIds,
             introTutorialComplete = blob.introTutorialComplete,
             party = base.party,
@@ -182,7 +263,7 @@ class SaveStore(
     fun takeSuspendedRun(cls: PlayerClass): GameState? {
         val run = runCatching { json.decodeFromString<SuspendedRun>(suspendFile.readText()) }.getOrNull()
         clearSuspendedRun()
-        if (run == null || run.playerClass != cls.name) return null
+        if (run == null || run.v < 2 || run.playerClass != cls.name) return null
         if (!isSuspendable(run.state)) return null
         return run.state
     }

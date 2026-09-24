@@ -1,0 +1,46 @@
+{
+  "id": "WARRIOR",
+  "name": "Prot Warrior",
+  "role": "TANK",
+  "description": "Hold the line and hold the threat. Everything hits you, which is the point.",
+  "iconKey": "shield",
+  "color": "bg-amber-700",
+  "textColor": "text-amber-200",
+  "hoverBorderClass": "hover:border-amber-500",
+  "locked": false,
+  "portraitUrl": "",
+  "portraitIcon": "warrior",
+  "portraitGlow": "spell",
+  "passiveTraitName": "Vengeance",
+  "passiveTraitDescription": "Taking and dealing damage builds rage, and Shield Slam spends it. Vengeance raises your rage cap and the threat you generate.",
+  "passiveTraitIcon": "wow/spell_holy_greaterblessingofsanctuary",
+  "tutorial": {
+    "passiveDescription": "Vengeance: Taking and dealing damage builds rage, and Shield Slam spends it. Vengeance raises your rage cap and the threat you generate."
+  },
+  "statCurves": {
+    "baseIntellect": 18,
+    "baseSpirit": 12,
+    "intellectPerLevel": 2.0,
+    "spiritPerLevel": 1.0,
+    "baseUniqueStat": 12,
+    "uniqueStatPerLevel": 0.8
+  },
+  "progression": {
+    "starterSpells": [
+      "shield_slam",
+      "taunt",
+      "heroic_strike"
+    ],
+    "spellOrder": [
+      "shield_slam",
+      "heroic_strike",
+      "taunt",
+      "revenge",
+      "shield_wall",
+      "shield_block",
+      "thunder_clap",
+      "victory_rush",
+      "pummel"
+    ]
+  }
+}

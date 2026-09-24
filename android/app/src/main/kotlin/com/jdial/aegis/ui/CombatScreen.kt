@@ -1,8 +1,17 @@
 package com.jdial.aegis.ui
 
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,11 +56,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -71,22 +82,36 @@ import com.jdial.aegis.data.Spell
 import com.jdial.aegis.data.Targeting
 import com.jdial.aegis.sim.CombatPhase
 import com.jdial.aegis.sim.FLOATING_TEXT_LIFETIME_TICKS
+import com.jdial.aegis.sim.offGlobalCooldown
+import com.jdial.aegis.sim.toDispel
+import com.jdial.aegis.data.enrageAfterTicks
+import com.jdial.aegis.data.AddTemplate
+import com.jdial.aegis.data.pullCombat
+import androidx.compose.ui.graphics.Path
 import com.jdial.aegis.sim.FloatingKind
+import com.jdial.aegis.sim.EnemyAdd
 import com.jdial.aegis.sim.GameState
 import com.jdial.aegis.sim.TRASH_PACK_COUNT
 import com.jdial.aegis.sim.Unit
 import com.jdial.aegis.sim.UnitBuff
 import com.jdial.aegis.sim.UnitRole
+import com.jdial.aegis.ui.theme.LocalGameData
 import com.jdial.aegis.ui.theme.AegisType
 import com.jdial.aegis.ui.theme.ForgedPanel
 import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.Ink
 import com.jdial.aegis.ui.theme.LocalAccent
-import com.jdial.aegis.sim.HEALER_UNIT_ID
+import com.jdial.aegis.sim.MANA_POTION_ID
+import com.jdial.aegis.sim.PlayerStats
+import com.jdial.aegis.sim.ResourceGauge
+import com.jdial.aegis.sim.canPay
+import com.jdial.aegis.sim.resourceGauge
+import com.jdial.aegis.sim.PLAYER_UNIT_ID
 import com.jdial.aegis.ui.theme.LocalUiSettings
 import com.jdial.aegis.ui.theme.Obsidian
 import com.jdial.aegis.ui.theme.Vital
 import kotlin.math.ceil
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
@@ -105,7 +130,9 @@ fun CombatScreen(
     onCastAt: (String, String) -> kotlin.Unit,
     onReorder: (Int, Int) -> kotlin.Unit,
     onLeave: () -> kotlin.Unit,
+    onPullNow: () -> kotlin.Unit = {},
 ) {
+    val enrageAfter = data.encounters.enrageAfterTicks(state.currentDungeon?.id)
     // Drag-to-cast. VuhDo and HealBot collapse target and heal into one click;
     // on touch the honest analogue is dragging a spell onto a frame. The two-tap
     // path is untouched — this is an additional route, not a replacement.
@@ -132,6 +159,7 @@ fun CombatScreen(
             // Tablets and unfolded foldables land here too, since targetSdk 36+
             // ignores a portrait lock above 600dp.
             val wide = maxWidth > maxHeight
+            val roomForScene = maxHeight >= WideBattleViewMinHeight
 
             @Composable
             fun PartyGrid(modifier: Modifier) = BoxWithConstraints(
@@ -143,12 +171,20 @@ fun CombatScreen(
                 // the row height is derived from the space available and the bar
                 // shrinks with it, rather than rows keeping a size that clips.
                 val debuffMax = remember(state.currentDungeon?.id) { debuffDurations(state) }
+                // A threat meter is for the roles that contest threat. A healer
+                // frame stays a healer frame: five bars, one question.
+                val threat = if (state.playerRole == UnitRole.HEALER) {
+                    emptyMap()
+                } else {
+                    threatReadouts(state, data.balance.threat.overtakeMultiplier)
+                }
                 val ui = LocalUiSettings.current
                 val gap = 7.dp
                 val maxRow = if (ui.largeFrames) 110.dp else PartyRowMaxHeight
                 val rowHeight = ((maxHeight - gap * 4) / 5).coerceIn(48.dp, maxRow)
-                val barHeight = (rowHeight * 0.40f).coerceIn(16.dp, HealthBarHeight)
-                val auraSize = (rowHeight * 0.30f).coerceIn(16.dp, AuraStripHeight)
+                // The bar is the whole row now, so the auras get the height the
+                // old name line used to take and can be read without squinting.
+                val auraSize = (rowHeight * 0.52f).coerceIn(20.dp, AuraSocketMax)
 
                 Column(
                     Modifier.widthIn(max = 480.dp).fillMaxWidth(),
@@ -157,7 +193,7 @@ fun CombatScreen(
                     // Sorted for display only — state.party is never reordered,
                     // because the engine and the save both index it positionally.
                     val ordered = if (ui.selfFirst) {
-                        state.party.sortedBy { if (it.id == HEALER_UNIT_ID) 0 else 1 }
+                        state.party.sortedBy { if (it.id == state.localUnitId) 0 else 1 }
                     } else {
                         state.party
                     }
@@ -165,11 +201,14 @@ fun CombatScreen(
                         PartyRow(
                             unit = unit,
                             state = state,
+                            label = frameName(unit, state, data),
+                            otherPlayer = unit.id != state.localUnitId && state.isHuman(unit.id),
+                            targetable = state.playerRole == UnitRole.HEALER,
                             selected = unit.id == targetId,
                             rowHeight = rowHeight,
-                            barHeight = barHeight,
                             auraSize = auraSize,
                             debuffMax = debuffMax,
+                            threat = threat[unit.id],
                             dropTarget = unit.id == dropTargetId,
                             onBounds = { rowBounds[unit.id] = it },
                             onClick = { if (unit.isAlive) onTarget(unit.id) },
@@ -186,7 +225,17 @@ fun CombatScreen(
                         Modifier.width(360.dp).fillMaxHeight(),
                         verticalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        EncounterHud(state, onLeave)
+                        Column {
+                            EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, data, enrageAfter, data.encounters.pressure.enrageRampPerTick, targetId, onTarget)
+                            // A landscape phone has about 400dp of height: the
+                            // HUD and the action bar need all of it, and the
+                            // scene pushed the bar off the screen. Tablets have
+                            // room for it.
+                            if (roomForScene) {
+                                Spacer(Modifier.height(8.dp))
+                                BattleView(state, targetId)
+                            }
+                        }
                         ActionBar(state, data, onCast, onReorder, dropTargetId, { dragPoint = it }) { spellId ->
                             dropTargetId?.let { onCastAt(spellId, it) }
                         }
@@ -194,8 +243,10 @@ fun CombatScreen(
                 }
             } else {
                 Column(Modifier.fillMaxSize()) {
-                    EncounterHud(state, onLeave)
-                    Spacer(Modifier.height(10.dp))
+                    EncounterHud(state, onLeave, onPullNow, data.encounters.pressure.earlyPullXpPerTick, data, enrageAfter, data.encounters.pressure.enrageRampPerTick, targetId, onTarget)
+                    Spacer(Modifier.height(8.dp))
+                    BattleView(state, targetId)
+                    Spacer(Modifier.height(8.dp))
                     PartyGrid(Modifier.weight(1f).fillMaxWidth())
                     Spacer(Modifier.height(10.dp))
                     ActionBar(state, data, onCast, onReorder, dropTargetId, { dragPoint = it }) { spellId ->
@@ -207,13 +258,26 @@ fun CombatScreen(
     }
 }
 
+/** The shortest wide layout that fits the HUD, the battle scene and the action bar. */
+private val WideBattleViewMinHeight = 560.dp
+
 // --- encounter HUD ----------------------------------------------------------
 
 @Composable
-private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
+private fun EncounterHud(
+    state: GameState,
+    onLeave: () -> kotlin.Unit,
+    onPullNow: () -> kotlin.Unit,
+    earlyPullXpPerTick: Double,
+    data: GameData,
+    enrageAfterTicks: Int,
+    enrageRampPerTick: Double,
+    targetId: String?,
+    onTarget: (String) -> kotlin.Unit,
+) {
     val dungeon = state.currentDungeon ?: return
     val isBoss = state.combatPhase == CombatPhase.BOSS
-    val name = if (isBoss) dungeon.bossName else dungeon.enemies.firstOrNull()?.name ?: "Trash"
+    val name = enemyName(state)
     val pct = if (state.enemyMaxHealth > 0) (state.enemyHealth / state.enemyMaxHealth).toFloat() else 0f
 
     ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(10.dp)) {
@@ -237,6 +301,10 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
                 }
 
                 Spacer(Modifier.weight(1f))
+                if (isBoss && enrageAfterTicks > 0) {
+                    EnrageClock(state.bossTicks, enrageAfterTicks, enrageRampPerTick)
+                    Spacer(Modifier.width(8.dp))
+                }
                 BasicText(
                     "LEAVE",
                     style = AegisType.label.copy(color = Ink.muted),
@@ -250,6 +318,23 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
 
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // For a role that only ever hits the enemy, say so once here
+                // rather than leaving the player to infer it from spells that
+                // work without a selection.
+                // Between pulls the name on the bar is who is coming, not who you
+                // are fighting -- and saying TARGET over it is what made the
+                // breather read as a fight that had stopped.
+                val resting = state.restTicks > 0
+                if (resting) {
+                    BasicText("NEXT", style = AegisType.label.copy(fontSize = 10.sp, color = Vital.healthy))
+                    Spacer(Modifier.width(6.dp))
+                } else if (state.playerRole != UnitRole.HEALER) {
+                    BasicText(
+                        "TARGET",
+                        style = AegisType.label.copy(fontSize = 10.sp, color = Vital.critical),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
                 BasicText(
                     (if (isBoss) "BOSS · " else "").plus(name).uppercase(),
                     style = AegisType.label.copy(color = if (isBoss) Gilt.core else Ink.secondary),
@@ -262,34 +347,81 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
             }
 
             Spacer(Modifier.height(6.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(Obsidian.abyss)
-                    .border(1.dp, Gilt.deep.copy(alpha = 0.5f), RoundedCornerShape(3.dp)),
-            ) {
+            // The enemy bar used to jump. It now moves like the party's, with the
+            // same trailing ghost, so a big hit reads as a big hit.
+            val animatedPct by animateFloatAsState(pct.coerceIn(0f, 1f), tween(160), label = "enemyHp")
+            val ghostPct by animateFloatAsState(
+                pct.coerceIn(0f, 1f),
+                tween(620, delayMillis = 260),
+                label = "enemyGhost",
+            )
+            Box {
                 Box(
                     Modifier
-                        .fillMaxWidth(pct.coerceIn(0f, 1f))
-                        .fillMaxHeight()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(Color(0xFF7F1D1D), Color(0xFFDC2626), Color(0xFFF87171)),
+                        .fillMaxWidth()
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Obsidian.abyss)
+                        .border(1.dp, Gilt.deep.copy(alpha = 0.5f), RoundedCornerShape(3.dp)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(ghostPct)
+                            .fillMaxHeight()
+                            // Same dark trail as the party frames: a bright one
+                            // never catches up under steady damage and reads as
+                            // health still left.
+                            .background(Color(0xFF450A0A).copy(alpha = 0.9f)),
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxWidth(animatedPct)
+                            .fillMaxHeight()
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF7F1D1D), Color(0xFFDC2626), Color(0xFFF87171)),
+                                ),
                             ),
-                        ),
-                )
+                    )
+                }
+            }
+
+            // One reserved tray for everything that comes and goes: the adds
+            // standing, or the breather between pulls. Both used to push the
+            // rest of the card around as they appeared, so the enemy bar, the
+            // threat bar and the telegraph all sat at a different height from
+            // one second to the next -- on a screen the player is reading under
+            // time pressure, while aiming taps at it.
+            Spacer(Modifier.height(8.dp))
+            EnemyTray(state, targetId, onTarget, earlyPullXpPerTick, onPullNow)
+
+            // A non-healer needs two things a healer never did: what the enemy
+            // is doing to *them* (threat) and what they have running on it
+            // (DoTs). Both are omitted entirely for a healer rather than shown
+            // empty -- an inert widget is worse than no widget.
+            if (state.playerRole != UnitRole.HEALER) {
+                Spacer(Modifier.height(8.dp))
+                ThreatStrip(state, data)
             }
 
             // The pre-damage warning a healer plans around. mechanicCooldown
             // has always been in the state and was never shown.
             // Reserved whatever the phase, so the telegraph appearing at the
             // boss does not resize the card either.
-            val next = nextMechanic(state)
+            val next = nextMechanic(state, data)
+            val cast = state.enemyCast
             Spacer(Modifier.height(8.dp))
             Box(Modifier.height(22.dp)) {
-                if (next != null && state.mechanicCooldown > 0) {
+                if (state.restTicks > 0) {
+                    BasicText(
+                        "No enemy in the fight  ·  health and mana coming back",
+                        style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted),
+                        modifier = Modifier.align(Alignment.CenterStart),
+                    )
+                } else if (cast != null) {
+                    // The warning itself: what, at whom, and how long.
+                    CastingRow(cast, state)
+                } else if (next != null && state.mechanicCooldown > 0) {
                     val secs = ceil(state.mechanicCooldown / 10.0).toInt()
                     val imminent = state.mechanicCooldown <= 20
                     val everyone = next.whom == "everyone"
@@ -344,6 +476,175 @@ private fun EncounterHud(state: GameState, onLeave: () -> kotlin.Unit) {
     }
 }
 
+/**
+ * Where every living unit stands on the threat table, in the unit every WotLK
+ * threat meter used: a percentage of whoever currently holds the enemy.
+ *
+ * Two earlier versions of this failed for the same reason, which is that they
+ * put the player's own threat in the denominator. `yourThreat / highestThreat`
+ * pinned a tank at 100% forever. Replacing it with `rivalThreat / yourThreat`
+ * moved, but barely: the tank's own cast grows the denominator it is measured
+ * against, so a Shield Slam worth a quarter of the party's threat nudged the
+ * bar a percent and read as inert. Beside it sat a raw `+1500`, a number in no
+ * unit the player had ever been shown.
+ *
+ * KTM and Omen settled this in 2007 and the answer is one number, not two: the
+ * aggro holder is 100%, everyone else is their share of it, and the pull line
+ * sits at [pullMargin] over the holder -- the same margin
+ * `Engine.resolveEnemyTarget` actually enforces. A tank reads it by watching
+ * the other four bars, which is why it belongs on the party frames rather than
+ * in a strip of its own: threat is a property of a unit, so it is drawn under
+ * that unit, as a second bar beneath their health.
+ *
+ * Empty until something holds aggro, so no meter is ever drawn over an empty
+ * table.
+ */
+internal data class ThreatReadout(
+    /** Share of the aggro holder's threat. The holder is 100 by construction. */
+    val pct: Int,
+    /** Bar fill, where 1f is the holder's threat. */
+    val frac: Float,
+    /** Where on the bar overtaking happens, as a fraction of the holder. */
+    val pullLine: Float,
+    val hasAggro: Boolean,
+) {
+    /** Within a tenth of the margin of taking the enemy off whoever has it. */
+    val closing: Boolean get() = !hasAggro && frac >= pullLine * 0.9f
+}
+
+internal fun threatReadouts(state: GameState, pullMargin: Double): Map<String, ThreatReadout> {
+    val living = state.party.filter { it.isAlive }
+    val holder = living.firstOrNull { it.id == state.enemyTargetId } ?: return emptyMap()
+    if (holder.threat <= 0.0) return emptyMap()
+    val pullLine = (1.0 / pullMargin).toFloat()
+    return living.associate { u ->
+        val share = u.threat / holder.threat
+        u.id to ThreatReadout(
+            pct = (share * 100).roundToInt(),
+            frac = share.toFloat().coerceIn(0f, 1f),
+            pullLine = pullLine,
+            hasAggro = u.id == holder.id,
+        )
+    }
+}
+
+/**
+ * The colour of a threat bar, from the point of view of the player's own role.
+ *
+ * One rule: the unit that is supposed to have the enemy is calm, the unit that
+ * is about to have it and should not is red. A tank holding the pull sees four
+ * quiet bars, and one of them lighting up is the whole warning.
+ */
+internal fun threatColor(r: ThreatReadout, playerWantsAggro: Boolean, unitIsTank: Boolean): Color = when {
+    r.hasAggro && unitIsTank -> Vital.shield
+    r.hasAggro -> Vital.critical
+    r.closing && (playerWantsAggro || unitIsTank) -> Vital.critical
+    r.closing -> Vital.hurt
+    r.frac >= 0.6f -> Vital.fair
+    else -> Gilt.deep
+}
+
+/**
+ * The one line above the action bar: the bar that is closing, and what the
+ * player has running on the enemy.
+ *
+ * Deliberately shows the *other* side of the contest from the party frames --
+ * holding the enemy, that is the nearest rival; not holding it, that is you --
+ * because either way it answers one question, "how near is this to changing
+ * hands", and either way the percentage is the one that unit's own frame is
+ * already showing. One unit, two readouts that agree.
+ */
+@Composable
+private fun ThreatStrip(state: GameState, data: GameData) {
+    val readouts = threatReadouts(state, data.balance.threat.overtakeMultiplier)
+    val living = state.party.filter { it.isAlive }
+    val self = living.firstOrNull { it.id == state.localUnitId } ?: return
+    val holder = living.firstOrNull { it.id == state.enemyTargetId }
+    val hasAggro = holder?.id == self.id
+
+    // Whoever is closing: the nearest rival when you hold the enemy, you when
+    // you do not.
+    val subject = if (hasAggro) living.filter { it.id != self.id }.maxByOrNull { it.threat } else self
+    val r = subject?.let { readouts[it.id] }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        BasicText(
+            if (hasAggro) "CLOSING" else "AGGRO",
+            style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted),
+        )
+        Spacer(Modifier.width(6.dp))
+        BasicText(
+            // Named, because "whoever is second" is not a thing a player can
+            // look at. Holding the enemy, this is the rival; otherwise it is
+            // the unit you are trying not to take it from.
+            frameName(if (hasAggro) (subject ?: self) else (holder ?: self), state, data),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 92.dp),
+            style = AegisType.numeric.copy(fontSize = 11.sp, color = Ink.secondary),
+        )
+        Spacer(Modifier.width(8.dp))
+        Box(
+            Modifier
+                .weight(1f)
+                .height(10.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Obsidian.abyss)
+                .border(1.dp, Gilt.deep.copy(alpha = 0.5f), RoundedCornerShape(2.dp)),
+        ) {
+            if (r != null) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(r.frac)
+                        .fillMaxHeight()
+                        .background(
+                            threatColor(
+                                r,
+                                playerWantsAggro = state.playerRole == UnitRole.TANK,
+                                unitIsTank = subject.role == UnitRole.TANK,
+                            ),
+                        ),
+                )
+                // The pull line, drawn where overtaking actually happens rather
+                // than at the end of the bar, so "full" is never a lie.
+                if (!r.hasAggro) {
+                    Box(Modifier.fillMaxWidth(r.pullLine).fillMaxHeight()) {
+                        Box(
+                            Modifier
+                                .align(Alignment.CenterEnd)
+                                .width(1.dp)
+                                .fillMaxHeight()
+                                .background(Gilt.bright),
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        BasicText(
+            // A percentage of the aggro holder, which is what every party frame
+            // is also showing. Past the pull line the enemy changes its mind.
+            if (r == null) "--" else "${r.pct}%",
+            style = AegisType.numeric.copy(
+                fontSize = 13.sp,
+                color = if (r?.closing == true) Vital.critical else Ink.primary,
+            ),
+        )
+
+        // The player's own DoTs, so upkeep is visible without guessing.
+        state.enemyDebuffs.take(3).forEach { d ->
+            Spacer(Modifier.width(6.dp))
+            AuraSocket(
+                icon = d.icon,
+                remainingTicks = d.remainingTicks,
+                maxTicks = d.remainingTicks.coerceAtLeast(1),
+                hostile = false,
+                size = 22.dp,
+            )
+        }
+    }
+}
+
 @Composable
 private fun EncounterPip(filled: Boolean, active: Boolean, boss: Boolean = false) {
     val color = when {
@@ -387,6 +688,42 @@ private fun EncounterPip(filled: Boolean, active: Boolean, boss: Boolean = false
 
 // Row geometry. The row height is fixed and derived from these, so adding an
 // aura can never change it: 5 + 18 (name) + 3 + bar + 3 + strip + 5.
+/** A boss attack winding up, named with its real victims. */
+@Composable
+private fun CastingRow(cast: com.jdial.aegis.sim.EnemyCast, state: GameState) {
+    val names = cast.targets.mapNotNull { id ->
+        if (id == state.localUnitId) "you" else state.party.firstOrNull { it.id == id }?.name
+    }
+    val whom = when {
+        names.size > 2 -> "everyone"
+        else -> names.joinToString(" & ")
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        GameIcon(cast.icon, size = 22.dp, accent = Vital.critical)
+        Spacer(Modifier.width(6.dp))
+        BasicText(
+            if (cast.interruptible) "INTERRUPT" else "CASTING",
+            style = AegisType.label.copy(
+                fontSize = 10.sp,
+                color = if (cast.interruptible) Color(0xFFFACC15) else Vital.critical,
+            ),
+        )
+        Spacer(Modifier.width(6.dp))
+        BasicText(
+            "${cast.name.uppercase()} \u2192 $whom",
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+            style = AegisType.label.copy(color = Ink.primary),
+        )
+        Spacer(Modifier.width(6.dp))
+        BasicText(
+            String.format("%.1fs", cast.remainingTicks / 10.0),
+            style = AegisType.numeric.copy(fontSize = 13.sp, color = Vital.critical),
+        )
+    }
+}
+
 /** The boss's next mechanic: what it is, and who it can land on. */
 private data class NextMechanic(val icon: String, val name: String, val whom: String)
 
@@ -400,9 +737,13 @@ private data class NextMechanic(val icon: String, val name: String, val whom: St
  * "two of you", never "these two" — naming the targets would be a guess, and
  * peeking at the RNG would desync the parity stream.
  */
-private fun nextMechanic(state: GameState): NextMechanic? {
-    if (state.combatPhase != CombatPhase.BOSS) return null
-    val c = state.currentDungeon?.bossCombat ?: return null
+private fun nextMechanic(state: GameState, data: GameData): NextMechanic? {
+    val dungeon = state.currentDungeon ?: return null
+    val c = if (state.combatPhase == CombatPhase.BOSS) {
+        dungeon.bossCombat
+    } else {
+        data.encounters.pullCombat(dungeon.id, TRASH_PACK_COUNT - state.trashPullsRemaining)
+    } ?: return null
 
     val kinds = buildList {
         if (c.debuffTemplates.isNotEmpty()) add("debuff")
@@ -412,10 +753,24 @@ private fun nextMechanic(state: GameState): NextMechanic? {
     if (kinds.isEmpty()) return null
 
     val cycle = state.mechanicOrdinal / kinds.size
-    fun whom(t: Targeting) = when (t) {
-        Targeting.SINGLE_RANDOM -> "one of you"
-        Targeting.TWO_RANDOM -> "two of you"
-        Targeting.ALL_LIVING -> "everyone"
+    // Must mirror GameTick.effectiveTargeting: for a threat role the engine
+    // converts single-target attacks to whoever holds aggro, so saying "one of
+    // you" here would be telling the player something the engine will not do.
+    fun whom(raw: Targeting): String {
+        val t = if (state.playerRole != UnitRole.HEALER && raw == Targeting.SINGLE_RANDOM) {
+            Targeting.HIGHEST_THREAT
+        } else {
+            raw
+        }
+        return when (t) {
+            Targeting.SINGLE_RANDOM -> "one of you"
+            Targeting.TWO_RANDOM -> "two of you"
+            Targeting.ALL_LIVING -> "everyone"
+            // Nameable, unlike the random modes: this one lands on whoever holds
+            // threat, and the engine has already decided who. Still phrased as a
+            // role rather than a name, because it can change before it fires.
+            Targeting.HIGHEST_THREAT -> "whoever has aggro"
+        }
     }
     return when (kinds[state.mechanicOrdinal % kinds.size]) {
         "debuff" -> c.debuffTemplates[cycle % c.debuffTemplates.size]
@@ -433,6 +788,242 @@ private fun nextMechanic(state: GameState): NextMechanic? {
  * debuffTemplates, so the full duration is a content lookup rather than new
  * serialized state (which would land in the parity-covered GameState).
  */
+/**
+ * The enemies beside the main one. A damage dealer taps one to aim at it:
+ * a mender mid-heal, a runner getting away, a boss's add on the healer.
+ */
+@Composable
+private fun EnemyTray(
+    state: GameState,
+    targetId: String?,
+    onTarget: (String) -> kotlin.Unit,
+    earlyPullXpPerTick: Double,
+    onPullNow: () -> kotlin.Unit,
+) {
+    // Two rows' worth, always. A tray that grew with what was in it is what
+    // made the card breathe; an empty one is a place things appear, which is
+    // information of its own on a pull that has no adds.
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(TrayHeight)
+            .clip(RoundedCornerShape(4.dp))
+            .background(Obsidian.abyss.copy(alpha = 0.45f))
+            .padding(horizontal = 5.dp, vertical = 4.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        val adds = state.adds.filter { it.isAlive }
+        when {
+            // The breather wins the tray: it is the one moment the player has a
+            // choice to make about it, and Pull Now has to be where they look.
+            state.restTicks > 0 -> RestRow(state, earlyPullXpPerTick, onPullNow)
+            adds.isNotEmpty() -> AddRows(adds, targetId, onTarget, state.playerRole != UnitRole.HEALER)
+            else -> BasicText(
+                "NOTHING ELSE UP",
+                style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted.copy(alpha = 0.5f)),
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
+    }
+}
+
+/** Two add rows and a gap: what the tray reserves. */
+private val TrayHeight = 62.dp
+private val AddRowHeight = 26.dp
+
+/**
+ * The adds standing, most urgent first, capped at what the tray holds.
+ *
+ * Urgency is the order a player should deal with them in: something casting is
+ * about to undo the pull, a bomb is on a clock, a runner is leaving with the
+ * rest of the room. Anything past the second row is counted rather than drawn
+ * -- a list that scrolls is not something anybody reads mid-pull.
+ */
+@Composable
+private fun AddRows(
+    adds: List<EnemyAdd>,
+    targetId: String?,
+    onTarget: (String) -> kotlin.Unit,
+    choosable: Boolean,
+) {
+    val sorted = adds.sortedBy { a ->
+        when {
+            a.casting -> 0
+            a.kind == AddTemplate.BOMB -> 1
+            a.fleeing || a.kind == AddTemplate.RUNNER -> 2
+            a.kind == AddTemplate.MENDER -> 3
+            else -> 4
+        }
+    }
+    val shown = sorted.take(2)
+    val hidden = sorted.size - shown.size
+    Column(Modifier.fillMaxWidth()) {
+        shown.forEachIndexed { i, a ->
+            if (i > 0) Spacer(Modifier.height(2.dp))
+            val chosen = choosable && a.id == targetId
+val (tag, colour) = when {
+                a.fleeing -> "FLEEING  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical
+                // A cast bar means the same thing whoever is casting: stop it.
+                a.casting && a.kind == AddTemplate.CASTER -> "CASTING  ·  KICK" to Color(0xFFFACC15)
+                a.casting -> "MENDING  ·  KICK" to Color(0xFFFACC15)
+                a.kind == AddTemplate.MENDER -> "HEALER" to Vital.healthy
+                a.kind == AddTemplate.CASTER -> "CASTER" to Color(0xFFFACC15)
+                a.kind == AddTemplate.SHIELDER -> "WARDING  ·  KILL FIRST" to Dispel
+                a.kind == AddTemplate.LEECH -> "LEECH  ·  FEEDS BOSS" to Vital.healthy
+                a.kind == AddTemplate.SPLITTER -> "SPLITS" to Gilt.core
+                a.kind == AddTemplate.RUNNER -> "RUNNER" to Gilt.core
+                a.kind == AddTemplate.PACK -> "2× DAMAGE" to Vital.critical
+                a.kind == AddTemplate.BOMB -> "BOMB  ${ceil(a.timer / 10.0).toInt()}s" to Vital.critical
+                else -> "ADD" to Ink.secondary
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(AddRowHeight)
+                    .clip(RoundedCornerShape(4.dp))
+                    .border(
+                        if (chosen) 2.dp else 1.dp,
+                        if (chosen) Gilt.core else Gilt.deep.copy(alpha = 0.4f),
+                        RoundedCornerShape(4.dp),
+                    )
+                    .then(
+                        if (choosable) {
+                            Modifier.clickable(onClickLabel = "Target ${a.name}") { onTarget(a.id) }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(
+                    (if (chosen) "▶ " else "") + a.name.uppercase(),
+                    maxLines = 1,
+                    style = AegisType.label.copy(fontSize = 10.sp, color = if (chosen) Gilt.core else Ink.primary),
+                    modifier = Modifier.width(130.dp),
+                )
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Obsidian.abyss),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth((a.health / a.maxHealth).toFloat().coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .background(Color(0xFFDC2626)),
+                    )
+                    if (a.casting) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(a.castProgress)
+                                .height(3.dp)
+                                .align(Alignment.BottomStart)
+                                .background(Color(0xFFFACC15)),
+                        )
+                    }
+                }
+                Spacer(Modifier.width(6.dp))
+                BasicText(
+                    if (i == 1 && hidden > 0) "+$hidden MORE" else tag,
+                    maxLines = 1,
+                    style = AegisType.label.copy(fontSize = 9.sp, color = colour),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The boss's enrage timer: an hourglass draining toward it, then how much
+ * harder the boss is hitting for every second past it.
+ */
+@Composable
+private fun EnrageClock(bossTicks: Int, afterTicks: Int, rampPerTick: Double) {
+    val left = (afterTicks - bossTicks).coerceAtLeast(0)
+    val sand = (left.toFloat() / afterTicks).coerceIn(0f, 1f)
+    val enraged = left == 0
+    val colour = if (enraged) Vital.critical else Gilt.core
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Canvas(Modifier.size(width = 10.dp, height = 14.dp)) {
+            val w = size.width
+            val h = size.height
+            val glass = Path().apply {
+                moveTo(0f, 0f); lineTo(w, 0f); lineTo(w / 2, h / 2); lineTo(w, h); lineTo(0f, h); lineTo(w / 2, h / 2); close()
+            }
+            drawPath(glass, colour, style = Stroke(1.dp.toPx()))
+            // Sand above, falling into the pile below.
+            val top = h / 2 * (1 - sand)
+            val half = w / 2 * sand
+            drawPath(Path().apply { moveTo(w / 2 - half, top); lineTo(w / 2 + half, top); lineTo(w / 2, h / 2); close() }, colour)
+            val pile = h / 2 * (1 - sand)
+            val base = w / 2 * (1 - sand)
+            drawPath(Path().apply { moveTo(w / 2 - base, h); lineTo(w / 2 + base, h); lineTo(w / 2, h - pile); close() }, colour)
+        }
+        Spacer(Modifier.width(5.dp))
+        BasicText(
+            if (enraged) {
+                "ENRAGED +${((bossTicks - afterTicks) * rampPerTick * 100).roundToInt()}%"
+            } else {
+                "%d:%02d".format(left / 600, (left / 10) % 60)
+            },
+            style = AegisType.numeric.copy(fontSize = 12.sp, color = colour),
+        )
+    }
+}
+
+/**
+ * Between pulls: how long the breather lasts, and what pulling now is worth.
+ * The choice is the point -- drink up, or take the XP and go in thirsty.
+ */
+@Composable
+private fun RestRow(state: GameState, earlyPullXpPerTick: Double, onPullNow: () -> kotlin.Unit) {
+    val bonus = state.restTicks * earlyPullXpPerTick
+    val total = LocalGameData.current.encounters.pressure.restTicks.coerceAtLeast(1)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            BasicText(
+                "BREATHER  ·  NEXT PULL ${ceil(state.restTicks / 10.0).toInt()}s",
+                style = AegisType.label.copy(color = Vital.healthy),
+            )
+            Spacer(Modifier.height(4.dp))
+            // Draining, so it reads as a timer on the way to something rather
+            // than a label on a pause that might never end.
+            Box(
+                Modifier
+                    .fillMaxWidth(0.9f)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Obsidian.deep),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth((state.restTicks.toFloat() / total).coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .background(Vital.healthy),
+                )
+            }
+        }
+        // Rushing brings the next pack along, unless the boss is next.
+        val stacks = state.combatPhase == CombatPhase.TRASH && state.trashPullsRemaining > 1
+        BasicText(
+            "PULL NOW  +${(bonus * 100).roundToInt()}% XP" + if (stacks) "  ·  +1 PACK" else "",
+            style = AegisType.label.copy(color = Obsidian.abyss),
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(Gilt.core)
+                .clickable(onClickLabel = "Pull the next enemies now", onClick = onPullNow)
+                .semantics { role = Role.Button }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        )
+    }
+}
+
+/** A debuff a healer can take off -- the colour dispellable magic always had. */
+private val Dispel = Color(0xFFA855F7)
+
 private fun debuffDurations(state: GameState): Map<String, Int> =
     state.currentDungeon?.bossCombat?.debuffTemplates
         ?.associate { it.abilityId to it.durationTicks }
@@ -456,8 +1047,7 @@ private fun debuffDurations(state: GameState): Map<String, Int> =
 private fun committedHealing(unit: Unit): Double =
     unit.buffs.sumOf { it.healingPerTick * it.remainingTicks + (it.bloomBurstHeal ?: 0.0) }
 
-private val HealthBarHeight = 32.dp
-private val AuraStripHeight = 24.dp
+private val AuraSocketMax = 34.dp
 private val PartyRowMaxHeight = 90.dp
 
 /** Health colour is a hard signal, not decoration: four bands, no blending. */
@@ -480,15 +1070,56 @@ private fun healthColor(pct: Float): Color = when {
     else -> Vital.healthy
 }
 
+/**
+ * What a party frame is mostly about, which is not the same question in every
+ * seat.
+ *
+ * The frame used to be a healer's frame in all three roles: health filled the
+ * row and threat, if it showed at all, was four device pixels at the bottom. A
+ * tank's whole job is the threat table, so a tank was reading five bars they
+ * cannot act on and inferring the one they can from a sliver.
+ *
+ * - [HEALTH] the row is health. A healer asks one question.
+ * - [THREAT] the row is this unit's share of the aggro holder; health drops to a
+ *   strip. A tank watches the other four creep toward the pull notch.
+ * - [SPLIT] both, stacked. A damage dealer is genuinely asking two questions:
+ *   am I about to pull, and is the party holding.
+ */
+private enum class FrameLens { HEALTH, THREAT, SPLIT }
+
+/**
+ * Below this a split row is two illegible slivers rather than two bars, so it
+ * stays health-first. The row can be as short as 48dp on a small screen, and
+ * half of that carries the name overlay and the aura sockets as well.
+ */
+private val SplitFrameMinHeight = 64.dp
+
+/**
+ * Threat falls back to health for every role until something holds aggro. A
+ * lens with no data behind it is worse than the one it replaced -- a tank
+ * staring at an empty row before the pull learns less than one watching health.
+ */
+private fun frameLens(role: UnitRole, threat: ThreatReadout?, rowHeight: Dp): FrameLens = when {
+    threat == null -> FrameLens.HEALTH
+    role == UnitRole.TANK -> FrameLens.THREAT
+    role == UnitRole.DPS && rowHeight >= SplitFrameMinHeight -> FrameLens.SPLIT
+    else -> FrameLens.HEALTH
+}
+
 @Composable
 private fun PartyRow(
     unit: Unit,
     state: GameState,
+    label: String,
+    otherPlayer: Boolean,
+    /** False for roles whose spells never take a party member. */
+    targetable: Boolean,
     selected: Boolean,
     rowHeight: Dp,
-    barHeight: Dp,
     auraSize: Dp,
     debuffMax: Map<String, Int>,
+    /** This unit's place on the threat table, or null when nothing shows one. */
+    threat: ThreatReadout?,
     dropTarget: Boolean,
     onBounds: (Rect) -> kotlin.Unit,
     onClick: () -> kotlin.Unit,
@@ -521,8 +1152,14 @@ private fun PartyRow(
     // drawn from the left edge over the health fill, which read as "some of your
     // health is blue" rather than "you have a shield on top".
     val shieldEnd = (committedEnd + shieldFrac).coerceIn(0f, 1f)
+    // Threat moves in steps -- a cast lands the whole of it on one tick -- and
+    // an unsmoothed step across five bars at once reads as a glitch rather than
+    // as an event. Same tween as the health bar, so the two agree.
+    val threatFrac by animateFloatAsState(threat?.frac ?: 0f, tween(200), label = "threat")
     val accent = LocalAccent.current
     val dead = !unit.isAlive
+    val incoming = !dead && state.enemyCast?.targets?.contains(unit.id) == true
+    val lens = frameLens(state.playerRole, threat, rowHeight)
 
     ForgedPanel(
         modifier = Modifier
@@ -531,7 +1168,11 @@ private fun PartyRow(
             // because a moving target is a mis-tap under pressure.
             .height(rowHeight)
             .onGloballyPositioned { onBounds(it.boundsInWindow()) }
-            .clickable(enabled = !dead, onClick = onClick)
+            // A tank or DPS has no spell that takes a party member: every one
+            // of theirs is aimed at the enemy, and applyDamageCast ignores
+            // targetId entirely. Leaving the frames tappable would leave an
+            // interaction that silently does nothing, which reads as broken.
+            .clickable(enabled = !dead && targetable, onClick = onClick)
             .semantics {
                 role = Role.Button
                 val pct = if (unit.maxHealth > 0) {
@@ -552,22 +1193,46 @@ private fun PartyRow(
                     if (unit.buffs.isNotEmpty()) add("${unit.buffs.size} heal over time")
                     if (unit.shield > 0) add("shielded")
                 }
-                contentDescription = if (dead) {
-                    "${unit.name}, $roleLabel, dead"
+                val threatSaid = threat?.let {
+                    if (it.hasAggro) "has aggro" else "${it.pct} percent threat"
+                }
+                // Spoken in the order the frame is drawn. Leading with health
+                // whatever the seat would keep a healer's priorities for a tank,
+                // whose frame is mostly the threat table.
+                val vitals = if (lens == FrameLens.THREAT) {
+                    listOfNotNull(threatSaid, "$pct percent health")
                 } else {
-                    "${unit.name}, $roleLabel, $pct percent health" +
+                    listOfNotNull("$pct percent health", threatSaid)
+                }
+                contentDescription = if (dead) {
+                    "$label, $roleLabel, dead"
+                } else {
+                    "$label, $roleLabel, " + vitals.joinToString(", ") +
                         (if (auras.isEmpty()) "" else ", " + auras.joinToString(", ")) +
+                        (if (incoming) ", ${state.enemyCast?.name} incoming" else "") +
                         (if (selected) ", targeted" else "")
                 }
                 if (dead) disabled()
             },
-        selected = selected || dropTarget,
+        selected = (selected && targetable) || dropTarget,
         accent = if (dropTarget) accent.bright else accent.core,
         contentPadding = PaddingValues(0.dp),
     ) {
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             // The role stripe doubles as the selection marker: it widens and
             // brightens, so selection reads from the edge of the screen.
+            // The AI healer's stripe doubles as its mana gauge, drawn from the
+            // bottom: a tank or a damage dealer has no other way to see the
+            // person keeping them alive running out, and it is the one thing
+            // that decides whether a long fight is survivable.
+            val aiMana = if (
+                unit.role == UnitRole.HEALER && !state.isHuman(unit.id) &&
+                state.aiHealerManaMax > 0
+            ) {
+                (state.aiHealerMana / state.aiHealerManaMax).toFloat().coerceIn(0f, 1f)
+            } else {
+                null
+            }
             Box(
                 Modifier
                     .width(if (selected) 7.dp else 4.dp)
@@ -576,107 +1241,58 @@ private fun PartyRow(
                         when {
                             dead -> Ink.muted.copy(alpha = 0.3f)
                             selected -> accent.bright
+                            aiMana != null -> Obsidian.abyss
                             unit.role == UnitRole.TANK -> Vital.shield
                             unit.role == UnitRole.HEALER -> accent.core
                             else -> Gilt.deep
                         },
                     ),
-            )
-            Column(
-                Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 5.dp),
-                verticalArrangement = Arrangement.Center,
             ) {
-                Row(
-                    Modifier.height(auraSize),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BasicText(
-                        unit.name,
-                        maxLines = 1,
-                        style = AegisType.numeric.copy(
-                            fontSize = 13.sp,
-                            color = if (dead) Ink.muted else Ink.primary,
-                        ),
+                if (aiMana != null && !dead) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .fillMaxHeight(aiMana)
+                            .background(if (aiMana < 0.25f) Vital.critical else Vital.mana),
                     )
-                    Spacer(Modifier.weight(1f))
-                    // Auras sit on the name line: present or absent, the row is
-                    // the same height either way.
-                    //
-                    // Debuffs come first because the alarm outranks the
-                    // reassurance, and HoTs are sorted by time remaining so the
-                    // one about to fall off is never the one that gets truncated.
-                    val cap = if (auraSize < 20.dp) 4 else 6
-                    val shownDebuffs = unit.debuffs.take(cap)
-                    val shownBuffs = unit.buffs
-                        .sortedBy { it.remainingTicks }
-                        .take(cap - shownDebuffs.size)
-                    val hidden = unit.buffs.size + unit.debuffs.size -
-                        shownBuffs.size - shownDebuffs.size
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        shownDebuffs.forEach { d ->
-                            AuraRing(
-                                icon = d.icon,
-                                remainingTicks = d.remainingTicks,
-                                // Was passing remainingTicks as the max as well, so
-                                // every debuff ring sat at a full sweep forever and
-                                // the arc conveyed nothing.
-                                maxTicks = debuffMax[d.sourceAbilityId] ?: d.remainingTicks,
-                                tint = Vital.critical,
-                                ringSize = auraSize,
-                            )
-                        }
-                        shownBuffs.forEach { HotRing(it, auraSize) }
-                        // Rows compress to 48dp so the cap stays, but a hidden
-                        // aura must not be a silent one.
-                        if (hidden > 0) {
-                            BasicText(
-                                "+$hidden",
-                                style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted),
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    if (dead) {
-                        BasicText("DEAD", style = AegisType.label.copy(color = Vital.critical))
-                    } else {
-                        // Percent for urgency, deficit for which heal covers the
-                        // gap. "1240 / 1450" makes the player do arithmetic under
-                        // pressure; these are the two numbers they act on.
-                        if (ui.healthTextPercent) {
-                            val deficit = (unit.maxHealth - unit.health).roundToInt()
-                            if (deficit > 0) {
-                                BasicText(
-                                    "-$deficit",
-                                    style = AegisType.numeric.copy(
-                                        fontSize = 11.sp,
-                                        color = Vital.hurt,
-                                    ),
-                                )
-                                Spacer(Modifier.width(5.dp))
-                            }
-                            BasicText(
-                                "${(pct * 100).roundToInt()}%",
-                                style = AegisType.numeric.copy(fontSize = 12.sp, color = barColor),
-                            )
-                        } else {
-                            BasicText(
-                                "${unit.health.roundToInt()} / ${unit.maxHealth.roundToInt()}",
-                                style = AegisType.numeric.copy(fontSize = 12.sp),
-                            )
-                        }
-                    }
+                }
+            }
+            // The bar IS the cell. VuhDo and HealBot spend the whole row on it
+            // and overlay the text, because a title line above a bar is height
+            // that carries no data. Everything below is layered on this one box,
+            // which is why the row can hold bigger auras than it used to.
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(horizontal = 6.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Obsidian.abyss)
+                    // A boss cast aimed at this unit outlines it red -- the
+                    // place a healer pre-shields.
+                    .border(
+                        if (incoming) 2.dp else 1.dp,
+                        if (incoming) Vital.critical else Gilt.deep.copy(alpha = 0.55f),
+                        RoundedCornerShape(2.dp),
+                    ),
+            ) {
+                // Which quantity gets the row and which gets a strip. Both
+                // groups are drawn exactly as they always were; all that moves
+                // is the box they are confined to, so there is one layout and
+                // not three.
+                val healthArea = when (lens) {
+                    FrameLens.HEALTH -> Modifier.fillMaxSize()
+                    FrameLens.THREAT -> Modifier.align(Alignment.TopStart).fillMaxWidth().height(5.dp)
+                    FrameLens.SPLIT -> Modifier.align(Alignment.TopStart).fillMaxWidth().fillMaxHeight(0.46f)
+                }
+                val threatArea = when (lens) {
+                    FrameLens.HEALTH -> Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp)
+                    FrameLens.THREAT -> Modifier.fillMaxSize()
+                    FrameLens.SPLIT -> Modifier.align(Alignment.BottomStart).fillMaxWidth().fillMaxHeight(0.46f)
                 }
 
-                Spacer(Modifier.height(3.dp))
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(barHeight)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Obsidian.abyss)
-                        .border(1.dp, Gilt.deep.copy(alpha = 0.45f), RoundedCornerShape(3.dp)),
-                ) {
+                Box(healthArea) {
                     // Bands are layered widest-first and each is drawn from the
                     // left, so the narrower one on top leaves the previous band
                     // showing as the segment beyond it. That gives health |
@@ -718,7 +1334,13 @@ private fun PartyRow(
                     // The game is called Overheal. When committed healing runs
                     // past the top of the bar, the surplus is being thrown away —
                     // say so with a gilt cap rather than a number.
-                    if (overhealing) {
+                    //
+                    // A healer only. On a tank's or a damage dealer's frame the
+                    // committed healing is the *AI healer's*, so the cap was
+                    // reporting that somebody else was wasting mana -- a verdict
+                    // on another seat's play, which is the one thing these frames
+                    // must never carry.
+                    if (overhealing && state.playerRole == UnitRole.HEALER) {
                         Box(
                             Modifier
                                 .align(Alignment.CenterEnd)
@@ -729,22 +1351,229 @@ private fun PartyRow(
                     }
                 }
 
-            }
-            Column(Modifier.padding(end = 10.dp), horizontalAlignment = Alignment.End) {
-                // On short rows the role word yields its width to the health
-                // numerals. Role is already carried by the coloured stripe at the
-                // left edge, so the word is the redundant half of the pair.
-                if (rowHeight > 56.dp) {
-                    BasicText(
-                        when (unit.role) {
-                            UnitRole.TANK -> "TANK"
-                            UnitRole.DPS -> "DPS"
-                            UnitRole.HEALER -> "HEALER"
-                        },
-                        style = AegisType.label.copy(fontSize = 11.sp, color = Ink.muted),
-                    )
+                // Threat. Omen and KTM drew a row per unit and so does this: the
+                // length is that unit's share of whoever currently holds the
+                // enemy, and the gilt notch is the pull line the engine really
+                // checks. A tank watches the other four creep toward their notch;
+                // a damage dealer watches their own. Either way every cast moves
+                // it, because the denominator belongs to the aggro holder and not
+                // to the person reading the bar.
+                if (threat != null && !dead) {
+                    Box(threatArea.background(Obsidian.abyss.copy(alpha = 0.8f))) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(threatFrac)
+                                .fillMaxHeight()
+                                .background(
+                                    threatColor(
+                                        threat,
+                                        playerWantsAggro = state.playerRole == UnitRole.TANK,
+                                        unitIsTank = unit.role == UnitRole.TANK,
+                                    ),
+                                ),
+                        )
+                        if (!threat.hasAggro) {
+                            Box(Modifier.fillMaxWidth(threat.pullLine).fillMaxHeight()) {
+                                Box(
+                                    Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .width(1.dp)
+                                        .fillMaxHeight()
+                                        .background(Gilt.bright),
+                                )
+                            }
+                        }
+                    }
                 }
-                BasicText("LV ${unit.level}", style = AegisType.label.copy(fontSize = 11.sp))
+
+                // Name and deficit, left. Both are outlined: the text sits on
+                // the health fill, whose colour runs from green to red, and no
+                // single ink is readable against all four bands.
+                Column(
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        // Name and auras are both overlays on the same box, so
+                        // they overlap rather than push each other. Capping the
+                        // name is what keeps a long one out from under the
+                        // centred sockets.
+                        .fillMaxWidth(if (otherPlayer) 0.5f else 0.4f)
+                        .padding(start = 8.dp, end = 4.dp),
+                ) {
+                    BasicText(
+                        label,
+                        maxLines = 1,
+                        // maxLines alone clips mid-glyph; this ends the name
+                        // somewhere a reader recognises.
+                        overflow = TextOverflow.Ellipsis,
+                        style = AegisType.numeric.copy(
+                            // "Player 2 · Frost Mage" is twice an AI's name, and
+                            // the column is capped so it clears the auras.
+                            fontSize = if (otherPlayer) 12.sp else 13.sp,
+                            color = if (dead) Ink.muted else Ink.primary,
+                            shadow = TextOutline,
+                        ),
+                    )
+                    // The badge shares the second line with the deficit, so the
+                    // name keeps the whole first line.
+                    val deficit = (unit.maxHealth - unit.health).roundToInt()
+                    val showDeficit = !dead && ui.healthTextPercent && deficit > 0
+                    if (otherPlayer || showDeficit) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (otherPlayer) {
+                                PlayerBadge()
+                                if (showDeficit) Spacer(Modifier.width(4.dp))
+                            }
+                            if (showDeficit) {
+                                BasicText(
+                                    "-$deficit",
+                                    style = AegisType.numeric.copy(
+                                        fontSize = 11.sp,
+                                        // Not Vital.hurt: the fill under this text
+                                        // is already that colour because the unit is
+                                        // hurt. The bar carries the urgency, this
+                                        // carries the number.
+                                        color = Ink.primary,
+                                        shadow = TextOutline,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Health and level, right.
+                Column(
+                    Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    if (dead) {
+                        BasicText(
+                            "DEAD",
+                            style = AegisType.label.copy(color = Vital.critical, shadow = TextOutline),
+                        )
+                    } else if (lens == FrameLens.THREAT && threat != null) {
+                        // A tank's live number is the threat table, so it takes
+                        // the large line and health drops to the small one below.
+                        BasicText(
+                            "${threat.pct}%",
+                            style = AegisType.numeric.copy(
+                                fontSize = 15.sp,
+                                color = when {
+                                    threat.hasAggro -> Gilt.bright
+                                    threat.closing -> Vital.critical
+                                    else -> Ink.primary
+                                },
+                                shadow = TextOutline,
+                            ),
+                        )
+                    } else if (ui.healthTextPercent) {
+                        // Percent for urgency, deficit (on the left) for which
+                        // heal covers the gap. "1240 / 1450" makes the player do
+                        // arithmetic under pressure.
+                        BasicText(
+                            "${(pct * 100).roundToInt()}%",
+                            style = AegisType.numeric.copy(fontSize = 15.sp, shadow = TextOutline),
+                        )
+                    } else {
+                        BasicText(
+                            "${unit.health.roundToInt()} / ${unit.maxHealth.roundToInt()}",
+                            style = AegisType.numeric.copy(fontSize = 13.sp, shadow = TextOutline),
+                        )
+                    }
+                    // The level never changes during a pull and the threat
+                    // percentage changes every cast, so the live number takes
+                    // the line when there is one. The row keeps its height
+                    // either way.
+                    if (rowHeight > 56.dp) {
+                        // Whichever of the two the large line above did not take.
+                        val (small, tint) = when {
+                            dead -> "LV ${unit.level}" to Ink.secondary
+                            lens == FrameLens.THREAT ->
+                                "${(pct * 100).roundToInt()}%" to
+                                    (if (ui.colourBlindBands) healthColorCb(pct) else healthColor(pct))
+                            threat != null -> "${threat.pct}%" to when {
+                                threat.hasAggro -> Gilt.bright
+                                threat.closing -> Vital.critical
+                                else -> Ink.secondary
+                            }
+                            else -> "LV ${unit.level}" to Ink.secondary
+                        }
+                        BasicText(
+                            small,
+                            style = AegisType.label.copy(
+                                fontSize = 10.sp,
+                                color = tint,
+                                shadow = TextOutline,
+                            ),
+                        )
+                    }
+                }
+
+                // Auras, centred. Debuffs first, because the alarm outranks the
+                // reassurance; HoTs then sorted by time left, so the one about
+                // to fall off is never the one that gets truncated.
+                val cap = if (auraSize < 26.dp) 4 else 5
+                val shownDebuffs = unit.debuffs.take(cap)
+                val shownBuffs = unit.buffs
+                    .sortedBy { it.remainingTicks }
+                    .take(cap - shownDebuffs.size)
+                val hidden = unit.buffs.size + unit.debuffs.size -
+                    shownBuffs.size - shownDebuffs.size
+
+                Row(
+                    Modifier.align(Alignment.Center),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    shownDebuffs.forEach { d ->
+                        AuraSocket(
+                            icon = d.icon,
+                            remainingTicks = d.remainingTicks,
+                            // UnitDebuff only carries what is left; the original
+                            // duration is a content lookup, so the sweep means
+                            // something instead of sitting full forever.
+                            maxTicks = debuffMax[d.sourceAbilityId] ?: d.remainingTicks,
+                            hostile = true,
+                            size = auraSize,
+                            // A heal absorb shows how much healing it still eats.
+                            stacks = if (d.absorbLeft > 0) d.absorbLeft.roundToInt() else d.stacks,
+                            kerbColor = when {
+                                // Armed: about to go off, and everyone's problem.
+                                d.isArmed -> Color(0xFFF97316)
+                                // Dispellable is a *cue to act*, and only a healer
+                                // can: `cleanse` in utility_spells.json is granted
+                                // by role HEALER. Highlighting it on a tank's or a
+                                // damage dealer's frame marks a job that seat does
+                                // not have. If a tank ever learns a dispel, this
+                                // becomes a loadout check rather than a role one.
+                                d.dispellable && state.playerRole == UnitRole.HEALER -> Dispel
+                                else -> null
+                            },
+                        )
+                    }
+                    shownBuffs.forEach { b ->
+                        AuraSocket(
+                            icon = b.icon,
+                            remainingTicks = b.remainingTicks,
+                            maxTicks = if (b.durationTicksMax > 0) b.durationTicksMax else b.remainingTicks,
+                            hostile = false,
+                            size = auraSize,
+                            stacks = b.stacks,
+                        )
+                    }
+                    // Rows still compress to 48dp, so the cap stays — but a
+                    // hidden aura must not be a silent one.
+                    if (hidden > 0) {
+                        BasicText(
+                            "+$hidden",
+                            style = AegisType.label.copy(
+                                fontSize = 11.sp,
+                                color = Ink.primary,
+                                shadow = TextOutline,
+                            ),
+                        )
+                    }
+                }
             }
         }
 
@@ -753,68 +1582,76 @@ private fun PartyRow(
     }
 }
 
-@Composable
-private fun HotRing(buff: UnitBuff, ringSize: Dp) {
-    val max = if (buff.durationTicksMax > 0) buff.durationTicksMax else buff.remainingTicks
-    AuraRing(buff.icon, buff.remainingTicks, max, Vital.healthy, ringSize, stacks = buff.stacks)
-}
+/** A hard black outline, so overlaid text survives every health band under it. */
+private val TextOutline = Shadow(Color(0xFF000000), Offset(0f, 1f), 3f)
 
 /**
- * An aura shown as a depleting ring around its icon — the remaining duration is
- * read at a glance from the arc, with the seconds beneath for precision.
+ * One aura, as a socket rather than a ring.
+ *
+ * Same size and same slot whatever it is, so an aura landing or falling off can
+ * never move the row, and the eye sorts by colour instead of by position: a red
+ * kerb means something is hurting this unit, brass means something is helping
+ * it. The dark sweep rising from the bottom is the duration already spent —
+ * the cooldown-swipe convention every WoW UI has taught since vanilla — and the
+ * seconds sit in the corner for precision.
  */
 @Composable
-private fun AuraRing(
+private fun AuraSocket(
     icon: String,
     remainingTicks: Int,
     maxTicks: Int,
-    tint: Color,
-    ringSize: Dp,
+    hostile: Boolean,
+    size: Dp,
     stacks: Int = 0,
+    kerbColor: Color? = null,
 ) {
-    val sweep = if (maxTicks > 0) (remainingTicks.toFloat() / maxTicks).coerceIn(0f, 1f) else 0f
+    val left = if (maxTicks > 0) (remainingTicks.toFloat() / maxTicks).coerceIn(0f, 1f) else 1f
     val seconds = ceil(remainingTicks / 10.0).toInt()
     val urgent = remainingTicks <= 30
+    val kerb = kerbColor ?: if (hostile) Vital.critical else Gilt.mid
 
-    Box(Modifier.size(ringSize), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val stroke = 2.5f * density
-            val inset = stroke / 2
-            val arcSize = Size(size.width - stroke, size.height - stroke)
-            drawArc(
-                color = tint.copy(alpha = 0.18f),
-                startAngle = -90f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(width = stroke),
-            )
-            drawArc(
-                color = if (urgent) Vital.hurt else tint,
-                startAngle = -90f,
-                sweepAngle = 360f * sweep,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = arcSize,
-                style = Stroke(width = stroke),
+    Box(
+        Modifier
+            .size(size)
+            .background(if (hostile) Color(0xFF2C1010) else Obsidian.abyss)
+            // Two kerbs, not one: the outer black keeps the brass from
+            // dissolving into a bright health bar, which is exactly where a HoT
+            // icon most often sits.
+            .border(1.dp, Color(0xFF000000))
+            .padding(1.dp)
+            .border(2.dp, kerb)
+            .padding(2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        GameIcon(icon, size = size, accent = Color.Transparent)
+        if (left < 1f) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(1f - left)
+                    .background(Color(0x99000000)),
             )
         }
-        GameIcon(icon, size = ringSize * 0.62f, accent = Color.Transparent)
         BasicText(
             "$seconds",
-            style = AegisType.label.copy(
-                fontSize = 9.sp,
-                color = if (urgent) Vital.hurt else tint,
+            style = AegisType.numeric.copy(
+                fontSize = 10.sp,
+                color = if (urgent) Vital.hurt else Ink.primary,
+                shadow = TextOutline,
             ),
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier.align(Alignment.BottomEnd),
         )
         // The engine has always tracked stacks; nothing ever showed them.
         if (stacks > 1) {
             BasicText(
                 "$stacks",
-                style = AegisType.label.copy(fontSize = 10.sp, color = Gilt.bright),
-                modifier = Modifier.align(Alignment.TopEnd),
+                style = AegisType.label.copy(
+                    fontSize = 10.sp,
+                    color = Gilt.bright,
+                    shadow = TextOutline,
+                ),
+                modifier = Modifier.align(Alignment.TopStart),
             )
         }
     }
@@ -867,6 +1704,9 @@ private fun ActionBar(
 
     // Reorder is a long-press drag; the picked-up slot follows the finger.
     var dragFrom by remember { mutableIntStateOf(-1) }
+    val actNow by rememberInfiniteTransition(label = "act-now").animateFloat(
+        0.35f, 1f, infiniteRepeatable(tween(450), RepeatMode.Reverse), label = "act-now",
+    )
     var dragDx by remember { mutableFloatStateOf(0f) }
     var dragDy by remember { mutableFloatStateOf(0f) }
 
@@ -884,6 +1724,11 @@ private fun ActionBar(
                             style = AegisType.numeric.copy(fontSize = 15.sp),
                         )
                     }
+                    val stats = remember(data) { PlayerStats(data) }
+                    val gauge = state.playerClass?.let { cls ->
+                        resourceGauge(state, stats.uniqueStatRating(cls, state.level, state.talents), data.balance.classes)
+                    }
+                    if (gauge != null) ResourceReadout(gauge)
                     // Holy Power: a Paladin-only resource, shown only when held.
                     if (state.holyPower > 0) {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -906,17 +1751,59 @@ private fun ActionBar(
             Spacer(Modifier.height(8.dp))
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val gap = 8.dp
+                // Five to a row, and a kit bigger than that wraps into an even
+                // second row rather than shrinking every button. Slot size never
+                // depends on how many spells you have: a bar whose buttons move
+                // as a class learns its sixth spell is a bar you re-learn.
+                val slots = state.activeActionBars.size
+                val perRow = if (slots <= 5) 5 else (slots + 1) / 2
                 val slotWidth = (maxWidth - gap * 4) / 5
                 val slotPx = with(LocalDensity.current) { slotWidth.toPx() }
+                val rowPx = with(LocalDensity.current) { (slotWidth + gap).toPx() }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    state.activeActionBars.forEachIndexed { i, spellId ->
+                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                  state.activeActionBars.chunked(perRow).forEachIndexed { row, rowSpells ->
+                   Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                    rowSpells.forEachIndexed { col, spellId ->
+                        val i = row * perRow + col
                         val spell = data.spell(spellId)
+                        // The kick lights up while there is something to kick.
+                        val kickNow = spell?.interrupts == true &&
+                            (state.enemyCast?.interruptible == true || state.adds.any { it.casting })
+                        // ...and the dispel while someone carries something to take.
+                        val cleanseNow = spell?.dispels == true &&
+                            state.party.any { it.isAlive && it.debuffs.toDispel() != null }
+                        // ...and the defensive while the wound is building on you.
+                        val wallNow = spell?.damageReduction != null &&
+                            state.unit(state.localUnitId)?.debuffs?.any { it.clearedByDefensive && it.stacks >= 3 } == true
+                        val ready = when {
+                            kickNow -> Color(0xFFFACC15)
+                            cleanseNow -> Dispel
+                            wallNow -> Color(0xFFF97316)
+                            else -> null
+                        }
+                        Box(
+                            if (ready != null) {
+                                // Pulsing, so no class colour on a slot border can pass for it.
+                                Modifier.border(3.dp, ready.copy(alpha = actNow), RoundedCornerShape(8.dp)).padding(1.dp)
+                            } else {
+                                Modifier
+                            },
+                        ) {
                         SpellSlot(
                             index = i + 1,
                             spell = spell,
-                            cooldownTicks = state.spellCooldowns[spellId] ?: 0,
-                            affordable = spell != null && state.mana >= spell.manaCost,
+                            // The global cooldown is shown as a slot cooldown
+                            // rather than as its own widget: it means the same
+                            // thing to the player -- you cannot press this yet --
+                            // and a tap that silently does nothing is the thing
+                            // most likely to read as a broken button. The
+                            // potion is off the GCD, so it never shows one.
+                            cooldownTicks = max(
+                                state.spellCooldowns[spellId] ?: 0,
+                                if (spell?.offGlobalCooldown() == true) 0 else state.globalCooldownRemaining,
+                            ),
+                            affordable = spell != null && state.canPay(spell),
                             dragging = dragFrom == i,
                             dragOffsetPx = if (dragFrom == i) dragDx else 0f,
                             dragOffsetYPx = if (dragFrom == i) dragDy else 0f,
@@ -924,7 +1811,7 @@ private fun ActionBar(
                             reorderable = !state.isCombatActive,
                             onClick = { if (spell != null) onCast(spell.id) },
                             onDragStart = { dragFrom = i; dragDx = 0f; dragDy = 0f },
-                            onDrag = { dragDx += it },
+                            onDrag = { dx, dy -> dragDx += dx; dragDy += dy },
                             onDragPoint = onDragPoint,
                             onCastDrop = {
                                 // An invalid drop — dead unit, released off the
@@ -933,7 +1820,8 @@ private fun ActionBar(
                                 // target would fire a cast the player did not aim.
                                 val usable = spell != null &&
                                     (state.spellCooldowns[spellId] ?: 0) <= 0 &&
-                                    state.mana >= spell.manaCost
+                                    (spell.offGlobalCooldown() || state.globalCooldownRemaining <= 0) &&
+                                    state.canPay(spell)
                                 if (usable && dropTargetId != null) onDropCast(spell.id)
                                 onDragPoint(null)
                                 dragFrom = -1
@@ -941,14 +1829,76 @@ private fun ActionBar(
                                 dragDy = 0f
                             },
                             onDragEnd = {
-                                val target = (i + (dragDx / slotPx).roundToInt())
+                                // Two rows, so a drag moves by columns and by
+                                // rows; dropping below the last row lands on the
+                                // last slot rather than nowhere.
+                                val target = (i + (dragDx / slotPx).roundToInt() +
+                                    (dragDy / rowPx).roundToInt() * perRow)
                                     .coerceIn(0, state.activeActionBars.lastIndex)
                                 if (target != i) onReorder(i, target)
                                 dragFrom = -1
                                 dragDx = 0f
+                                dragDy = 0f
                             },
                         )
+                        }
                     }
+                   }
+                  }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The name on a party frame.
+ *
+ * A person is shown as a person: their slot and their class, since the game
+ * holds no names. The AI keeps the name the generator gave it. The engine's own
+ * unit names are untouched -- the recorded runs compare them.
+ */
+internal fun frameName(unit: Unit, state: GameState, data: GameData): String {
+    val p = state.participants[unit.id]?.takeIf { it.isHuman } ?: return unit.name
+    val cls = p.playerClass?.let { data.bundle(it).meta.name } ?: return unit.name
+    val who = if (unit.id == state.localUnitId) "You" else "Player ${unit.id}"
+    return if (p.title.isEmpty()) "$who · $cls" else "$who, ${p.title} · $cls"
+}
+
+/** Marks a frame another person is playing. */
+@Composable
+private fun PlayerBadge() {
+    BasicText(
+        "PLAYER",
+        style = AegisType.label.copy(fontSize = 8.sp, color = Obsidian.abyss),
+        modifier = Modifier
+            .clip(RoundedCornerShape(3.dp))
+            .background(Gilt.core)
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+    )
+}
+
+/** Rage, energy and combo points, or what Death Strike would heal for. */
+@Composable
+private fun ResourceReadout(gauge: ResourceGauge) {
+    Column(horizontalAlignment = Alignment.End) {
+        BasicText(gauge.label, style = AegisType.label.copy(color = Vital.hurt))
+        Spacer(Modifier.height(2.dp))
+        BasicText(
+            if (gauge.max != null) "${gauge.value} / ${gauge.max}" else "${gauge.value}",
+            style = AegisType.numeric.copy(fontSize = 15.sp),
+        )
+        val points = gauge.comboPoints
+        if (points != null) {
+            Spacer(Modifier.height(3.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                repeat(5) { i ->
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(if (i < points) Vital.hurt else Gilt.deep.copy(alpha = 0.4f)),
+                    )
                 }
             }
         }
@@ -1001,7 +1951,7 @@ private fun SpellSlot(
     reorderable: Boolean,
     onClick: () -> kotlin.Unit,
     onDragStart: () -> kotlin.Unit,
-    onDrag: (Float) -> kotlin.Unit,
+    onDrag: (Float, Float) -> kotlin.Unit,
     onDragPoint: (Offset?) -> kotlin.Unit,
     onDragEnd: () -> kotlin.Unit,
     onCastDrop: () -> kotlin.Unit,
@@ -1048,7 +1998,7 @@ private fun SpellSlot(
                     // Out of combat: long-press to rearrange the bar.
                     detectDragGesturesAfterLongPress(
                         onDragStart = { onDragStart() },
-                        onDrag = { change, amount -> change.consume(); onDrag(amount.x) },
+                        onDrag = { change, amount -> change.consume(); onDrag(amount.x, amount.y) },
                         onDragEnd = { onDragEnd() },
                         onDragCancel = { onDragEnd() },
                     )
@@ -1061,7 +2011,7 @@ private fun SpellSlot(
                         onDragStart = { onDragStart() },
                         onDrag = { change, amount ->
                             change.consume()
-                            onDrag(amount.x)
+                            onDrag(amount.x, 0f)
                             onDragPoint(origin + change.position)
                         },
                         onDragEnd = { currentDrop() },
@@ -1077,9 +2027,9 @@ private fun SpellSlot(
                 contentDescription = when {
                     spell == null -> "Empty action slot $index"
                     onCooldown -> "${spell.name}, slot $index, " +
-                        "ready in ${ceil(cooldownTicks / 10.0).toInt()} seconds"
-                    !affordable -> "${spell.name}, slot $index, not enough mana"
-                    else -> "${spell.name}, slot $index, ${spell.manaCost} mana"
+                        "ready in ${cooldownLabel(cooldownTicks)} seconds"
+                    !affordable -> "${spell.name}, slot $index, not enough ${spell.resourceName}"
+                    else -> "${spell.name}, slot $index, ${spell.manaCost} ${spell.resourceName}"
                 }
                 if (!usable) disabled()
             },
@@ -1090,8 +2040,12 @@ private fun SpellSlot(
 
             // Cooldown is a radial sweep over the icon, with the seconds on top.
             if (onCooldown) {
-                val maxTicks = if (spell.cooldown > 0) spell.cooldown else cooldownTicks
-                val sweep = (cooldownTicks.toFloat() / maxTicks).coerceIn(0f, 1f)
+                // Swept against whichever clock is running: the spell's own, or
+                // the global cooldown. Sweeping a filler against itself drew a
+                // full, frozen disc for the whole GCD.
+                val gcd = LocalGameData.current.balance.combat.shared.globalCooldownTicks
+                val maxTicks = if (cooldownTicks > gcd && spell.cooldown > 0) spell.cooldown else gcd
+                val sweep = (cooldownTicks.toFloat() / maxTicks.coerceAtLeast(1)).coerceIn(0f, 1f)
                 Canvas(Modifier.fillMaxSize()) {
                     drawArc(
                         color = Obsidian.abyss.copy(alpha = 0.72f),
@@ -1101,7 +2055,7 @@ private fun SpellSlot(
                     )
                 }
                 BasicText(
-                    "${ceil(cooldownTicks / 10.0).toInt()}",
+                    cooldownLabel(cooldownTicks),
                     style = AegisType.numeric.copy(fontSize = 18.sp, color = Gilt.bright),
                 )
             } else if (!affordable) {
@@ -1130,3 +2084,11 @@ private fun SpellSlot(
         }
     }
 }
+
+/**
+ * Time left on a slot. Tenths under ten seconds: rounding up to whole seconds
+ * showed the half-second global cooldown as "1", which read as the GCD never
+ * having changed.
+ */
+internal fun cooldownLabel(ticks: Int): String =
+    if (ticks < 100) String.format(java.util.Locale.ROOT, "%.1f", ticks / 10.0) else "${ceil(ticks / 10.0).toInt()}"

@@ -1,0 +1,219 @@
+{
+  "note": "Android-owned spells that are not part of any class's own tree -- interrupts, the healers' dispel and the tanks' defensive -- and the level each class or role learns them at. Loaded beside the shared spells (GameData.load). The web app never reads this file. Class spells granted by level live here too: this is the one file that says who learns what, and when.",
+  "spells": {
+    "counterspell": {
+      "id": "counterspell",
+      "name": "Counterspell",
+      "type": "DIRECT",
+      "school": "utility",
+      "manaCost": 10,
+      "healing": 0,
+      "cooldown": 150,
+      "interrupts": true,
+      "icon": "wow/spell_frost_iceshock",
+      "tags": []
+    },
+    "kick": {
+      "id": "kick",
+      "name": "Kick",
+      "type": "DIRECT",
+      "school": "utility",
+      "resource": "ENERGY",
+      "manaCost": 25,
+      "healing": 0,
+      "cooldown": 150,
+      "interrupts": true,
+      "icon": "wow/ability_kick",
+      "tags": []
+    },
+    "cleanse": {
+      "id": "cleanse",
+      "name": "Cleanse",
+      "type": "DIRECT",
+      "school": "utility",
+      "manaCost": 12,
+      "healing": 0,
+      "cooldown": 60,
+      "dispels": true,
+      "icon": "wow/spell_holy_removecurse",
+      "tags": []
+    }
+  },
+  "grants": [
+    {
+      "cls": "MAGE",
+      "spell": "counterspell",
+      "level": 1
+    },
+    {
+      "cls": "ROGUE",
+      "spell": "kick",
+      "level": 1
+    },
+    {
+      "role": "HEALER",
+      "spell": "cleanse",
+      "level": 4
+    },
+    {
+      "cls": "WARRIOR",
+      "spell": "shield_wall",
+      "level": 7
+    },
+    {
+      "cls": "DEATHKNIGHT",
+      "spell": "icebound_fortitude",
+      "level": 7
+    },
+    {
+      "cls": "PRIEST",
+      "spell": "power_word_shield",
+      "level": 6
+    },
+    {
+      "cls": "PRIEST",
+      "spell": "hymn_of_hope",
+      "level": 22
+    },
+    {
+      "cls": "PRIEST",
+      "spell": "guardian_spirit",
+      "level": 30
+    },
+    {
+      "cls": "DRUID",
+      "spell": "barkskin",
+      "level": 12
+    },
+    {
+      "cls": "DRUID",
+      "spell": "tranquility",
+      "level": 34
+    },
+    {
+      "cls": "PALADIN",
+      "spell": "holy_shock",
+      "level": 1
+    },
+    {
+      "cls": "PALADIN",
+      "spell": "divine_protection",
+      "level": 30
+    },
+    {
+      "cls": "PALADIN",
+      "spell": "lay_on_hands",
+      "level": 40
+    },
+    {
+      "cls": "MAGE",
+      "spell": "ice_barrier",
+      "level": 8
+    },
+    {
+      "cls": "MAGE",
+      "spell": "evocation",
+      "level": 20
+    },
+    {
+      "cls": "MAGE",
+      "spell": "blizzard",
+      "level": 26
+    },
+    {
+      "cls": "ROGUE",
+      "spell": "crimson_vial",
+      "level": 12
+    },
+    {
+      "cls": "ROGUE",
+      "spell": "evasion",
+      "level": 18
+    },
+    {
+      "cls": "ROGUE",
+      "spell": "garrote",
+      "level": 24
+    },
+    {
+      "cls": "WARLOCK",
+      "spell": "healthstone",
+      "level": 10
+    },
+    {
+      "cls": "WARLOCK",
+      "spell": "demon_armor",
+      "level": 16
+    },
+    {
+      "cls": "WARLOCK",
+      "spell": "shadowburn",
+      "level": 26
+    },
+    {
+      "cls": "WARRIOR",
+      "spell": "shield_block",
+      "level": 5
+    },
+    {
+      "cls": "WARRIOR",
+      "spell": "thunder_clap",
+      "level": 9
+    },
+    {
+      "cls": "WARRIOR",
+      "spell": "victory_rush",
+      "level": 14
+    },
+    {
+      "cls": "DEATHKNIGHT",
+      "spell": "rune_tap",
+      "level": 5
+    },
+    {
+      "cls": "DEATHKNIGHT",
+      "spell": "blood_boil",
+      "level": 9
+    },
+    {
+      "cls": "DEATHKNIGHT",
+      "spell": "vampiric_blood",
+      "level": 14
+    },
+    {
+      "cls": "DEATHKNIGHT",
+      "spell": "mind_freeze",
+      "level": 1
+    },
+    {
+      "cls": "MONK",
+      "spell": "purifying_brew",
+      "level": 5
+    },
+    {
+      "cls": "MONK",
+      "spell": "expel_harm",
+      "level": 9
+    },
+    {
+      "cls": "MONK",
+      "spell": "spinning_crane_kick",
+      "level": 12
+    },
+    {
+      "cls": "MONK",
+      "spell": "spear_hand_strike",
+      "level": 1
+    },
+    {
+      "cls": "WARRIOR",
+      "spell": "pummel",
+      "level": 1
+    },
+    {
+      "cls": "DEATHKNIGHT",
+      "spell": "bone_shield",
+      "level": 11
+    }
+  ]
+}

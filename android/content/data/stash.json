@@ -1,0 +1,337 @@
+{
+  "items": {
+    "goblin_fire_bomb": {
+      "id": "goblin_fire_bomb",
+      "name": "Goblin Fire Bomb",
+      "type": "DIRECT",
+      "school": "damage",
+      "manaCost": 0,
+      "healing": 150.0,
+      "cooldown": 0,
+      "icon": "wow/inv_misc_bomb_02",
+      "tags": [
+        "consumable"
+      ],
+      "sound": "potion"
+    },
+    "frost_grenade": {
+      "id": "frost_grenade",
+      "name": "Frost Grenade",
+      "type": "AOE",
+      "school": "damage",
+      "manaCost": 0,
+      "healing": 85.0,
+      "cooldown": 0,
+      "icon": "wow/inv_misc_bomb_03",
+      "tags": [
+        "consumable"
+      ],
+      "sound": "potion"
+    },
+    "holy_water": {
+      "id": "holy_water",
+      "name": "Stratholme Holy Water",
+      "type": "AOE",
+      "school": "damage",
+      "manaCost": 0,
+      "healing": 100.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_08",
+      "tags": [
+        "consumable"
+      ],
+      "sound": "potion"
+    },
+    "thorium_grenade": {
+      "id": "thorium_grenade",
+      "name": "Thorium Grenade",
+      "type": "DIRECT",
+      "school": "damage",
+      "manaCost": 0,
+      "healing": 190.0,
+      "cooldown": 0,
+      "icon": "wow/inv_misc_bomb_08",
+      "tags": [
+        "consumable"
+      ],
+      "threatMultiplier": 0.5,
+      "sound": "potion"
+    },
+    "oil_of_immolation": {
+      "id": "oil_of_immolation",
+      "name": "Oil of Immolation",
+      "type": "HOT",
+      "school": "damage",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_11",
+      "tags": [
+        "consumable"
+      ],
+      "hotDuration": 80,
+      "hotHealingPerTick": 6.0,
+      "sound": "potion"
+    },
+    "healing_potion": {
+      "id": "healing_potion",
+      "name": "Healing Potion",
+      "type": "DIRECT",
+      "school": "heal",
+      "manaCost": 0,
+      "healing": 220.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_51",
+      "tags": [
+        "consumable"
+      ],
+      "sound": "potion"
+    },
+    "trolls_blood": {
+      "id": "trolls_blood",
+      "name": "Troll's Blood Potion",
+      "type": "HOT",
+      "school": "heal",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_36",
+      "tags": [
+        "consumable"
+      ],
+      "hotDuration": 120,
+      "hotHealingPerTick": 4.0,
+      "sound": "potion"
+    },
+    "elixir_of_wisdom": {
+      "id": "elixir_of_wisdom",
+      "name": "Elixir of Wisdom",
+      "type": "DIRECT",
+      "school": "utility",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_29",
+      "tags": [
+        "consumable"
+      ],
+      "manaRegenBuffDurationTicks": 140,
+      "sound": "potion"
+    },
+    "whipper_root": {
+      "id": "whipper_root",
+      "name": "Whipper Root Tuber",
+      "type": "DIRECT",
+      "school": "heal",
+      "manaCost": 0,
+      "healing": 170.0,
+      "cooldown": 0,
+      "icon": "wow/inv_misc_food_55",
+      "tags": [
+        "consumable"
+      ],
+      "sound": "potion"
+    },
+    "rejuvenation_potion": {
+      "id": "rejuvenation_potion",
+      "name": "Rejuvenation Potion",
+      "type": "DIRECT",
+      "school": "heal",
+      "manaCost": 0,
+      "healing": 150.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_47",
+      "tags": [
+        "consumable"
+      ],
+      "manaRegenBuffDurationTicks": 80,
+      "sound": "potion"
+    },
+    "flask_of_stoneskin": {
+      "id": "flask_of_stoneskin",
+      "name": "Flask of Stoneskin",
+      "type": "DIRECT",
+      "school": "utility",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_48",
+      "tags": [
+        "consumable"
+      ],
+      "damageReduction": 0.2,
+      "damageReductionTicks": 160,
+      "sound": "potion"
+    },
+    "elixir_of_fortitude": {
+      "id": "elixir_of_fortitude",
+      "name": "Elixir of Fortitude",
+      "type": "DIRECT",
+      "school": "heal",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_43",
+      "tags": [
+        "consumable"
+      ],
+      "shield": 220.0,
+      "shieldTicks": 250,
+      "sound": "potion"
+    },
+    "greater_stoneshield": {
+      "id": "greater_stoneshield",
+      "name": "Greater Stoneshield Potion",
+      "type": "DIRECT",
+      "school": "utility",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_69",
+      "tags": [
+        "consumable"
+      ],
+      "damageReduction": 0.35,
+      "damageReductionTicks": 70,
+      "sound": "potion"
+    },
+    "draught_of_the_warden": {
+      "id": "draught_of_the_warden",
+      "name": "Draught of the Warden",
+      "type": "DIRECT",
+      "school": "heal",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_41",
+      "tags": [
+        "consumable"
+      ],
+      "shield": 320.0,
+      "shieldTicks": 160,
+      "sound": "potion"
+    },
+    "scroll_of_protection": {
+      "id": "scroll_of_protection",
+      "name": "Scroll of Protection",
+      "type": "DIRECT",
+      "school": "utility",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_scroll_07",
+      "tags": [
+        "consumable"
+      ],
+      "damageReduction": 0.15,
+      "damageReductionTicks": 260,
+      "sound": "potion"
+    },
+    "flask_of_the_titans": {
+      "id": "flask_of_the_titans",
+      "name": "Flask of the Titans",
+      "type": "DIRECT",
+      "school": "heal",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_62",
+      "tags": [
+        "consumable"
+      ],
+      "shield": 520.0,
+      "shieldTicks": 300,
+      "sound": "potion"
+    },
+    "dragonbreath_chili": {
+      "id": "dragonbreath_chili",
+      "name": "Dragonbreath Chili",
+      "type": "AOE",
+      "school": "damage",
+      "manaCost": 0,
+      "healing": 180.0,
+      "cooldown": 0,
+      "icon": "wow/inv_misc_food_49",
+      "tags": [
+        "consumable"
+      ],
+      "sound": "potion"
+    },
+    "major_rejuvenation": {
+      "id": "major_rejuvenation",
+      "name": "Major Rejuvenation Potion",
+      "type": "DIRECT",
+      "school": "heal",
+      "manaCost": 0,
+      "healing": 420.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_128",
+      "tags": [
+        "consumable"
+      ],
+      "manaRegenBuffDurationTicks": 120,
+      "sound": "potion"
+    },
+    "invulnerability_potion": {
+      "id": "invulnerability_potion",
+      "name": "Limited Invulnerability Potion",
+      "type": "DIRECT",
+      "school": "utility",
+      "manaCost": 0,
+      "healing": 0.0,
+      "cooldown": 0,
+      "icon": "wow/inv_potion_121",
+      "tags": [
+        "consumable"
+      ],
+      "damageReduction": 0.6,
+      "damageReductionTicks": 40,
+      "sound": "potion"
+    },
+    "scroll_of_vengeance": {
+      "id": "scroll_of_vengeance",
+      "name": "Scroll of Vengeance",
+      "type": "DIRECT",
+      "school": "damage",
+      "manaCost": 0,
+      "healing": 260.0,
+      "cooldown": 0,
+      "icon": "wow/inv_scroll_03",
+      "tags": [
+        "consumable"
+      ],
+      "threatMultiplier": 2.0,
+      "sound": "potion"
+    }
+  },
+  "drops": {
+    "fast": [
+      "goblin_fire_bomb",
+      "frost_grenade",
+      "holy_water",
+      "thorium_grenade",
+      "oil_of_immolation"
+    ],
+    "normal": [
+      "healing_potion",
+      "trolls_blood",
+      "elixir_of_wisdom",
+      "whipper_root",
+      "rejuvenation_potion"
+    ],
+    "slow": [
+      "flask_of_stoneskin",
+      "elixir_of_fortitude",
+      "greater_stoneshield",
+      "draught_of_the_warden",
+      "scroll_of_protection"
+    ],
+    "hard": [
+      "flask_of_the_titans",
+      "dragonbreath_chili",
+      "major_rejuvenation",
+      "invulnerability_potion",
+      "scroll_of_vengeance"
+    ]
+  }
+}

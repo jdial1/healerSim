@@ -34,6 +34,17 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
           test -s "$RUNNER_TEMP/upload.jks"
 
+      # Not a credential -- its API key ships inside every APK -- but kept out
+      # of the repo, so the release build gets it from a secret. Without it the
+      # build fails (requireFirebaseConfig) rather than shipping a release with
+      # multiplayer silently unavailable.
+      - name: Write Firebase config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          test -s android/app/google-services.json
+
       - name: Resolve version
         run: |
           echo "AEGIS_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"

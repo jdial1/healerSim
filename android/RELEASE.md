@@ -55,6 +55,24 @@ offline before the first upload. Enrol in Play App Signing at first upload:
 Google then holds the app signing key, and this becomes only the upload key —
 the one key that can be reset if it is ever lost.
 
+## Firebase config
+
+Release builds need `android/app/google-services.json`, and
+`requireFirebaseConfig` fails them without it. The file is gitignored, so the
+Release workflow writes it from the **`GOOGLE_SERVICES_JSON`** secret. That
+secret holds the raw file contents, which is not a credential: its API key
+ships inside every APK. Set it once in the `production` environment:
+
+```bash
+gh secret set GOOGLE_SERVICES_JSON --env production < android/app/google-services.json
+```
+
+To build an offline-only release on purpose, pass
+`-Paegis.offlineRelease=true`.
+
+Before the first release that points at the project, redeploy the rules and
+run `firebase/smoke-prod.mjs` (see `android/README.md`, *The real project*).
+
 ## Cutting a release
 
 ```bash
@@ -67,6 +85,8 @@ The `Release` workflow builds a signed AAB and uploads it, together with
 
 Keep every `mapping.txt`. Android Vitals crash stacks for a version are
 unreadable without the mapping from that exact build, and it is the only crash
-reporting this app has — deliberately, since adding Crashlytics would mean an
-`INTERNET` permission and a Data Safety answer that is no longer
-"no data collected".
+reporting this app has — deliberately. The app already has `INTERNET` for the
+opt-in public queue, but single player runs no network code at all, and
+Crashlytics would end that: it would send data from every player, including
+those who never opted in. Adding it means revisiting
+[`store/data-safety.md`](store/data-safety.md) and the privacy page.

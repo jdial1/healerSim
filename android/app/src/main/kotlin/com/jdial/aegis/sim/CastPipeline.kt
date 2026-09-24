@@ -1,8 +1,10 @@
 package com.jdial.aegis.sim
 
+import com.jdial.aegis.data.AddTemplate
 import com.jdial.aegis.data.GameData
 import com.jdial.aegis.data.PlayerClass
 import com.jdial.aegis.data.Spell
+import com.jdial.aegis.data.SpellSchool
 import com.jdial.aegis.data.SpellType
 import kotlin.math.max
 import kotlin.math.min
@@ -60,6 +62,21 @@ class CastPipeline(
 
     sealed interface Ready {
         data class ManaPotion(val spell: Spell, val eff: Effective) : Ready
+
+        /**
+         * A damage cast. No spell in the game is one yet -- this is the
+         * plumbing a DPS or tank class will be content on top of.
+         */
+        data class Damage(
+            val spell: Spell,
+            val spellId: String,
+            val eff: Effective,
+            val needMana: Int,
+            val isCrit: Boolean,
+            /** Paid from the class resource rather than mana; see Spell.resource. */
+            val needResource: Double = 0.0,
+            val targetId: String? = null,
+        ) : Ready
         data class Swiftmend(
             val spell: Spell,
             val targetId: String?,
@@ -91,13 +108,31 @@ class CastPipeline(
         val spell = data.spell(spellId) ?: return null
         if (s.playerClass == null) return null
         if ((s.spellCooldowns[spellId] ?: 0) > 0) return null
-        if (spellId == MANA_POTION_ID && s.manaPotionsUsedThisDungeon >= MANA_POTION_USES_PER_DUNGEON) return null
+        // The dead do not cast. A healer's death ends the run, so this never
+        // mattered until other roles could die and keep going.
+        if (s.unit(s.localUnitId)?.isAlive == false) return null
+        // The potion is off the global cooldown, as consumables conventionally
+        // are -- being unable to drink because you just cast is the kind of
+        // rule that only ever feels like a bug.
+        if (s.globalCooldownRemaining > 0 && !spell.offGlobalCooldown()) return null
+        if (spellId == MANA_POTION_ID && s.manaPotionsUsedThisDungeon >= data.balance.rules.manaPotionUsesPerDungeon) return null
+        // A stash item only if it is the one carried in, and only once. Nothing
+        // else gates it: the bar only offers what you have, but a cast arriving
+        // from elsewhere -- a guest, a stale tap -- must not spend what you do
+        // not own.
+        if (spell.isStashItem() && (s.me.carried != spellId || s.me.carriedUsed)) return null
         s.healer ?: return null
 
         val eff = effectiveStats(ctx) ?: return null
         val surgeFree = s.playerCombatBuffs.hasBuff(BUFF_SURGE_OF_LIGHT) && PriestHooks.isSurgeFinisher(spell)
-        val needMana = manaCost(ctx, spell, spellId, surgeFree)
+        // `resource` was declared on every spell and read by nothing. A spell
+        // that names another resource pays its cost from that, not from mana.
+        val usesMana = spell.resource == "MANA"
+        val discount = s.me.effect("cost:$spellId")
+        val needMana = if (usesMana) max(0, manaCost(ctx, spell, spellId, surgeFree) - discount.roundToInt()) else 0
         if (s.mana < needMana) return null
+        val needResource = if (usesMana) 0.0 else max(0.0, spell.manaCost - discount)
+        if (s.classResource < needResource) return null
 
         val target = s.party.firstOrNull { it.id == targetId }
         if (spell.type != SpellType.AOE && spell.isHeal() && target != null && target.health <= 0) return null
@@ -105,6 +140,17 @@ class CastPipeline(
         if (spellId == MANA_POTION_ID) return Ready.ManaPotion(spell, eff)
 
         val hooks = hooksFor(ctx.cls)
+        if (spell.isDamage || spell.school == SpellSchool.UTILITY) {
+            if (!hooks.damageCastAllowed(ctx, spell, spellId)) return null
+            // Resting between pulls there is nothing to hit.
+            if (spell.isDamage && s.restTicks > 0) return null
+            // A dispel needs a living target with something to take.
+            if (spell.dispels && (target == null || !target.isAlive || target.debuffs.toDispel() == null)) return null
+            val extra = hooks.damageCritBonus(ctx, spell, spellId)
+            val crit = critRoll < eff.critChancePercent(s.playerCombatBuffs.naturalPerfectionStacks(), extra)
+            return Ready.Damage(spell, spellId, eff, needMana, crit, needResource, targetId)
+        }
+
 
         // Swiftmend needs a consumable HoT on the target; without one the cast is
         // rejected rather than falling through to a standard heal.
@@ -139,28 +185,194 @@ class CastPipeline(
             critH = if (isCrit) 1.5 else 1.0,
             tower2 = tower2,
             tMod = if (tower2) 2.0 else 1.0,
-            archangel = s.capstoneForm == "priest_archangel" && s.playerCombatBuffs.hasBuff(BUFF_ARCHANGEL),
+            archangel = s.me.capstoneForm == "priest_archangel" && s.playerCombatBuffs.hasBuff(BUFF_ARCHANGEL),
             emergencyHaste = hooks.emergencyHasteBonus(ctx, targetId),
             buffsBaseline = baseline,
-            rankHealMult = stats.rankHealMult(stats.spellRank(spellId, s.playerClass, s.level)),
+            rankHealMult = stats.rankHealMult(stats.spellRank(spellId, s.playerClass!!, s.level)),
         )
     }
 
     // --- application ---------------------------------------------------------
 
-    fun tryCast(ctx: CastContext, spellId: String, targetId: String?, critRoll: Double): GameState =
-        when (val ready = validate(ctx, spellId, targetId, critRoll)) {
-            null -> ctx.state
+    fun tryCast(ctx: CastContext, spellId: String, targetId: String?, critRoll: Double): GameState {
+        val ready = validate(ctx, spellId, targetId, critRoll) ?: return ctx.state
+        val out = when (ready) {
             is Ready.ManaPotion -> applyManaPotion(ctx, ready)
             is Ready.Swiftmend -> applySwiftmend(ctx, ready)
             is Ready.Standard -> applyStandardHeal(ctx, ready)
+            is Ready.Damage -> applyDamageCast(ctx, ready)
         }
+        // Spent here, once, whichever of the four apply paths it took -- and
+        // the caster is no longer idle, whatever they cast.
+        val spent = out.withMe {
+            it.copy(idleTicks = 0, carriedUsed = it.carriedUsed || data.spell(spellId)?.isStashItem() == true)
+        }
+        // Started here rather than in each apply path: there are four of them
+        // and a fifth would silently forget.
+        return if (data.spell(spellId)?.offGlobalCooldown() == true) {
+            spent
+        } else {
+            spent.withMe { it.copy(globalCooldownRemaining = data.balance.combat.shared.globalCooldownTicks) }
+        }
+    }
+
+    /**
+     * A damage cast: mana out, damage into the tick's accumulator, and a DoT on
+     * the enemy if the spell has one.
+     *
+     * `healing` is the magnitude -- see the note on Spell.threatMultiplier for
+     * why the field is reused rather than duplicated. Deliberately does not go
+     * through the healing hooks: those are all shaped around a target unit, and
+     * the enemy is not one.
+     */
+    private fun applyDamageCast(ctx: CastContext, ready: Ready.Damage): GameState {
+        val s = ctx.state
+        // Non-null by construction: validate() rejects a null class before it
+        // can produce a Ready.Damage.
+        val cls = s.playerClass ?: return s
+        val spell = ready.spell
+        val hooks = hooksFor(cls)
+        val crit = if (ready.isCrit) 1.5 else 1.0
+        val rank = stats.rankHealMult(stats.spellRank(ready.spellId, cls, s.level))
+        val scale = damageScale(cls, s.level)
+        val spellBonus = 1 + ctx.talentEffect("damage:${ready.spellId}") / 100
+        val low = s.enemyMaxHealth > 0 && s.enemyHealth < s.enemyMaxHealth * data.balance.rules.executeBelow
+        val execute = if (low) 1 + ctx.talentEffect("execute") / 100 else 1.0
+        val amount = spell.healing * ready.eff.baseHealingMultiplier * rank * crit * scale *
+            hooks.damageMultiplier(ctx, spell, ready.spellId) * spellBonus * execute
+
+        val dots = spell.hotDuration?.takeIf { spell.school == SpellSchool.DAMAGE }?.let { dur ->
+            val perTick = (spell.hotHealingPerTick ?: 0.0) * ready.eff.baseHealingMultiplier * rank * scale * spellBonus
+            // Refresh by ability rather than append, and never replace the whole
+            // list -- the party-side equivalent of this does replace it, which
+            // is a bug this must not inherit.
+            s.enemyDebuffs.filterNot { it.sourceAbilityId == ready.spellId } + UnitDebuff(
+                id = ready.spellId,
+                name = spell.name,
+                remainingTicks = dur,
+                damagePerTick = perTick,
+                icon = spell.icon,
+                sourceAbilityId = ready.spellId,
+            )
+        } ?: s.enemyDebuffs
+
+        // A UTILITY spell has no magnitude -- a bare taunt or defensive should
+        // not quietly deal `healing` damage because the field is shared.
+        val dealt = if (spell.school == SpellSchool.DAMAGE) amount else 0.0
+
+        var buffs = s.playerCombatBuffs
+        if (spell.damageReduction != null) {
+            buffs = buffs.filterNot { it.id == BUFF_ACTIVE_MITIGATION } + PlayerBuff(
+                id = BUFF_ACTIVE_MITIGATION,
+                remainingTicks = spell.damageReductionTicks ?: 0,
+                magnitude = spell.damageReduction,
+            )
+        }
+
+        // Threat is not proportional to damage. A tank's Shield Slam is worth
+        // three times its damage in threat; a taunt is worth a flat amount with
+        // no damage at all. Both fields were declared on Spell and read by
+        // nothing, which is why a "threat spell" moved the bar exactly as much
+        // as any other spell of the same size.
+        val threat = (dealt * spell.threatMultiplier + spell.flatThreat) * hooks.threatMultiplier(ctx) *
+            (1 + ctx.talentEffect("threat") / 100)
+
+        // A damage dealer's chosen add takes the hit; anything else goes to the main enemy.
+        val addTarget = s.adds.firstOrNull { it.id == ready.targetId && it.isAlive }?.id
+        val out = s.withMe {
+            it.copy(
+                mana = max(0.0, it.mana - ready.needMana),
+                classResource = it.classResource - ready.needResource,
+                playerCombatBuffs = buffs,
+                pendingEnemyDamage = it.pendingEnemyDamage + if (addTarget == null) dealt else 0.0,
+                pendingAddDamage = if (addTarget == null || dealt <= 0) it.pendingAddDamage
+                else it.pendingAddDamage + (addTarget to (it.pendingAddDamage[addTarget] ?: 0.0) + dealt),
+                pendingPlayerThreat = it.pendingPlayerThreat + threat,
+                spellCooldowns = it.spellCooldowns.withCooldown(
+                    ready.spellId,
+                    cooldownTicks(
+                        max(0, spell.cooldown - ctx.talentEffect("cooldown:${ready.spellId}").roundToInt()),
+                        ready.eff.hastePercent,
+                        0,
+                    ),
+                ),
+            )
+        }.copy(enemyDebuffs = dots).let { hooks.onDamageLand(ctx, it, DamageLand(spell, ready.spellId, ready.isCrit, dealt)) }
+            .let { interrupted(it, spell, ready.targetId) }
+            .let { cleansed(it, spell, ready.targetId) }
+        // The caster's slot, not slot 5: a taunt is inherently "this unit".
+        val caster = s.localUnitId
+        return if (spell.tauntTicks == null) out else out.copy(
+            party = out.party.map {
+                if (it.id != caster) it
+                else it.copy(
+                    threat = max(
+                        it.threat,
+                        (out.party.filter { u -> u.isAlive }.maxOfOrNull { u -> u.threat } ?: 0.0) *
+                            data.balance.threat.tauntOvertakeMultiplier,
+                    ),
+                )
+            },
+            enemyTargetId = caster,
+            tauntedById = caster,
+            tauntLockTicks = spell.tauntTicks,
+        )
+    }
+
+    /**
+     * An interrupt cancels a cast that can be interrupted. Against anything
+     * else it does nothing -- and its cooldown is spent all the same, which is
+     * the whole cost of kicking at the wrong moment.
+     */
+    /** Takes one debuff off the target -- and an armed bomb goes off on everyone. */
+    private fun cleansed(s: GameState, spell: Spell, targetId: String?): GameState {
+        if (!spell.dispels) return s
+        val unit = s.party.firstOrNull { it.id == targetId } ?: return s
+        val gone = unit.debuffs.toDispel() ?: return s
+        val party = s.party.map { if (it.id == unit.id) it.copy(debuffs = it.debuffs - gone) else it }
+        if (!gone.isArmed) return s.copy(party = party)
+        val burst = data.encounters.mechanics[gone.sourceAbilityId]?.burstDamage ?: 0.0
+        return s.copy(party = party.map { if (it.isAlive) it.copy(health = max(0.0, it.health - burst)) else it })
+    }
+
+    /**
+     * What a kick stops: the add it was aimed at, else the boss's cast, else
+     * any add mid-cast. A caster is kicked exactly like a mender -- the cast
+     * bar is the same bar, and which one it belongs to should not change the
+     * button you reach for.
+     */
+    private fun interrupted(s: GameState, spell: Spell, targetId: String?): GameState {
+        if (!spell.interrupts) return s
+        val aimed = s.adds.firstOrNull { it.id == targetId && it.casting }
+        val caster = aimed ?: s.adds.firstOrNull { it.casting }.takeIf { s.enemyCast?.interruptible != true }
+        if (caster != null) {
+            val rules = data.encounters.addRules
+            val every = if (caster.kind == AddTemplate.CASTER) rules.casterEveryTicks else rules.menderEveryTicks
+            return s.copy(
+                adds = s.adds.map { if (it.id == caster.id) it.copy(casting = false, timer = every, timerTotal = every) else it },
+                lastInterruptBy = s.localUnitId,
+            )
+        }
+        if (s.enemyCast?.interruptible != true) return s
+        return s.copy(enemyCast = null, lastInterruptBy = s.localUnitId, exposedTicks = data.encounters.pressure.exposedTicks)
+    }
+
+    /** Player damage by class and level; see ClassesBalance.damageScale. */
+    fun damageScale(cls: PlayerClass, level: Int): Double {
+        val b = data.balance.classes
+        val base = b.damageScale[cls.name] ?: 1.0
+        val ramp = min(1.0, (max(1, level) - 1).toDouble() / max(1, b.damageRampLevels))
+        val floor = b.damageRampFloor[cls.name] ?: 1.0
+        return base * (floor + (1 - floor) * ramp)
+    }
 
     /** Cooldowns are the one place haste applies; Power Infusion halves them. */
     private fun cooldownTicks(rawTicks: Int, hastePct: Double, piStacks: Int): Int =
         (rawTicks * (1 - hastePct / 100.0) * (if (piStacks > 0) 0.5 else 1.0)).roundToInt()
 
     /** Only positive cooldowns are recorded — a zero entry is not stored at all. */
+    /** The enemy health share below which `execute` talents apply. */
+
     private fun Map<String, Int>.withCooldown(spellId: String, ticks: Int): Map<String, Int> =
         if (ticks > 0) this + (spellId to ticks) else this
 
@@ -183,12 +395,14 @@ class CastPipeline(
         var buffs = s.playerCombatBuffs.addBuff(BUFF_MANA_REGEN_POTION, durTicks, 1, drip)
         buffs = buffs.applyPowerInfusionAfterCast(piLeft)
 
-        return s.copy(
-            mana = min(s.maxMana.toDouble(), s.mana + instant),
-            manaPotionsUsedThisDungeon = s.manaPotionsUsedThisDungeon + 1,
-            playerCombatBuffs = buffs,
-            spellCooldowns = s.spellCooldowns.withCooldown(spell.id, cd),
-        )
+        return s.withMe {
+            it.copy(
+                mana = min(it.maxMana.toDouble(), it.mana + instant),
+                manaPotionsUsedThisDungeon = it.manaPotionsUsedThisDungeon + 1,
+                playerCombatBuffs = buffs,
+                spellCooldowns = it.spellCooldowns.withCooldown(spell.id, cd),
+            )
+        }
     }
 
     /** Consumes a HoT on the target and converts it into an instant burst heal. */
@@ -212,19 +426,46 @@ class CastPipeline(
         }
 
         val piStacks = s.playerCombatBuffs.buffStacks(BUFF_POWER_INFUSION)
-        val cd = cooldownTicks(ready.spell.cooldown, ready.eff.hastePercent, piStacks)
+        val cd = cooldownTicks(
+            max(0, ready.spell.cooldown - ctx.talentEffect("cooldown:${ready.spell.id}").roundToInt()),
+            ready.eff.hastePercent,
+            piStacks,
+        )
         var buffs = s.playerCombatBuffs.addSpiritLockoutIfSpent(ready.needMana > 0)
         buffs = buffs.applyPowerInfusionAfterCast(max(0, piStacks - 1))
 
-        return s.copy(
+        return s.withMe {
+            it.copy(
+                mana = max(0.0, it.mana - ready.needMana),
+                playerCombatBuffs = buffs,
+                spellCooldowns = it.spellCooldowns.withCooldown(ready.spell.id, cd),
+                pendingPlayerThreat = it.pendingPlayerThreat + healThreat(ready.spell, applied.effective),
+            )
+        }.copy(
             party = party,
-            mana = max(0.0, s.mana - ready.needMana),
-            playerCombatBuffs = buffs,
-            spellCooldowns = s.spellCooldowns.withCooldown(ready.spell.id, cd),
             runHealEffective = s.runHealEffective + applied.effective,
             runHealOverheal = s.runHealOverheal + applied.overheal,
             runManaSpentHealing = s.runManaSpentHealing + ready.needMana,
         )
+    }
+
+    /**
+     * Threat from a heal that landed.
+     *
+     * Half the healing done, as in WotLK, and only what actually landed --
+     * overheal is free, which is the one piece of threat a healer can play
+     * around. Direct heals reached the threat table through nothing at all
+     * before this existed: only HoT ticks and passive healing were counted,
+     * because those flow through the tick's healEffective while a cast does
+     * not. A healer could spam their biggest heal all fight and stay off the
+     * table entirely.
+     */
+    private fun healThreat(spell: Spell, effective: Double, crit: Boolean = false, rolled: Double = effective): Double {
+        val t = data.balance.threat
+        // A crit counts its whole roll, overheal and all, and on top of that
+        // its multiplier: the spike the whole room hears.
+        val basis = if (crit) rolled * t.critHealThreatMultiplier else effective
+        return basis * t.healingCoefficient * spell.threatMultiplier
     }
 
     private data class PartyPatch(val party: List<Unit>, val healEff: Double, val healOh: Double)
@@ -258,7 +499,9 @@ class CastPipeline(
 
         fun healOne(u: Unit): Unit {
             if (u.health <= 0) return u
+            // A talent that names this spell (heal:<id>); 1.0 when none does.
             val amount = spell.healing * ready.rankHealMult * healMultB * ready.critH * ready.tMod *
+                (1 + ctx.talentEffect("heal:${ready.spellId}") / 100) *
                 synergyMultiplier(u) *
                 PriestHooks.graceHealMultiplier(ctx, u, graceRanks) *
                 hooks.castDirectHealMultiplier(ctx, spell, ready.spellId) *
@@ -272,9 +515,16 @@ class CastPipeline(
             if (ctx.cls == PlayerClass.PRIEST && applied.overheal > 0) {
                 shieldAdd = PriestHooks.divinityOverhealAbsorb(ctx, applied.overheal, ctx.uniqueStatRating())
             }
+            // An absorb the spell itself puts on. Same rank and healing-power
+            // scaling as its healing, since that is what it is.
+            var castShieldTicks = 0
+            if (spell.shield > 0) {
+                shieldAdd += spell.shield * ready.rankHealMult * healMultB * ready.critH
+                castShieldTicks = spell.shieldTicks ?: shared.shieldDefaultTicks
+            }
             val nextShield = u.shield + shieldAdd
             var ticks = u.shieldTicksRemaining
-            if (shieldAdd > 0) ticks = shared.shieldDefaultTicks
+            if (shieldAdd > 0) ticks = maxOf(castShieldTicks, shared.shieldDefaultTicks)
             if (nextShield <= 0) ticks = 0
             return u.copy(health = applied.health, shield = nextShield, shieldTicksRemaining = ticks)
         }
@@ -372,7 +622,7 @@ class CastPipeline(
             needMana = ready.needMana.toDouble(),
             surgeFree = ready.surgeFree,
         )
-        val landed = hooks.onHealLand(ctx, land, patch.party, castBuffs)
+        val landed = hooks.onCastLand(ctx, land, patch.party, castBuffs)
         var party = landed.party
         var buffs = landed.playerCombatBuffs
 
@@ -394,7 +644,7 @@ class CastPipeline(
                 unit.copy(
                     buffs = unit.buffs.map { b ->
                         if (b.remainingTicks > 0 && data.spell(b.sourceSpellId)?.hasTag(TAG_DRUID_HOT) == true) {
-                            b.copy(remainingTicks = b.remainingTicks + 20)
+                            b.copy(remainingTicks = b.remainingTicks + data.balance.rules.photosynthesisExtendTicks)
                         } else b
                     },
                 )
@@ -414,14 +664,18 @@ class CastPipeline(
             ) 0 else spell.cooldown
 
         val piStacks = buffs.buffStacks(BUFF_POWER_INFUSION)
-        val cd = cooldownTicks(rawCooldown, ready.eff.hastePercent + ready.emergencyHaste, piStacks)
+        val cd = cooldownTicks(
+            max(0, rawCooldown - ctx.talentEffect("cooldown:${ready.spellId}").roundToInt()),
+            ready.eff.hastePercent + ready.emergencyHaste,
+            piStacks,
+        )
         val piLeft = max(0, piStacks - 1)
 
         // Holy Power: Tower of Radiance grants on healing a badly hurt target.
         var holyPower = s.holyPower
         if (ready.targetId != null && spell.type != SpellType.AOE) {
             val pre = s.party.firstOrNull { it.id == ready.targetId }
-            if (pre != null && pre.health < pre.maxHealth * 0.5 && ctx.ranks("tower_of_radiance") > 0) {
+            if (pre != null && pre.health < pre.maxHealth * data.balance.rules.towerOfRadianceBelow && ctx.ranks("tower_of_radiance") > 0) {
                 val gain = if (s.capstoneForm == "paladin_avenging_wrath" &&
                     buffs.hasBuff("avenging_wrath_aura")
                 ) 2 else 1
@@ -434,7 +688,7 @@ class CastPipeline(
         if (ready.tower2) holyPower = 0
 
         if (ctx.cls == PlayerClass.PRIEST && PriestHooks.rollSurgeOfLight(ctx, ready.spellId)) {
-            buffs = buffs.addBuff(BUFF_SURGE_OF_LIGHT, SURGE_OF_LIGHT_TICKS, 1)
+            buffs = buffs.addBuff(BUFF_SURGE_OF_LIGHT, data.balance.rules.surgeOfLightTicks, 1)
         }
 
         val spentMana = ready.needMana > 0 && !(ready.surgeFree && PriestHooks.isSurgeFinisher(spell))
@@ -459,13 +713,18 @@ class CastPipeline(
             )
         }
 
-        return s.copy(
+        return s.withMe {
+            it.copy(
+                mana = manaOut,
+                playerCombatBuffs = buffs,
+                holyPower = holyPower,
+                spellCooldowns = it.spellCooldowns.withCooldown(ready.spellId, cd),
+                pendingPlayerThreat = it.pendingPlayerThreat +
+                    healThreat(spell, healEff, crit = ready.critH > 1.0, rolled = healEff + healOh),
+            )
+        }.copy(
             party = party,
-            mana = manaOut,
-            playerCombatBuffs = buffs,
-            holyPower = holyPower,
             floatingCombatTexts = floats,
-            spellCooldowns = s.spellCooldowns.withCooldown(ready.spellId, cd),
             runHealEffective = s.runHealEffective + healEff,
             runHealOverheal = s.runHealOverheal + healOh,
             runManaSpentHealing = s.runManaSpentHealing + manaSpent,

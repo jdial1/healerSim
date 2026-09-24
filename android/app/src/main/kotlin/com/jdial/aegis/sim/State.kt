@@ -2,6 +2,7 @@ package com.jdial.aegis.sim
 
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.PlayerClass
+import com.jdial.aegis.data.Spell
 import kotlinx.serialization.Serializable
 
 /**
@@ -12,17 +13,50 @@ import kotlinx.serialization.Serializable
 
 const val TICK_RATE_MS = 100
 const val TICKS_PER_SECOND = 1000 / TICK_RATE_MS
-const val HEALER_UNIT_ID = "5"
+/**
+ * The party slot the human occupies. Always "5", whatever role they play.
+ *
+ * Party ids are positional and load-bearing ("1" is the tank, "2".."4" the DPS),
+ * and both the engine and the save index into them. When roles become playable
+ * the player keeps this slot and only their `role` changes -- the generator
+ * fills the other four with whatever roles are missing. Moving the player
+ * between slots to match their role would touch every one of those call sites
+ * for no gain.
+ *
+ * Named HEALER_UNIT_ID until the healer stopped being the only thing you can be.
+ */
+const val PLAYER_UNIT_ID = "5"
 
 /** The only consumable, referenced from the pipeline, the UI and the loadout. */
 const val MANA_POTION_ID = "mana_potion"
+
+/**
+ * The highest a character may be for [levelMax]'s dungeon before it is synced
+ * down: one over the range. Past that a run is played at this level, so an old
+ * character can come back to an early dungeon with a new one and both of them
+ * are playing the same fight.
+ */
+fun syncCap(levelMax: Int): Int = levelMax + 1
+
+/** The level a character of [level] plays a dungeon topping out at [levelMax] at. */
+fun syncedLevel(level: Int, levelMax: Int): Int = minOf(level, syncCap(levelMax))
+
+/** The level XP is paid on: the real one, even while synced. */
+val Participant.trueLevel: Int get() = if (syncedFrom > 0) syncedFrom else level
+
+/** The tag a spell carries when it is a consumable: from the stash, spent on use. */
+const val CONSUMABLE_TAG = "consumable"
+
+/** The potion, kicks and defensives: any of them behind the global cooldown is a beat late. */
+fun Spell.offGlobalCooldown(): Boolean =
+    id == MANA_POTION_ID || hasTag(CONSUMABLE_TAG) || interrupts || damageReduction != null
+
+/** A stash item: consumable, and not the mana potion, which every class carries and never runs out of. */
+fun Spell.isStashItem(): Boolean = hasTag(CONSUMABLE_TAG) && id != MANA_POTION_ID
 const val SUSPEND_SNAPSHOT_TICK_INTERVAL = 8
 const val MANA_SPIRIT_REGEN_LOCKOUT_TICKS = 5000 / TICK_RATE_MS
 
 const val TICKS_1S = 10
-const val TICKS_SPIRIT_REDEMPTION = 10 * TICKS_1S
-const val ICD_SPIRIT_REDEMPTION = 120 * TICKS_1S
-const val SURGE_OF_LIGHT_TICKS = 6 * TICKS_1S
 
 /** How long a floating combat number stays on screen. */
 const val FLOATING_TEXT_LIFETIME_TICKS = 22
@@ -32,6 +66,9 @@ const val BUFF_MANA_REGEN_POTION = "mana_regen_potion"
 const val BUFF_SPIRIT_REGEN_LOCKOUT = "spirit_regen_lockout"
 const val BUFF_POWER_INFUSION = "power_infusion"
 const val BUFF_NATURAL_PERFECTION = "natural_perfection"
+
+/** A cast defensive cooldown. Carries its own reduction in PlayerBuff.magnitude. */
+const val BUFF_ACTIVE_MITIGATION = "active_mitigation"
 
 /** These two track stacks rather than time, so they must not decay per tick. */
 val NO_TIME_DECAY_BUFFS = setOf(BUFF_POWER_INFUSION, BUFF_NATURAL_PERFECTION)
@@ -49,6 +86,26 @@ const val TAG_TREE_OF_LIFE_BIG_DIRECT = "tree-of-life-big-direct"
 
 @Serializable
 enum class UnitRole { TANK, DPS, HEALER }
+
+/**
+ * The roles of the five party slots, in slot order, for a party led by
+ * [playerRole]. The player is always last -- slot ids are positional and
+ * load-bearing across the engine, the UI and the save.
+ *
+ * Shared with the queue lobby rather than restated there. The lobby used to
+ * draw four anonymous dots and a fifth captioned "the healer is you", which was
+ * true only while healer was the one playable role; anything that describes the
+ * group it is about to form has to be derived from the same place the engine
+ * builds it, or it drifts into being decoration again.
+ */
+fun partyRoles(playerRole: UnitRole): List<UnitRole> = buildList {
+    // Tank first, so slot "1" is the tank whenever there is an AI one -- a lot
+    // of UI and the tank-death rule both assume it.
+    if (playerRole != UnitRole.TANK) add(UnitRole.TANK)
+    repeat(if (playerRole == UnitRole.DPS) 2 else 3) { add(UnitRole.DPS) }
+    if (playerRole != UnitRole.HEALER) add(UnitRole.HEALER)
+    add(playerRole)
+}
 
 @Serializable
 enum class CombatPhase { TRASH, BOSS }
@@ -83,7 +140,19 @@ data class UnitDebuff(
     val sourceAbilityId: String = "",
     val dispellable: Boolean = false,
     val category: String = "harmful",
-)
+    /** A stacking debuff's stacks; 0 for the rest, which tick once. */
+    val stacks: Int = 0,
+    /** A bomb: dispelling it with more than this left sets it off. */
+    val armedTicks: Int = 0,
+    /** Mind control: the carrier is fighting for the boss. */
+    val charm: Boolean = false,
+    /** A wound: the carrier's defensive takes it off. */
+    val clearedByDefensive: Boolean = false,
+    /** Heal absorb: healing still to be eaten before any lands. */
+    val absorbLeft: Double = 0.0,
+) {
+    val isArmed: Boolean get() = armedTicks > 0 && remainingTicks > armedTicks
+}
 
 @Serializable
 data class Unit(
@@ -98,6 +167,18 @@ data class Unit(
     val shield: Double = 0.0,
     val shieldTicksRemaining: Int = 0,
     val livingSeedPool: Double = 0.0,
+    /**
+     * How much the enemy wants to hit this unit.
+     *
+     * Accrues from damage dealt and effective healing done; overheal generates
+     * none, which is the one threat rule a healer can actually play around.
+     * Nothing reads it yet -- see [com.jdial.aegis.data.Targeting.HIGHEST_THREAT].
+     *
+     * There is deliberately no decay: it would be a per-tick multiply across
+     * five units modelling something no player can perceive. The table is
+     * zeroed on phase transition and when a unit dies instead.
+     */
+    val threat: Double = 0.0,
 ) {
     val isAlive: Boolean get() = health > 0
 }
@@ -109,7 +190,62 @@ data class PlayerBuff(
     val remainingTicks: Int,
     val stacks: Int = 0,
     val potionDripPerTick: Double? = null,
+    /**
+     * A generic value carried by the buff. Used by defensive cooldowns for the
+     * fraction of damage they remove; null for buffs that only track time.
+     */
+    val magnitude: Double? = null,
 )
+
+/**
+ * A boss attack winding up: who it will hit, and how long until it does.
+ *
+ * The targets are chosen when the cast starts -- from the same draws, in the
+ * same order, as an attack that lands at once -- so the warning names the real
+ * victims and a healer can act on it.
+ */
+@Serializable
+data class EnemyCast(
+    val abilityId: String,
+    val name: String,
+    val icon: String = "",
+    val targets: List<String>,
+    val remainingTicks: Int,
+    val totalTicks: Int,
+    val interruptible: Boolean = false,
+    val tell: String = "",
+) {
+    /** 0 at the start of the wind-up, 1 as it lands. */
+    val progress: Float get() = if (totalTicks <= 0) 1f else 1f - remainingTicks.toFloat() / totalTicks
+}
+
+/** Enemy states; see [com.jdial.aegis.data.AttackTemplate.grantsState]. */
+const val STATE_REFLECT = "reflect"
+const val STATE_SHIELD = "shield"
+const val STATE_FRENZY = "frenzy"
+
+/** An enemy beside the main one; see [com.jdial.aegis.data.AddTemplate]. */
+@Serializable
+data class EnemyAdd(
+    val id: String,
+    val kind: String,
+    val name: String,
+    val looksLike: String,
+    val health: Double,
+    val maxHealth: Double,
+    val damagePerTick: Double = 0.0,
+    val healAmount: Double = 0.0,
+    /** A mender's ticks to its next cast (or left on it); a runner's ticks left to get away. */
+    val timer: Int = 0,
+    val timerTotal: Int = 0,
+    val casting: Boolean = false,
+    val fleeing: Boolean = false,
+    /** A splitter's children. */
+    val splitsInto: List<com.jdial.aegis.data.AddTemplate> = emptyList(),
+) {
+    val isAlive: Boolean get() = health > 0
+    val castProgress: Float get() = if (!casting || timerTotal <= 0) 0f else 1f - timer.toFloat() / timerTotal
+}
 
 @Serializable
 data class BossBuff(
@@ -143,6 +279,12 @@ data class RunStats(
     val hps: Double = 0.0,
     val overhealPct: Double = 0.0,
     val hpm: Double = 0.0,
+    /**
+     * What this player dealt, for a tank or DPS. The healing numbers above
+     * are zero for them, and the result screen used to show exactly those.
+     */
+    val damageDone: Double = 0.0,
+    val dps: Double = 0.0,
 )
 
 @Serializable
@@ -157,26 +299,181 @@ data class DungeonOutcome(
     val leveledUp: Boolean = false,
     val upgradedSpellIds: List<String> = emptyList(),
     val upgradedPotion: Boolean = false,
+    /**
+     * True when [stats] describe the whole group rather than this player --
+     * a guest's outcome, built from the host's run accumulators. The dialog
+     * labels them as such rather than crediting a tank with the group's
+     * healing.
+     */
+    val groupStats: Boolean = false,
+    val hardMode: Boolean = false,
+    /** The keystone level this run was on, so the record knows what was beaten. */
+    val keystone: Int = 0,
+    /** The pace it was run at: each pace drops its own consumable. */
+    val pace: String = "normal",
+    /** The consumable spent this run, if one was: it comes out of the stash. */
+    val spent: String? = null,
+    /** How long the run took, and what it cost: the record keeps these. */
+    val clearTicks: Int = 0,
+    val deaths: Int = 0,
+    val missedKicks: Int = 0,
+    /**
+     * Who fell first, and when. The result screen names them on a loss: a
+     * failure you cannot attribute is noise rather than a lesson.
+     */
+    val firstDownName: String = "",
+    val firstDownTick: Int = 0,
+    /** The first kickable cast that was let through, named. */
+    val firstMissedKick: String = "",
 )
+
+/**
+ * Everything that describes one *player* rather than the world.
+ *
+ * These fields all lived on [GameState] directly, which quietly asserted that
+ * exactly one human exists: two people casting in the same tick would have
+ * shared a mana pool, a cooldown table and a set of buffs. Keyed by party unit
+ * id ("1".."5") so a participant and their [Unit] are the same slot.
+ *
+ * Single player is a map of one. There is deliberately no second code path --
+ * the whole point is that the solo game runs the multi-participant engine, so
+ * the multiplayer case cannot rot.
+ *
+ * Progression (xp, talent points, completed dungeons) stays on [GameState]: it
+ * is the local player's account, awarded once at the end of a run, and moving it
+ * here would drag the save format and the XP curve into a refactor that is
+ * already the riskiest in the project.
+ */
+@Serializable
+data class Participant(
+    val unitId: String,
+    val playerClass: PlayerClass? = null,
+    val level: Int = 1,
+    val talents: List<TalentRank> = emptyList(),
+    /**
+     * The charm this character is wearing, carried whole rather than by id --
+     * the same shape TalentRank already uses, so nothing reading effects needs
+     * the content to resolve it.
+     */
+    val charm: com.jdial.aegis.data.Charm? = null,
+    /**
+     * The consumable carried into this run, chosen before it started, and
+     * whether it has been used. One carried, one use: the decision is which
+     * to bring and when to spend it, and a second press would be neither.
+     */
+    val carried: String? = null,
+    val carriedUsed: Boolean = false,
+    /**
+     * The level this participant really is, when the run synced them down to
+     * the dungeon's; 0 when it did not. XP is paid on this, never on the synced
+     * level -- a level 25 in the Deadmines fights as a 5 and is paid as a 25.
+     */
+    val syncedFrom: Int = 0,
+    val unlockedSpells: List<String> = emptyList(),
+    val activeActionBars: List<String> = emptyList(),
+    /** Derived from the class's ClassMeta.role. */
+    val role: UnitRole = UnitRole.HEALER,
+    val mana: Double = 0.0,
+    val maxMana: Int = 100,
+    val playerCombatBuffs: List<PlayerBuff> = emptyList(),
+    val internalCooldowns: Map<String, Int> = emptyMap(),
+    val spellCooldowns: Map<String, Int> = emptyMap(),
+    /**
+     * Ticks until this participant's next cast is allowed, from any spell.
+     *
+     * Stops the bar being spammed, and bounds how many actions a client can
+     * produce per second -- which is what makes a relayed action stream
+     * predictable rather than unbounded.
+     */
+    val globalCooldownRemaining: Int = 0,
+    /**
+     * Ticks since this participant last cast anything. Reset by a cast,
+     * counted by the tick. The one honest measure of whether a person is
+     * playing their seat -- see GameTick.accrueThreat, where a tank earns the
+     * tank's share of threat only while this is short.
+     */
+    val idleTicks: Int = 0,
+    val capstoneForm: String? = null,
+    val holyPower: Int = 0,
+    val beaconTargetId: String = "1",
+    /**
+     * Damage this participant's abilities have dealt since the last tick
+     * consumed it.
+     *
+     * A plain accumulator, not a queue: casts already resolve synchronously
+     * before the next Tick action, so there is never more than a tick's worth
+     * of it outstanding.
+     */
+    /** Damage this participant aimed at adds since the last tick, by add id. */
+    val pendingAddDamage: Map<String, Double> = emptyMap(),
+    val pendingEnemyDamage: Double = 0.0,
+    /**
+     * Threat this participant's casts have generated since the last tick
+     * consumed it.
+     *
+     * Separate from [pendingEnemyDamage] because threat is not proportional to
+     * damage: a tank's Shield Slam is worth three times its damage in threat and
+     * a taunt is worth threat with no damage at all. Deriving one from the other
+     * is what made `Spell.threatMultiplier` inert.
+     */
+    val pendingPlayerThreat: Double = 0.0,
+    val manaPotionsUsedThisDungeon: Int = 0,
+    /**
+     * The class's own resource, beside mana: a Warrior's rage, a Rogue's
+     * energy, or the damage a Death Knight has taken recently (which Death
+     * Strike turns back into health). Zero, and never read, for the classes
+     * that only use mana. A spell whose `resource` is not MANA pays its cost
+     * from here.
+     */
+    val classResource: Double = 0.0,
+    /** A Rogue's combo points: builders add them, the finisher spends them all. */
+    val comboPoints: Int = 0,
+    /**
+     * False for a slot the AI is driving. Nothing reads it yet -- the AI party
+     * is still scripted rather than participant-driven -- but the queue fills
+     * empty slots with AI, and that is the flag it will set.
+     */
+    val isHuman: Boolean = true,
+    /** Earned, from the record: shown on this player's frame. */
+    val title: String = "",
+    /** Earned: the colour this player's own sprite wears, as ARGB. */
+    val sigil: Long = 0,
+) {
+    /** Combat-scoped fields reset between runs; character fields are preserved. */
+    fun clearedCombat(): Participant = copy(
+        playerCombatBuffs = emptyList(),
+        internalCooldowns = emptyMap(),
+        spellCooldowns = emptyMap(),
+        globalCooldownRemaining = 0,
+        capstoneForm = null,
+        holyPower = 0,
+        pendingEnemyDamage = 0.0,
+        pendingPlayerThreat = 0.0,
+        manaPotionsUsedThisDungeon = 0,
+        classResource = 0.0,
+        comboPoints = 0,
+    )
+}
 
 @Serializable
 data class GameState(
+    /**
+     * Every player in the run, keyed by party unit id. One entry in single
+     * player -- see [Participant] for why there is no separate solo path.
+     */
+    val participants: Map<String, Participant> = emptyMap(),
+    /** Which participant this client is driving. */
+    val localUnitId: String = PLAYER_UNIT_ID,
+
     // --- character (persisted) ---
-    val playerClass: PlayerClass? = null,
-    val level: Int = 1,
     val xp: Int = 0,
     val talentPoints: Int = 0,
-    val talents: List<TalentRank> = emptyList(),
-    val unlockedSpells: List<String> = emptyList(),
-    val activeActionBars: List<String> = emptyList(),
     val completedDungeonIds: List<String> = emptyList(),
     val introTutorialComplete: Boolean = false,
     val tutorialCompletedSteps: List<String> = emptyList(),
 
     // --- combat ---
     val party: List<Unit> = emptyList(),
-    val mana: Double = 0.0,
-    val maxMana: Int = 100,
     val currentDungeon: Dungeon? = null,
     val dungeonPace: String? = null,
     val dungeonProgress: Double = 0.0,
@@ -186,19 +483,74 @@ data class GameState(
     val enemyMaxHealth: Double = 0.0,
     val isCombatActive: Boolean = false,
     val bossSelfBuffs: List<BossBuff> = emptyList(),
-    val playerCombatBuffs: List<PlayerBuff> = emptyList(),
-    val internalCooldowns: Map<String, Int> = emptyMap(),
-    val spellCooldowns: Map<String, Int> = emptyMap(),
-    val capstoneForm: String? = null,
-    val holyPower: Int = 0,
-    val beaconTargetId: String = "1",
     val mechanicCooldown: Int = 0,
     val mechanicOrdinal: Int = 0,
+    /** The boss attack currently winding up, if any. */
+    val enemyCast: EnemyCast? = null,
+    /** Interruptible casts started this run: the AI kicks every second one. */
+    val interruptibleCasts: Int = 0,
+    /** Who cancelled the last boss cast, for the scene. */
+    val lastInterruptBy: String? = null,
+    /** Who the enemy is currently on. Null until the first threat is generated. */
+    /**
+     * The AI healer's mana. Zero and unused while the player is the healer.
+     *
+     * Separate from [mana], which is the player's: the two must not share a
+     * pool or healing yourself would starve the party.
+     */
+    val aiHealerMana: Double = 0.0,
+    /** What [aiHealerMana] started at, so a frame can draw it as a fraction. */
+    val aiHealerManaMax: Double = 0.0,
+    /**
+     * DoTs the player has on the enemy. Reuses [UnitDebuff], which already
+     * carries remainingTicks, damagePerTick, icon and sourceAbilityId.
+     */
+    val enemyDebuffs: List<UnitDebuff> = emptyList(),
+    val enemyTargetId: String? = null,
+    /** While positive, [enemyTargetId] is held by a taunt regardless of the table. */
+    val tauntLockTicks: Int = 0,
+    val tauntedById: String? = null,
+    /** Ticks until the AI tank may taunt again. */
+    val aiTauntCooldown: Int = 0,
+    /** Ticks until the AI healer may dispel again. */
+    val aiDispelCooldown: Int = 0,
+    /** Ticks spent on this boss: the enrage clock. */
+    val bossTicks: Int = 0,
+    /** While positive the boss takes extra damage (Pressure.exposedDamageMultiplier). */
+    val exposedTicks: Int = 0,
+    /** The once-per-boss exposure at low health has happened. */
+    val exposedAtHalf: Boolean = false,
+    /** While positive the party is resting between pulls. */
+    val restTicks: Int = 0,
+    /** Extra run XP, as a share, banked by pulling before a rest was over. */
+    val earlyPullBonus: Double = 0.0,
+    /** Party members who went down this run: the Clean mark. */
+    val runDeaths: Int = 0,
+    /** Kickable casts that landed with a human kick ready: the Sharp mark. */
+    val runMissedKicks: Int = 0,
+    /** Enemies beside the main one: menders, runners, a boss's adds. */
+    val adds: List<EnemyAdd> = emptyList(),
+    /** Pulls a runner brought, fought before the next planned one. */
+    val extraPulls: Int = 0,
+    /** How many of the boss's add waves have come. */
+    val bossAddWaves: Int = 0,
+    /** How many phases the boss has entered: which rotation it is on. */
+    val bossPhase: Int = 0,
+    /** A state the enemy is in (AttackTemplate.grantsState), and for how long. */
+    val enemyState: String? = null,
+    val enemyStateTicks: Int = 0,
     val combatElapsedTicks: Int = 0,
+    /** Hard mode: a cleared dungeon, scaled to the party that comes back. */
+    val hardMode: Boolean = false,
+    /**
+     * How far this dungeon's keystone has been pushed: each level is one more
+     * affix. The clear is the item -- nothing drops and nothing is equipped,
+     * the place itself gets harder and stays that way.
+     */
+    val keystone: Int = 0,
     /** Rolled once at run start; scales party damage so clear times vary. */
     val runDpsJitter: Double = 1.0,
     val endlessStacks: Int = 0,
-    val manaPotionsUsedThisDungeon: Int = 0,
     val floatingCombatTexts: List<FloatingText> = emptyList(),
     val isTutorialPaused: Boolean = false,
     val dungeonOutcome: DungeonOutcome? = null,
@@ -207,13 +559,111 @@ data class GameState(
     val runHealEffective: Double = 0.0,
     val runHealOverheal: Double = 0.0,
     val runManaSpentHealing: Double = 0.0,
+    /** Damage this client's player has dealt this run. Zero for a healer. */
+    val runDamageDealt: Double = 0.0,
+    /**
+     * Who went down first this run, and at which combat tick.
+     *
+     * [runDeaths] is a count, so a wipe could say how many fell and never who
+     * or when. "The boss spiked" and "I lost the tank at forty seconds" are the
+     * same run described by a player who cannot see the cause and one who can.
+     * Set once and never overwritten -- the first one is the one that explains
+     * the rest.
+     */
+    val runFirstDownName: String = "",
+    val runFirstDownTick: Int = 0,
+    /**
+     * The first kickable cast this run that was allowed to land while a kick was
+     * ready. [runMissedKicks] counts them, which tells a player only that they
+     * were not sharp; the name tells them what to watch for.
+     */
+    val runFirstMissedKick: String = "",
+    /**
+     * XP awarded this run, per party slot, for every human in it.
+     *
+     * The engine only ever applied XP to the local player, and the frame
+     * carried none of it, so a guest finished a whole dungeon with nothing. The
+     * host now credits every human here, each on *their own* level, and the
+     * frame carries the running total. Cumulative rather than per-event so a
+     * guest applies only the increase since the last frame it saw -- a missed
+     * or repeated frame can neither lose nor double an award, and endless waves,
+     * which award mid-run, work the same way.
+     *
+     * On a guest the same field records what it has already applied.
+     */
+    val runXpAwards: Map<String, Int> = emptyMap(),
 ) {
+    /**
+     * The participant this client drives.
+     *
+     * The accessors below exist so the several hundred read sites that said
+     * `state.mana` still say `state.mana`. Only *writes* had to move, and those
+     * the compiler found by deleting the constructor parameters. A default is
+     * returned rather than throwing because GameState() with no character is a
+     * real state -- the main menu.
+     */
+    val me: Participant get() = participants[localUnitId] ?: Participant(localUnitId)
+
+    val playerClass: PlayerClass? get() = me.playerClass
+    val level: Int get() = me.level
+    val talents: List<TalentRank> get() = me.talents
+    val charm: com.jdial.aegis.data.Charm? get() = me.charm
+    val unlockedSpells: List<String> get() = me.unlockedSpells
+    val activeActionBars: List<String> get() = me.activeActionBars
+    val playerRole: UnitRole get() = me.role
+    val mana: Double get() = me.mana
+    val maxMana: Int get() = me.maxMana
+    val playerCombatBuffs: List<PlayerBuff> get() = me.playerCombatBuffs
+    val internalCooldowns: Map<String, Int> get() = me.internalCooldowns
+    val spellCooldowns: Map<String, Int> get() = me.spellCooldowns
+    val globalCooldownRemaining: Int get() = me.globalCooldownRemaining
+    val capstoneForm: String? get() = me.capstoneForm
+    val holyPower: Int get() = me.holyPower
+    val beaconTargetId: String get() = me.beaconTargetId
+    val manaPotionsUsedThisDungeon: Int get() = me.manaPotionsUsedThisDungeon
+    val classResource: Double get() = me.classResource
+    val comboPoints: Int get() = me.comboPoints
+
+    /** Damage every participant has dealt since the last tick consumed it. */
+    val pendingEnemyDamage: Double get() = participants.values.sumOf { it.pendingEnemyDamage }
+
+    /** True when a real person is driving this party slot. */
+    fun isHuman(unitId: String): Boolean = participants[unitId]?.isHuman == true
+
+    /** Rewrites one participant. */
+    fun withParticipant(id: String, f: (Participant) -> Participant): GameState =
+        copy(participants = participants + (id to f(participants[id] ?: Participant(id))))
+
+    /** Rewrites the participant this client drives. */
+    fun withMe(f: (Participant) -> Participant): GameState = withParticipant(localUnitId, f)
+
+    /**
+     * The same state seen from another participant's seat.
+     *
+     * The cast pipeline and the class hooks read the acting player through
+     * several dozen sites -- `state.mana`, `state.talents`, `state.capstoneForm`,
+     * `state.level` -- and every one of them means "whoever is casting". Rather
+     * than thread an actor parameter through all of them and rely on nobody
+     * forgetting one, [Engine] points [localUnitId] at the actor for the
+     * duration of the cast and points it back afterwards. Miss a site and it
+     * still resolves to the right participant.
+     *
+     * This is the only place localUnitId means anything other than "this
+     * client": treat it as a scope, and always restore it.
+     */
+    fun actingAs(unitId: String): GameState =
+        if (unitId == localUnitId) this else copy(localUnitId = unitId)
+
+    /** Rewrites every participant. */
+    fun withEachParticipant(f: (Participant) -> Participant): GameState =
+        copy(participants = participants.mapValues { (_, p) -> f(p) })
+
     val healer: Unit? get() = party.firstOrNull { it.role == UnitRole.HEALER }
 
     fun unit(id: String): Unit? = party.firstOrNull { it.id == id }
 
     /** Combat-scoped fields reset between runs; character fields are preserved. */
-    fun clearedCombat(): GameState = copy(
+    fun clearedCombat(): GameState = withEachParticipant { it.clearedCombat() }.copy(
         currentDungeon = null,
         dungeonPace = null,
         dungeonProgress = 0.0,
@@ -222,21 +672,43 @@ data class GameState(
         enemyHealth = 0.0,
         enemyMaxHealth = 0.0,
         bossSelfBuffs = emptyList(),
-        playerCombatBuffs = emptyList(),
-        internalCooldowns = emptyMap(),
-        spellCooldowns = emptyMap(),
-        capstoneForm = null,
-        holyPower = 0,
         mechanicCooldown = 0,
         mechanicOrdinal = 0,
+        enemyCast = null,
+        interruptibleCasts = 0,
+        lastInterruptBy = null,
+        enemyTargetId = null,
+        tauntLockTicks = 0,
+        tauntedById = null,
+        aiTauntCooldown = 0,
+        aiDispelCooldown = 0,
+        bossTicks = 0,
+        exposedTicks = 0,
+        exposedAtHalf = false,
+        restTicks = 0,
+        earlyPullBonus = 0.0,
+        runDeaths = 0,
+        runMissedKicks = 0,
+        adds = emptyList(),
+        extraPulls = 0,
+        bossAddWaves = 0,
+        bossPhase = 0,
+        enemyState = null,
+        enemyStateTicks = 0,
+        enemyDebuffs = emptyList(),
+        aiHealerMana = 0.0,
         combatElapsedTicks = 0,
         runDpsJitter = 1.0,
         endlessStacks = 0,
-        manaPotionsUsedThisDungeon = 0,
         floatingCombatTexts = emptyList(),
         runHealEffective = 0.0,
         runHealOverheal = 0.0,
         runManaSpentHealing = 0.0,
+        runDamageDealt = 0.0,
+        runFirstDownName = "",
+        runFirstDownTick = 0,
+        runFirstMissedKick = "",
+        runXpAwards = emptyMap(),
     )
 }
 
@@ -248,15 +720,19 @@ data class GameState(
  * screen reads some of them, and [clearedCombat] (used when *starting* a run)
  * is what actually wipes the slate.
  */
-fun GameState.endedRun(): GameState = copy(
+fun GameState.endedRun(): GameState = withEachParticipant {
+    it.copy(playerCombatBuffs = emptyList(), spellCooldowns = emptyMap(), globalCooldownRemaining = 0)
+}.copy(
     isCombatActive = false,
     currentDungeon = null,
     dungeonPace = null,
-    playerCombatBuffs = emptyList(),
     bossSelfBuffs = emptyList(),
     mechanicCooldown = 0,
     mechanicOrdinal = 0,
-    spellCooldowns = emptyMap(),
+    enemyCast = null,
+    adds = emptyList(),
+    enemyState = null,
+    enemyStateTicks = 0,
     floatingCombatTexts = emptyList(),
     endlessStacks = 0,
 )

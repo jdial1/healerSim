@@ -1,10 +1,18 @@
 name: Deploy to GitHub Pages
 
+# Publishes the small static site the Play listing links to -- the privacy
+# policy is a store requirement, so this has to keep working even though the
+# web app it used to be built alongside is gone. There is nothing to build:
+# the pages are hand-written HTML and are uploaded as they are.
+
 on:
   push:
     branches:
       - main
       - master
+    paths:
+      - "public/*.html"
+      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -21,15 +29,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci
-      - run: npm run build
+      # Only the pages, not public/icons: that is 163 MB of artwork for the
+      # APK, and none of it belongs on a privacy policy site.
+      - name: Stage the site
+        run: |
+          mkdir -p site
+          cp public/*.html site/
+          cp public/game_icon-192.png public/game_icon.svg site/ || true
+          ls -la site
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
 
   deploy:
     needs: build

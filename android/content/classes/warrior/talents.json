@@ -1,0 +1,335 @@
+[
+  {
+    "id": "w_r0c0",
+    "name": "Shield Specialization",
+    "description": "Taking damage builds 10% more rage per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_warrior_shieldbash",
+    "gridX": 0,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "rageFromDamage": 10
+    }
+  },
+  {
+    "id": "w_r0c2",
+    "name": "Toughness",
+    "description": "Increases Vengeance by 2 per rank: a higher rage cap and more threat.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_warrior_battleshout",
+    "gridX": 2,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "uniqueStat": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "w_r0c4",
+    "name": "Anticipation",
+    "description": "Increases critical strike chance by 1% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_warrior_decisivestrike",
+    "gridX": 4,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "w_r1c1",
+    "name": "Improved Shield Slam",
+    "description": "Shield Slam costs 5 less rage per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_warrior_shieldbreak",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "w_r0c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cost:shield_slam": 5
+    }
+  },
+  {
+    "id": "w_r1c3",
+    "name": "Shield Mastery",
+    "description": "Shield Wall's cooldown is 3 seconds shorter per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_warrior_shieldmastery",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "w_r0c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:shield_wall": 30
+    }
+  },
+  {
+    "id": "w_r2c0",
+    "name": "Revenge",
+    "description": "Unlocks Revenge.",
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_warrior_revenge",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [
+      "w_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "revenge"
+  },
+  {
+    "id": "w_r2c2",
+    "name": "Puncture",
+    "description": "Generates 6% more threat per rank.",
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_warrior_bladestorm",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "threat": 6
+    }
+  },
+  {
+    "id": "w_r2c4",
+    "name": "Focused Rage",
+    "description": "Mana-paid attacks build 2 more rage per rank.",
+    "maxPoints": 3,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_warrior_focusedrage",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "rageOnCast": 2
+    }
+  },
+  {
+    "id": "w_r3c1",
+    "name": "Improved Revenge",
+    "description": "Revenge's cooldown is 1 second shorter.",
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_warrior_secondwind",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "w_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:revenge": 10
+    }
+  },
+  {
+    "id": "w_r3c3",
+    "name": "Critical Block",
+    "description": "Taunt's cooldown is 1.5 seconds shorter per rank.",
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_warrior_criticalblock",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "w_r1c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:taunt": 15
+    }
+  },
+  {
+    "id": "w_r4c0",
+    "name": "Devastate",
+    "description": "Increases damage by 5% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_warrior_bloodbath",
+    "gridX": 0,
+    "gridY": 4,
+    "prerequisites": [
+      "w_r3c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 5
+    },
+    "points": 0
+  },
+  {
+    "id": "w_r4c2",
+    "name": "Vitality",
+    "description": "Increases maximum mana by 5% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_warrior_bloodfrenzy",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 5
+    },
+    "points": 0
+  },
+  {
+    "id": "w_r4c4",
+    "name": "Deep Wounds",
+    "description": "Increases haste by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_warrior_deepcuts",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "w_r3c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "w_r5c1",
+    "name": "Sword and Board",
+    "description": "Revenge deals 10% more damage per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_warrior_swordandboard",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "w_r4c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:revenge": 10
+    }
+  },
+  {
+    "id": "w_r5c3",
+    "name": "Unrelenting",
+    "description": "Deals 8% more damage per rank to an enemy below 35% health.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_warrior_unrelentingassault",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "w_r4c4"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "execute": 8
+    }
+  },
+  {
+    "id": "w_r6c2",
+    "name": "Last Stand",
+    "description": "Shield Slam deals 25% more damage.",
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/ability_warrior_shieldguard",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "w_r5c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:shield_slam": 25
+    }
+  }
+]

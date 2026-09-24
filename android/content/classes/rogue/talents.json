@@ -1,0 +1,316 @@
+[
+  {
+    "id": "rg_r0c0",
+    "name": "Improved Poisons",
+    "description": "Rupture deals 8% more damage per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_rogue_deviouspoisons",
+    "gridX": 0,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:rupture": 8
+    }
+  },
+  {
+    "id": "rg_r0c2",
+    "name": "Malice",
+    "description": "Increases critical strike chance by 1% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_rogue_shadowstrike",
+    "gridX": 2,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r0c4",
+    "name": "Relentless Strikes",
+    "description": "Eviscerate refunds 5 energy per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_rogue_ambush",
+    "gridX": 4,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "finisherRefund": 5
+    }
+  },
+  {
+    "id": "rg_r1c1",
+    "name": "Lethality",
+    "description": "Increases damage by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_rogue_blackjack",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "rg_r0c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r1c3",
+    "name": "Puncturing Wounds",
+    "description": "Sinister Strike deals 8% more damage per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_rogue_venomouswounds",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "rg_r0c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:sinister_strike": 8
+    }
+  },
+  {
+    "id": "rg_r2c0",
+    "name": "Blade Flurry",
+    "description": "Fan of Knives deals 10% more damage per rank.",
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_rogue_bladetwisting",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:fan_of_knives": 10
+    }
+  },
+  {
+    "id": "rg_r2c2",
+    "name": "Rupture",
+    "description": "Unlocks Rupture.",
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_rogue_rupture",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "rg_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "rupture"
+  },
+  {
+    "id": "rg_r2c4",
+    "name": "Ruthlessness",
+    "description": "Sinister Strike costs 3 less energy per rank.",
+    "maxPoints": 3,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_rogue_ruthlessness",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cost:sinister_strike": 3
+    }
+  },
+  {
+    "id": "rg_r3c1",
+    "name": "Fan of Knives",
+    "description": "Unlocks Fan of Knives.",
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_rogue_fanofknives",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "rg_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "fan_of_knives"
+  },
+  {
+    "id": "rg_r3c3",
+    "name": "Cold Blood",
+    "description": "Each combo point adds 10% more to Eviscerate per rank.",
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_rogue_bloodsplatter",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "rg_r1c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "finisherPerPoint": 0.05
+    }
+  },
+  {
+    "id": "rg_r4c2",
+    "name": "Murder",
+    "description": "Deals 8% more damage per rank to an enemy below 35% health.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_rogue_murderspree",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "rg_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "execute": 8
+    }
+  },
+  {
+    "id": "rg_r4c4",
+    "name": "Endurance",
+    "description": "Kick's cooldown is 3 seconds shorter per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_rogue_cannonballbarrage",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "rg_r3c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "cooldown:kick": 30
+    }
+  },
+  {
+    "id": "rg_r5c1",
+    "name": "Adrenaline Rush",
+    "description": "Energy refills 10% faster per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_rogue_cheatdeath",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "rg_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "energyRegen": 10
+    }
+  },
+  {
+    "id": "rg_r5c3",
+    "name": "Hunger for Blood",
+    "description": "Increases haste by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_rogue_hungerforblood",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "rg_r4c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "rg_r6c2",
+    "name": "Mutilate",
+    "description": "Eviscerate deals 15% more damage, and its cooldown is 2 seconds shorter.",
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/ability_rogue_combatexpertise",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "rg_r5c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "effects": {
+      "damage:eviscerate": 15,
+      "cooldown:eviscerate": 20
+    }
+  }
+]

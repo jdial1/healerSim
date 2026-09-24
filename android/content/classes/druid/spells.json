@@ -1,0 +1,158 @@
+{
+  "rejuvenation": {
+    "id": "rejuvenation",
+    "name": "Rejuvenation",
+    "type": "HOT",
+    "manaCost": 14,
+    "healing": 2,
+    "hotDuration": 120,
+    "hotHealingPerTick": 1.1,
+    "cooldown": 0,
+    "icon": "wow/spell_nature_rejuvenation",
+    "color": "bg-green-500",
+    "actionBarBorderClass": "border-emerald-500",
+    "glowType": "nature",
+    "tags": [
+      "synergy-primer-source",
+      "druid-hot",
+      "druid-cultivation-hot",
+      "swiftmend-consumable"
+    ],
+    "sound": "hot"
+  },
+  "regrowth": {
+    "id": "regrowth",
+    "name": "Regrowth",
+    "type": "DIRECT",
+    "manaCost": 22,
+    "healing": 55,
+    "hotDuration": 60,
+    "hotHealingPerTick": 0.6,
+    "cooldown": 0,
+    "icon": "wow/spell_nature_resistnature",
+    "color": "bg-emerald-400",
+    "actionBarBorderClass": "border-lime-500",
+    "glowType": "nature",
+    "tags": [
+      "synergy-direct",
+      "synergy-primer-source",
+      "druid-hot",
+      "druid-cultivation-hot",
+      "swiftmend-consumable",
+      "swiftmend-prefer"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    },
+    "sound": "heal"
+  },
+  "wild_growth": {
+    "id": "wild_growth",
+    "name": "Wild Growth",
+    "type": "AOE",
+    "manaCost": 52,
+    "healing": 10,
+    "hotDuration": 70,
+    "hotHealingPerTick": 1.05,
+    "cooldown": 100,
+    "icon": "wow/ability_druid_flourish",
+    "color": "bg-lime-400",
+    "actionBarBorderClass": "border-purple-500",
+    "glowType": "nature",
+    "tags": [
+      "archangel-skip",
+      "synergy-primer-source",
+      "druid-hot",
+      "druid-cultivation-hot"
+    ],
+    "sound": "heal_group"
+  },
+  "swiftmend": {
+    "id": "swiftmend",
+    "name": "Swiftmend",
+    "type": "DIRECT",
+    "manaCost": 18,
+    "healing": 110,
+    "cooldown": 150,
+    "icon": "wow/inv_relics_idolofrejuvenation",
+    "color": "bg-emerald-300",
+    "actionBarBorderClass": "border-emerald-400",
+    "staticEffectDescription": "Consumes a HoT on the target to burst-heal. Requires Rejuvenation or Regrowth",
+    "glowType": "nature",
+    "tags": [
+      "synergy-direct"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    },
+    "sound": "heal_c"
+  },
+  "healing_touch": {
+    "id": "healing_touch",
+    "name": "Healing Touch",
+    "type": "DIRECT",
+    "manaCost": 34,
+    "healing": 140,
+    "cooldown": 45,
+    "icon": "wow/spell_nature_healingtouch",
+    "color": "bg-teal-300",
+    "actionBarBorderClass": "border-teal-400",
+    "glowType": "nature",
+    "tags": [
+      "tree-of-life-big-direct",
+      "synergy-direct"
+    ],
+    "balance": {
+      "directHealSynergyMultiplier": 1.15
+    },
+    "sound": "heal_b"
+  },
+  "lifebloom": {
+    "id": "lifebloom",
+    "name": "Lifebloom",
+    "type": "HOT",
+    "manaCost": 12,
+    "healing": 42,
+    "hotDuration": 100,
+    "hotHealingPerTick": 1,
+    "cooldown": 0,
+    "icon": "wow/inv_misc_herb_felblossom",
+    "color": "bg-cyan-500",
+    "actionBarBorderClass": "border-cyan-400",
+    "glowType": "nature",
+    "tags": [
+      "synergy-primer-source",
+      "druid-hot",
+      "druid-cultivation-hot"
+    ],
+    "sound": "hot_b"
+  },
+  "barkskin": {
+    "id": "barkskin",
+    "name": "Barkskin",
+    "type": "DIRECT",
+    "school": "utility",
+    "manaCost": 18,
+    "healing": 0.0,
+    "cooldown": 200,
+    "icon": "wow/spell_nature_stoneclawtotem",
+    "tags": [],
+    "damageReduction": 0.3,
+    "damageReductionTicks": 150,
+    "sound": "defensive"
+  },
+  "tranquility": {
+    "id": "tranquility",
+    "name": "Tranquility",
+    "type": "AOE",
+    "school": "heal",
+    "manaCost": 60,
+    "healing": 95.0,
+    "cooldown": 400,
+    "icon": "wow/spell_nature_tranquility",
+    "tags": [],
+    "hotDuration": 80,
+    "hotHealingPerTick": 6.0,
+    "sound": "heal_group_b"
+  }
+}

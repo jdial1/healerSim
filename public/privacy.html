@@ -42,9 +42,72 @@
 
 <h2>Data sent off your device</h2>
 <p>
-  None. The Android app requests no permissions at all and contains no
-  networking code; it works fully in airplane mode. The web version is a static
-  page and sends your progress nowhere.
+  None, unless you choose to play with other people. Single player never opens a
+  network connection and works fully in airplane mode; the web version is a
+  static page and sends your progress nowhere.
+</p>
+<p>
+  The Android app now requests <code>INTERNET</code> for the optional public
+  queue, and the Firebase libraries it uses add three more of their own:
+  <code>ACCESS_NETWORK_STATE</code> (whether you are online),
+  <code>READ_GSERVICES</code> and a private receiver permission. None of them
+  grants access to your files, contacts, location or anything else personal.
+  With multiplayer switched off, which is the default, none of the multiplayer
+  code runs at all.
+</p>
+<p>
+  Nothing is sent until you turn multiplayer on in Settings and open a dungeon.
+  Then:
+</p>
+<ul>
+  <li><strong>An anonymous account.</strong> The app signs in with Firebase
+    Authentication &mdash; no email, no name, no password, just a random id that
+    stays with this installation. Google's Firebase service also records the IP
+    address and app version of each connection, which it uses for security and
+    to prevent abuse.</li>
+  <li><strong>Your place in the queue:</strong> that id, the role you are
+    queueing as, the dungeon, and when you joined and were last seen. It is
+    deleted when you leave the queue or your group forms. If the app is closed
+    first, other players' games stop counting it within seconds, and once it has
+    been silent for a minute it is deleted by the next player to use the
+    queue.</li>
+  <li><strong>Your character, to the players in your group:</strong> class,
+    level, talent choices and action-bar order, so whoever is running the fight
+    can play your character as you built it.</li>
+  <li><strong>The fight itself:</strong> the spells you ask to cast and the state
+    of the encounter, relayed between the players in the group.</li>
+</ul>
+<p>
+  There is no chat and no way to send anything else. All of it travels over
+  HTTPS.
+</p>
+<h3>How long it is kept</h3>
+<ul>
+  <li><strong>A group</strong> &mdash; who was in it, their characters and the
+    fight &mdash; is deleted when the run ends. If everyone's game closes
+    mid-run, it is deleted the next time any player from that group uses the
+    queue, once an hour has passed. If none of them ever does, it stays on the
+    server; an automatic server-side clean-up for that case is not in place
+    yet.</li>
+  <li><strong>If you leave a run early</strong> while others play on, your
+    character and your last request are removed from the group straight
+    away.</li>
+</ul>
+
+<h3>Deleting it</h3>
+<p>
+  <strong>Settings &rarr; Multiplayer &rarr; Delete my multiplayer data</strong>
+  deletes your anonymous account, your place in the queue, every group you were
+  hosting, and your character from any group you were in. It also turns
+  multiplayer off. One thing can outlast it: a group other people are still
+  playing keeps a note that your old id was in it until their run ends &mdash;
+  and after deletion that id no longer belongs to any account.
+</p>
+<p>
+  Please do this <em>before</em> uninstalling. The anonymous id is not linked to
+  your name, email, phone or Google account, so once the app is gone there is no
+  way for anyone to tell which data was yours, and a request to delete it could
+  not be matched to anything. What is left is removed by the rules above.
 </p>
 <p>
   One indirect exception is worth naming: if you have Android's system backup
@@ -56,8 +119,8 @@
 
 <h2>Children</h2>
 <p>
-  Overheal is not directed at children under 13 and collects no data from anyone,
-  including children.
+  Overheal is not directed at children under 13. Single player collects no data
+  from anyone; multiplayer collects only what is described above.
 </p>
 
 <h2>Changes</h2>

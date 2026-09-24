@@ -1,5 +1,20 @@
 package com.jdial.aegis.ui
 
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import com.jdial.aegis.sim.SPELL_GROUPS
+import com.jdial.aegis.sim.SpellStat
+import com.jdial.aegis.sim.isStashItem
+import com.jdial.aegis.sim.spellGroup
+import com.jdial.aegis.sim.spellStats
+import com.jdial.aegis.sim.charmEffects
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +39,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
+import com.jdial.aegis.data.Spell
+import com.jdial.aegis.data.SpellType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import kotlin.math.ceil
+import kotlin.math.roundToInt
+import com.jdial.aegis.sim.UnitRole
+import com.jdial.aegis.sim.masteryEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -84,11 +107,15 @@ fun TalentScreen(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(horizontal = 14.dp, vertical = 16.dp),
+                .padding(horizontal = 14.dp, vertical = if (LocalCompactHeight.current) 6.dp else 16.dp),
         ) {
             ContentColumn(horizontalAlignment = Alignment.CenterHorizontally) {
-                BasicText("TALENTS", style = AegisType.display.copy(fontSize = 26.sp, letterSpacing = 5.sp))
-                Spacer(Modifier.height(6.dp))
+                val compact = LocalCompactHeight.current
+                BasicText(
+                    "TALENTS",
+                    style = AegisType.display.copy(fontSize = if (compact) 20.sp else 26.sp, letterSpacing = 5.sp),
+                )
+                Spacer(Modifier.height(if (compact) 2.dp else 6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     BasicText(
                         "${state.talentPoints} POINT${if (state.talentPoints == 1) "" else "S"}",
@@ -372,7 +399,21 @@ fun CharacterScreen(
     state: GameState,
     engine: Engine,
     onSettingsChange: (UiSettings) -> Unit,
+    /** False when this build has no server configuration; the row explains it. */
+    multiplayerAvailable: Boolean = false,
+    forgetResult: com.jdial.aegis.mp.ForgetResult? = null,
+    onForgetMultiplayer: () -> Unit = {},
     onChangeClass: () -> Unit,
+    onSetActionBarSlot: (Int, String) -> Unit = { _, _ -> },
+    /** Drag one bar slot onto another: the two swap. */
+    onReorderActionBar: (Int, Int) -> Unit = { _, _ -> },
+    records: Map<String, com.jdial.aegis.sim.DungeonRecord> = emptyMap(),
+    data: com.jdial.aegis.data.GameData? = null,
+    /** Charms this character has earned, in the order they were earned. */
+    ownedCharms: List<String> = emptyList(),
+    onEquipCharm: (String?) -> Unit = {},
+    /** Consumables held, by id and count. */
+    stash: Map<String, Int> = emptyMap(),
 ) {
     val cls = state.playerClass ?: return
     var showCredits by remember { mutableStateOf(false) }
@@ -424,20 +465,32 @@ fun CharacterScreen(
                 )
 
                 Spacer(Modifier.height(18.dp))
-                StatPanel("Attributes") {
+                // Side by side: two short lists read better as a pair than as
+                // a column, and it gives the spellbook the screen it needs.
+                // IntrinsicSize.Min lets both panels match the taller one.
+                Row(
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                StatPanel("Attributes", Modifier.weight(1f).fillMaxHeight()) {
                     StatLine("Intellect", primary.intellect.toInt().toString())
                     StatLine("Spirit", primary.spirit.toInt().toString())
-                    StatLine("Max Health", engine.stats.healerMaxHealth(state.level).toString())
+                    StatLine("Max Health", engine.stats.playerMaxHealth(state.playerRole, state.level).toString())
                     StatLine("Max Mana", state.maxMana.toString())
                 }
-
-                Spacer(Modifier.height(12.dp))
-                StatPanel("Affinities") {
+                StatPanel("Affinities", Modifier.weight(1f).fillMaxHeight()) {
                     // Spirit, not intellect, is this game's healing power stat.
-                    StatLine("Bonus Healing", "+${((healMult - 1) * 100).toInt()}%")
+                    // The same stat scales damage for a class that deals it --
+                    // the engine reuses `healing` as the magnitude either way,
+                    // so only the label should differ.
+                    StatLine(
+                        if (state.playerRole == UnitRole.HEALER) "Bonus Healing" else "Bonus Damage",
+                        "+${((healMult - 1) * 100).toInt()}%",
+                    )
                     StatLine("Crit Chance", "${talentStats.critChancePct.toInt()}%")
                     StatLine("Haste", "${talentStats.hastePct.toInt()}%")
                     StatLine(uniqueStatLabel(cls), String.format("%.1f", unique))
+                }
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -455,8 +508,28 @@ fun CharacterScreen(
                         }
                         Spacer(Modifier.height(8.dp))
                         BasicText(meta.passiveTraitDescription, style = AegisType.body)
+                        // The signature stat, turned into what it currently buys.
+                        masteryEffect(cls, unique, engine.data.balance.classes)?.let { effect ->
+                            Spacer(Modifier.height(6.dp))
+                            BasicText(
+                                "${uniqueStatLabel(cls)} ${String.format("%.1f", unique)}: $effect",
+                                style = AegisType.body.copy(color = accent.bright),
+                            )
+                        }
                     }
                 }
+                Spacer(Modifier.height(12.dp))
+                if (data != null) {
+                    Spacer(Modifier.height(18.dp))
+                    TrophyCase(records, data)
+                }
+
+                CharmCase(state, engine, ownedCharms, onEquipCharm)
+
+                StashCase(state, engine, stash)
+
+                Spellbook(state, engine, onSetActionBarSlot, onReorderActionBar, stash)
+
                 Spacer(Modifier.height(18.dp))
                 GiltButton("Change Class", onClick = onChangeClass)
                 Spacer(Modifier.height(16.dp))
@@ -492,6 +565,9 @@ fun CharacterScreen(
             SettingsDialog(
                 settings = LocalUiSettings.current,
                 onChange = onSettingsChange,
+                multiplayerAvailable = multiplayerAvailable,
+                forgetResult = forgetResult,
+                onForgetMultiplayer = onForgetMultiplayer,
                 onDismiss = { showSettings = false },
             )
         }
@@ -502,11 +578,281 @@ private fun uniqueStatLabel(cls: PlayerClass) = when (cls) {
     PlayerClass.PRIEST -> "Divinity"
     PlayerClass.DRUID -> "Vitality"
     PlayerClass.PALADIN -> "Radiance"
+    PlayerClass.MAGE -> "Shatter"
+    PlayerClass.WARRIOR -> "Vengeance"
+    PlayerClass.DEATHKNIGHT -> "Blood Shield"
+    PlayerClass.ROGUE -> "Seal Fate"
+    PlayerClass.MONK -> "Stagger"
+    PlayerClass.WARLOCK -> "Nightfall"
+}
+
+/**
+ * The action bar, editable, with everything the class has unlocked underneath.
+ *
+ * Reordering already existed as a drag on the combat bar, but there was no way
+ * to choose *which* spells you carried -- the loadout was whatever progression
+ * handed you. Tapping a slot selects it; tapping an unlocked spell puts it
+ * there. The same spell cannot occupy two slots, because two slots sharing one
+ * cooldown is indistinguishable from a bug.
+ */
+@Composable
+private fun Spellbook(
+    state: GameState,
+    engine: Engine,
+    onSet: (Int, String) -> Unit,
+    onSwap: (Int, Int) -> Unit,
+    stash: Map<String, Int>,
+) {
+    val accent = LocalAccent.current
+    var selectedSlot by remember { mutableStateOf(0) }
+    val bar = state.activeActionBars
+    val inCombat = state.currentDungeon != null
+
+    ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(14.dp)) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicText("ACTION BAR", style = AegisType.label.copy(color = Gilt.mid))
+                Spacer(Modifier.weight(1f))
+                if (inCombat) {
+                    BasicText(
+                        "LOCKED IN COMBAT",
+                        style = AegisType.label.copy(fontSize = 10.sp, color = Vital.hurt),
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+
+            // Long-press a slot and drag it onto another: the two swap. Measured
+            // in slot widths, so a drop lands on whichever slot the finger is
+            // over rather than needing to hit it exactly.
+            var dragFrom by remember { mutableStateOf(-1) }
+            var dragDx by remember { mutableStateOf(0f) }
+            var slotPx by remember { mutableStateOf(1f) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                bar.forEachIndexed { i, id ->
+                    val spell = engine.data.spell(id)
+                    val selected = i == selectedSlot
+                    val label = spell?.name ?: "empty"
+                    val dragging = dragFrom == i
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .onGloballyPositioned { slotPx = it.size.width.toFloat().coerceAtLeast(1f) }
+                            .graphicsLayer { if (dragging) { translationX = dragDx; scaleX = 1.08f; scaleY = 1.08f } }
+                            .zIndex(if (dragging) 1f else 0f)
+                            .pointerInput(i, inCombat) {
+                                if (inCombat) return@pointerInput
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { dragFrom = i; dragDx = 0f; selectedSlot = i },
+                                    onDrag = { change, amount -> change.consume(); dragDx += amount.x },
+                                    onDragEnd = {
+                                        // Slot width plus the gap between slots.
+                                        val step = slotPx + 8.dp.toPx()
+                                        val to = (i + (dragDx / step).roundToInt()).coerceIn(0, bar.lastIndex)
+                                        if (to != i) {
+                                            onSwap(i, to)
+                                            selectedSlot = to
+                                        }
+                                        dragFrom = -1
+                                        dragDx = 0f
+                                    },
+                                    onDragCancel = { dragFrom = -1; dragDx = 0f },
+                                )
+                            }
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(
+                                if (selected) 2.dp else 1.dp,
+                                if (selected) accent.bright else Gilt.deep.copy(alpha = 0.5f),
+                                RoundedCornerShape(6.dp),
+                            )
+                            .clickable(enabled = !inCombat) { selectedSlot = i }
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = "Slot " + (i + 1) + ", " + label
+                            }
+                            .padding(6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (spell != null) {
+                            GameIcon(spell.icon, size = 34.dp, accent = accent.core)
+                        } else {
+                            BasicText(
+                                (i + 1).toString(),
+                                style = AegisType.label.copy(color = Ink.muted),
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            val current = engine.data.spell(bar.getOrNull(selectedSlot) ?: "")
+            BasicText(
+                "Slot " + (selectedSlot + 1) + ": " + (current?.name ?: "empty"),
+                style = AegisType.body.copy(color = Ink.secondary),
+            )
+            if (current != null && !inCombat) {
+                Spacer(Modifier.height(6.dp))
+                BasicText(
+                    "REMOVE FROM SLOT",
+                    style = AegisType.label.copy(fontSize = 10.sp, color = Vital.hurt),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClickLabel = "Clear this slot") { onSet(selectedSlot, "") }
+                        .semantics { role = Role.Button }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+            BasicText("SPELLBOOK", style = AegisType.label.copy(color = Gilt.mid))
+            Spacer(Modifier.height(8.dp))
+
+            // Consumables held, placeable on the bar like a spell. One at a
+            // time: putting a second down takes the first off. Carried into the
+            // next run from here -- the decision is made with the bar in front
+            // of you, not on the way into a dungeon.
+            val held = stash.filterValues { it > 0 }.keys.sorted().mapNotNull { engine.data.spell(it) }
+            if (held.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                BasicText("CONSUMABLES", style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted))
+                Spacer(Modifier.height(4.dp))
+                held.forEach { item ->
+                    SpellRow(
+                        spell = item,
+                        stats = state.playerClass?.let {
+                            spellStats(item, it, state.level, state.me, engine.stats)
+                        }.orEmpty() + SpellStat("HELD", "${stash[item.id] ?: 0}", "rank"),
+                        onBar = item.id in bar,
+                        enabled = !inCombat && item.id !in bar,
+                        accent = accent.core,
+                        onClick = { onSet(selectedSlot, item.id) },
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+            }
+
+            // Shelved by what a player reaches for it to do, rather than in the
+            // order they were learned -- nine spells in a list is a list, nine
+            // on four shelves is a kit you can read.
+            val cls = state.playerClass
+            val known = state.unlockedSpells.mapNotNull { engine.data.spell(it) }
+                .filterNot { it.isStashItem() }
+            SPELL_GROUPS.forEach { group ->
+                val shelf = known.filter { spellGroup(it) == group }
+                if (shelf.isEmpty()) return@forEach
+                Spacer(Modifier.height(6.dp))
+                BasicText(group, style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted))
+                Spacer(Modifier.height(4.dp))
+                shelf.forEach { spell ->
+                    SpellRow(
+                        spell = spell,
+                        stats = cls?.let { spellStats(spell, it, state.level, state.me, engine.stats) }.orEmpty(),
+                        onBar = spell.id in bar,
+                        enabled = !inCombat && spell.id !in bar,
+                        accent = accent.core,
+                        onClick = { onSet(selectedSlot, spell.id) },
+                    )
+                    Spacer(Modifier.height(6.dp))
+                }
+            }
+        }
+    }
+}
+
+/** One spellbook entry: art, name, what it costs, and what it actually does. */
+@Composable
+private fun SpellRow(
+    spell: Spell,
+    stats: List<SpellStat>,
+    onBar: Boolean,
+    enabled: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { role = Role.Button }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GameIcon(spell.icon, size = 34.dp, accent = accent, dimmed = onBar)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicText(
+                    spell.name,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                    style = AegisType.numeric.copy(
+                        fontSize = 13.sp,
+                        color = if (onBar) Ink.muted else Ink.primary,
+                    ),
+                )
+                if (onBar) {
+                    Spacer(Modifier.width(6.dp))
+                    BasicText(
+                        "ON BAR",
+                        style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted),
+                    )
+                }
+            }
+            Spacer(Modifier.height(3.dp))
+            StatChips(stats)
+        }
+    }
+}
+
+/**
+ * A spell's numbers as small labelled chips: cost, cooldown, what it heals or
+ * hits for, what it absorbs. Chips rather than a sentence, because the thing a
+ * player compares across spells is one number at a time.
+ */
+@Composable
+internal fun StatChips(stats: List<SpellStat>, dimmed: Boolean = false) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        stats.forEach { stat ->
+            val colour = when (stat.tone) {
+                "good" -> Vital.healthy
+                "bad" -> Vital.critical
+                "heal" -> Vital.healthy
+                "damage" -> Vital.critical
+                "shield" -> Vital.shield
+                "mana" -> Vital.mana
+                "cost" -> Ink.secondary
+                "time" -> Gilt.core
+                else -> Ink.muted
+            }.let { if (dimmed) it.copy(alpha = 0.45f) else it }
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Obsidian.abyss)
+                    .border(1.dp, colour.copy(alpha = 0.35f), RoundedCornerShape(3.dp))
+                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(stat.label, style = AegisType.label.copy(fontSize = 8.sp, color = colour.copy(alpha = 0.8f)))
+                Spacer(Modifier.width(4.dp))
+                BasicText(stat.value, style = AegisType.numeric.copy(fontSize = 11.sp, color = colour))
+            }
+        }
+    }
 }
 
 @Composable
-private fun StatPanel(title: String, content: @Composable () -> Unit) {
-    ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(14.dp)) {
+private fun StatPanel(
+    title: String,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    content: @Composable () -> Unit,
+) {
+    ForgedPanel(modifier, contentPadding = PaddingValues(12.dp)) {
         Column {
             BasicText(title.uppercase(), style = AegisType.label.copy(color = Gilt.mid))
             Spacer(Modifier.height(8.dp))
@@ -521,10 +867,211 @@ private fun StatLine(label: String, value: String) {
         Modifier.fillMaxWidth().padding(vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BasicText(label, style = AegisType.body, modifier = Modifier.weight(1f))
-        BasicText(value, style = AegisType.numeric.copy(fontSize = 14.sp))
+        // Half-width panels: one line per stat, never a wrapped label.
+        BasicText(
+            label,
+            style = AegisType.body.copy(fontSize = 13.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(6.dp))
+        BasicText(value, style = AegisType.numeric.copy(fontSize = 14.sp), maxLines = 1)
     }
 }
+
+/**
+ * The charms this character has earned, and the one it is wearing.
+ *
+ * One worn at a time on purpose: a charm is a decision about how the class
+ * plays, and a decision you make once and never revisit is not one. Every
+ * charm names a cost as well as a gift for the same reason.
+ */
+@Composable
+private fun CharmCase(
+    state: GameState,
+    engine: Engine,
+    owned: List<String>,
+    onEquip: (String?) -> Unit,
+) {
+    val cls = state.playerClass ?: return
+    val mine = engine.data.charms.values.filter { it.cls == cls.name }
+    if (mine.isEmpty()) return
+    val have = mine.filter { it.id in owned }
+
+    Spacer(Modifier.height(18.dp))
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        BasicText("CHARMS", style = AegisType.label.copy(color = Gilt.mid))
+        Spacer(Modifier.weight(1f))
+        BasicText(
+            "${have.size} / ${mine.size}",
+            style = AegisType.numeric.copy(fontSize = 12.sp, color = Ink.muted),
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+
+    if (have.isEmpty()) {
+        BasicText(
+            "Clear a dungeon for the first time and it hands one over.",
+            style = AegisType.body.copy(color = Ink.muted),
+        )
+        return
+    }
+
+    have.forEach { charm ->
+        val worn = state.charm?.id == charm.id
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 3.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .border(
+                    if (worn) 2.dp else 1.dp,
+                    if (worn) Gilt.core else Gilt.deep.copy(alpha = 0.5f),
+                    RoundedCornerShape(6.dp),
+                )
+                .clickable(onClickLabel = if (worn) "Take off ${charm.name}" else "Wear ${charm.name}") {
+                    onEquip(if (worn) null else charm.id)
+                }
+                .semantics { role = Role.Switch }
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            GameIcon(charm.icon, size = 34.dp, accent = if (worn) Gilt.core else Gilt.deep)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                BasicText(
+                    charm.name.uppercase(),
+                    style = AegisType.label.copy(color = if (worn) Gilt.bright else Ink.primary),
+                )
+                BasicText(charm.text, style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted))
+                Spacer(Modifier.height(4.dp))
+                StatChips(charmEffects(charm, engine.data))
+            }
+            if (worn) {
+                Spacer(Modifier.width(8.dp))
+                BasicText("WORN", style = AegisType.label.copy(fontSize = 9.sp, color = Gilt.core))
+            }
+        }
+    }
+}
+
+/**
+ * The stash: every consumable in the game, on the shelf of the mode that drops
+ * it, with how many you hold.
+ *
+ * All twenty are shown, not only the ones found. An empty slot saying where it
+ * comes from is what turns a list of potions into a collection -- and it is the
+ * only place a player learns that slow runs are where the flasks are.
+ */
+@Composable
+private fun StashCase(state: GameState, engine: Engine, stash: Map<String, Int>) {
+    val cls = state.playerClass ?: return
+    val drops = engine.data.stash.drops
+    if (drops.isEmpty()) return
+    val held = stash.values.sum()
+    val kinds = stash.count { it.value > 0 }
+    var open by remember { mutableStateOf<String?>(null) }
+
+    Spacer(Modifier.height(18.dp))
+    ForgedPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(14.dp)) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicText("STASH", style = AegisType.label.copy(color = Gilt.mid))
+                Spacer(Modifier.weight(1f))
+                BasicText(
+                    "$kinds / ${engine.data.stash.items.size} FOUND  ·  $held HELD",
+                    style = AegisType.numeric.copy(fontSize = 11.sp, color = Ink.muted),
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            BasicText(
+                "Carry one into a run from the queue. Using it spends one.",
+                style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted),
+            )
+
+            STASH_SHELVES.forEach { (mode, title) ->
+                val pool = drops[mode].orEmpty()
+                if (pool.isEmpty()) return@forEach
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicText(title, style = AegisType.label.copy(fontSize = 10.sp, color = Ink.secondary))
+                    Spacer(Modifier.width(6.dp))
+                    BasicText(
+                        "·  ${mode.uppercase()} RUNS",
+                        style = AegisType.label.copy(fontSize = 9.sp, color = Ink.muted),
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                // A grid of icons first, so the shelf reads at a glance; the
+                // numbers open underneath the one you tap.
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    pool.forEach { id ->
+                        val item = engine.data.spell(id) ?: return@forEach
+                        val count = stash[id] ?: 0
+                        val selected = open == id
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(6.dp))
+                                .border(
+                                    if (selected) 2.dp else 1.dp,
+                                    when {
+                                        selected -> Gilt.core
+                                        count > 0 -> Gilt.deep
+                                        else -> Gilt.deep.copy(alpha = 0.25f)
+                                    },
+                                    RoundedCornerShape(6.dp),
+                                )
+                                .clickable(onClickLabel = "Show ${item.name}") {
+                                    open = if (selected) null else id
+                                }
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = "${item.name}, " +
+                                        if (count > 0) "$count held" else "not found yet"
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            GameIcon(item.icon, size = 34.dp, accent = Gilt.deep, dimmed = count == 0)
+                            if (count > 0) {
+                                BasicText(
+                                    "$count",
+                                    style = AegisType.numeric.copy(fontSize = 11.sp, color = Ink.primary),
+                                    modifier = Modifier.align(Alignment.BottomEnd).padding(3.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                val shown = open?.takeIf { it in pool }?.let { engine.data.spell(it) }
+                if (shown != null) {
+                    val count = stash[shown.id] ?: 0
+                    Spacer(Modifier.height(8.dp))
+                    BasicText(
+                        shown.name.uppercase(),
+                        style = AegisType.label.copy(color = if (count > 0) Gilt.bright else Ink.muted),
+                    )
+                    BasicText(
+                        if (count > 0) "$count held" else "Not found yet · drops on ${mode} runs",
+                        style = AegisType.body.copy(fontSize = 11.sp, color = Ink.muted),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    StatChips(spellStats(shown, cls, state.level, state.me, engine.stats), dimmed = count == 0)
+                }
+            }
+        }
+    }
+}
+
+/** The stash's shelves: the mode that drops them, and what that mode is for. */
+private val STASH_SHELVES = listOf(
+    "fast" to "OFFENCE",
+    "normal" to "SUSTAIN",
+    "slow" to "DEFENCE",
+    "hard" to "RARE",
+)
 
 /**
  * Attribution for the bundled artwork. game-icons.net is CC BY 3.0, which
@@ -552,6 +1099,31 @@ private fun CreditsDialog(onDismiss: () -> Unit) {
                     Spacer(Modifier.height(10.dp))
                     BasicText(
                         "Cinzel typeface by Natanael Gama, SIL Open Font License 1.1.",
+                        style = AegisType.body,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    BasicText(
+                        // CC0 asks for nothing, but credit costs nothing either.
+                        "Battle sprites and many sound effects by Kenney (kenney.nl), with " +
+                            "more from artisticdude's RPG Sound Pack and rubberduck's 80 CC0 RPG " +
+                            "SFX. All CC0.",
+                        style = AegisType.body,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    BasicText(
+                        // This one is not optional: CC BY requires the credit
+                        // to travel with the work.
+                        "Spell sounds from the Fantasy Sound Effects Library by " +
+                            "Little Robot Sound Factory (littlerobotsoundfactory.com), " +
+                            "used under CC BY 3.0. Shortened and re-encoded.",
+                        style = AegisType.body,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    BasicText(
+                        // The credit line the author asks for, as they wrote it.
+                        "Some of the sounds in this project were created by ViRiX Dreamcore " +
+                            "(David Mckee) www.soundcloud.com/virix. CC BY 3.0; shortened and " +
+                            "re-encoded.",
                         style = AegisType.body,
                     )
                     Spacer(Modifier.height(10.dp))

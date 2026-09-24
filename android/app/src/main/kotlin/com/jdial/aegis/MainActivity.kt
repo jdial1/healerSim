@@ -26,9 +26,18 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.ui.platform.LocalConfiguration
+import com.jdial.aegis.ui.COMPACT_HEIGHT_DP
+import com.jdial.aegis.ui.LocalCompactHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,7 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jdial.aegis.data.Dungeon
 import com.jdial.aegis.data.PlayerClass
-import com.jdial.aegis.sim.HEALER_UNIT_ID
+import com.jdial.aegis.sim.PLAYER_UNIT_ID
 import com.jdial.aegis.ui.CharacterScreen
 import com.jdial.aegis.ui.ClassSelectScreen
 import com.jdial.aegis.ui.ConfirmDialog
@@ -55,9 +64,11 @@ import com.jdial.aegis.ui.GameIcon
 import com.jdial.aegis.ui.TalentScreen
 import com.jdial.aegis.ui.CombatScreen
 import com.jdial.aegis.ui.DungeonListScreen
+import com.jdial.aegis.ui.CombatFeedback
 import com.jdial.aegis.ui.DungeonQueueSheet
 import com.jdial.aegis.ui.OutcomeDialog
 import com.jdial.aegis.ui.SplashScreen
+import com.jdial.aegis.sim.UnitRole
 import com.jdial.aegis.ui.Tutorial
 import com.jdial.aegis.ui.TutorialOverlay
 import com.jdial.aegis.ui.theme.AegisTheme
@@ -65,6 +76,7 @@ import com.jdial.aegis.ui.theme.AegisType
 import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.Ink
 import com.jdial.aegis.ui.theme.LocalAccent
+import com.jdial.aegis.ui.theme.LocalGameData
 import androidx.compose.runtime.CompositionLocalProvider
 import com.jdial.aegis.ui.theme.LocalUiSettings
 import com.jdial.aegis.ui.theme.Obsidian
@@ -122,22 +134,49 @@ private val MENU_TABS = listOf(
 private fun AegisApp(onReady: () -> Unit = {}) {
     val vm: AegisViewModel = viewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    val roster by vm.roster.collectAsStateWithLifecycle()
+    val highlights by vm.highlights.collectAsStateWithLifecycle()
+    // What this character has to show: the dungeon cards and the trophy case read it.
+    val records = state.playerClass?.let { roster.byClass[it.name]?.records }.orEmpty()
+    val ownedCharms = roster.charmIds
+    val keystones = state.playerClass?.let { roster.byClass[it.name]?.keystones }.orEmpty()
+    val forgetResult by vm.forgetResult.collectAsStateWithLifecycle()
     // GameData parsed in the ViewModel's initialiser, so by here we are ready.
     LaunchedEffect(Unit) { onReady() }
 
     var screen: Screen by remember { mutableStateOf(Screen.Splash) }
     var queued: Dungeon? by remember { mutableStateOf(null) }
     var confirmAbandon by remember { mutableStateOf(false) }
-    var targetId: String? by remember { mutableStateOf(HEALER_UNIT_ID) }
+    var targetId: String? by remember { mutableStateOf(PLAYER_UNIT_ID) }
     val seenTutorial by vm.tutorialSteps.collectAsStateWithLifecycle()
 
-    // One tutorial card per screen, the first time that screen is reached.
-    val tutorialStep = when (screen) {
-        Screen.ClassSelect -> Tutorial.CLASS_SELECT
-        Screen.Dungeons -> Tutorial.DUNGEONS
-        Screen.Combat -> Tutorial.COMBAT
-        else -> null
-    }?.takeIf { it.id !in seenTutorial }
+    // One tutorial card at a time: first the screen's own, the first time it
+    // is reached, then a small card for each thing the moment it first exists.
+    val stash = vm.stash
+    // A loaded profile may already have everything, so a page shows at most
+    // one card per visit, and only about what is on that page.
+    var shownOn: Screen? by remember { mutableStateOf(null) }
+    val quiet = shownOn == screen && screen != Screen.Combat
+    val tutorialStep = if (quiet) null else listOfNotNull(
+        Tutorial.CLASS_SELECT.takeIf { screen == Screen.ClassSelect },
+        Tutorial.DUNGEONS.takeIf { screen == Screen.Dungeons },
+        Tutorial.combatFor(state.playerRole).takeIf { screen == Screen.Combat },
+        Tutorial.TALENTS.takeIf { screen == Screen.Talents },
+        Tutorial.TALENT_POINTS.takeIf { screen == Screen.Talents && state.talentPoints > 0 },
+        ownedCharms.firstOrNull()?.let { id ->
+            Tutorial.CHARMS.copy(icon = vm.data.charms[id]?.icon ?: Tutorial.CHARMS.icon)
+        }?.takeIf { screen == Screen.Talents },
+        stash.keys.firstOrNull()?.let { id ->
+            Tutorial.STASH.copy(icon = vm.data.spell(id)?.icon ?: Tutorial.STASH.icon)
+        }?.takeIf { screen == Screen.Talents },
+        Tutorial.HARD_MODE.takeIf { screen == Screen.Dungeons && records.values.any { it.clears > 0 } },
+        Tutorial.KEYSTONES.takeIf { screen == Screen.Dungeons && keystones.values.any { it > 0 } },
+        Tutorial.BREATHER.takeIf { screen == Screen.Combat && state.restTicks > 0 },
+        Tutorial.ADDS.takeIf { screen == Screen.Combat && state.adds.isNotEmpty() },
+        Tutorial.AGGRO.takeIf {
+            screen == Screen.Combat && state.playerRole != UnitRole.TANK && state.enemyTargetId == state.localUnitId
+        },
+    ).firstOrNull { it.id !in seenTutorial }
 
     // A dead target stays selected but is no longer clickable, and CastPipeline
     // does not reject a target that is missing — so every later cast silently
@@ -147,7 +186,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
     // clearing it here would reintroduce the same bug.)
     LaunchedEffect(state.party) {
         val alive = state.party.any { it.id == targetId && it.isAlive }
-        if (!alive) targetId = HEALER_UNIT_ID
+        if (!alive) targetId = PLAYER_UNIT_ID
     }
 
     // Entering and leaving a run drives the screen, so the two never disagree.
@@ -161,7 +200,22 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
     val uiSettings by vm.settings.collectAsStateWithLifecycle()
     AegisTheme(cls = state.playerClass) {
-      CompositionLocalProvider(LocalUiSettings provides uiSettings) {
+      CompositionLocalProvider(
+          LocalUiSettings provides uiSettings,
+          LocalGameData provides vm.data,
+      ) {
+        // Outside the screen switch on purpose: a run ends in the same frame the
+        // screen can change, and the clear or wipe cue must still play.
+        if (state.playerClass != null) {
+            CombatFeedback(
+                state = state,
+                casts = vm.castFeedback,
+                sound = uiSettings.sound,
+                haptics = uiSettings.haptics,
+                spell = { vm.data.spell(it) },
+                target = targetId,
+            )
+        }
         Box(Modifier.fillMaxSize().background(Obsidian.abyss)) {
             // System back used to quit the app from every screen, including
             // mid-boss. Overlays unwind first — they can be up on any screen —
@@ -189,7 +243,7 @@ private fun AegisApp(onReady: () -> Unit = {}) {
                     abandoning -> confirmAbandon = false
                     state.dungeonOutcome != null -> vm.dismissOutcome()
                     queued != null -> queued = null
-                    tutorialStep != null -> vm.completeTutorialStep(tutorialStep.id)
+                    tutorialStep != null -> { vm.completeTutorialStep(tutorialStep.id); shownOn = screen }
                     // Ask, never act: a run is too expensive to lose to a swipe.
                     screen == Screen.Combat -> confirmAbandon = true
                     screen == Screen.ClassSelect -> screen = Screen.Splash
@@ -199,86 +253,153 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 
             val tabbed = screen == Screen.Dungeons || screen == Screen.Talents || screen == Screen.Character
 
-            Column(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    when (screen) {
-                        Screen.Splash -> SplashScreen(
-                            version = "v${BuildConfig.VERSION_NAME}",
-                            onBegin = { screen = Screen.ClassSelect },
-                        )
+            // A landscape phone is about 400dp tall. A tab bar along the
+            // bottom, plus the navigation-bar inset counted by both the bar and
+            // the screen above it, left the dungeon list a strip. There the
+            // tabs become a rail down the side instead.
+            val config = LocalConfiguration.current
+            val compact = config.screenWidthDp > config.screenHeightDp && config.screenHeightDp < COMPACT_HEIGHT_DP
+            val screenContent: @Composable () -> Unit = {
+                when (screen) {
+                    Screen.Splash -> SplashScreen(
+                        version = "v${BuildConfig.VERSION_NAME}",
+                        onBegin = { screen = Screen.ClassSelect },
+                    )
 
-                        Screen.ClassSelect -> ClassSelectScreen(
-                            data = vm.data,
-                            maxLevel = vm.maxLevelAcrossRoster,
-                            onPick = { cls: PlayerClass ->
-                                vm.selectClass(cls)
-                                screen = Screen.Dungeons
-                            },
-                        )
+                    Screen.ClassSelect -> ClassSelectScreen(
+                        data = vm.data,
+                        maxLevel = vm.maxLevelAcrossRoster,
+                        onPick = { cls: PlayerClass ->
+                            vm.selectClass(cls)
+                            screen = Screen.Dungeons
+                        },
+                    )
 
-                        Screen.Dungeons -> DungeonListScreen(
-                            data = vm.data,
-                            playerLevel = state.level,
-                            cls = state.playerClass ?: PlayerClass.PRIEST,
-                            talentPoints = state.talentPoints,
-                            onSelect = { queued = it },
-                        )
-
-                        Screen.Talents -> TalentScreen(
-                            state = state,
-                            engine = vm.engine,
-                            onInvest = vm::unlockTalent,
-                            onRefund = vm::decrementTalent,
-                            onRespec = vm::respecTalents,
-                        )
-
-                        Screen.Character -> CharacterScreen(
-                            state = state,
-                            engine = vm.engine,
-                            onSettingsChange = { next -> vm.updateSettings { next } },
-                            onChangeClass = {
-                                vm.leaveCharacter()
-                                screen = Screen.ClassSelect
-                            },
-                        )
-
-                        Screen.Combat -> CombatScreen(
-                            state = state,
-                            data = vm.data,
-                            targetId = targetId,
-                            onTarget = { targetId = it },
-                            onCast = { spellId -> vm.castSpell(spellId, targetId) },
-                            // Dropping a spell on a frame casts there and keeps
-                            // that unit selected, so the next tap-cast continues
-                            // on it — the sticky retarget click-casting gives you.
-                            onCastAt = { spellId, unitId ->
-                                targetId = unitId
-                                vm.castSpell(spellId, unitId)
-                            },
-                            onReorder = vm::reorderActionBar,
-                            onLeave = { confirmAbandon = true },
-                        )
-                    }
-                }
-
-                if (tabbed) {
-                    MenuTabs(
-                        current = screen,
+                    Screen.Dungeons -> DungeonListScreen(
+                        data = vm.data,
+                        records = records,
+                        keystones = keystones,
+                        playerLevel = state.level,
+                        cls = state.playerClass ?: PlayerClass.PRIEST,
                         talentPoints = state.talentPoints,
-                        onSelect = { screen = it },
+                        onSelect = { queued = it },
+                    )
+
+                    Screen.Talents -> TalentScreen(
+                        state = state,
+                        engine = vm.engine,
+                        onInvest = vm::unlockTalent,
+                        onRefund = vm::decrementTalent,
+                        onRespec = vm::respecTalents,
+                    )
+
+                    Screen.Character -> CharacterScreen(
+                        state = state,
+                        records = records,
+                        data = vm.data,
+                        engine = vm.engine,
+                        onSettingsChange = { next -> vm.updateSettings { next } },
+                        multiplayerAvailable = vm.multiplayerAvailable,
+                        forgetResult = forgetResult,
+                        onForgetMultiplayer = vm::forgetMultiplayerData,
+                        onChangeClass = {
+                            vm.leaveCharacter()
+                            screen = Screen.ClassSelect
+                        },
+                        onSetActionBarSlot = vm::setActionBarSlot,
+                        onReorderActionBar = vm::reorderActionBar,
+                        ownedCharms = ownedCharms,
+                        onEquipCharm = vm::equipCharm,
+                        stash = state.playerClass?.let { roster.byClass[it.name]?.stash }.orEmpty(),
+                    )
+
+                    Screen.Combat -> CombatScreen(
+                        state = state,
+                        data = vm.data,
+                        targetId = targetId,
+                        onTarget = { targetId = it },
+                        onCast = { spellId -> vm.castSpell(spellId, targetId) },
+                        // Dropping a spell on a frame casts there and keeps
+                        // that unit selected, so the next tap-cast continues
+                        // on it — the sticky retarget click-casting gives you.
+                        onCastAt = { spellId, unitId ->
+                            targetId = unitId
+                            vm.castSpell(spellId, unitId)
+                        },
+                        onReorder = vm::reorderActionBar,
+                        onLeave = { confirmAbandon = true },
+                        onPullNow = vm::pullNow,
                     )
                 }
             }
 
+            CompositionLocalProvider(LocalCompactHeight provides compact) {
+                if (tabbed && compact) {
+                    Row(Modifier.fillMaxSize()) {
+                        MenuTabs(
+                            current = screen,
+                            talentPoints = state.talentPoints,
+                            vertical = true,
+                            onSelect = { screen = it },
+                        )
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .consumeWindowInsets(WindowInsets.systemBars.only(WindowInsetsSides.Start)),
+                        ) { screenContent() }
+                    }
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                // The tab bar pads for the navigation bar itself.
+                                .then(if (tabbed) Modifier.consumeWindowInsets(WindowInsets.navigationBars) else Modifier),
+                        ) { screenContent() }
+                        if (tabbed) {
+                            MenuTabs(
+                                current = screen,
+                                talentPoints = state.talentPoints,
+                                vertical = false,
+                                onSelect = { screen = it },
+                            )
+                        }
+                    }
+                }
+            }
+
             queued?.let { dungeon ->
+                val queueStatus by vm.queueStatus.collectAsStateWithLifecycle()
+                // Start looking the moment the lobby opens, so it can show real
+                // people arriving rather than an animation. Backing out gives
+                // the seat up again -- a stale queue entry keeps everyone else
+                // holding a place for somebody who has gone.
+                LaunchedEffect(dungeon.id) { vm.enterQueue(dungeon, "normal") }
+                // The board, once, when the lobby opens. Offline it stays empty
+                // and the row is not drawn.
+                var worldBest by remember(dungeon.id) { mutableIntStateOf(0) }
+                LaunchedEffect(dungeon.id) {
+                    worldBest = vm.bestTimes(dungeon.id).minOfOrNull { it.ticks } ?: 0
+                }
                 DungeonQueueSheet(
                     dungeon = dungeon,
                     data = vm.data,
-                    onClose = { queued = null },
-                    onEnter = { pace ->
+                    playerRole = state.playerRole,
+                    queueStatus = queueStatus,
+                    yourBest = records[dungeon.id]?.bestTicks ?: 0,
+                    hardUnlocked = (records[dungeon.id]?.clears ?: 0) > 0,
+                    keystone = vm.keystoneOf(dungeon.id),
+                    worldBest = worldBest,
+                    onClose = {
                         queued = null
-                        targetId = HEALER_UNIT_ID
-                        vm.startDungeon(dungeon, pace)
+                        vm.cancelQueue()
+                    },
+                    onEnter = { pace, hard ->
+                        queued = null
+                        targetId = state.localUnitId
+                        vm.startDungeon(dungeon, pace, hard)
                     },
                 )
             }
@@ -298,14 +419,16 @@ private fun AegisApp(onReady: () -> Unit = {}) {
             if (tutorialBlocking) {
                 TutorialOverlay(
                     step = tutorialStep,
-                    onDismiss = { vm.completeTutorialStep(tutorialStep.id) },
+                    onDismiss = { vm.completeTutorialStep(tutorialStep.id); shownOn = screen },
                 )
             }
 
             state.dungeonOutcome?.let { outcome ->
                 OutcomeDialog(
+                    highlights = highlights,
                     outcome = outcome,
                     data = vm.data,
+                    playerRole = state.playerRole,
                     onDismiss = { vm.dismissOutcome() },
                 )
             }
@@ -331,23 +454,16 @@ private fun AegisApp(onReady: () -> Unit = {}) {
 private fun MenuTabs(
     current: Screen,
     talentPoints: Int,
+    /** A rail down the left edge, for a window too short for a bottom bar. */
+    vertical: Boolean,
     onSelect: (Screen) -> Unit,
 ) {
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Row(
-            Modifier
-                .widthIn(max = 480.dp)
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+    val tabs: @Composable (Modifier) -> Unit = { cell ->
             MENU_TABS.forEach { (label, target, icon) ->
                 val selected = current == target
                 val accent = LocalAccent.current
                 Box(
-                    Modifier
-                        .weight(1f)
+                    cell
                         .clip(RoundedCornerShape(5.dp))
                         .background(if (selected) Obsidian.raised else Obsidian.panel.copy(alpha = 0.92f))
                         .border(
@@ -394,6 +510,26 @@ private fun MenuTabs(
                     }
                 }
             }
+    }
+    if (vertical) {
+        Column(
+            Modifier
+                .width(172.dp)
+                .fillMaxHeight()
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical))
+                .padding(start = 12.dp, end = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        ) { tabs(Modifier.fillMaxWidth()) }
+    } else {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Row(
+                Modifier
+                    .widthIn(max = 480.dp)
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) { tabs(Modifier.weight(1f)) }
         }
     }
 }

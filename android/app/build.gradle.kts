@@ -4,28 +4,99 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services) apply false
+}
+
+// google-services generates its resource values from google-services.json, and
+// hard-fails the build when that file is missing. It is missing on purpose:
+// it is per-project configuration nobody should commit, and a fresh clone has
+// to build without it. Applying it only when the file is present means the app
+// still compiles for anyone -- multiplayer is simply unavailable at runtime,
+// which is what FirebaseBackend.isConfigured reports.
+val hasFirebaseConfig = file("google-services.json").exists()
+if (hasFirebaseConfig) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 // The web app under ../../ is the single source of truth for all game content.
 // Rather than duplicating 3,252 lines of JSON, sync it into assets at build time.
-val webRoot = rootProject.layout.projectDirectory.dir("..")
+/** The repo root. It holds public/icons, and the privacy policy Play links to. */
+val repoRoot = rootProject.layout.projectDirectory.dir("..")
+
+/** Every piece of game content, in one tree. */
+val contentRoot = layout.projectDirectory.dir("../content")
 
 val generatedAssetsDir = layout.buildDirectory.dir("generated/gameAssets").get().asFile
 
-val syncGameData = tasks.register<Sync>("syncGameData") {
-    description = "Copies game content JSON and icons from the web app into Android assets."
-    into(generatedAssetsDir)
+/*
+ * Only the icons the app can actually ask for are packaged.
+ *
+ * public/icons/wow holds the game's whole icon folder -- 23,474 files, 163 MB --
+ * and the app uses a few hundred of them. An icon name reaches the screen from
+ * exactly two places: an image field in the content JSON, or a literal in the
+ * Kotlin sources (the fallback, the potion, the tab icons). Both are scanned
+ * here and resolved the way IconLoader.candidatePaths resolves them; anything
+ * else stays out of the APK. IconPruneTest checks the result independently:
+ * nothing unreferenced ships, and nothing referenced is missing.
+ */
+val iconFieldNames = setOf("icon", "bossIcon", "cardIcon", "passiveTraitIcon")
+val contentJsonDirs = listOf(contentRoot.asFile)
+val kotlinSourceDir = layout.projectDirectory.dir("src/main/kotlin").asFile
 
-    from(webRoot.dir("src/data")) {
-        include("*.json")
-        into("data")
+fun iconAssetPaths(name: String): List<String> {
+    val n = name.trim().lowercase()
+    if (n.isEmpty()) return emptyList()
+    if (n.startsWith("class-icons/")) return listOf("$n.png")
+    if (n.startsWith("wow/") || !n.contains("/")) {
+        val icon = n.removePrefix("wow/").replace(" ", "")
+        return listOf("wow/$icon.png", "wow/$icon.jpg")
     }
-    from(webRoot.dir("src/classes")) {
-        include("*/class.json", "*/spells.json", "*/talents.json")
-        into("classes")
+    val (author, icon) = n.split("/", limit = 2)
+    return listOf("game-icons/$author/$icon.png")
+}
+
+fun referencedIconAssets(): Set<String> {
+    val names = mutableSetOf("wow/inv_misc_questionmark")
+    fun walk(node: Any?) {
+        when (node) {
+            is Map<*, *> -> node.forEach { (k, v) ->
+                if (k in iconFieldNames && v is String) names += v
+                walk(v)
+            }
+            is List<*> -> node.forEach(::walk)
+        }
     }
-    from(webRoot.dir("public/icons")) {
+    contentJsonDirs.flatMap { dir -> dir.walkTopDown().filter { it.extension == "json" }.toList() }
+        .forEach { walk(groovy.json.JsonSlurper().parse(it)) }
+    val authors = repoRoot.dir("public/icons/game-icons").asFile.list()?.toList().orEmpty()
+    val literal = Regex("\"((?:wow|class-icons|${authors.joinToString("|")})/[A-Za-z0-9_ .-]+)\"")
+    kotlinSourceDir.walkTopDown().filter { it.extension == "kt" }.forEach { f ->
+        literal.findAll(f.readText()).forEach { names += it.groupValues[1] }
+    }
+    return names.flatMap(::iconAssetPaths).toSet()
+}
+
+val syncGameData = tasks.register<Sync>("syncGameData") {
+    description = "Copies game content JSON, and the icons it uses, into Android assets."
+    into(generatedAssetsDir)
+    // The icon filter reads these, so a new reference re-runs the sync.
+    contentJsonDirs.forEach { inputs.dir(it) }
+    inputs.dir(kotlinSourceDir)
+    val wanted by lazy { referencedIconAssets() }
+
+    // One tree, copied as it is laid out. Content used to come from four
+    // places at once -- the web app's src/data and src/classes, Android's own
+    // content/, and a content/classes-overrides/ that existed only so Android
+    // could change a talent without disturbing a recorded corpus. The web app
+    // is gone, so all four collapse into one.
+    from(contentRoot) {
+        include("data/*.json", "classes/*/class.json", "classes/*/spells.json", "classes/*/talents.json")
+    }
+    from(repoRoot.dir("public/icons")) {
         into("icons")
+        include { it.isDirectory || it.relativePath.pathString in wanted }
+        // Directories the filter emptied are not packaged either.
+        includeEmptyDirs = false
     }
 }
 
@@ -54,6 +125,18 @@ val versionCodeFromCi = System.getenv("AEGIS_VERSION_CODE")?.toIntOrNull()
 // release tag (v1.0.0 -> 1.0.0); the splash screen renders it as-is.
 val versionNameFromCi = System.getenv("AEGIS_VERSION_NAME")?.removePrefix("v")?.takeIf { it.isNotBlank() }
 
+// Local builds: what git says this is. roles-2.0-66-g3a771cc8 -> 2.0.66-3a771cc8,
+// with -dirty for uncommitted changes, so the splash never claims a release.
+val versionNameFromGit: String? = runCatching {
+    providers.exec { commandLine("git", "describe", "--tags", "--dirty") }
+        .standardOutput.asText.get().trim()
+}.getOrNull()?.let { d ->
+    Regex("""^\D*([\d.]+?)(?:-(\d+)-g([0-9a-f]+))?(-dirty)?$""").find(d)?.destructured
+        ?.let { (tag, n, sha, dirty) ->
+            if (n.isEmpty()) tag + dirty else "$tag.$n-$sha$dirty"
+        } ?: d
+}
+
 android {
     namespace = "com.jdial.aegis"
     compileSdk = 37
@@ -63,7 +146,8 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = versionCodeFromCi ?: 1
-        versionName = versionNameFromCi ?: "1.0.0"
+        versionName = versionNameFromCi ?: versionNameFromGit ?: "0.0.0-dev"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     sourceSets {
@@ -73,6 +157,9 @@ android {
         }
         getByName("test") {
             kotlin.directories.add("src/test/kotlin")
+        }
+        getByName("androidTest") {
+            kotlin.directories.add("src/androidTest/kotlin")
         }
     }
 
@@ -88,7 +175,22 @@ android {
     }
 
     buildTypes {
+        // Which Firebase a build talks to. Release: the real project, via
+        // google-services.json. Debug: the local emulator suite, always, unless
+        // asked otherwise -- google-services.json sits in this directory for
+        // release builds, and without this a debug build (and the whole
+        // instrumented suite, which creates and deletes accounts and rooms)
+        // would quietly start writing to production.
+        //   ./gradlew installDebug -Paegis.firebase=prod   # debug against the real project
+        debug {
+            buildConfigField(
+                "boolean",
+                "FIREBASE_EMULATOR",
+                (findProperty("aegis.firebase") != "prod").toString(),
+            )
+        }
         release {
+            buildConfigField("boolean", "FIREBASE_EMULATOR", "false")
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -119,7 +221,16 @@ dependencies {
     implementation(libs.core.splashscreen)
     implementation(libs.kotlinx.serialization.json)
 
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.database)
+    implementation(libs.kotlinx.coroutines.play.services)
+
     testImplementation(libs.junit)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
 }
 
 // AGP 9 rejects task providers as source dirs, so the asset directory is static
@@ -133,11 +244,17 @@ tasks.matching { it.name.contains("lint", ignoreCase = true) }.configureEach {
     dependsOn(syncGameData)
 }
 
-// Tests need the synced content, and the parity goldens live outside the module.
+// Tests read the same synced content the app does.
 tasks.withType<Test>().configureEach {
     dependsOn(syncGameData)
-    systemProperty("aegis.parityDir", rootProject.file("../parity").absolutePath)
     systemProperty("aegis.assetsDir", generatedAssetsDir.absolutePath)
+    // The recorded tick snapshots, and the deliberate switch that rewrites them.
+    // Forwarded explicitly: a bare -D on the Gradle command line does not reach
+    // the test JVM.
+    systemProperty("aegis.tickSnapshots", project.file("src/test/resources/tick-snapshots.json").absolutePath)
+    providers.systemProperty("aegis.regenerateTickSnapshots").orNull?.let {
+        systemProperty("aegis.regenerateTickSnapshots", it)
+    }
 }
 
 // --- release guards ---------------------------------------------------------
@@ -171,14 +288,33 @@ val verifyGameAssets = tasks.register("verifyGameAssets") {
         val data = File(dir, "data").listFiles()?.count { it.extension == "json" } ?: 0
         check(icons >= 150 && data >= 5) {
             "Game assets are incomplete (icons=$icons, data=$data). " +
-                "public/icons and src/data are tracked, so this usually means a partial " +
-                "checkout. Restore them with `git checkout -- public/icons src/data`."
+                "public/icons and android/content are tracked, so this usually means a " +
+                "partial checkout. Restore them with " +
+                "`git checkout -- public/icons android/content`."
+        }
+    }
+}
+
+// 1b. No google-services.json used to produce a release with multiplayer
+//     silently unavailable: the plugin is skipped, the app runs, and the
+//     settings row just says "unavailable". The file is gitignored, so CI has
+//     to write it from the GOOGLE_SERVICES_JSON secret. An offline-only release
+//     is allowed, but it has to be asked for.
+val requireFirebaseConfig = tasks.register("requireFirebaseConfig") {
+    val present = hasFirebaseConfig
+    val offlineOk = findProperty("aegis.offlineRelease") == "true"
+    doFirst {
+        check(present || offlineOk) {
+            "android/app/google-services.json is missing, so this release would ship with " +
+                "multiplayer unavailable. Fetch it with `firebase apps:sdkconfig ANDROID " +
+                "--project prod -o ../android/app/google-services.json` (from firebase/), or " +
+                "pass -Paegis.offlineRelease=true if that is intended. See android/RELEASE.md."
         }
     }
 }
 
 tasks.matching { it.name == "bundleRelease" || it.name == "assembleRelease" }.configureEach {
-    dependsOn(requireReleaseSigning, verifyGameAssets)
+    dependsOn(requireReleaseSigning, verifyGameAssets, requireFirebaseConfig)
 }
 // AGP's own validateSigningRelease also fails on a missing key, but says only
 // "Keystore file not set". Run ahead of it so the actionable message is the one
@@ -260,4 +396,15 @@ val verifyMinifiedSaveContract = tasks.register("verifyMinifiedSaveContract") {
 
 tasks.matching { it.name == "minifyReleaseWithR8" }.configureEach {
     finalizedBy(verifyMinifiedSaveContract)
+}
+
+// The playtest harness (scripts/playtest.py) is driven by -Dplaytest* properties,
+// which Gradle does not pass into the test JVM on its own, and it talks through
+// stdout rather than assertions.
+tasks.withType<Test>().configureEach {
+    System.getProperties().forEach { key, value ->
+        val name = key.toString()
+        if (name.startsWith("playtest")) systemProperty(name, value.toString())
+    }
+    if (System.getProperty("playtest") != null) testLogging.showStandardStreams = true
 }

@@ -23,12 +23,12 @@ interface ClassHooks {
 
     fun onHealManaCost(ctx: CastContext, spell: Spell, spellId: String, surgeFree: Boolean): Int? = null
 
-    fun onHealLand(ctx: CastContext, land: LandContext, party: List<Unit>, buffs: List<PlayerBuff>): LandResult =
+    fun onCastLand(ctx: CastContext, land: LandContext, party: List<Unit>, buffs: List<PlayerBuff>): LandResult =
         LandResult(party, buffs, 0.0, 0.0)
 
     fun manaAfterHeal(ctx: CastContext, land: LandContext, initialMana: Double): Double = initialMana
 
-    fun manaReturnOnTick(ctx: CastContext, spiritLockoutTicks: Int): Double = 0.0
+    fun resourceReturnOnTick(ctx: CastContext, spiritLockoutTicks: Int): Double = 0.0
 
     fun hasteBonusSum(ctx: CastContext): Double = 0.0
 
@@ -54,7 +54,50 @@ interface ClassHooks {
     /** Aegis Burst fires when a shield is fully consumed during a tick. */
     fun onShieldTransition(ctx: CastContext, before: List<Unit>, after: List<Unit>): LandResult =
         LandResult(after, emptyList(), 0.0, 0.0)
+
+    // --- the damage path. The healer hooks above are all shaped around a
+    // target unit; the enemy is not one, so damage casts have their own. ------
+
+    /** Whether a damage cast may go off at all, beyond cost and cooldown. */
+    fun damageCastAllowed(ctx: CastContext, spell: Spell, spellId: String): Boolean = true
+
+    /** Scales a damage cast's magnitude. */
+    fun damageMultiplier(ctx: CastContext, spell: Spell, spellId: String): Double = 1.0
+
+    /** Extra crit chance, in percent, for a damage cast. */
+    fun damageCritBonus(ctx: CastContext, spell: Spell, spellId: String): Double = 0.0
+
+    /** Scales the threat a damage cast generates. */
+    fun threatMultiplier(ctx: CastContext): Double = 1.0
+
+    /**
+     * A follow-up once a damage cast has landed. [after] is the state with the
+     * cast applied, still seated as the caster, so `withMe` reaches them.
+     */
+    fun onDamageLand(ctx: CastContext, after: GameState, land: DamageLand): GameState = after
+
+    /**
+     * One tick of a participant's class resource. [damageTaken] is what their
+     * unit took this tick, absorbed damage included.
+     */
+    fun classTick(tick: ClassTick): Participant = tick.participant
+
+    /** The class resource a participant starts a run with. */
+    fun startingResource(b: com.jdial.aegis.data.ClassesBalance): Double = 0.0
 }
+
+/** A damage cast that just landed. */
+data class DamageLand(val spell: Spell, val spellId: String, val isCrit: Boolean, val dealt: Double)
+
+/** Everything [ClassHooks.classTick] needs about one participant. */
+data class ClassTick(
+    val participant: Participant,
+    val unit: Unit?,
+    val damageTaken: Double,
+    /** The participant's signature stat. */
+    val rating: Double,
+    val balance: com.jdial.aegis.data.ClassesBalance,
+)
 
 /** Everything a hook needs about the caster; a narrow view over [GameState]. */
 class CastContext(
@@ -72,9 +115,11 @@ class CastContext(
     fun ranks(mechanicId: String): Int = talents.ranksOf(mechanicId)
     fun talentRanks(talentId: String): Int = talents.ranksOfTalent(talentId)
     fun uniqueStatRating(): Double = stats.uniqueStatRating(cls, level, talents)
+    /** Talents and the worn charm both, since both speak the same keys. */
+    fun talentEffect(key: String): Double = state.me.effect(key)
 }
 
-/** The cast being resolved, passed to `onHealLand` and the mana hooks. */
+/** The cast being resolved, passed to `onCastLand` and the mana hooks. */
 data class LandContext(
     val spell: Spell,
     val spellId: String,
@@ -122,14 +167,14 @@ object PriestHooks : ClassHooks {
     }
 
     /** Meditative Wellspring: returns mana *only while* the five-second rule is active. */
-    override fun manaReturnOnTick(ctx: CastContext, spiritLockoutTicks: Int): Double {
+    override fun resourceReturnOnTick(ctx: CastContext, spiritLockoutTicks: Int): Double {
         if (ctx.cls != PlayerClass.PRIEST || spiritLockoutTicks <= 0) return 0.0
         val ranks = ctx.talentRanks("p_r0c4")
         if (ranks <= 0) return 0.0
         return ctx.maxMana * ctx.data.balance.combat.priest.meditativeManaReturnPerRankPerTick * ranks
     }
 
-    override fun onHealLand(
+    override fun onCastLand(
         ctx: CastContext,
         land: LandContext,
         party: List<Unit>,
@@ -245,7 +290,10 @@ object PriestHooks : ClassHooks {
         val ranks = ctx.ranks("binding_heal")
         if (ctx.cls == null || ranks <= 0) return LandResult(party, emptyList(), 0.0, 0.0)
         val priest = ctx.data.balance.combat.priest
-        val healer = party.firstOrNull { it.id == HEALER_UNIT_ID }
+        // Binding Heal heals *the caster*, so it follows the acting participant
+        // rather than the slot the single-player healer happens to occupy.
+        val casterId = ctx.state.localUnitId
+        val healer = party.firstOrNull { it.id == casterId }
         val target = ctx.party.firstOrNull { it.id == land.targetId }
         if (healer == null || target == null || target.id == healer.id) {
             return LandResult(party, emptyList(), 0.0, 0.0)
@@ -254,7 +302,7 @@ object PriestHooks : ClassHooks {
             priest.bindingHealSelfFraction * min(priest.bindingHealMaxRanksForCap, ranks)
         val applied = applyHealToUnit(healer, bind)
         return LandResult(
-            party.map { if (it.id == HEALER_UNIT_ID) it.copy(health = applied.health) else it },
+            party.map { if (it.id == casterId) it.copy(health = applied.health) else it },
             emptyList(), applied.effective, applied.overheal,
         )
     }
@@ -350,7 +398,7 @@ object PriestHooks : ClassHooks {
     fun divinityOverhealAbsorb(ctx: CastContext, overheal: Double, rating: Double): Double {
         if (overheal <= 0 || rating <= 0) return 0.0
         val perRating = ctx.data.balance.combat.priest.divinityOverhealToShieldPerRating
-        return overheal * min(0.45, rating * perRating)
+        return overheal * min(ctx.data.balance.rules.divinityShieldCap, rating * perRating)
     }
 }
 
@@ -376,7 +424,7 @@ object DruidHooks : ClassHooks {
         return null
     }
 
-    override fun onHealLand(
+    override fun onCastLand(
         ctx: CastContext,
         land: LandContext,
         party: List<Unit>,
@@ -520,7 +568,7 @@ object DruidHooks : ClassHooks {
 
 object PaladinHooks : ClassHooks {
 
-    override fun onHealLand(
+    override fun onCastLand(
         ctx: CastContext,
         land: LandContext,
         party: List<Unit>,
@@ -689,5 +737,15 @@ fun hooksFor(cls: PlayerClass?): ClassHooks = when (cls) {
     PlayerClass.PRIEST -> PriestHooks
     PlayerClass.DRUID -> DruidHooks
     PlayerClass.PALADIN -> PaladinHooks
+    // The Mage tree is built entirely from statBonus, which the engine already
+    // applies. `healing` doubles as the damage magnitude, so healingBoost
+    // scales a Frostbolt exactly as it scales a Flash Heal -- no hook code.
+    PlayerClass.MAGE -> MageHooks
+    PlayerClass.WARRIOR -> WarriorHooks
+    PlayerClass.DEATHKNIGHT -> DeathKnightHooks
+    PlayerClass.ROGUE -> RogueHooks
+    // Hidden and unfinished: stat bonuses only.
+    PlayerClass.MONK -> NoHooks
+    PlayerClass.WARLOCK -> NoHooks
     null -> NoHooks
 }

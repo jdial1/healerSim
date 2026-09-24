@@ -1,0 +1,305 @@
+[
+  {
+    "id": "mk_r0c0",
+    "name": "Celestial Brew",
+    "description": "Increases power by 2% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_monk_chibrew",
+    "gridX": 0,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r0c2",
+    "name": "Elusive Brawler",
+    "description": "Increases critical strike chance by 1% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_monk_elusiveale",
+    "gridX": 2,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r0c4",
+    "name": "Gift of the Ox",
+    "description": "Increases maximum resource by 3% per rank.",
+    "maxPoints": 3,
+    "levelReq": 1,
+    "cost": 1,
+    "icon": "wow/ability_monk_yulonsgift",
+    "gridX": 4,
+    "gridY": 0,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r1c1",
+    "name": "Blackout Combo",
+    "description": "Increases power by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_monk_blackoutkick",
+    "gridX": 1,
+    "gridY": 1,
+    "prerequisites": [
+      "mk_r0c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r1c3",
+    "name": "Special Delivery",
+    "description": "Increases critical strike chance by 2% per rank.",
+    "maxPoints": 2,
+    "levelReq": 5,
+    "cost": 1,
+    "icon": "wow/ability_monk_boughstrike",
+    "gridX": 3,
+    "gridY": 1,
+    "prerequisites": [
+      "mk_r0c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 2
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r2c0",
+    "name": "Rushing Jade Wind",
+    "description": "Increases haste by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_monk_rushingjadewind",
+    "gridX": 0,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r2c2",
+    "name": "Breath of Fire",
+    "description": "Unlocks Breath of Fire.",
+    "maxPoints": 1,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_monk_breathoffire",
+    "gridX": 2,
+    "gridY": 2,
+    "prerequisites": [
+      "mk_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "breath_of_fire"
+  },
+  {
+    "id": "mk_r2c4",
+    "name": "Spirited Crane",
+    "description": "Returns resource on each direct cast.",
+    "maxPoints": 3,
+    "levelReq": 9,
+    "cost": 1,
+    "icon": "wow/ability_monk_deadlyreach",
+    "gridX": 4,
+    "gridY": 2,
+    "prerequisites": [],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaReturnOnDirectHeal": 1
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r3c1",
+    "name": "Fortifying Brew",
+    "description": "Unlocks Fortifying Brew.",
+    "maxPoints": 1,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_monk_fortifyingale_new",
+    "gridX": 1,
+    "gridY": 3,
+    "prerequisites": [
+      "mk_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {},
+    "points": 0,
+    "spellId": "fortifying_brew"
+  },
+  {
+    "id": "mk_r3c3",
+    "name": "High Tolerance",
+    "description": "Increases critical strike chance by 3% per rank.",
+    "maxPoints": 2,
+    "levelReq": 13,
+    "cost": 1,
+    "icon": "wow/ability_monk_hurricanestrike",
+    "gridX": 3,
+    "gridY": 3,
+    "prerequisites": [
+      "mk_r1c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "critChance": 3
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r4c2",
+    "name": "Bob and Weave",
+    "description": "Increases power by 5% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/spell_monk_mistweaver_spec",
+    "gridX": 2,
+    "gridY": 4,
+    "prerequisites": [
+      "mk_r1c1"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 5
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r4c4",
+    "name": "Healing Elixir",
+    "description": "Increases toughness by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 17,
+    "cost": 1,
+    "icon": "wow/ability_monk_ascension",
+    "gridX": 4,
+    "gridY": 4,
+    "prerequisites": [
+      "mk_r3c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "manaPool": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r5c1",
+    "name": "Exploding Keg",
+    "description": "Increases haste by 4% per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_monk_chargingoxwave",
+    "gridX": 1,
+    "gridY": 5,
+    "prerequisites": [
+      "mk_r2c0"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "haste": 4
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r5c3",
+    "name": "Shuffle",
+    "description": "Increases power by 6% per rank.",
+    "maxPoints": 2,
+    "levelReq": 21,
+    "cost": 1,
+    "icon": "wow/ability_monk_shuffle",
+    "gridX": 3,
+    "gridY": 5,
+    "prerequisites": [
+      "mk_r4c2"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 6
+    },
+    "points": 0
+  },
+  {
+    "id": "mk_r6c2",
+    "name": "Zen Meditation",
+    "description": "Increases power by 10%.",
+    "maxPoints": 1,
+    "levelReq": 25,
+    "cost": 1,
+    "icon": "wow/ability_monk_zenmeditation",
+    "gridX": 2,
+    "gridY": 6,
+    "prerequisites": [
+      "mk_r5c3"
+    ],
+    "exclusiveWith": [],
+    "synergyWith": [],
+    "maxRankBonusDescription": "",
+    "statBonus": {
+      "healingBoost": 10
+    },
+    "points": 0
+  }
+]

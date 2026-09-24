@@ -1,0 +1,44 @@
+{
+  "id": "MONK",
+  "name": "Brewmaster",
+  "role": "TANK",
+  "description": "Staggers damage rather than avoiding it. Not finished yet.",
+  "iconKey": "keg",
+  "color": "bg-emerald-700",
+  "textColor": "text-emerald-300",
+  "hoverBorderClass": "hover:border-emerald-500",
+  "locked": true,
+  "portraitUrl": "",
+  "portraitIcon": "monk",
+  "portraitGlow": "spell",
+  "passiveTraitName": "Stagger",
+  "passiveTraitDescription": "Damage arrives late, and spread thin.",
+  "passiveTraitIcon": "wow/spell_holy_holyprotection",
+  "tutorial": {
+    "passiveDescription": "Stagger: Damage arrives late, and spread thin."
+  },
+  "statCurves": {
+    "baseIntellect": 18,
+    "baseSpirit": 12,
+    "intellectPerLevel": 2.0,
+    "spiritPerLevel": 1.0,
+    "baseUniqueStat": 12,
+    "uniqueStatPerLevel": 0.8
+  },
+  "progression": {
+    "starterSpells": [
+      "keg_smash",
+      "provoke"
+    ],
+    "spellOrder": [
+      "keg_smash",
+      "provoke",
+      "breath_of_fire",
+      "fortifying_brew",
+      "purifying_brew",
+      "expel_harm",
+      "spinning_crane_kick",
+      "spear_hand_strike"
+    ]
+  }
+}

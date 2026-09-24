@@ -1,141 +1,157 @@
 # Play Store listing copy
 
-Target player: someone who healed 5-mans with HealBot, VuhDo, Grid+Clique or
-Cell — the person who spent the dungeon looking at frames, not at the boss.
+**Positioning: a role-based party game.** Pick a job — heal, tank or deal the
+damage — and play a five-person dungeon run in which the other four are AI, or
+other people if you opt into the public queue. The healer game is still the
+deepest of the three, and the copy says so, but it is no longer the whole
+pitch. (Decided 2026-09-16, replacing the healer-only copy.)
 
-**Those product names, and Blizzard's, are deliberately absent from the copy
-below.** Store metadata is the most heavily scanned surface on Play, and
-third-party trademarks in a title, subtitle or description are a routine cause
-of takedowns and account strikes — a much higher-risk placement than a bundled
-asset. The copy hooks the same audience by using the vocabulary only healers
-have (triage, overheal, HoT upkeep, mana efficiency), which also matches how
-these players actually describe what they miss.
+Target player: someone who ran 5-mans in an MMO and has a favourite role.
+Healers are still the sharpest hook — nobody else sells them this game — but
+tanks and damage dealers now have real mechanics of their own, and the listing
+can promise that.
+
+**Third-party names, Blizzard's included, stay out of the copy.** Store
+metadata is the most heavily scanned surface on Play, and trademarks in a title
+or description are a routine cause of takedowns. The copy reaches the audience
+with the vocabulary only they use: triage, overheal, threat, taunt, rage,
+combo points, rotation.
 
 ---
 
 ## App name (max 30 characters)
 
-**Chosen: `Overheal: Healer Sim`** (20 characters) — applied across both apps.
+**`Overheal: Tank, Heal, DPS`** (25 characters)
 
-"Overheal" is a word nobody outside the role knows or cares about. A healer
-reads it instantly and knows the game is for them; everyone else scrolls past,
-which is the correct filter for a game this specific. It also avoids the
-collision with Aegis Authenticator and the several other apps called Aegis.
+Keeps the brand the app, its splash and the web version already carry, and
+puts the three roles in the one place Play weighs most. "DPS" is jargon, and
+that is the point: the people who know it are the audience.
 
-Where the name now lives:
+Alternates:
 
-| Surface | Value |
-|---|---|
-| Play listing / launcher | `Overheal` (`app_name` in `strings.xml`) |
-| Android splash wordmark | `OVERHEAL` (`Screens.kt`) |
-| Web title and splash | `Overheal` / `OVERHEAL` |
-| PWA manifest | name `Overheal: Healer Sim`, short_name `Overheal` |
+- `Overheal: Dungeon Party RPG` (27)
+- `Overheal: Pick Your Role` (24)
 
-Two identifiers deliberately keep the old name, because both are permanent and
-neither is user-facing:
+The launcher label stays `Overheal` (`app_name`). `applicationId` stays
+`com.jdial.aegis` — permanent after publish, and it never has to match.
 
-- `applicationId` — `com.jdial.aegis`. Fixed after first publish; the store name
-  does not have to match it.
-- PWA manifest `id` — `aegis`. Changing it makes every installed copy a
-  different app rather than an update.
-
-Internal `Theme.Aegis` style names are untouched; they are resource ids.
+The splash screen's subtitle reads *Tank · Heal · DPS*, matching the listing.
+The web version keeps *The Healer's Oath*: it only has the healers.
 
 ## Short description (max 80 characters)
 
 ```
-Keep the party alive. Raid-frame healing, mana triage, no tank to hide behind.
+Heal, tank or deal damage. A five-person dungeon party, and every role is yours.
 ```
-(78 characters)
+(80 characters)
 
 Alternates:
 
 ```
-You are the healer. Five bars, one job, and never quite enough mana.
+Pick a role, join the party, clear the dungeon. Healer, tank or damage dealer.
 ```
 ```
-Frame-watching, HoT-clipping, triage healing. The role, without the raid night.
+Keep them alive, hold the boss, or burn it down. Party dungeons in your pocket.
 ```
 
 ## Full description (max 4000 characters)
 
 ```
-You are the healer. Not the tank, not the DPS meter — the one person whose
-mistake gets someone killed.
+Every dungeon party needs three jobs done. Pick yours.
 
-Overheal is a healing simulator built around the part of a dungeon that healers
-actually play: five health bars, a mana pool that will not last, and a boss
-whose damage you can only see through what it does to your party.
+Overheal is a party RPG built around roles. Five people go in: a tank, three
+damage dealers and a healer. You are one of them. The rest of the group fights
+beside you — AI, or real players if you turn on the public queue — and you can
+watch them do it, lined up against the enemy at the top of the screen.
 
-WHAT YOU ACTUALLY DO
+HEAL — KEEP THEM ALIVE
 
-Tap a frame to target. Cast to heal. Watch the bar you did not pick.
+Five health bars, a mana pool that will not last, and a boss you only see
+through what it does to your party. Tap a frame, cast, and watch the bar you
+did not pick. The fast heal that empties your mana. The heal-over-time you
+refresh too early. The cooldown you saved so long that the tank died with it
+still up.
 
-Every spell is a decision you will recognise. The fast heal that keeps someone
-alive and empties your mana. The slow one you never quite have time for. The
-heal-over-time you refresh too early and waste. The cooldown you save so long
-that the tank dies with it still up.
+- Holy Priest — direct heals and absorbs. High burst, high cost.
+- Restoration Druid — heal-over-time upkeep on people who are not hurt yet.
+- Holy Paladin — enormous single-target healing. Unlocks at level 25.
 
-The party fights on its own. Three trash pulls, then a boss. Nobody gets a
-second chance because you were reading the boss health bar.
+TANK — HOLD ITS ATTENTION
 
-THE NUMBERS THAT MATTER
+Every hit you take matters, because it is one your healer does not have to
+chase. Build threat, taunt the boss back when it turns on someone else, and
+pick the moment for your defensive.
 
-Every run ends with the stat line healers argue about: healing done, HPS,
-healing per mana, and overheal percent. Big numbers are easy. Big numbers with
-low overheal and mana left at the end are the actual craft.
+- Protection Warrior — taking and dealing damage builds rage; Shield Slam
+  spends it. Vengeance raises your rage cap and your threat.
+- Blood Death Knight — Death Strike heals you for the damage you just took,
+  and hardens part of it into a shield.
 
-THREE HEALERS, THREE PROBLEMS
+DAMAGE — BURN IT DOWN
 
-- Holy Priest — direct healing and absorbs. High burst, high cost. You will
-  run dry.
-- Restoration Druid — six spells, all of them heal-over-time upkeep. You are
-  always casting on someone who is not hurt yet.
-- Holy Paladin — three spells, one target, enormous single-target throughput.
-  Unlocks at level 25.
+Pull ahead of the tank and the boss comes for you, so the fastest rotation is
+not always the best one.
 
-Each has a full talent tree of 29 to 32 nodes, with free respec whenever you
-want to try the other build.
+- Frost Mage — Frostbolt chills the enemy; your next spell against it is far
+  more likely to crit.
+- Assassination Rogue — strikes build combo points, two on a crit, and
+  Eviscerate spends them all.
+
+Every class has a signature stat that drives its mechanic, and the character
+sheet tells you what yours is buying.
 
 CONTENT
 
+- Seven classes across three roles, each with a full talent tree and a free
+  respec whenever you want to try the other build
 - 16 dungeons across levels 1 to 48, each with its own boss and mechanics
-- An endless mode that scales past the level cap
-- Three paces per run: fast for less XP, slow for double — the difficulty dial
-  is also the reward dial
-- Two mana potions per dungeon, and you will want a third
+- An endless mode that keeps scaling past the level cap
+- Three paces per run: fast for less XP, slow for double
 
-BUILT FOR A PHONE, NOT PORTED TO ONE
+PLAY WITH OTHERS, OR DON'T
+
+The public queue is optional and off until you turn it on. When it is on, you
+queue for a role and whoever turns up plays the other seats; the AI takes any
+seat that is empty, so nobody waits. There is no chat.
+
+Single player never connects to anything. No sign-up, no ads, no timers, no
+energy, nothing to buy. Your progress lives on your device.
+
+BUILT FOR A PHONE
 
 Frames are thumb-sized and fixed height, so a debuff appearing never moves the
-target you were about to tap. Health colour is a hard signal, not a gradient.
-The action bar reorders by drag, so your muscle memory is yours.
+target you were about to tap. Drag a spell onto a frame to target and heal in
+one gesture. Sound and vibration tell you a heal went off, or that somebody
+just dropped into danger, without looking.
 
-Works fully offline. No account, no ads, no timers, no energy, nothing to buy.
-No permissions and no networking code at all — your progress lives on your
-device and goes nowhere.
-
-If you have ever kept a group alive while three people stood in fire and
-nobody said thank you, this is that, in your pocket.
+Pick a role. The party is waiting.
 ```
 
-(About 2,100 characters — well inside the limit, with room to add a feature or
-a testimonial line later.)
+(About 3,000 characters.)
+
+## Screenshots
+
+Ten, built by `make-screenshots.py`; see `README.md`. In order they show the
+title, the role choice, one fight from each role, and what each class's
+signature stat buys — so the first five already carry the positioning.
+
+| # | Caption | What it shows |
+|---|---|---|
+| 01 | Overheal — Tank · Heal · DPS | Title card |
+| 02 | Pick your role | Class select, grouped by role |
+| 03 | Keep them alive | Holy Priest mid-boss |
+| 04 | Hold the line | Protection Warrior holding threat, rage full |
+| 05 | Build, then spend | Rogue with energy and combo points |
+| 06 | A mechanic per class | Character sheet: what Vengeance buys |
+| 07 | Drag a spell onto a frame | Landscape healer |
+| 08 | Hold its attention | Landscape tank |
+| 09 | Spend the point | Talents, landscape |
+| 10 | Sixteen dungeons deep | Dungeons, landscape |
 
 ## Keyword notes
 
-Play indexes the title and description. The terms this audience searches are
-role and mechanic words, not brand names: *healer, healing, raid frames, party,
-dungeon, RPG, simulator, MMO healer, support role, heal over time, mana*.
-Several are already load-bearing in the copy above. Do not stuff the
-description with a keyword list — Play demotes for it, and it reads as spam to
-exactly the player you want.
-
-## Follow-ups if the name changes
-
-1. `applicationId` stays `com.jdial.aegis` — it is permanent after publish and
-   does not have to match the store name. No code change, but worth knowing the
-   Play Console will show the old id forever.
-2. The splash screen renders "AEGIS" from `SplashScreen.kt`, and the web app
-   uses the same wordmark. Both should be updated to match whatever name you
-   pick, or the store listing and the first screen disagree.
+Play indexes the title and the description. This audience searches role and
+mechanic words, not brand names: *healer, tank, DPS, party, dungeon, RPG,
+roles, raid frames, threat, MMO, offline RPG*. Most are already load-bearing
+above. Do not add a keyword list — Play demotes it, and it reads as spam to
+exactly the players this is for.

@@ -26,6 +26,19 @@ data class TalentRank(val talent: Talent, val points: Int) {
     val mechanicId: String? get() = talent.mechanicId
 }
 
+/** A talent effect ([Talent.effects]) summed over the ranks invested. */
+fun List<TalentRank>.effect(key: String): Double = sumOf { (it.talent.effects[key] ?: 0.0) * it.points }
+
+/**
+ * Everything altering [key] for this character: their talents, and the charm
+ * they are wearing.
+ *
+ * One funnel on purpose. A charm uses exactly the keys talents use, so every
+ * effect that already existed works on a charm the day it is written, and a
+ * new effect key only has to be read in one place to work on both.
+ */
+fun Participant.effect(key: String): Double = talents.effect(key) + (charm?.effects?.get(key) ?: 0.0)
+
 data class PrimaryStats(val intellect: Double, val spirit: Double)
 
 data class TalentStats(
@@ -85,14 +98,22 @@ class PlayerStats(private val data: GameData) {
     fun maxMana(cls: PlayerClass?, level: Int, talents: List<TalentRank>): Int {
         if (cls == null) return 100
         val intellect = primaryStats(cls, level).intellect
-        return (intellect * ps.manaPerIntellect + talentStats(talents).flatMana).roundToInt()
+        // Exactly 1.0 for a healer, so the recorded runs cannot move.
+        val scale = data.balance.classes.manaPoolScale[cls.name] ?: 1.0
+        return ((intellect * ps.manaPerIntellect + talentStats(talents).flatMana) * scale).roundToInt()
     }
 
     fun healingMultiplier(cls: PlayerClass?, level: Int, talents: List<TalentRank>): Double {
         if (cls == null) return 1.0
         val spirit = primaryStats(cls, level).spirit
         val talentPct = talentStats(talents).healingBoostPct
-        return 1.0 + (spirit * ps.healingPctPerSpirit + talentPct) / 100.0
+        // A healer's power against the later dungeons; exactly 1.0 by default,
+        // so the recorded runs cannot move. Healers only: a damage class reads
+        // this same multiplier for its own spells.
+        val hp = data.encounters.healPower
+        val heals = data.classes[cls]?.meta?.role == "HEALER"
+        val curve = if (!heals) 1.0 else hp.base + maxOf(0, level - hp.fromLevel) * hp.perLevel
+        return (1.0 + (spirit * ps.healingPctPerSpirit + talentPct) / 100.0) * curve
     }
 
     fun uniqueStatRating(cls: PlayerClass?, level: Int, talents: List<TalentRank>): Double {
@@ -110,7 +131,11 @@ class PlayerStats(private val data: GameData) {
 
     fun spellRank(spellId: String, cls: PlayerClass, level: Int): Int {
         val order = data.bundle(cls).meta.progression.spellOrder
-        val idx = order.indexOf(spellId)
+        // A consumable belongs to no class, so it has no place in anybody's
+        // order -- and without one it would sit at rank 1 forever, a potion
+        // bought at level 3 and drunk at 50. It ranks on the fastest cadence
+        // any spell has instead, which is what "scales like a potion" means.
+        val idx = if (data.spell(spellId)?.hasTag(CONSUMABLE_TAG) == true) 0 else order.indexOf(spellId)
         if (idx == -1) return 1
         val firstUpgradeLevel = 2 + (idx % 3)
         if (level < firstUpgradeLevel) return 1
@@ -136,6 +161,16 @@ class PlayerStats(private val data: GameData) {
 
     /** The healer uses the DPS health curve. */
     fun healerMaxHealth(level: Int): Int = maxHealthForRole("DPS", level)
+
+    /**
+     * The player's own max health, by the role they play.
+     *
+     * One source of truth for this: the character sheet used to call
+     * healerMaxHealth unconditionally, so a tank's sheet read 65 while the tank
+     * it generated in combat had 130.
+     */
+    fun playerMaxHealth(role: UnitRole, level: Int): Int =
+        maxHealthForRole(if (role == UnitRole.TANK) "TANK" else "DPS", level)
 
     // --- talent tree queries -------------------------------------------------
 

@@ -8,3 +8,8 @@ coverage/
 !.env.example
 /icon_maker
 /build-output
+
+# Firebase emulator scratch and local rules-test deps.
+firebase/node_modules/
+firebase/*-debug.log
+firebase/.firebase/

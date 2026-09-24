@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "times",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dungeonId", "order": "ASCENDING" },
+        { "fieldPath": "ticks", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

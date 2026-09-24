@@ -10,7 +10,6 @@ import kotlin.math.roundToInt
 
 const val PLAYER_MAX_LEVEL = 55
 const val TRASH_PACK_COUNT = 3
-const val MANA_POTION_USES_PER_DUNGEON = 2
 
 /**
  * Port of the XP curve, dungeon rewards and spell loadout from `src/gameStorage.js`
@@ -116,12 +115,23 @@ class Progression(private val data: GameData, private val stats: PlayerStats) {
 
     data class Loadout(val unlockedSpells: List<String>, val actionBar: List<String>)
 
+    /** The most slots a bar can hold: two full rows, and no more thumb than that. */
+    private val maxBarSlots = 10
+
     /**
-     * Three heal slots in `spellOrder` priority, then the mana potion, then an
-     * empty slot — always exactly 5.
+     * The class's kit, then the mana potion, then the utilities it has been
+     * granted.
+     *
+     * This used to be exactly three class spells, and it did not matter how
+     * many a class had: the Druid's six and the Warrior's five were cut to
+     * three the moment a run started, so the *played* kit was three buttons
+     * for every class in the game. Talents modified spells the bar could not
+     * hold. The bar is the kit now, and a class that earns a sixth spell can
+     * press it.
      */
-    fun buildSpellLoadout(cls: PlayerClass?, talents: List<TalentRank>): Loadout {
+    fun buildSpellLoadout(cls: PlayerClass?, talents: List<TalentRank>, level: Int): Loadout {
         if (cls == null) return Loadout(emptyList(), emptyList())
+        val granted = data.grantsFor(cls, level)
         val progression = data.bundle(cls).meta.progression
 
         val merged = progression.starterSpells.toMutableList()
@@ -129,18 +139,18 @@ class Progression(private val data: GameData, private val stats: PlayerStats) {
             if (it !in merged) merged += it
         }
 
-        val healRow = mutableListOf<String>()
-        progression.spellOrder.forEach { id ->
-            if (id in merged && healRow.size < 3 && id !in healRow) healRow += id
-        }
-        merged.forEach { id ->
-            if (healRow.size < 3 && id !in healRow) healRow += id
-        }
-        while (healRow.size < 3) healRow += ""
+        // spellOrder is the class's own opinion about what matters; anything it
+        // does not mention follows in the order the class defines it.
+        val kit = mutableListOf<String>()
+        progression.spellOrder.forEach { if (it in merged && it !in kit) kit += it }
+        merged.forEach { if (it !in kit) kit += it }
 
+        val bar = (kit + MANA_POTION_ID + granted).distinct().take(maxBarSlots)
         return Loadout(
-            unlockedSpells = (listOf(MANA_POTION_ID) + merged).distinct(),
-            actionBar = listOf(healRow[0], healRow[1], healRow[2], MANA_POTION_ID, ""),
+            unlockedSpells = (listOf(MANA_POTION_ID) + merged + granted).distinct(),
+            // Never fewer than five: a bar that changes width as a class learns
+            // its fourth spell is a bar whose buttons move under the thumb.
+            actionBar = bar + List((5 - bar.size).coerceAtLeast(0)) { "" },
         )
     }
 
@@ -157,7 +167,7 @@ class Progression(private val data: GameData, private val stats: PlayerStats) {
         newLevel: Int,
     ): LevelUpRewards {
         if (cls == null || newLevel <= previousLevel) return LevelUpRewards(emptyList(), false)
-        val unlocked = buildSpellLoadout(cls, talents).unlockedSpells.toSet()
+        val unlocked = buildSpellLoadout(cls, talents, newLevel).unlockedSpells.toSet()
         val spells = linkedSetOf<String>()
         var potion = false
         for (l in (previousLevel + 1)..newLevel) {

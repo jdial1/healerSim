@@ -7,3 +7,4 @@ local.properties
 keystore.properties
 *.jks
 *.keystore
+google-services.json

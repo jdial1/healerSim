@@ -7,6 +7,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -35,6 +38,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +57,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jdial.aegis.sim.DungeonRecord
+import com.jdial.aegis.sim.clearTimeLabel
+import com.jdial.aegis.sim.recordKey
+import com.jdial.aegis.sim.sigilTint
+import com.jdial.aegis.sim.titleFor
 import com.jdial.aegis.R
 import com.jdial.aegis.data.ClassBundle
 import com.jdial.aegis.data.Dungeon
@@ -63,6 +72,7 @@ import com.jdial.aegis.ui.theme.ForgedPanel
 import com.jdial.aegis.ui.theme.Gilt
 import com.jdial.aegis.ui.theme.GiltRule
 import com.jdial.aegis.ui.theme.Ink
+import com.jdial.aegis.ui.theme.Vital
 import com.jdial.aegis.ui.theme.LocalAccent
 import com.jdial.aegis.ui.theme.Obsidian
 import com.jdial.aegis.ui.theme.accentFor
@@ -106,16 +116,31 @@ fun ContentColumn(
 
 @Composable
 private fun SectionHeading(text: String, subtitle: String? = null) {
+    val compact = LocalCompactHeight.current
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        BasicText(text.uppercase(), style = AegisType.display.copy(textAlign = TextAlign.Center))
+        BasicText(
+            text.uppercase(),
+            style = AegisType.display.copy(
+                textAlign = TextAlign.Center,
+                fontSize = if (compact) 22.sp else AegisType.display.fontSize,
+            ),
+        )
         if (subtitle != null) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(if (compact) 2.dp else 6.dp))
             BasicText(subtitle.uppercase(), style = AegisType.label.copy(textAlign = TextAlign.Center))
         }
-        Spacer(Modifier.height(14.dp))
-        GiltRule(Modifier.fillMaxWidth(0.6f).height(1.dp), alpha = 0.5f)
+        if (!compact) {
+            Spacer(Modifier.height(14.dp))
+            GiltRule(Modifier.fillMaxWidth(0.6f).height(1.dp), alpha = 0.5f)
+        }
     }
 }
+
+/** Below this height a landscape window is "short": see MainActivity. */
+const val COMPACT_HEIGHT_DP = 480
+
+/** True in a short landscape window, where every row of height counts. */
+val LocalCompactHeight = staticCompositionLocalOf { false }
 
 // --- splash -----------------------------------------------------------------
 
@@ -189,7 +214,9 @@ fun SplashScreen(version: String, onBegin: () -> Unit) {
         ) {
             BasicText("OVERHEAL", style = AegisType.display.copy(fontSize = 34.sp, letterSpacing = 8.sp))
             Spacer(Modifier.height(10.dp))
-            BasicText("THE HEALER'S OATH", style = AegisType.label)
+            // Every role, not just the healer: the web app keeps its healer
+            // tagline because it only has healers.
+            BasicText("TANK  ·  HEAL  ·  DPS", style = AegisType.label)
             Spacer(Modifier.height(36.dp))
             GiltButton("Tap to Begin", onClick = onBegin)
             Spacer(Modifier.height(18.dp))
@@ -247,11 +274,38 @@ fun ClassSelectScreen(
                 // against a hardcoded 30, while the web app compared against 25.
                 // Both now read the same number out of balance.json.
                 val unlockLevel = data.balance.progression.paladinUnlockLevel
-                PlayerClass.entries.forEachIndexed { i, cls ->
-                    val bundle = data.bundle(cls)
-                    val locked = cls == PlayerClass.PALADIN && maxLevel < unlockLevel
-                    ClassCard(cls, bundle, locked, unlockLevel) { if (!locked) onPick(cls) }
-                    if (i < PlayerClass.entries.lastIndex) Spacer(Modifier.height(12.dp))
+
+                // Grouped by role, so nine classes read as three choices rather
+                // than one long list.
+                val byRole = PlayerClass.entries.groupBy { data.bundle(it).meta.role }
+                listOf("HEALER", "DPS", "TANK").forEach { role ->
+                    // Unfinished classes are not shown at all. A card that
+                    // can never be picked, with no way to change that, only
+                    // makes the game look smaller than it is.
+                    val classes = byRole[role].orEmpty().filterNot { data.bundle(it).meta.locked }
+                    if (classes.isEmpty()) return@forEach
+
+                    BasicText(
+                        role,
+                        style = AegisType.label.copy(
+                            fontSize = 11.sp,
+                            color = when (role) {
+                                "TANK" -> Vital.shield
+                                "DPS" -> Vital.hurt
+                                else -> Vital.healthy
+                            },
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    classes.forEach { cls ->
+                        val bundle = data.bundle(cls)
+                        val levelGated = cls == PlayerClass.PALADIN && maxLevel < unlockLevel
+                        ClassCard(cls, bundle, levelGated, unlockLevel) {
+                            if (!levelGated) onPick(cls)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    Spacer(Modifier.height(10.dp))
                 }
             }
         }
@@ -262,21 +316,24 @@ fun ClassSelectScreen(
 private fun ClassCard(
     cls: PlayerClass,
     bundle: ClassBundle,
-    locked: Boolean,
+    levelGated: Boolean,
     unlockLevel: Int,
     onClick: () -> Unit,
 ) {
     val accent = accentFor(cls)
+    val locked = levelGated
     ForgedPanel(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = !locked, onClick = onClick)
             .semantics {
                 role = Role.Button
-                contentDescription = if (locked) {
-                    "${bundle.meta.name}, locked, reach level $unlockLevel to unlock"
-                } else {
-                    "${bundle.meta.name}. ${bundle.meta.passiveTraitName}. ${bundle.meta.description}"
+                contentDescription = when {
+                    levelGated -> "${bundle.meta.name}, locked, reach level $unlockLevel to unlock"
+                    else -> {
+                        "${bundle.meta.name}. ${bundle.meta.passiveTraitName}. " +
+                            bundle.meta.description
+                    }
                 }
             },
         accent = accent.core,
@@ -299,12 +356,25 @@ private fun ClassCard(
             )
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f).padding(vertical = 14.dp)) {
-                BasicText(
-                    bundle.meta.name.uppercase(),
-                    style = AegisType.title.copy(
-                        color = if (locked) Ink.muted else Ink.primary,
-                    ),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicText(
+                        bundle.meta.name.uppercase(),
+                        // weight(fill = false) so a long name yields space to the
+                        // badge rather than squeezing it into a vertical strip,
+                        // which is what "PROTECTION WARRIOR" did.
+                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = AegisType.title.copy(
+                            color = if (locked) Ink.muted else Ink.primary,
+                        ),
+                    )
+                    // Which job this class does. With five classes across three
+                    // roles the name alone no longer says it -- "Frost Mage"
+                    // tells a WoW player, but the game should not require that.
+                    Spacer(Modifier.width(8.dp))
+                    RoleBadge(bundle.meta.role, dimmed = locked)
+                }
                 Spacer(Modifier.height(4.dp))
                 if (locked) {
                     BasicText(
@@ -322,10 +392,35 @@ private fun ClassCard(
     }
 }
 
+/** TANK / DPS / HEALER, in the colour the rest of the UI uses for that idea. */
+@Composable
+private fun RoleBadge(role: String, dimmed: Boolean) {
+    val colour = when (role) {
+        "TANK" -> Vital.shield
+        "DPS" -> Vital.hurt
+        else -> Vital.healthy
+    }.let { if (dimmed) it.copy(alpha = 0.35f) else it }
+
+    BasicText(
+        role,
+        maxLines = 1,
+        style = AegisType.label.copy(fontSize = 10.sp, color = colour),
+        modifier = Modifier
+            .border(1.dp, colour.copy(alpha = 0.55f), RoundedCornerShape(3.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
 private fun classPortrait(cls: PlayerClass) = when (cls) {
     PlayerClass.PRIEST -> "class-icons/priest"
     PlayerClass.DRUID -> "class-icons/druid"
     PlayerClass.PALADIN -> "class-icons/paladin"
+    PlayerClass.MAGE -> "class-icons/mage"
+    PlayerClass.WARRIOR -> "class-icons/warrior"
+    PlayerClass.DEATHKNIGHT -> "class-icons/death_knight"
+    PlayerClass.ROGUE -> "class-icons/rogue"
+    PlayerClass.MONK -> "class-icons/monk"
+    PlayerClass.WARLOCK -> "class-icons/warlock"
 }
 
 // --- dungeon list -----------------------------------------------------------
@@ -336,6 +431,9 @@ fun DungeonListScreen(
     playerLevel: Int,
     cls: PlayerClass,
     talentPoints: Int,
+    records: Map<String, DungeonRecord>,
+    /** How far each dungeon's keystone has been pushed. */
+    keystones: Map<String, Int> = emptyMap(),
     onSelect: (Dungeon) -> Unit,
 ) {
     ObsidianBackdrop {
@@ -343,7 +441,7 @@ fun DungeonListScreen(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(horizontal = 16.dp, vertical = 18.dp),
+                .padding(horizontal = 16.dp, vertical = if (LocalCompactHeight.current) 8.dp else 18.dp),
         ) {
             ContentColumn(horizontalAlignment = Alignment.CenterHorizontally) {
                 SectionHeading(
@@ -352,7 +450,7 @@ fun DungeonListScreen(
                         if (talentPoints > 0) "  ·  " + talentPoints + " PT" else "",
                 )
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(if (LocalCompactHeight.current) 8.dp else 16.dp))
 
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 LazyColumn(
@@ -362,7 +460,15 @@ fun DungeonListScreen(
                 ) {
                     items(data.dungeons, key = { it.id }) { dungeon ->
                         val locked = playerLevel < dungeon.levelMin
-                        DungeonCard(dungeon, locked) { if (!locked) onSelect(dungeon) }
+                        DungeonCard(
+                            dungeon,
+                            locked,
+                            records[dungeon.id],
+                            records[recordKey(dungeon.id, true)],
+                            keystones[dungeon.id] ?: 0,
+                        ) {
+                            if (!locked) onSelect(dungeon)
+                        }
                     }
                 }
                 // Fade the list into the ground so a card never ends in a hard
@@ -382,8 +488,68 @@ fun DungeonListScreen(
     }
 }
 
+/**
+ * What a character has brought back: one keepsake per dungeon it has cleared,
+ * and the name those clears have earned it.
+ */
 @Composable
-private fun DungeonCard(dungeon: Dungeon, locked: Boolean, onClick: () -> Unit) {
+fun TrophyCase(records: Map<String, DungeonRecord>, data: GameData) {
+    val won = data.dungeons.filter { (records[it.id]?.clears ?: 0) > 0 }
+    if (won.isEmpty()) return
+    val title = titleFor(records, data.dungeons.count { !it.endless })
+    ForgedPanel(Modifier.fillMaxWidth()) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BasicText("TROPHIES", style = AegisType.label.copy(color = Gilt.mid))
+                Spacer(Modifier.weight(1f))
+                if (title != null) {
+                    BasicText(title.uppercase(), style = AegisType.label.copy(color = Gilt.core))
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                won.forEach { d ->
+                    val r = records.getValue(d.id)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(56.dp)) {
+                        GameIcon(d.bossIcon, size = 34.dp, accent = if (r.sharp) Gilt.core else Gilt.deep)
+                        BasicText(
+                            clearTimeLabel(r.bestTicks),
+                            style = AegisType.label.copy(fontSize = 9.sp, color = Ink.secondary),
+                        )
+                    }
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+}
+
+/**
+ * One earned mark on a dungeon card: its own icon, lit when it has been done
+ * and greyed while it has not. Three gold words read as a sentence; three
+ * icons read as a row of achievements, which is what they are.
+ */
+@Composable
+private fun Mark(icon: String, label: String, earned: Boolean) {
+    GameIcon(
+        icon,
+        size = 22.dp,
+        accent = if (earned) Gilt.core else Gilt.deep.copy(alpha = 0.4f),
+        dimmed = !earned,
+        contentDescription = if (earned) "$label, earned" else "$label, not earned",
+    )
+}
+
+@Composable
+private fun DungeonCard(
+    dungeon: Dungeon,
+    locked: Boolean,
+    record: DungeonRecord?,
+    hardRecord: DungeonRecord?,
+    /** How far this dungeon's keystone has been pushed; 0 until a hard clear. */
+    keystone: Int = 0,
+    onClick: () -> Unit,
+) {
     val accent = LocalAccent.current
     ForgedPanel(
         modifier = Modifier
@@ -413,6 +579,41 @@ private fun DungeonCard(dungeon: Dungeon, locked: Boolean, onClick: () -> Unit) 
                 }
                 if (locked) {
                     GameIcon("lorc/padlock", size = 26.dp, accent = Ink.muted)
+                }
+            }
+
+            if (record != null && record.clears > 0) {
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicText(
+                        "BEST ${clearTimeLabel(record.bestTicks)}   ·   ${record.clears} CLEAR" +
+                            (if (record.clears == 1) "" else "S") +
+                            // The efficiency record, beside the speed one. Time
+                            // rewards firing everything; this rewards the heal
+                            // you did not need to cast, and it is the only
+                            // record here a healer can push without going
+                            // faster. bestHps and bestDps are volume, and are
+                            // deliberately still not shown.
+                            (if (record.bestHpm > 0) "   ·   ${"%.2f".format(record.bestHpm)} HPM" else ""),
+                        style = AegisType.label.copy(color = Gilt.core),
+                    )
+                    Spacer(Modifier.weight(1f))
+                    // Cleared, Clean, Sharp: what this dungeon has seen you do.
+                    // Cleared: a trophy. Clean: nobody went down. Sharp: nothing
+                    // kickable was allowed to land.
+                    Mark("wow/inv_misc_trophy_argent", "Cleared", true)
+                    Spacer(Modifier.width(6.dp))
+                    Mark("wow/spell_holy_devotionaura", "Clean", record.clean)
+                    Spacer(Modifier.width(6.dp))
+                    Mark("wow/ability_kick", "Sharp", record.sharp)
+                }
+                if (hardRecord != null && hardRecord.clears > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    BasicText(
+                        "HARD ${clearTimeLabel(hardRecord.bestTicks)}   ·   ${hardRecord.clears}" +
+                            if (keystone > 0) "   ·   KEYSTONE $keystone" else "",
+                        style = AegisType.label.copy(color = Vital.critical),
+                    )
                 }
             }
 

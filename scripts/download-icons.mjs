@@ -143,12 +143,15 @@ async function fetchBuffer(url) {
 async function downloadWowIcon(icon) {
   const dir = path.join(publicRoot, 'icons', 'wow');
   await mkdir(dir, { recursive: true });
+  // Check every extension before fetching: the Gethe icons are .png, and a
+  // .jpg-only check would pull a duplicate of each from Wowhead.
   for (const ext of wowExts) {
-    const outPath = path.join(dir, `${icon}.${ext}`);
-    if (await exists(outPath)) return true;
+    if (await exists(path.join(dir, `${icon}.${ext}`))) return true;
+  }
+  for (const ext of wowExts) {
     const data = await fetchBuffer(`${wowBase}/${icon}.${ext}`);
     if (!data) continue;
-    await writeFile(outPath, data);
+    await writeFile(path.join(dir, `${icon}.${ext}`), data);
     return true;
   }
   return false;
