@@ -171,6 +171,13 @@ fun CombatScreen(
                 // the row height is derived from the space available and the bar
                 // shrinks with it, rather than rows keeping a size that clips.
                 val debuffMax = remember(state.currentDungeon?.id) { debuffDurations(state) }
+                // A threat meter is for the roles that contest threat. A healer
+                // frame stays a healer frame: five bars, one question.
+                val threat = if (state.playerRole == UnitRole.HEALER) {
+                    emptyMap()
+                } else {
+                    threatReadouts(state, data.balance.threat.overtakeMultiplier)
+                }
                 val ui = LocalUiSettings.current
                 val gap = 7.dp
                 val maxRow = if (ui.largeFrames) 110.dp else PartyRowMaxHeight
@@ -201,6 +208,7 @@ fun CombatScreen(
                             rowHeight = rowHeight,
                             auraSize = auraSize,
                             debuffMax = debuffMax,
+                            threat = threat[unit.id],
                             dropTarget = unit.id == dropTargetId,
                             onBounds = { rowBounds[unit.id] = it },
                             onClick = { if (unit.isAlive) onTarget(unit.id) },
@@ -393,7 +401,7 @@ private fun EncounterHud(
             // empty -- an inert widget is worse than no widget.
             if (state.playerRole != UnitRole.HEALER) {
                 Spacer(Modifier.height(8.dp))
-                ThreatStrip(state)
+                ThreatStrip(state, data)
             }
 
             // The pre-damage warning a healer plans around. mechanicCooldown
@@ -469,54 +477,111 @@ private fun EncounterHud(
 }
 
 /**
- * How close the enemy is to changing its mind, plus what the player has running
- * on it.
+ * Where every living unit stands on the threat table, in the unit every WotLK
+ * threat meter used: a percentage of whoever currently holds the enemy.
  *
- * The first version of this showed `yourThreat / highestThreat`, which pinned a
- * tank at 100% permanently -- a tank *is* the highest, so the number could never
- * move and told them nothing. What actually matters to both roles is the same
- * quantity from opposite sides: how near the gap is to closing.
+ * Two earlier versions of this failed for the same reason, which is that they
+ * put the player's own threat in the denominator. `yourThreat / highestThreat`
+ * pinned a tank at 100% forever. Replacing it with `rivalThreat / yourThreat`
+ * moved, but barely: the tank's own cast grows the denominator it is measured
+ * against, so a Shield Slam worth a quarter of the party's threat nudged the
+ * bar a percent and read as inert. Beside it sat a raw `+1500`, a number in no
+ * unit the player had ever been shown.
  *
- *  - Holding aggro (a tank's normal state): the bar is the closest rival's
- *    threat as a fraction of yours. Full means you are about to lose it.
- *  - Not holding aggro (a DPS's normal state): the bar is your threat as a
- *    fraction of what it takes to pull. Full means you are about to take it.
+ * KTM and Omen settled this in 2007 and the answer is one number, not two: the
+ * aggro holder is 100%, everyone else is their share of it, and the pull line
+ * sits at [pullMargin] over the holder -- the same margin
+ * `Engine.resolveEnemyTarget` actually enforces. A tank reads it by watching
+ * the other four bars, which is why it belongs on the party frames rather than
+ * in a strip of its own: threat is a property of a unit, so it is drawn under
+ * that unit, as a second bar beneath their health.
  *
- * Either way full is the dangerous end for the role that should not have aggro,
- * so the colour rule is one rule, and the number moves constantly.
+ * Empty until something holds aggro, so no meter is ever drawn over an empty
+ * table.
+ */
+internal data class ThreatReadout(
+    /** Share of the aggro holder's threat. The holder is 100 by construction. */
+    val pct: Int,
+    /** Bar fill, where 1f is the holder's threat. */
+    val frac: Float,
+    /** Where on the bar overtaking happens, as a fraction of the holder. */
+    val pullLine: Float,
+    val hasAggro: Boolean,
+) {
+    /** Within a tenth of the margin of taking the enemy off whoever has it. */
+    val closing: Boolean get() = !hasAggro && frac >= pullLine * 0.9f
+}
+
+internal fun threatReadouts(state: GameState, pullMargin: Double): Map<String, ThreatReadout> {
+    val living = state.party.filter { it.isAlive }
+    val holder = living.firstOrNull { it.id == state.enemyTargetId } ?: return emptyMap()
+    if (holder.threat <= 0.0) return emptyMap()
+    val pullLine = (1.0 / pullMargin).toFloat()
+    return living.associate { u ->
+        val share = u.threat / holder.threat
+        u.id to ThreatReadout(
+            pct = (share * 100).roundToInt(),
+            frac = share.toFloat().coerceIn(0f, 1f),
+            pullLine = pullLine,
+            hasAggro = u.id == holder.id,
+        )
+    }
+}
+
+/**
+ * The colour of a threat bar, from the point of view of the player's own role.
+ *
+ * One rule: the unit that is supposed to have the enemy is calm, the unit that
+ * is about to have it and should not is red. A tank holding the pull sees four
+ * quiet bars, and one of them lighting up is the whole warning.
+ */
+internal fun threatColor(r: ThreatReadout, playerWantsAggro: Boolean, unitIsTank: Boolean): Color = when {
+    r.hasAggro && unitIsTank -> Vital.shield
+    r.hasAggro -> Vital.critical
+    r.closing && (playerWantsAggro || unitIsTank) -> Vital.critical
+    r.closing -> Vital.hurt
+    r.frac >= 0.6f -> Vital.fair
+    else -> Gilt.deep
+}
+
+/**
+ * The one line above the action bar: the bar that is closing, and what the
+ * player has running on the enemy.
+ *
+ * Deliberately shows the *other* side of the contest from the party frames --
+ * holding the enemy, that is the nearest rival; not holding it, that is you --
+ * because either way it answers one question, "how near is this to changing
+ * hands", and either way the percentage is the one that unit's own frame is
+ * already showing. One unit, two readouts that agree.
  */
 @Composable
-private fun ThreatStrip(state: GameState) {
+private fun ThreatStrip(state: GameState, data: GameData) {
+    val readouts = threatReadouts(state, data.balance.threat.overtakeMultiplier)
     val living = state.party.filter { it.isAlive }
     val self = living.firstOrNull { it.id == state.localUnitId } ?: return
     val holder = living.firstOrNull { it.id == state.enemyTargetId }
     val hasAggro = holder?.id == self.id
-    val wantsAggro = state.playerRole == UnitRole.TANK
-    val overtake = 1.1
 
-    // The threat that would have to be beaten, from whichever side you are on.
-    val rival = living.filter { it.id != self.id }.maxByOrNull { it.threat }?.threat ?: 0.0
-    val frac = when {
-        hasAggro -> if (self.threat > 0) (rival / (self.threat * overtake)) else 0.0
-        holder != null && holder.threat > 0 -> self.threat / (holder.threat * overtake)
-        else -> 0.0
-    }.toFloat().coerceIn(0f, 1f)
-
-    val label = if (hasAggro) "HOLDING" else "PULL IN"
-    // Near the top of the bar something is about to change hands. For a tank
-    // that is bad when they hold it; for a DPS it is bad when they are closing.
-    val danger = if (wantsAggro) hasAggro && frac > 0.8f else !hasAggro && frac > 0.8f
-    val bar = when {
-        danger -> Vital.critical
-        hasAggro && wantsAggro -> Vital.shield
-        hasAggro -> Vital.hurt
-        else -> Vital.healthy
-    }
+    // Whoever is closing: the nearest rival when you hold the enemy, you when
+    // you do not.
+    val subject = if (hasAggro) living.filter { it.id != self.id }.maxByOrNull { it.threat } else self
+    val r = subject?.let { readouts[it.id] }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         BasicText(
-            label,
+            if (hasAggro) "CLOSING" else "AGGRO",
             style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted),
+        )
+        Spacer(Modifier.width(6.dp))
+        BasicText(
+            // Named, because "whoever is second" is not a thing a player can
+            // look at. Holding the enemy, this is the rival; otherwise it is
+            // the unit you are trying not to take it from.
+            frameName(if (hasAggro) (subject ?: self) else (holder ?: self), state, data),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 92.dp),
+            style = AegisType.numeric.copy(fontSize = 11.sp, color = Ink.secondary),
         )
         Spacer(Modifier.width(8.dp))
         Box(
@@ -527,25 +592,43 @@ private fun ThreatStrip(state: GameState) {
                 .background(Obsidian.abyss)
                 .border(1.dp, Gilt.deep.copy(alpha = 0.5f), RoundedCornerShape(2.dp)),
         ) {
-            Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(bar))
+            if (r != null) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(r.frac)
+                        .fillMaxHeight()
+                        .background(
+                            threatColor(
+                                r,
+                                playerWantsAggro = state.playerRole == UnitRole.TANK,
+                                unitIsTank = subject.role == UnitRole.TANK,
+                            ),
+                        ),
+                )
+                // The pull line, drawn where overtaking actually happens rather
+                // than at the end of the bar, so "full" is never a lie.
+                if (!r.hasAggro) {
+                    Box(Modifier.fillMaxWidth(r.pullLine).fillMaxHeight()) {
+                        Box(
+                            Modifier
+                                .align(Alignment.CenterEnd)
+                                .width(1.dp)
+                                .fillMaxHeight()
+                                .background(Gilt.bright),
+                        )
+                    }
+                }
+            }
         }
         Spacer(Modifier.width(8.dp))
-        // The ratio flattens out once you are well ahead -- a tank three times
-        // clear of the field sits near zero and stops appearing to respond to
-        // anything. The gap always moves when you cast, so it carries the
-        // moment-to-moment feedback and the bar carries the standing.
-        val gap = (self.threat - rival).roundToInt()
         BasicText(
-            (if (gap >= 0) "+" else "") + gap,
+            // A percentage of the aggro holder, which is what every party frame
+            // is also showing. Past the pull line the enemy changes its mind.
+            if (r == null) "--" else "${r.pct}%",
             style = AegisType.numeric.copy(
-                fontSize = 12.sp,
-                color = if (danger) Vital.critical else Ink.primary,
+                fontSize = 13.sp,
+                color = if (r?.closing == true) Vital.critical else Ink.primary,
             ),
-        )
-        Spacer(Modifier.width(6.dp))
-        BasicText(
-            "${(frac * 100).roundToInt()}%",
-            style = AegisType.label.copy(fontSize = 10.sp, color = Ink.muted),
         )
 
         // The player's own DoTs, so upkeep is visible without guessing.
@@ -999,6 +1082,8 @@ private fun PartyRow(
     rowHeight: Dp,
     auraSize: Dp,
     debuffMax: Map<String, Int>,
+    /** This unit's place on the threat table, or null when nothing shows one. */
+    threat: ThreatReadout?,
     dropTarget: Boolean,
     onBounds: (Rect) -> kotlin.Unit,
     onClick: () -> kotlin.Unit,
@@ -1031,6 +1116,10 @@ private fun PartyRow(
     // drawn from the left edge over the health fill, which read as "some of your
     // health is blue" rather than "you have a shield on top".
     val shieldEnd = (committedEnd + shieldFrac).coerceIn(0f, 1f)
+    // Threat moves in steps -- a cast lands the whole of it on one tick -- and
+    // an unsmoothed step across five bars at once reads as a glitch rather than
+    // as an event. Same tween as the health bar, so the two agree.
+    val threatFrac by animateFloatAsState(threat?.frac ?: 0f, tween(200), label = "threat")
     val accent = LocalAccent.current
     val dead = !unit.isAlive
     val incoming = !dead && state.enemyCast?.targets?.contains(unit.id) == true
@@ -1067,10 +1156,13 @@ private fun PartyRow(
                     if (unit.buffs.isNotEmpty()) add("${unit.buffs.size} heal over time")
                     if (unit.shield > 0) add("shielded")
                 }
+                val threatSaid = threat?.let {
+                    if (it.hasAggro) ", has aggro" else ", ${it.pct} percent threat"
+                } ?: ""
                 contentDescription = if (dead) {
                     "$label, $roleLabel, dead"
                 } else {
-                    "$label, $roleLabel, $pct percent health" +
+                    "$label, $roleLabel, $pct percent health" + threatSaid +
                         (if (auras.isEmpty()) "" else ", " + auras.joinToString(", ")) +
                         (if (incoming) ", ${state.enemyCast?.name} incoming" else "") +
                         (if (selected) ", targeted" else "")
@@ -1191,6 +1283,48 @@ private fun PartyRow(
                     )
                 }
 
+                // Threat, as a second bar under the health one. Omen and KTM
+                // drew a row per unit and so does this: the length is that
+                // unit's share of whoever currently holds the enemy, and the
+                // gilt notch is the pull line the engine really checks. A tank
+                // watches the other four creep toward their notch; a damage
+                // dealer watches their own. Either way every cast moves it,
+                // because the denominator belongs to the aggro holder and not
+                // to the person reading the bar.
+                if (threat != null && !dead) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .background(Obsidian.abyss.copy(alpha = 0.8f)),
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(threatFrac)
+                                .fillMaxHeight()
+                                .background(
+                                    threatColor(
+                                        threat,
+                                        playerWantsAggro = state.playerRole == UnitRole.TANK,
+                                        unitIsTank = unit.role == UnitRole.TANK,
+                                    ),
+                                ),
+                        )
+                        if (!threat.hasAggro) {
+                            Box(Modifier.fillMaxWidth(threat.pullLine).fillMaxHeight()) {
+                                Box(
+                                    Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .width(1.dp)
+                                        .fillMaxHeight()
+                                        .background(Gilt.bright),
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Name and deficit, left. Both are outlined: the text sits on
                 // the health fill, whose colour runs from green to red, and no
                 // single ink is readable against all four bands.
@@ -1270,12 +1404,21 @@ private fun PartyRow(
                             style = AegisType.numeric.copy(fontSize = 13.sp, shadow = TextOutline),
                         )
                     }
+                    // The level never changes during a pull and the threat
+                    // percentage changes every cast, so the live number takes
+                    // the line when there is one. The row keeps its height
+                    // either way.
                     if (rowHeight > 56.dp) {
                         BasicText(
-                            "LV ${unit.level}",
+                            if (threat != null && !dead) "${threat.pct}%" else "LV ${unit.level}",
                             style = AegisType.label.copy(
                                 fontSize = 10.sp,
-                                color = Ink.secondary,
+                                color = when {
+                                    threat == null || dead -> Ink.secondary
+                                    threat.hasAggro -> Gilt.bright
+                                    threat.closing -> Vital.critical
+                                    else -> Ink.secondary
+                                },
                                 shadow = TextOutline,
                             ),
                         )
