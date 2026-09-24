@@ -46,10 +46,23 @@ class FirstDownTest {
         }
     }
 
+    /**
+     * An idle rogue in the Deadmines.
+     *
+     * A missed kick needs three things at once and the obvious setup has none of
+     * them: `kickReady` asks for a *human damage dealer* holding an interrupt off
+     * cooldown, so a warrior can never miss one however long it stands there.
+     * The rogue learns Kick at level 1, and VanCleef's Cannon Barrage is one of
+     * the few early casts with a wind-up to miss.
+     */
+    private fun idleRogue() = (1..6).map { seed ->
+        harness.play(PlayerClass.ROGUE, 2, "deadmines", false, "normal", seed, idle = true)
+    }
+
     @Test
     fun `a let-through cast is named, not just counted`() {
         // Idle: nobody is kicking anything, so something gets through.
-        val missed = idleRuns().filter { it.missedKicks > 0 }
+        val missed = idleRogue().filter { it.missedKicks > 0 }
         assertTrue("the harness let nothing through to name", missed.isNotEmpty())
         for (r in missed) {
             assertTrue(

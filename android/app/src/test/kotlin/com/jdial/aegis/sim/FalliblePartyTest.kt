@@ -68,22 +68,33 @@ class FalliblePartyTest {
         assertTrue("this test only means anything with greed on", cfg.aiDpsGreedEveryTicks > 0)
         val s = healerRun(enemyOn = "1")
 
-        // Inside the window: exactly one AI damage dealer is credited extra.
-        val greedy = tick.aiDpsGreed(s.copy(combatElapsedTicks = 0), scriptedDamage = 100.0)
+        // Never in the first cycle: there has to be a threat table before there
+        // is anything to overtake.
+        assertTrue(
+            "greedy before the tank had built anything",
+            tick.aiDpsGreed(s.copy(combatElapsedTicks = 0), 100.0).isEmpty(),
+        )
+
+        // Inside a window: exactly one AI damage dealer is credited extra.
+        val greedy = tick.aiDpsGreed(
+            s.copy(combatElapsedTicks = cfg.aiDpsGreedEveryTicks),
+            scriptedDamage = 100.0,
+        )
         assertEquals("one seat overreaches, not the whole party", 1, greedy.size)
         assertTrue("the extra threat is positive", greedy.values.first() > 0)
         assertTrue("it is a damage dealer", greedy.keys.first() in listOf("2", "3"))
 
         // Outside it: nothing.
-        val calm = s.copy(combatElapsedTicks = cfg.aiDpsGreedTicks + 1)
+        val calm = s.copy(combatElapsedTicks = cfg.aiDpsGreedEveryTicks + cfg.aiDpsGreedTicks + 1)
         assertTrue("greedy outside its window", tick.aiDpsGreed(calm, 100.0).isEmpty())
     }
 
     @Test
     fun `greed is deterministic and never touches a human seat`() {
         val s = healerRun(enemyOn = "1")
-        val once = tick.aiDpsGreed(s.copy(combatElapsedTicks = 0), 100.0)
-        val twice = tick.aiDpsGreed(s.copy(combatElapsedTicks = 0), 100.0)
+        val at = cfg.aiDpsGreedEveryTicks
+        val once = tick.aiDpsGreed(s.copy(combatElapsedTicks = at), 100.0)
+        val twice = tick.aiDpsGreed(s.copy(combatElapsedTicks = at), 100.0)
         assertEquals("the same tick must give the same answer", once, twice)
 
         // A run where both damage seats are people: nobody's threat is forged.
@@ -96,7 +107,7 @@ class FalliblePartyTest {
         )
         assertTrue(
             "a human damage dealer was credited threat it did not earn",
-            tick.aiDpsGreed(allHuman.copy(combatElapsedTicks = 0), 100.0).isEmpty(),
+            tick.aiDpsGreed(allHuman.copy(combatElapsedTicks = at), 100.0).isEmpty(),
         )
     }
 }

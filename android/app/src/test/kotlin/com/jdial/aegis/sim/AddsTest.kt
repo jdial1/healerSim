@@ -169,9 +169,14 @@ class AddsTest {
 
         // A Mage's run is a threat run: adds go for whoever the enemy is on,
         // the tank's to pick up, rather than straight for the healer.
-        val healer = called.enemyTargetId ?: called.party.first { it.role == UnitRole.TANK }.id
+        //
+        // Read after the step, not before: an AI damage dealer overreaching
+        // (RolesBalance.aiDpsGreed) can take the enemy during the very tick this
+        // measures, and the claim is that the adds follow the holder -- not that
+        // the holder is the same unit it was a tick ago.
         val hit = step(called)
-        assertTrue(hit.unit(healer)!!.health < called.unit(healer)!!.health)
+        val held = hit.enemyTargetId ?: hit.party.first { it.role == UnitRole.TANK }.id
+        assertTrue(hit.unit(held)!!.health < called.unit(held)!!.health)
 
         val dead = step(called.copy(enemyHealth = 0.001))
         assertTrue(dead.adds.isEmpty())

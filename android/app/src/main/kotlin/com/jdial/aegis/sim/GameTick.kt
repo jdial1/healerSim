@@ -289,6 +289,12 @@ class GameTick(
     internal fun aiDpsGreed(s: GameState, scriptedDamage: Double): Map<String, Double> {
         val cfg = data.balance.roles
         if (cfg.aiDpsGreedEveryTicks <= 0 || cfg.aiDpsGreedTicks <= 0) return emptyMap()
+        // Not in the first cycle. `% every` puts the window at the *start*, which
+        // meant the enemy went to a squishy damage dealer on tick one of every
+        // fight, before the tank had built anything to overreach against: the
+        // pull happened when nobody could answer it and the run ended there.
+        // There has to be a threat table before there is anything to overtake.
+        if (s.combatElapsedTicks < cfg.aiDpsGreedEveryTicks) return emptyMap()
         if (s.combatElapsedTicks % cfg.aiDpsGreedEveryTicks >= cfg.aiDpsGreedTicks) return emptyMap()
         val greedy = s.party
             .filter { it.role == UnitRole.DPS && it.isAlive && !s.isHuman(it.id) }

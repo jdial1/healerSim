@@ -91,7 +91,12 @@ class AiGroupTest {
         val s = mageFight()
         val tank = s.party.first { it.role == UnitRole.TANK }
         val onMe = s.copy(enemyTargetId = s.localUnitId, party = s.party.map { if (it.id == s.localUnitId) it.copy(threat = 500.0) else it })
-        val taunted = tick.aiTankTaunt(onMe)
+        // It has to notice first (RolesBalance.aiTankNoticeTicks): a tank that
+        // taunts on the frame the boss turns is a tank nobody has to cover for.
+        // What this test pins is that it *does* take the enemy back and then
+        // waits on cooldown, not how fast it reacts.
+        var taunted = onMe
+        repeat(data.balance.roles.aiTankNoticeTicks + 1) { taunted = tick.aiTankTaunt(taunted) }
         assertEquals(tank.id, taunted.enemyTargetId)
         assertEquals(data.balance.threat.aiTauntLockTicks, taunted.tauntLockTicks)
         assertTrue(taunted.party.first { it.id == tank.id }.threat > 500.0)
@@ -113,7 +118,11 @@ class AiGroupTest {
         val rng = Rng(2)
         val priest = engine.reduce(engine.newCharacter(PlayerClass.PRIEST, rng), Action.StartDungeon(data.dungeons.first(), "normal"), rng)
             .copy(enemyTargetId = PLAYER_UNIT_ID)
-        // A healer's big heals can pull the boss now; the AI tank takes it back.
-        assertEquals(priest.party.first { it.role == UnitRole.TANK }.id, tick.aiTankTaunt(priest).enemyTargetId)
+        // A healer's big heals can pull the boss now; the AI tank takes it back
+        // once it has noticed, which is the whole of the healer's few dangerous
+        // seconds.
+        var held = priest
+        repeat(data.balance.roles.aiTankNoticeTicks + 1) { held = tick.aiTankTaunt(held) }
+        assertEquals(priest.party.first { it.role == UnitRole.TANK }.id, held.enemyTargetId)
     }
 }
